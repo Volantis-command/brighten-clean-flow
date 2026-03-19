@@ -93,6 +93,7 @@ export default function SchedulePage() {
             {dayJobs.map((job: any) => (
               <ScheduleJobCard
                 key={job.id}
+                id={job.id}
                 propertyName={job.properties?.property_name || 'Unknown'}
                 address={[job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null}
                 scheduledTime={job.scheduled_time?.slice(0, 5) || null}
@@ -100,7 +101,8 @@ export default function SchedulePage() {
                 status={job.status}
                 cleaner1Name={job.cleaner_1_id ? nameMap[job.cleaner_1_id] : null}
                 cleaner2Name={job.cleaner_2_id ? nameMap[job.cleaner_2_id] : null}
-                onClick={() => {}}
+                propertyLat={job.properties?.lat}
+                propertyLng={job.properties?.lng}
               />
             ))}
           </div>
