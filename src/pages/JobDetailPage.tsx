@@ -1,0 +1,169 @@
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { format } from 'date-fns';
+
+export default function JobDetailPage() {
+  const { jobId } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
+  const { role } = useAuth();
+
+  const { data: job, isLoading } = useQuery({
+    queryKey: ['job-detail', jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*, properties(property_name, address, suburb, bedrooms, bathrooms, lat, lng)')
+        .eq('id', jobId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!jobId,
+  });
+
+  // Fetch cleaner names
+  const cleanerIds = [job?.cleaner_1_id, job?.cleaner_2_id].filter(Boolean) as string[];
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['job-detail-profiles', cleanerIds],
+    queryFn: async () => {
+      if (cleanerIds.length === 0) return [];
+      const { data, error } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: cleanerIds.length > 0,
+  });
+
+  const nameMap: Record<string, string> = {};
+  profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-primary font-bold text-lg">Loading job…</p>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <p className="text-muted-foreground text-center py-8">Job not found.</p>
+      </div>
+    );
+  }
+
+  const statusConfig: Record<string, { label: string; className: string }> = {
+    scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
+    in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
+    complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
+    flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+  };
+
+  const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
+  const property = job.properties as any;
+  const address = [property?.address, property?.suburb].filter(Boolean).join(', ');
+  const jobDate = job.scheduled_date ? format(new Date(job.scheduled_date + 'T00:00:00'), 'EEEE, d MMMM yyyy') : 'No date';
+  const scheduledTime = job.scheduled_time?.slice(0, 5) || null;
+  const durationHrs = job.estimated_duration ? job.estimated_duration / 60 : null;
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-2xl font-extrabold text-primary">Job Details</h1>
+      </div>
+
+      {/* Property & Status */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="text-xl">{property?.property_name || 'Unknown Property'}</CardTitle>
+            <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
+              {statusInfo.label}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {address && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span>{address}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarDays className="h-4 w-4 shrink-0" />
+            <span>{jobDate}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            {scheduledTime && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span>{scheduledTime}</span>
+              </div>
+            )}
+            {durationHrs && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Timer className="h-4 w-4 shrink-0" />
+                <span>{durationHrs}hr</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cleaners */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Assigned Cleaners</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span>
+              {cleanerIds.length === 0
+                ? 'No cleaners assigned'
+                : cleanerIds.map(id => nameMap[id] || 'Unknown').join(' & ')}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notes */}
+      {job.notes && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-2 text-sm text-foreground">
+              <StickyNote className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+              <p className="whitespace-pre-wrap">{job.notes}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Actions */}
+      <div className="space-y-3">
+        <Button
+          className="w-full gap-2 h-12 text-base font-bold"
+          onClick={() => navigate(`/jobs/${jobId}/checklist`)}
+        >
+          <ClipboardList className="h-5 w-5" />
+          {job.status === 'complete' ? 'View Checklist' : 'Open Checklist'}
+        </Button>
+      </div>
+    </div>
+  );
+}

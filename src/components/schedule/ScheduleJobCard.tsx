@@ -50,7 +50,12 @@ export function ScheduleJobCard({
   const { data: timeEntry, refetch } = useTimeEntry(id, showClockIn ? user?.id : undefined);
 
   return (
-    <div className={`bg-card rounded-2xl shadow-md p-5 border border-border ${isPastJob ? 'opacity-60' : ''}`}>
+    <div
+      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''}`}
+      onClick={() => navigate(`/jobs/${id}`)}
+      role="button"
+      tabIndex={0}
+    >
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
         <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
