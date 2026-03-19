@@ -23,7 +23,7 @@ export default function SchedulePage() {
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('*, properties(property_name, address, suburb)')
+        .select('*, properties(property_name, address, suburb, lat, lng)')
         .order('scheduled_date', { ascending: true })
         .order('scheduled_time', { ascending: true });
 
