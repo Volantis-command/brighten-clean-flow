@@ -64,6 +64,7 @@ function AppRoutes() {
         <Route path="/properties/:id" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><PropertyProfilePage /></ProtectedRoute>} />
         <Route path="/properties/:id/edit" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
         <Route path="/forms" element={<FormsPage />} />
+        <Route path="/jobs/:jobId/checklist" element={<JobChecklistPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
         <Route path="/quoting" element={<ProtectedRoute allowedRoles={['admin']}><QuotingPage /></ProtectedRoute>} />
         <Route path="/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffPage /></ProtectedRoute>} />

@@ -101,6 +101,17 @@ export default function AddJobPage() {
       return;
     }
 
+    // Auto-create job_form record
+    if (jobData?.id) {
+      await supabase.from('job_forms').insert({
+        job_id: jobData.id,
+        property_id: propertyId,
+        cleaner_id: cleaner1,
+        second_cleaner_id: cleaner2 || null,
+        form_data: {},
+      });
+    }
+
     // Send notifications to assigned cleaners
     const propName = selectedProperty?.property_name || 'a property';
     const notifMessage = `New job assigned: ${propName} on ${format(date, 'MMM d, yyyy')} at ${time}`;
