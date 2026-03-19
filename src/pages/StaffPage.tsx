@@ -158,10 +158,16 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Staff</h1>
         {isAdmin && (
-          <Button onClick={() => setInviteOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
-            <UserPlus className="w-5 h-5" />
-            Invite Staff
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+              <UserPlus className="w-5 h-5" />
+              Create Account
+            </Button>
+            <Button variant="outline" onClick={() => setInviteOpen(true)} className="font-bold rounded-xl gap-2">
+              <Mail className="w-4 h-4" />
+              Invite
+            </Button>
+          </div>
         )}
       </div>
 
