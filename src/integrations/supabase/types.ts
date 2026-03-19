@@ -308,6 +308,7 @@ export type Database = {
         Row: {
           action_required: boolean | null
           audit_date: string | null
+          cleaner_id: string | null
           cleaner_notified: boolean | null
           created_at: string
           id: string
@@ -319,6 +320,7 @@ export type Database = {
           percentage: number | null
           positive_feedback: string | null
           property_id: string | null
+          re_clean_date: string | null
           result: string | null
           scores: Json | null
           total_score: number | null
@@ -326,6 +328,7 @@ export type Database = {
         Insert: {
           action_required?: boolean | null
           audit_date?: string | null
+          cleaner_id?: string | null
           cleaner_notified?: boolean | null
           created_at?: string
           id?: string
@@ -337,6 +340,7 @@ export type Database = {
           percentage?: number | null
           positive_feedback?: string | null
           property_id?: string | null
+          re_clean_date?: string | null
           result?: string | null
           scores?: Json | null
           total_score?: number | null
@@ -344,6 +348,7 @@ export type Database = {
         Update: {
           action_required?: boolean | null
           audit_date?: string | null
+          cleaner_id?: string | null
           cleaner_notified?: boolean | null
           created_at?: string
           id?: string
@@ -355,6 +360,7 @@ export type Database = {
           percentage?: number | null
           positive_feedback?: string | null
           property_id?: string | null
+          re_clean_date?: string | null
           result?: string | null
           scores?: Json | null
           total_score?: number | null
