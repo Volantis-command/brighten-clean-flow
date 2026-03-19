@@ -16,12 +16,24 @@ export default function AdminTimeView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('time_entries')
-        .select('*, profiles:user_id(full_name), jobs(scheduled_date, properties(property_name))')
+        .select('*, jobs(scheduled_date, properties(property_name))')
         .gte('clock_in_time', weekStart.toISOString())
         .lte('clock_in_time', weekEnd.toISOString())
         .order('clock_in_time', { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      // Fetch profile names separately
+      const userIds = [...new Set((data || []).map((e: any) => e.user_id))];
+      const profileMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        (profiles || []).forEach((p: any) => { profileMap[p.id] = p.full_name || 'Unknown'; });
+      }
+
+      return (data || []).map((e: any) => ({ ...e, _name: profileMap[e.user_id] || 'Unknown' }));
     },
   });
 
@@ -29,7 +41,7 @@ export default function AdminTimeView() {
   const byUser: Record<string, { name: string; entries: any[]; totalMinutes: number }> = {};
   entries.forEach((e: any) => {
     const uid = e.user_id;
-    const name = (e as any).profiles?.full_name || 'Unknown';
+    const name = e._name || 'Unknown';
     if (!byUser[uid]) byUser[uid] = { name, entries: [], totalMinutes: 0 };
     byUser[uid].entries.push(e);
     byUser[uid].totalMinutes += e.total_minutes || 0;
