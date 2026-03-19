@@ -1,5 +1,6 @@
-import { Clock, MapPin, Users, Timer } from 'lucide-react';
+import { Clock, MapPin, Users, Timer, ClipboardList } from 'lucide-react';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
+import { useNavigate } from 'react-router-dom';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
 import { useAuth } from '@/contexts/AuthContext';
 
