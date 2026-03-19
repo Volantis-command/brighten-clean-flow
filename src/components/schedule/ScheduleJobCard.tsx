@@ -43,6 +43,7 @@ export function ScheduleJobCard({
   isPastJob,
 }: ScheduleJobCardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(' & ');
 
