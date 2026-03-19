@@ -40,6 +40,7 @@ export default function AdminTimeView() {
   // Group by user
   const byUser: Record<string, { name: string; entries: any[]; totalMinutes: number }> = {};
   entries.forEach((e: any) => {
+    const uid = e.user_id;
     const name = e._name || 'Unknown';
     if (!byUser[uid]) byUser[uid] = { name, entries: [], totalMinutes: 0 };
     byUser[uid].entries.push(e);
