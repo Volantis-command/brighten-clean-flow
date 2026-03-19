@@ -84,6 +84,8 @@ export default function PropertyFormPage() {
         amenities_notes: existing.amenities_notes || '',
         default_cleaner_id: existing.default_cleaner_id || '',
         status: existing.status || 'active',
+        lat: existing.lat != null ? String(existing.lat) : '',
+        lng: existing.lng != null ? String(existing.lng) : '',
       });
     }
   }, [existing]);
