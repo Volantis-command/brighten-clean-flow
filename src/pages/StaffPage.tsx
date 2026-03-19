@@ -217,6 +217,56 @@ export default function StaffPage() {
       {/* Time tracking section */}
       {isAdmin && <AdminTimeView />}
 
+      {/* Create Account Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Staff Account</DialogTitle>
+            <DialogDescription>Create a new account with login credentials. Share the password with the staff member.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Full Name *</Label>
+              <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Jane Doe" />
+            </div>
+            <div>
+              <Label>Email *</Label>
+              <Input type="email" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="staff@example.com" />
+            </div>
+            <div>
+              <Label>Temporary Password *</Label>
+              <Input type="text" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="0412 345 678" />
+            </div>
+            <div>
+              <Label>Role *</Label>
+              <Select value={createRole} onValueChange={(v) => setCreateRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cleaner">Cleaner</SelectItem>
+                  <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
+            >
+              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Invite Dialog */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="rounded-2xl">

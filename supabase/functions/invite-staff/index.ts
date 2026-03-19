@@ -54,7 +54,47 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, email, role, full_name, phone, user_id } = await req.json();
+    const { action, email, role, full_name, phone, user_id, password } = await req.json();
+
+    if (action === "create_user") {
+      // Create user directly with a password
+      const { data: createData, error: createError } =
+        await adminClient.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: full_name || "" },
+        });
+      if (createError) {
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newUserId = createData.user.id;
+
+      // Assign role
+      await adminClient
+        .from("user_roles")
+        .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
+
+      // Update profile with phone if provided
+      if (phone || full_name) {
+        const updates: Record<string, string> = {};
+        if (phone) updates.phone = phone;
+        if (full_name) updates.full_name = full_name;
+        await adminClient.from("profiles").update(updates).eq("id", newUserId);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, user_id: newUserId }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     if (action === "invite") {
       // Invite user by email
