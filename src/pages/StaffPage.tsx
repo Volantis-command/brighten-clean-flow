@@ -66,9 +66,17 @@ export default function StaffPage() {
   const queryClient = useQueryClient();
   const { data: staff = [], isLoading } = useStaffList();
 
+  const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
+
+  // Create form
+  const [createEmail, setCreateEmail] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [createRole, setCreateRole] = useState<AppRole>('cleaner');
+  const [createPassword, setCreatePassword] = useState('');
 
   // Invite form
   const [invEmail, setInvEmail] = useState('');
@@ -88,6 +96,19 @@ export default function StaffPage() {
     return data;
   };
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword }),
+    onSuccess: () => {
+      toast.success('Staff account created!');
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
+      setCreateOpen(false);
+      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreateRole('cleaner');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const inviteMutation = useMutation({
     mutationFn: () =>
       invokeFn({ action: 'invite', email: invEmail, role: invRole, full_name: invName, phone: invPhone }),
@@ -95,10 +116,7 @@ export default function StaffPage() {
       toast.success('Invitation sent!');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
       setInviteOpen(false);
-      setInvEmail('');
-      setInvName('');
-      setInvPhone('');
-      setInvRole('cleaner');
+      setInvEmail(''); setInvName(''); setInvPhone(''); setInvRole('cleaner');
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -140,10 +158,16 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Staff</h1>
         {isAdmin && (
-          <Button onClick={() => setInviteOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
-            <UserPlus className="w-5 h-5" />
-            Invite Staff
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+              <UserPlus className="w-5 h-5" />
+              Create Account
+            </Button>
+            <Button variant="outline" onClick={() => setInviteOpen(true)} className="font-bold rounded-xl gap-2">
+              <Mail className="w-4 h-4" />
+              Invite
+            </Button>
+          </div>
         )}
       </div>
 
@@ -192,6 +216,56 @@ export default function StaffPage() {
 
       {/* Time tracking section */}
       {isAdmin && <AdminTimeView />}
+
+      {/* Create Account Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Staff Account</DialogTitle>
+            <DialogDescription>Create a new account with login credentials. Share the password with the staff member.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Full Name *</Label>
+              <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Jane Doe" />
+            </div>
+            <div>
+              <Label>Email *</Label>
+              <Input type="email" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="staff@example.com" />
+            </div>
+            <div>
+              <Label>Temporary Password *</Label>
+              <Input type="text" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="0412 345 678" />
+            </div>
+            <div>
+              <Label>Role *</Label>
+              <Select value={createRole} onValueChange={(v) => setCreateRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cleaner">Cleaner</SelectItem>
+                  <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
+            >
+              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Invite Dialog */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
