@@ -161,6 +161,14 @@ export default function PropertyFormPage() {
               <Input value={form.postcode} onChange={(e) => updateField('postcode', e.target.value)} className="h-14 rounded-2xl" />
             </FormField>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Latitude (for geo-fencing)">
+              <Input value={form.lat} onChange={(e) => updateField('lat', e.target.value)} className="h-14 rounded-2xl" placeholder="-33.8688" type="number" step="any" />
+            </FormField>
+            <FormField label="Longitude (for geo-fencing)">
+              <Input value={form.lng} onChange={(e) => updateField('lng', e.target.value)} className="h-14 rounded-2xl" placeholder="151.2093" type="number" step="any" />
+            </FormField>
+          </div>
           <FormField label="Property Type">
             <Select value={form.property_type} onValueChange={(v) => updateField('property_type', v)}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select type" /></SelectTrigger>
