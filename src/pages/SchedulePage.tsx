@@ -23,7 +23,7 @@ export default function SchedulePage() {
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('*, properties(property_name, address, suburb)')
+        .select('*, properties(property_name, address, suburb, lat, lng)')
         .order('scheduled_date', { ascending: true })
         .order('scheduled_time', { ascending: true });
 
@@ -93,6 +93,7 @@ export default function SchedulePage() {
             {dayJobs.map((job: any) => (
               <ScheduleJobCard
                 key={job.id}
+                id={job.id}
                 propertyName={job.properties?.property_name || 'Unknown'}
                 address={[job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null}
                 scheduledTime={job.scheduled_time?.slice(0, 5) || null}
@@ -100,7 +101,8 @@ export default function SchedulePage() {
                 status={job.status}
                 cleaner1Name={job.cleaner_1_id ? nameMap[job.cleaner_1_id] : null}
                 cleaner2Name={job.cleaner_2_id ? nameMap[job.cleaner_2_id] : null}
-                onClick={() => {}}
+                propertyLat={job.properties?.lat}
+                propertyLng={job.properties?.lng}
               />
             ))}
           </div>
@@ -147,6 +149,7 @@ export default function SchedulePage() {
                         {isTodayJob ? 'Today' : format(jobDate, 'EEEE, MMM d')}
                       </p>
                       <ScheduleJobCard
+                        id={job.id}
                         propertyName={job.properties?.property_name || 'Unknown'}
                         address={[job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null}
                         scheduledTime={job.scheduled_time?.slice(0, 5) || null}
@@ -154,8 +157,9 @@ export default function SchedulePage() {
                         status={job.status}
                         cleaner1Name={job.cleaner_1_id && job.cleaner_1_id !== user?.id ? nameMap[job.cleaner_1_id] : null}
                         cleaner2Name={job.cleaner_2_id && job.cleaner_2_id !== user?.id ? nameMap[job.cleaner_2_id] : null}
-                        showStartButton={isTodayJob}
-                        onClick={() => {}}
+                        propertyLat={job.properties?.lat}
+                        propertyLng={job.properties?.lng}
+                        showClockIn={isTodayJob}
                       />
                     </div>
                   );
@@ -172,13 +176,13 @@ export default function SchedulePage() {
                 {pastJobs.map((job: any) => (
                   <ScheduleJobCard
                     key={job.id}
+                    id={job.id}
                     propertyName={job.properties?.property_name || 'Unknown'}
                     address={null}
                     scheduledTime={job.scheduled_time?.slice(0, 5) || null}
                     estimatedDuration={null}
                     status={job.status}
                     isPastJob
-                    onClick={() => {}}
                   />
                 ))}
               </div>

@@ -35,6 +35,8 @@ const EMPTY_FORM = {
   amenities_notes: '',
   default_cleaner_id: '',
   status: 'active',
+  lat: '',
+  lng: '',
 };
 
 export default function PropertyFormPage() {
@@ -82,6 +84,8 @@ export default function PropertyFormPage() {
         amenities_notes: existing.amenities_notes || '',
         default_cleaner_id: existing.default_cleaner_id || '',
         status: existing.status || 'active',
+        lat: existing.lat != null ? String(existing.lat) : '',
+        lng: existing.lng != null ? String(existing.lng) : '',
       });
     }
   }, [existing]);
@@ -94,9 +98,12 @@ export default function PropertyFormPage() {
       return;
     }
     setSaving(true);
+    const { lat, lng, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       default_cleaner_id: form.default_cleaner_id || null,
+      lat: lat ? parseFloat(lat) : null,
+      lng: lng ? parseFloat(lng) : null,
     };
 
     if (isEdit) {
@@ -152,6 +159,14 @@ export default function PropertyFormPage() {
             </FormField>
             <FormField label="Postcode">
               <Input value={form.postcode} onChange={(e) => updateField('postcode', e.target.value)} className="h-14 rounded-2xl" />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Latitude (for geo-fencing)">
+              <Input value={form.lat} onChange={(e) => updateField('lat', e.target.value)} className="h-14 rounded-2xl" placeholder="-33.8688" type="number" step="any" />
+            </FormField>
+            <FormField label="Longitude (for geo-fencing)">
+              <Input value={form.lng} onChange={(e) => updateField('lng', e.target.value)} className="h-14 rounded-2xl" placeholder="151.2093" type="number" step="any" />
             </FormField>
           </div>
           <FormField label="Property Type">

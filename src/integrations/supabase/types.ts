@@ -233,7 +233,9 @@ export type Database = {
           default_cleaner_id: string | null
           host_preferences: string | null
           id: string
+          lat: number | null
           linen_fold_style: string | null
+          lng: number | null
           payment_terms: string | null
           postcode: string | null
           product_restrictions: string | null
@@ -259,7 +261,9 @@ export type Database = {
           default_cleaner_id?: string | null
           host_preferences?: string | null
           id?: string
+          lat?: number | null
           linen_fold_style?: string | null
+          lng?: number | null
           payment_terms?: string | null
           postcode?: string | null
           product_restrictions?: string | null
@@ -285,7 +289,9 @@ export type Database = {
           default_cleaner_id?: string | null
           host_preferences?: string | null
           id?: string
+          lat?: number | null
           linen_fold_style?: string | null
+          lng?: number | null
           payment_terms?: string | null
           postcode?: string | null
           product_restrictions?: string | null
@@ -426,6 +432,8 @@ export type Database = {
           clock_out_lng: number | null
           clock_out_time: string | null
           created_at: string
+          geo_distance_meters: number | null
+          geo_override: boolean | null
           id: string
           job_id: string | null
           total_minutes: number | null
@@ -439,6 +447,8 @@ export type Database = {
           clock_out_lng?: number | null
           clock_out_time?: string | null
           created_at?: string
+          geo_distance_meters?: number | null
+          geo_override?: boolean | null
           id?: string
           job_id?: string | null
           total_minutes?: number | null
@@ -452,6 +462,8 @@ export type Database = {
           clock_out_lng?: number | null
           clock_out_time?: string | null
           created_at?: string
+          geo_distance_meters?: number | null
+          geo_override?: boolean | null
           id?: string
           job_id?: string | null
           total_minutes?: number | null
