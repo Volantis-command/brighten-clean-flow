@@ -19,6 +19,7 @@ import AIAssistantPage from "./pages/AIAssistantPage";
 import QuotingPage from "./pages/QuotingPage";
 import StaffPage from "./pages/StaffPage";
 import SettingsPage from "./pages/SettingsPage";
+import QCAuditPage from "./pages/QCAuditPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
