@@ -35,6 +35,8 @@ const EMPTY_FORM = {
   amenities_notes: '',
   default_cleaner_id: '',
   status: 'active',
+  lat: '',
+  lng: '',
 };
 
 export default function PropertyFormPage() {
