@@ -98,9 +98,12 @@ export default function PropertyFormPage() {
       return;
     }
     setSaving(true);
+    const { lat, lng, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       default_cleaner_id: form.default_cleaner_id || null,
+      lat: lat ? parseFloat(lat) : null,
+      lng: lng ? parseFloat(lng) : null,
     };
 
     if (isEdit) {
