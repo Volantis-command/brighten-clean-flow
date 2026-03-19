@@ -1,15 +1,293 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
+
+interface StaffMember {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  role: AppRole;
+}
+
+const roleBadgeStyles: Record<AppRole, string> = {
+  admin: 'bg-primary text-primary-foreground',
+  head_cleaner: 'bg-accent text-accent-foreground',
+  cleaner: 'bg-secondary text-secondary-foreground',
+};
+
+const roleLabels: Record<AppRole, string> = {
+  admin: 'Admin',
+  head_cleaner: 'Head Cleaner',
+  cleaner: 'Cleaner',
+};
+
+function useStaffList() {
+  return useQuery({
+    queryKey: ['staff-list'],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+      if (rolesErr) throw rolesErr;
+      if (!roles?.length) return [];
+
+      const userIds = roles.map((r) => r.user_id);
+      const { data: profiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone')
+        .in('id', userIds);
+      if (profErr) throw profErr;
+
+      const roleMap = new Map(roles.map((r) => [r.user_id, r.role as AppRole]));
+      return (profiles || []).map((p) => ({
+        ...p,
+        role: roleMap.get(p.id) || ('cleaner' as AppRole),
+      })) as StaffMember[];
+    },
+  });
+}
 
 export default function StaffPage() {
+  const { role: currentRole } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: staff = [], isLoading } = useStaffList();
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [editMember, setEditMember] = useState<StaffMember | null>(null);
+  const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
+
+  // Invite form
+  const [invEmail, setInvEmail] = useState('');
+  const [invName, setInvName] = useState('');
+  const [invPhone, setInvPhone] = useState('');
+  const [invRole, setInvRole] = useState<AppRole>('cleaner');
+
+  // Edit form
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState<AppRole>('cleaner');
+
+  const invokeFn = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('invite-staff', { body });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
+  const inviteMutation = useMutation({
+    mutationFn: () =>
+      invokeFn({ action: 'invite', email: invEmail, role: invRole, full_name: invName, phone: invPhone }),
+    onSuccess: () => {
+      toast.success('Invitation sent!');
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      setInviteOpen(false);
+      setInvEmail('');
+      setInvName('');
+      setInvPhone('');
+      setInvRole('cleaner');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      invokeFn({ action: 'update_role', user_id: editMember!.id, role: editRole, full_name: editName, phone: editPhone }),
+    onSuccess: () => {
+      toast.success('Staff member updated');
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
+      setEditMember(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: () => invokeFn({ action: 'remove', user_id: removeMember!.id }),
+    onSuccess: () => {
+      toast.success('Staff member removed');
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
+      setRemoveMember(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openEdit = (m: StaffMember) => {
+    setEditMember(m);
+    setEditName(m.full_name || '');
+    setEditPhone(m.phone || '');
+    setEditRole(m.role);
+  };
+
+  const isAdmin = currentRole === 'admin';
+
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Staff</h1>
-
-      <div className="bg-card rounded-2xl shadow-md p-6">
-        <p className="text-muted-foreground">Staff management coming soon.</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Staff</h1>
+        {isAdmin && (
+          <Button onClick={() => setInviteOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+            <UserPlus className="w-5 h-5" />
+            Invite Staff
+          </Button>
+        )}
       </div>
 
-      <AdminTimeView />
+      {/* Staff Cards */}
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+      ) : staff.length === 0 ? (
+        <div className="bg-card rounded-2xl shadow-md p-6 text-center text-muted-foreground">No staff members yet. Invite your first team member!</div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {staff.map((m) => (
+            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
+                  <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-lg">
+                  {(m.full_name || '?')[0].toUpperCase()}
+                </div>
+              </div>
+
+              <div className="space-y-1 text-sm text-muted-foreground">
+                {m.email && (
+                  <div className="flex items-center gap-2"><Mail className="w-4 h-4" />{m.email}</div>
+                )}
+                {m.phone && (
+                  <div className="flex items-center gap-2"><Phone className="w-4 h-4" />{m.phone}</div>
+                )}
+              </div>
+
+              {isAdmin && (
+                <div className="flex gap-2 mt-auto pt-2">
+                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl" onClick={() => openEdit(m)}>
+                    <Pencil className="w-4 h-4" /> Edit
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setRemoveMember(m)}>
+                    <Trash2 className="w-4 h-4" /> Remove
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Time tracking section */}
+      {isAdmin && <AdminTimeView />}
+
+      {/* Invite Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Invite Staff Member</DialogTitle>
+            <DialogDescription>Send an email invitation to join your team.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Email *</Label>
+              <Input type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="staff@example.com" />
+            </div>
+            <div>
+              <Label>Full Name</Label>
+              <Input value={invName} onChange={(e) => setInvName(e.target.value)} placeholder="Jane Doe" />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={invPhone} onChange={(e) => setInvPhone(e.target.value)} placeholder="0412 345 678" />
+            </div>
+            <div>
+              <Label>Role *</Label>
+              <Select value={invRole} onValueChange={(v) => setInvRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cleaner">Cleaner</SelectItem>
+                  <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button onClick={() => inviteMutation.mutate()} disabled={!invEmail || inviteMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2">
+              {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Send Invite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editMember} onOpenChange={(o) => !o && setEditMember(null)}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Staff Member</DialogTitle>
+            <DialogDescription>Update {editMember?.full_name || 'staff member'} details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Full Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={editRole} onValueChange={(v) => setEditRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cleaner">Cleaner</SelectItem>
+                  <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMember(null)}>Cancel</Button>
+            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending} className="bg-primary text-primary-foreground font-bold gap-2">
+              {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Confirm */}
+      <AlertDialog open={!!removeMember} onOpenChange={(o) => !o && setRemoveMember(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removeMember?.full_name || 'staff member'}?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete their account and all associated data. This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => removeMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {removeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
