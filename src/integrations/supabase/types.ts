@@ -390,6 +390,8 @@ export type Database = {
           created_at: string
           extras: Json | null
           id: string
+          internal_notes: string | null
+          notes: string | null
           price: number | null
           property_id: string | null
           service_type: string | null
@@ -402,6 +404,8 @@ export type Database = {
           created_at?: string
           extras?: Json | null
           id?: string
+          internal_notes?: string | null
+          notes?: string | null
           price?: number | null
           property_id?: string | null
           service_type?: string | null
@@ -414,6 +418,8 @@ export type Database = {
           created_at?: string
           extras?: Json | null
           id?: string
+          internal_notes?: string | null
+          notes?: string | null
           price?: number | null
           property_id?: string | null
           service_type?: string | null
