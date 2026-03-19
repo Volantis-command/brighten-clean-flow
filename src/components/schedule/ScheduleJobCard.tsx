@@ -1,5 +1,6 @@
-import { Clock, MapPin, Users, Timer } from 'lucide-react';
+import { Clock, MapPin, Users, Timer, ClipboardList } from 'lucide-react';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
+import { useNavigate } from 'react-router-dom';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -42,6 +43,7 @@ export function ScheduleJobCard({
   isPastJob,
 }: ScheduleJobCardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(' & ');
 
@@ -86,7 +88,7 @@ export function ScheduleJobCard({
       )}
 
       {showClockIn && !isPastJob && (
-        <div className="mt-3 pt-3 border-t border-border">
+        <div className="mt-3 pt-3 border-t border-border space-y-3">
           <ClockInOut
             jobId={id}
             propertyName={propertyName}
@@ -95,6 +97,13 @@ export function ScheduleJobCard({
             existingTimeEntry={timeEntry}
             onStatusChange={() => refetch()}
           />
+          <button
+            onClick={() => navigate(`/jobs/${id}/checklist`)}
+            className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-secondary text-secondary-foreground font-bold text-sm hover:bg-secondary/80 transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+            {status === 'complete' ? 'View Checklist' : 'Open Checklist'}
+          </button>
         </div>
       )}
     </div>

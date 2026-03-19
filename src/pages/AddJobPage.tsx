@@ -84,7 +84,7 @@ export default function AddJobPage() {
       specialInstructions ? `Special instructions: ${specialInstructions}` : '',
     ].filter(Boolean).join('\n\n');
 
-    const { error } = await supabase.from('jobs').insert({
+    const { data: jobData, error } = await supabase.from('jobs').insert({
       property_id: propertyId,
       scheduled_date: format(date, 'yyyy-MM-dd'),
       scheduled_time: time,
@@ -93,12 +93,23 @@ export default function AddJobPage() {
       cleaner_2_id: cleaner2 || null,
       notes: combinedNotes || null,
       status: 'scheduled',
-    });
+    }).select('id').single();
 
     if (error) {
       toast.error(error.message);
       setSaving(false);
       return;
+    }
+
+    // Auto-create job_form record
+    if (jobData?.id) {
+      await supabase.from('job_forms').insert({
+        job_id: jobData.id,
+        property_id: propertyId,
+        cleaner_id: cleaner1,
+        second_cleaner_id: cleaner2 || null,
+        form_data: {},
+      });
     }
 
     // Send notifications to assigned cleaners
