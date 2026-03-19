@@ -1,6 +1,10 @@
 import { Clock, MapPin, Users, Timer } from 'lucide-react';
+import { ClockInOut } from '@/components/timeclock/ClockInOut';
+import { useTimeEntry } from '@/hooks/useTimeEntry';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ScheduleJobCardProps {
+  id: string;
   propertyName: string;
   address: string | null;
   scheduledTime: string | null;
@@ -8,8 +12,10 @@ interface ScheduleJobCardProps {
   status: string;
   cleaner1Name?: string | null;
   cleaner2Name?: string | null;
+  propertyLat?: number | null;
+  propertyLng?: number | null;
   onClick?: () => void;
-  showStartButton?: boolean;
+  showClockIn?: boolean;
   isPastJob?: boolean;
 }
 
@@ -21,6 +27,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 export function ScheduleJobCard({
+  id,
   propertyName,
   address,
   scheduledTime,
@@ -28,18 +35,20 @@ export function ScheduleJobCard({
   status,
   cleaner1Name,
   cleaner2Name,
+  propertyLat,
+  propertyLng,
   onClick,
-  showStartButton,
+  showClockIn,
   isPastJob,
 }: ScheduleJobCardProps) {
+  const { user } = useAuth();
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(' & ');
 
+  const { data: timeEntry, refetch } = useTimeEntry(id, showClockIn ? user?.id : undefined);
+
   return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border ${isPastJob ? 'opacity-60' : ''}`}
-    >
+    <div className={`bg-card rounded-2xl shadow-md p-5 border border-border ${isPastJob ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
         <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
@@ -70,19 +79,24 @@ export function ScheduleJobCard({
       </div>
 
       {cleanerNames && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
           <Users className="h-4 w-4 shrink-0" />
           <span>{cleanerNames}</span>
         </div>
       )}
 
-      {showStartButton && status === 'scheduled' && !isPastJob && (
-        <div className="mt-4">
-          <span className="inline-flex items-center justify-center h-14 px-6 bg-primary text-primary-foreground font-bold rounded-2xl text-base">
-            Start Job →
-          </span>
+      {showClockIn && !isPastJob && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <ClockInOut
+            jobId={id}
+            propertyName={propertyName}
+            propertyLat={propertyLat ?? null}
+            propertyLng={propertyLng ?? null}
+            existingTimeEntry={timeEntry}
+            onStatusChange={() => refetch()}
+          />
         </div>
       )}
-    </button>
+    </div>
   );
 }
