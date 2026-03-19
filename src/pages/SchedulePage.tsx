@@ -176,13 +176,13 @@ export default function SchedulePage() {
                 {pastJobs.map((job: any) => (
                   <ScheduleJobCard
                     key={job.id}
+                    id={job.id}
                     propertyName={job.properties?.property_name || 'Unknown'}
                     address={null}
                     scheduledTime={job.scheduled_time?.slice(0, 5) || null}
                     estimatedDuration={null}
                     status={job.status}
                     isPastJob
-                    onClick={() => {}}
                   />
                 ))}
               </div>
