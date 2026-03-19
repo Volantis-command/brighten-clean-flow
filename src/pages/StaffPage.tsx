@@ -66,9 +66,17 @@ export default function StaffPage() {
   const queryClient = useQueryClient();
   const { data: staff = [], isLoading } = useStaffList();
 
+  const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
+
+  // Create form
+  const [createEmail, setCreateEmail] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [createRole, setCreateRole] = useState<AppRole>('cleaner');
+  const [createPassword, setCreatePassword] = useState('');
 
   // Invite form
   const [invEmail, setInvEmail] = useState('');
@@ -88,6 +96,19 @@ export default function StaffPage() {
     return data;
   };
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword }),
+    onSuccess: () => {
+      toast.success('Staff account created!');
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
+      setCreateOpen(false);
+      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreateRole('cleaner');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const inviteMutation = useMutation({
     mutationFn: () =>
       invokeFn({ action: 'invite', email: invEmail, role: invRole, full_name: invName, phone: invPhone }),
@@ -95,10 +116,7 @@ export default function StaffPage() {
       toast.success('Invitation sent!');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
       setInviteOpen(false);
-      setInvEmail('');
-      setInvName('');
-      setInvPhone('');
-      setInvRole('cleaner');
+      setInvEmail(''); setInvName(''); setInvPhone(''); setInvRole('cleaner');
     },
     onError: (e: Error) => toast.error(e.message),
   });
