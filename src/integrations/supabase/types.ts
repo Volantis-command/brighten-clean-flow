@@ -14,16 +14,496 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      job_forms: {
+        Row: {
+          cleaner_id: string | null
+          created_at: string
+          form_data: Json | null
+          id: string
+          job_id: string | null
+          property_id: string | null
+          second_cleaner_id: string | null
+          submitted_at: string | null
+        }
+        Insert: {
+          cleaner_id?: string | null
+          created_at?: string
+          form_data?: Json | null
+          id?: string
+          job_id?: string | null
+          property_id?: string | null
+          second_cleaner_id?: string | null
+          submitted_at?: string | null
+        }
+        Update: {
+          cleaner_id?: string | null
+          created_at?: string
+          form_data?: Json | null
+          id?: string
+          job_id?: string | null
+          property_id?: string | null
+          second_cleaner_id?: string | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_forms_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_forms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          cleaner_1_id: string | null
+          cleaner_2_id: string | null
+          created_at: string
+          estimated_duration: number | null
+          id: string
+          notes: string | null
+          property_id: string | null
+          scheduled_date: string
+          scheduled_time: string | null
+          status: string
+        }
+        Insert: {
+          cleaner_1_id?: string | null
+          cleaner_2_id?: string | null
+          created_at?: string
+          estimated_duration?: number | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          scheduled_date: string
+          scheduled_time?: string | null
+          status?: string
+        }
+        Update: {
+          cleaner_1_id?: string | null
+          cleaner_2_id?: string | null
+          created_at?: string
+          estimated_duration?: number | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          scheduled_date?: string
+          scheduled_time?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      photos: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          id: string
+          job_id: string | null
+          lat: number | null
+          lng: number | null
+          property_id: string | null
+          room_label: string | null
+          taken_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          job_id?: string | null
+          lat?: number | null
+          lng?: number | null
+          property_id?: string | null
+          room_label?: string | null
+          taken_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          job_id?: string | null
+          lat?: number | null
+          lng?: number | null
+          property_id?: string | null
+          room_label?: string | null
+          taken_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          access_code: string | null
+          access_method: string | null
+          access_notes: string | null
+          address: string | null
+          amenities_notes: string | null
+          bathrooms: number | null
+          bedrooms: number | null
+          billing_email: string | null
+          clean_frequency: string | null
+          client_name: string | null
+          created_at: string
+          default_cleaner_id: string | null
+          host_preferences: string | null
+          id: string
+          linen_fold_style: string | null
+          payment_terms: string | null
+          postcode: string | null
+          product_restrictions: string | null
+          property_name: string
+          property_type: string | null
+          state: string | null
+          status: string | null
+          suburb: string | null
+          turnaround_window: string | null
+        }
+        Insert: {
+          access_code?: string | null
+          access_method?: string | null
+          access_notes?: string | null
+          address?: string | null
+          amenities_notes?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          billing_email?: string | null
+          clean_frequency?: string | null
+          client_name?: string | null
+          created_at?: string
+          default_cleaner_id?: string | null
+          host_preferences?: string | null
+          id?: string
+          linen_fold_style?: string | null
+          payment_terms?: string | null
+          postcode?: string | null
+          product_restrictions?: string | null
+          property_name: string
+          property_type?: string | null
+          state?: string | null
+          status?: string | null
+          suburb?: string | null
+          turnaround_window?: string | null
+        }
+        Update: {
+          access_code?: string | null
+          access_method?: string | null
+          access_notes?: string | null
+          address?: string | null
+          amenities_notes?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          billing_email?: string | null
+          clean_frequency?: string | null
+          client_name?: string | null
+          created_at?: string
+          default_cleaner_id?: string | null
+          host_preferences?: string | null
+          id?: string
+          linen_fold_style?: string | null
+          payment_terms?: string | null
+          postcode?: string | null
+          product_restrictions?: string | null
+          property_name?: string
+          property_type?: string | null
+          state?: string | null
+          status?: string | null
+          suburb?: string | null
+          turnaround_window?: string | null
+        }
+        Relationships: []
+      }
+      qc_audits: {
+        Row: {
+          action_required: boolean | null
+          audit_date: string | null
+          cleaner_notified: boolean | null
+          created_at: string
+          id: string
+          improvement_feedback: string | null
+          inspector_id: string | null
+          issues_text: string | null
+          job_id: string | null
+          max_score: number | null
+          percentage: number | null
+          positive_feedback: string | null
+          property_id: string | null
+          result: string | null
+          scores: Json | null
+          total_score: number | null
+        }
+        Insert: {
+          action_required?: boolean | null
+          audit_date?: string | null
+          cleaner_notified?: boolean | null
+          created_at?: string
+          id?: string
+          improvement_feedback?: string | null
+          inspector_id?: string | null
+          issues_text?: string | null
+          job_id?: string | null
+          max_score?: number | null
+          percentage?: number | null
+          positive_feedback?: string | null
+          property_id?: string | null
+          result?: string | null
+          scores?: Json | null
+          total_score?: number | null
+        }
+        Update: {
+          action_required?: boolean | null
+          audit_date?: string | null
+          cleaner_notified?: boolean | null
+          created_at?: string
+          id?: string
+          improvement_feedback?: string | null
+          inspector_id?: string | null
+          issues_text?: string | null
+          job_id?: string | null
+          max_score?: number | null
+          percentage?: number | null
+          positive_feedback?: string | null
+          property_id?: string | null
+          result?: string | null
+          scores?: Json | null
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_audits_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_audits_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          bathrooms: number | null
+          bedrooms: number | null
+          client_name: string | null
+          created_at: string
+          extras: Json | null
+          id: string
+          price: number | null
+          property_id: string | null
+          service_type: string | null
+          status: string | null
+        }
+        Insert: {
+          bathrooms?: number | null
+          bedrooms?: number | null
+          client_name?: string | null
+          created_at?: string
+          extras?: Json | null
+          id?: string
+          price?: number | null
+          property_id?: string | null
+          service_type?: string | null
+          status?: string | null
+        }
+        Update: {
+          bathrooms?: number | null
+          bedrooms?: number | null
+          client_name?: string | null
+          created_at?: string
+          extras?: Json | null
+          id?: string
+          price?: number | null
+          property_id?: string | null
+          service_type?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          clock_in_lat: number | null
+          clock_in_lng: number | null
+          clock_in_time: string | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
+          clock_out_time: string | null
+          created_at: string
+          id: string
+          job_id: string | null
+          total_minutes: number | null
+          user_id: string
+        }
+        Insert: {
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_in_time?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
+          clock_out_time?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          total_minutes?: number | null
+          user_id: string
+        }
+        Update: {
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_in_time?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
+          clock_out_time?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          total_minutes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "head_cleaner" | "cleaner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +630,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "head_cleaner", "cleaner"],
+    },
   },
 } as const
