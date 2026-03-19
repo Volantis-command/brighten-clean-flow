@@ -9,6 +9,8 @@ import AppLayout from "./components/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
 import SchedulePage from "./pages/SchedulePage";
 import PropertiesPage from "./pages/PropertiesPage";
+import PropertyProfilePage from "./pages/PropertyProfilePage";
+import PropertyFormPage from "./pages/PropertyFormPage";
 import FormsPage from "./pages/FormsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import QuotingPage from "./pages/QuotingPage";
