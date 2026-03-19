@@ -236,10 +236,10 @@ export default function PropertyFormPage() {
             <Input value={form.turnaround_window} onChange={(e) => updateField('turnaround_window', e.target.value)} className="h-14 rounded-2xl" placeholder="e.g. 2 hours" />
           </FormField>
           <FormField label="Default Cleaner">
-            <Select value={form.default_cleaner_id} onValueChange={(v) => updateField('default_cleaner_id', v)}>
+            <Select value={form.default_cleaner_id || '__none__'} onValueChange={(v) => updateField('default_cleaner_id', v === '__none__' ? '' : v)}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {cleaners.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
                 ))}
