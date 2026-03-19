@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,15 +10,34 @@ export default function LoginPage() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
-    const { error } = await signIn(email, password);
-    if (error) setError(error.message);
+
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } },
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess('Account created! You can now sign in.');
+        setIsSignUp(false);
+      }
+    } else {
+      const { error } = await signIn(email, password);
+      if (error) setError(error.message);
+    }
     setLoading(false);
   };
 
@@ -30,10 +50,25 @@ export default function LoginPage() {
 
         <div className="bg-card rounded-2xl shadow-xl p-8">
           <h1 className="text-2xl font-extrabold text-primary text-center mb-6">
-            Welcome back
+            {isSignUp ? 'Create Account' : 'Welcome back'}
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-foreground font-semibold">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Your full name"
+                  required
+                  className="h-14 rounded-2xl text-base"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground font-semibold">Email</Label>
               <Input
@@ -63,6 +98,9 @@ export default function LoginPage() {
             {error && (
               <p className="text-destructive text-sm font-semibold text-center">{error}</p>
             )}
+            {success && (
+              <p className="text-green-600 text-sm font-semibold text-center">{success}</p>
+            )}
 
             <Button
               type="submit"
@@ -71,9 +109,17 @@ export default function LoginPage() {
               className="w-full"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? (isSignUp ? 'Creating...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => { setIsSignUp(!isSignUp); setError(''); setSuccess(''); }}
+            className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-primary transition-colors"
+          >
+            {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+          </button>
         </div>
 
         <p className="text-center text-primary-foreground/70 text-sm mt-6">
