@@ -222,7 +222,7 @@ export default function PropertyFormPage() {
             size="lg"
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white font-extrabold"
+            className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold"
           >
             <Check className="h-5 w-5" />
             {saving ? 'Saving…' : isEdit ? 'Update Property' : 'Add Property'}
