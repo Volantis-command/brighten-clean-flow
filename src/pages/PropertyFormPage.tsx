@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Building2, Home, Landmark, HelpCircle, Lock, KeyRound, Smartphone, UserCheck, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { syncToDrive } from '@/lib/driveSync';
 
 const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Assign & Confirm'];
 
@@ -149,6 +150,9 @@ export default function PropertyFormPage() {
       } else {
         toast.success('Property created!');
         queryClient.invalidateQueries({ queryKey: ['properties'] });
+
+        // Fire-and-forget Google Drive sync
+        syncToDrive("sync_property", { property_id: data.id });
 
         // Notify head cleaners about new property
         const { data: headCleanerRoles } = await supabase

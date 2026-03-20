@@ -12,6 +12,7 @@ import { ArrowLeft, Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, Phone
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { syncToDrive } from '@/lib/driveSync';
 
 // --------------- Types ---------------
 interface FormData {
@@ -385,6 +386,10 @@ export default function JobChecklistPage() {
 
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+
+    // Fire-and-forget Google Drive sync
+    syncToDrive("sync_job_form", { job_id: jobId! });
+
     toast.success('Job submitted successfully!');
     navigate('/schedule');
     setSubmitting(false);
