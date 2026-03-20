@@ -346,8 +346,30 @@ export default function JobChecklistPage() {
 
     syncToDrive("sync_job_form", { job_id: jobId! });
 
-    toast.success('Job submitted successfully!');
-    navigate('/schedule');
+    // Fetch remaining jobs for today to show next job in modal
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const { data: todayJobs } = await supabase
+      .from('jobs')
+      .select('id, scheduled_time, status, properties(property_name, address, suburb)')
+      .eq('scheduled_date', today)
+      .or(`cleaner_1_id.eq.${user!.id},cleaner_2_id.eq.${user!.id}`)
+      .neq('id', jobId!)
+      .neq('status', 'complete')
+      .order('scheduled_time', { ascending: true });
+
+    const nextJob = todayJobs?.[0];
+    if (nextJob) {
+      const prop = (nextJob as any).properties;
+      setNextJobInfo({
+        propertyName: prop?.property_name || 'Unknown',
+        address: [prop?.address, prop?.suburb].filter(Boolean).join(', ') || null,
+        scheduledTime: nextJob.scheduled_time ? nextJob.scheduled_time.slice(0, 5) : null,
+      });
+    } else {
+      setNextJobInfo(null);
+    }
+
+    setCompletionModal(true);
     setSubmitting(false);
   };
 
