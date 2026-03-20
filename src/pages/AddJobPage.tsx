@@ -128,7 +128,7 @@ export default function AddJobPage() {
 
     // Fire-and-forget: create Drive folder for this job date
     if (jobData?.id) {
-      syncToDrive("sync_job_form", { job_id: jobData.id });
+      syncToDrive("sync_job_folder", { job_id: jobData.id });
     }
 
     toast.success('Job scheduled!');

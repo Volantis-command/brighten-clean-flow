@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
  * Fire-and-forget Google Drive sync. Errors are logged but never block the user.
  */
 export async function syncToDrive(
-  action: "sync_job_form" | "sync_qc_audit" | "sync_property",
+  action: "sync_job_form" | "sync_qc_audit" | "sync_property" | "sync_job_folder",
   payload: Record<string, string>
 ) {
   try {
