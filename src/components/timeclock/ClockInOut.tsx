@@ -96,6 +96,7 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['time-entry'] });
+      queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
       onStatusChange?.();
     }
     setSaving(false);
