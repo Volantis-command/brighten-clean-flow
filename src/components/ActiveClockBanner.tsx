@@ -82,7 +82,7 @@ export function ActiveClockBanner() {
     <div className="fixed top-0 left-0 right-0 z-[9999] border-b border-border bg-accent text-accent-foreground shadow-md">
       <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
         <div className="flex min-w-0 items-center gap-2 text-sm font-extrabold md:text-base">
-          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-green-500" />
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
           <span className="truncate">{activeEntry.propertyName} · {elapsed}</span>
         </div>
         <Button
@@ -98,3 +98,4 @@ export function ActiveClockBanner() {
       </div>
     </div>
   );
+}
