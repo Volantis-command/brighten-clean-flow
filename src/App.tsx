@@ -11,6 +11,7 @@ import SchedulePage from "./pages/SchedulePage";
 import AddJobPage from "./pages/AddJobPage";
 import JobChecklistPage from "./pages/JobChecklistPage";
 import JobDetailPage from "./pages/JobDetailPage";
+import EditJobPage from "./pages/EditJobPage";
 import PropertiesPage from "./pages/PropertiesPage";
 import PropertyProfilePage from "./pages/PropertyProfilePage";
 import PropertyFormPage from "./pages/PropertyFormPage";
