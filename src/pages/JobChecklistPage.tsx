@@ -12,6 +12,7 @@ import { ArrowLeft, Camera, CheckCircle2, XCircle, Loader2, AlertTriangle, Phone
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { syncToDrive } from '@/lib/driveSync';
 
 // --------------- Types ---------------
 interface FormData {
