@@ -1,4 +1,5 @@
-import { Clock, MapPin, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, MapPin, Users, Loader2 } from 'lucide-react';
 
 interface JobCardProps {
   propertyName: string;
@@ -9,6 +10,7 @@ interface JobCardProps {
   cleaner2Name?: string | null;
   onClick?: () => void;
   showStartButton?: boolean;
+  onStartJob?: () => Promise<void>;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -27,9 +29,19 @@ export function JobCard({
   cleaner2Name,
   onClick,
   showStartButton,
+  onStartJob,
 }: JobCardProps) {
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(', ');
+  const [starting, setStarting] = useState(false);
+
+  const handleStartClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onStartJob || starting) return;
+    setStarting(true);
+    await onStartJob();
+    setStarting(false);
+  };
 
   return (
     <button
@@ -66,8 +78,18 @@ export function JobCard({
 
       {showStartButton && status === 'scheduled' && (
         <div className="mt-4">
-          <span className="inline-flex items-center justify-center h-14 px-6 bg-primary text-primary-foreground font-bold rounded-2xl text-base">
-            Start Job →
+          <span
+            onClick={handleStartClick}
+            className="inline-flex items-center justify-center h-14 px-6 bg-primary text-primary-foreground font-bold rounded-2xl text-base gap-2"
+          >
+            {starting ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Clocking in…
+              </>
+            ) : (
+              'Start Job →'
+            )}
           </span>
         </div>
       )}
