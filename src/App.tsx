@@ -11,6 +11,7 @@ import SchedulePage from "./pages/SchedulePage";
 import AddJobPage from "./pages/AddJobPage";
 import JobChecklistPage from "./pages/JobChecklistPage";
 import JobDetailPage from "./pages/JobDetailPage";
+import EditJobPage from "./pages/EditJobPage";
 import PropertiesPage from "./pages/PropertiesPage";
 import PropertyProfilePage from "./pages/PropertyProfilePage";
 import PropertyFormPage from "./pages/PropertyFormPage";
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/properties/:id/edit" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
         <Route path="/forms" element={<FormsPage />} />
         <Route path="/jobs/:jobId" element={<JobDetailPage />} />
+        <Route path="/jobs/:jobId/edit" element={<ProtectedRoute allowedRoles={['admin']}><EditJobPage /></ProtectedRoute>} />
         <Route path="/jobs/:jobId/checklist" element={<JobChecklistPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
         <Route path="/quoting" element={<ProtectedRoute allowedRoles={['admin']}><QuotingPage /></ProtectedRoute>} />

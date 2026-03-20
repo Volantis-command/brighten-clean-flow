@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
@@ -168,6 +168,17 @@ export default function JobDetailPage() {
           <ClipboardList className="h-5 w-5" />
           {job.status === 'complete' ? 'View Checklist' : 'Open Checklist'}
         </Button>
+
+        {role === 'admin' && (
+          <Button
+            variant="outline"
+            className="w-full gap-2 h-12 text-base font-bold"
+            onClick={() => navigate(`/jobs/${jobId}/edit`)}
+          >
+            <Pencil className="h-5 w-5" />
+            Edit Job
+          </Button>
+        )}
 
         {role === 'admin' && (
           <AlertDialog>
