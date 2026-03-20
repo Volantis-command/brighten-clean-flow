@@ -63,9 +63,9 @@ const initialFormData = (): FormData => ({
 // --------------- Component ---------------
 export default function JobChecklistPage() {
   const { jobId } = useParams<{ jobId: string }>();
+  const { user, profile } = useAuth();
+  const firstName = profile?.full_name?.split(' ')[0] || 'Cleaner';
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   // Fetch job + property
   const { data: job, isLoading: jobLoading } = useQuery({
