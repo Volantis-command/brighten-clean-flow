@@ -89,7 +89,7 @@ export default function SchedulePage() {
 
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-xl font-bold text-primary">{isToday(selectedDate) ? "Today's Jobs" : format(selectedDate, 'EEEE, MMM d')}</h2>
-          <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+          <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
 
         {isLoading ? (
