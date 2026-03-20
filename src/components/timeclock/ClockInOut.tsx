@@ -35,6 +35,7 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
   const [saving, setSaving] = useState(false);
 
   const isClockedIn = existingTimeEntry && existingTimeEntry.clock_in_time && !existingTimeEntry.clock_out_time;
+  const stopCardClick = (e: React.MouseEvent) => e.stopPropagation();
 
   // Elapsed timer when clocked in
   useEffect(() => {
@@ -63,7 +64,6 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
         setDistance(Math.round(dist));
         setStep(dist <= GEO_FENCE_RADIUS ? 'verified' : 'outside_range');
       } else {
-        // No property coords — skip geo-check
         setDistance(null);
         setStep('verified');
       }
@@ -90,7 +90,6 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
     if (error) {
       toast.error(error.message);
     } else {
-      // Update job status to in_progress
       await supabase.from('jobs').update({ status: 'in_progress' }).eq('id', jobId);
       toast.success('Clocked in!');
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
@@ -138,7 +137,6 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
         onStatusChange?.();
       }
     } catch {
-      // Fallback — clock out without location
       const clockOutTime = new Date();
       const clockInTime = new Date(existingTimeEntry.clock_in_time);
       const totalMinutes = Math.round((clockOutTime.getTime() - clockInTime.getTime()) / 60000);
@@ -160,12 +158,12 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
     setStep('idle');
   };
 
-  // Already clocked out
   if (existingTimeEntry?.clock_out_time) {
-    const totalMins = existingTimeEntry ? 
-      Math.round((new Date(existingTimeEntry.clock_out_time).getTime() - new Date(existingTimeEntry.clock_in_time).getTime()) / 60000) : 0;
+    const totalMins = existingTimeEntry
+      ? Math.round((new Date(existingTimeEntry.clock_out_time).getTime() - new Date(existingTimeEntry.clock_in_time).getTime()) / 60000)
+      : 0;
     return (
-      <div className="bg-secondary rounded-2xl p-4 flex items-center gap-3">
+      <div className="bg-secondary rounded-2xl p-4 flex items-center gap-3" onClick={stopCardClick}>
         <CheckCircle className="h-5 w-5 text-primary shrink-0" />
         <div>
           <p className="text-sm font-bold text-foreground">Job completed</p>
@@ -175,10 +173,9 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
     );
   }
 
-  // Clocked in — show timer + clock out
   if (isClockedIn) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" onClick={stopCardClick}>
         <div className="bg-primary/10 rounded-2xl p-4 flex items-center gap-3">
           <Clock className="h-5 w-5 text-primary animate-pulse shrink-0" />
           <div>
@@ -209,9 +206,8 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
     );
   }
 
-  // Clock In flow
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" onClick={stopCardClick}>
       {step === 'idle' && (
         <Button variant="default" size="lg" onClick={handleClockInStart} className="w-full gap-2">
           <MapPin className="h-5 w-5" />

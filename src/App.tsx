@@ -90,6 +90,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ActiveClockBanner />
           <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
