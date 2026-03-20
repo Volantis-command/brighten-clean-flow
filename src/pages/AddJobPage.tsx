@@ -126,6 +126,11 @@ export default function AddJobPage() {
       await supabase.from('notifications').insert(notifInserts);
     }
 
+    // Fire-and-forget: create Drive folder for this job date
+    if (jobData?.id) {
+      syncToDrive("sync_job_form", { job_id: jobData.id });
+    }
+
     toast.success('Job scheduled!');
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
