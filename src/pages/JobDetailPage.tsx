@@ -170,6 +170,17 @@ export default function JobDetailPage() {
         </Button>
 
         {role === 'admin' && (
+          <Button
+            variant="outline"
+            className="w-full gap-2 h-12 text-base font-bold"
+            onClick={() => navigate(`/jobs/${jobId}/edit`)}
+          >
+            <Pencil className="h-5 w-5" />
+            Edit Job
+          </Button>
+        )}
+
+        {role === 'admin' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="w-full gap-2 h-12 text-base font-bold" disabled={deleting}>
