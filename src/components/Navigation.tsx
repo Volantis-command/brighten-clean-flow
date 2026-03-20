@@ -64,7 +64,7 @@ export function DesktopSidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 min-h-screen bg-primary text-primary-foreground">
       <div className="p-6 pb-4">
-        <h2 className="font-extrabold tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px' }}>
+        <h2 className="font-extrabold tracking-tight text-primary-foreground" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px' }}>
           Brightly<span className="text-accent">.</span>
         </h2>
       </div>
