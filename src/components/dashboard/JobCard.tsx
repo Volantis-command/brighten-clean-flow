@@ -32,10 +32,17 @@ export function JobCard({
   onClick,
   showStartButton,
   onStartJob,
+  showNavigateButton,
 }: JobCardProps) {
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(', ');
   const [starting, setStarting] = useState(false);
+  const [mapsOpen, setMapsOpen] = useState(false);
+
+  const handleNavigateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMapsOpen(true);
+  };
 
   const handleStartClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
