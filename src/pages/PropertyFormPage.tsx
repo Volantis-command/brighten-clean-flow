@@ -151,6 +151,9 @@ export default function PropertyFormPage() {
         toast.success('Property created!');
         queryClient.invalidateQueries({ queryKey: ['properties'] });
 
+        // Fire-and-forget Google Drive sync
+        syncToDrive("sync_property", { property_id: data.id });
+
         // Notify head cleaners about new property
         const { data: headCleanerRoles } = await supabase
           .from('user_roles')

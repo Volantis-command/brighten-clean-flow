@@ -327,6 +327,20 @@ export default function QCAuditPage() {
         }
       }
 
+      // Fire-and-forget Google Drive sync — we need the inserted audit ID
+      // Re-fetch the latest audit for this property to get the ID
+      const { data: latestAudit } = await supabase
+        .from("qc_audits")
+        .select("id")
+        .eq("property_id", propertyId)
+        .eq("inspector_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (latestAudit) {
+        syncToDrive("sync_qc_audit", { audit_id: latestAudit.id });
+      }
+
       toast.success(`QC Audit submitted — ${result.toUpperCase()} (${percentage}%)`);
       navigate('/dashboard');
     } catch (err: any) {
