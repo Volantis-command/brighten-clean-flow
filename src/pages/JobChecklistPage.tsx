@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
+import { JobCompletionModal } from '@/components/JobCompletionModal';
 
 // --------------- Types ---------------
 interface FormData {
