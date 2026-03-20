@@ -44,8 +44,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary px-4">
       <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <img src={brightlyLogo} alt="Brightly" className="h-16 w-auto" />
+        <div className="flex justify-center mb-10">
+          <h1 className="text-5xl font-extrabold text-primary-foreground tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '48px' }}>
+            Brightly<span className="text-accent">.</span>
+          </h1>
         </div>
 
         <div className="bg-card rounded-2xl shadow-xl p-8">
