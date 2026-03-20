@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Clock, MapPin, Users, Loader2 } from 'lucide-react';
+import { Clock, MapPin, Users, Loader2, Navigation } from 'lucide-react';
+import { MapsActionSheet } from '@/components/MapsActionSheet';
 
 interface JobCardProps {
   propertyName: string;
@@ -11,6 +12,7 @@ interface JobCardProps {
   onClick?: () => void;
   showStartButton?: boolean;
   onStartJob?: () => Promise<void>;
+  showNavigateButton?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
