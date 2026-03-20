@@ -288,6 +288,23 @@ export default function JobChecklistPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
 
+    // Auto clock-out if still clocked in
+    if (timeEntry && timeEntry.clock_in_time && !timeEntry.clock_out_time) {
+      const now = new Date();
+      const clockInTime = new Date(timeEntry.clock_in_time);
+      const totalMinutes = Math.round((now.getTime() - clockInTime.getTime()) / 60000);
+      await supabase
+        .from('time_entries')
+        .update({
+          clock_out_time: now.toISOString(),
+          total_minutes: totalMinutes,
+        })
+        .eq('id', timeEntry.id);
+
+      queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+      queryClient.invalidateQueries({ queryKey: ['time-entry'] });
+    }
+
     const formPayload = { ...form };
 
     if (existingForm) {
