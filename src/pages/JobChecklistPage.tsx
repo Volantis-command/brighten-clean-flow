@@ -491,9 +491,31 @@ export default function JobChecklistPage() {
           signed={form.cleaner1_signoff}
           signedTime={form.cleaner1_signoff_time}
           signedName={cleaner1Name}
-          onSign={() => {
+          onSign={async () => {
+            const now = new Date();
+            const nowIso = now.toISOString();
+            const nowTime = format(now, 'HH:mm');
+
             updateField('cleaner1_signoff', true);
-            updateField('cleaner1_signoff_time', new Date().toISOString());
+            updateField('cleaner1_signoff_time', nowIso);
+            updateField('time_out', nowTime);
+
+            // Auto clock-out: update time_entry for this job
+            if (timeEntry && timeEntry.clock_in_time && !timeEntry.clock_out_time) {
+              const clockInTime = new Date(timeEntry.clock_in_time);
+              const totalMinutes = Math.round((now.getTime() - clockInTime.getTime()) / 60000);
+              await supabase
+                .from('time_entries')
+                .update({
+                  clock_out_time: nowIso,
+                  total_minutes: totalMinutes,
+                })
+                .eq('id', timeEntry.id);
+
+              queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+              queryClient.invalidateQueries({ queryKey: ['time-entry'] });
+              queryClient.invalidateQueries({ queryKey: ['job-time-entry'] });
+            }
           }}
           disabled={isSubmitted || form.cleaner1_signoff}
         />
