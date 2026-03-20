@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import AppLayout from "./components/AppLayout";
+import { ActiveClockBanner } from "./components/ActiveClockBanner";
 import DashboardPage from "./pages/DashboardPage";
 import SchedulePage from "./pages/SchedulePage";
 import AddJobPage from "./pages/AddJobPage";
@@ -89,6 +90,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ActiveClockBanner />
           <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
