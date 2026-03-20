@@ -15,6 +15,7 @@ import { ArrowLeft, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { syncToDrive } from '@/lib/driveSync';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -123,6 +124,11 @@ export default function AddJobPage() {
 
     if (notifInserts.length > 0) {
       await supabase.from('notifications').insert(notifInserts);
+    }
+
+    // Fire-and-forget: create Drive folder for this job date
+    if (jobData?.id) {
+      syncToDrive("sync_job_folder", { job_id: jobData.id });
     }
 
     toast.success('Job scheduled!');

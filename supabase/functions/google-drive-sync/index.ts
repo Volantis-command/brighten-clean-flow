@@ -472,10 +472,10 @@ Deno.serve(async (req) => {
       const cleanerNames: Record<string, string> = {};
       profiles?.forEach((p: any) => { cleanerNames[p.id] = p.full_name || "Unknown"; });
 
-      // Create folder structure: Cleans / YYYY-MM-DD / PropertyName
-      const cleansFolderId = await createFolder(token, "Cleans");
-      const dateFolderId = await createFolder(token, job.scheduled_date, cleansFolderId);
-      const propFolderId = await createFolder(token, propertyName, dateFolderId);
+      // Create folder structure: Brightly Cleans / PropertyName / YYYY-MM-DD
+      const cleansFolderId = await createFolder(token, "Brightly Cleans");
+      const propNameFolderId = await createFolder(token, propertyName, cleansFolderId);
+      const propFolderId = await createFolder(token, job.scheduled_date, propNameFolderId);
 
       // Create Google Doc
       const html = buildJobFormHtml(job, property, form.form_data, cleanerNames);
@@ -534,10 +534,10 @@ Deno.serve(async (req) => {
       const nameMap: Record<string, string> = {};
       profiles?.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unknown"; });
 
-      // Folder: Cleans / YYYY-MM-DD / PropertyName
-      const cleansFolderId = await createFolder(token, "Cleans");
-      const dateFolderId = await createFolder(token, audit.audit_date || "Unknown", cleansFolderId);
-      const propFolderId = await createFolder(token, propertyName, dateFolderId);
+      // Folder: Brightly Cleans / PropertyName / YYYY-MM-DD
+      const cleansFolderId = await createFolder(token, "Brightly Cleans");
+      const propNameFolderId = await createFolder(token, propertyName, cleansFolderId);
+      const propFolderId = await createFolder(token, audit.audit_date || "Unknown", propNameFolderId);
 
       const html = buildQCAuditHtml(
         audit,
@@ -549,6 +549,32 @@ Deno.serve(async (req) => {
       await createGoogleDoc(token, docName, html, propFolderId);
 
       return new Response(JSON.stringify({ success: true, action: "sync_qc_audit" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── ACTION: sync_job_folder ───
+    // Creates the folder structure without needing a completed form
+    if (action === "sync_job_folder") {
+      const { job_id } = payload;
+      const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+      const { data: job } = await adminClient
+        .from("jobs")
+        .select("*, properties(property_name)")
+        .eq("id", job_id)
+        .single();
+      if (!job) throw new Error("Job not found");
+
+      const propertyName = (job as any).properties?.property_name || "Unknown";
+
+      // Create folder structure: Brightly Cleans / PropertyName / YYYY-MM-DD
+      const cleansFolderId = await createFolder(token, "Brightly Cleans");
+      const propFolderId = await createFolder(token, propertyName, cleansFolderId);
+      await createFolder(token, job.scheduled_date, propFolderId);
+
+      return new Response(JSON.stringify({ success: true, action: "sync_job_folder" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -566,7 +592,11 @@ Deno.serve(async (req) => {
         .single();
       if (!property) throw new Error("Property not found");
 
-      // Folder: Properties / PropertyName
+      // Folder: Brightly Cleans / PropertyName
+      const cleansFolderId = await createFolder(token, "Brightly Cleans");
+      await createFolder(token, property.property_name, cleansFolderId);
+
+      // Also create in Properties folder for profile doc
       const propertiesFolderId = await createFolder(token, "Properties");
       const propFolderId = await createFolder(token, property.property_name, propertiesFolderId);
 
