@@ -52,7 +52,7 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-4">
               {jobCards.map((job) => (
-                <JobCard key={job.id} {...job} showStartButton onClick={() => {}} />
+                <JobCard key={job.id} {...job} showStartButton onClick={() => navigate(`/jobs/${job.id}`)} />
               ))}
             </div>
           )}
@@ -88,7 +88,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {jobCards.map((job) => (
-              <JobCard key={job.id} {...job} onClick={() => {}} />
+              <JobCard key={job.id} {...job} onClick={() => navigate(`/jobs/${job.id}`)} />
             ))}
           </div>
         )}
