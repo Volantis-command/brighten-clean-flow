@@ -472,10 +472,10 @@ Deno.serve(async (req) => {
       const cleanerNames: Record<string, string> = {};
       profiles?.forEach((p: any) => { cleanerNames[p.id] = p.full_name || "Unknown"; });
 
-      // Create folder structure: Cleans / YYYY-MM-DD / PropertyName
-      const cleansFolderId = await createFolder(token, "Cleans");
-      const dateFolderId = await createFolder(token, job.scheduled_date, cleansFolderId);
-      const propFolderId = await createFolder(token, propertyName, dateFolderId);
+      // Create folder structure: Brightly Cleans / PropertyName / YYYY-MM-DD
+      const cleansFolderId = await createFolder(token, "Brightly Cleans");
+      const propNameFolderId = await createFolder(token, propertyName, cleansFolderId);
+      const propFolderId = await createFolder(token, job.scheduled_date, propNameFolderId);
 
       // Create Google Doc
       const html = buildJobFormHtml(job, property, form.form_data, cleanerNames);
