@@ -662,7 +662,15 @@ function ToggleField({ label, value, onChange, disabled }: { label: string; valu
   );
 }
 
-function SignOffButton({ label, signed, signedTime, signedName, onSign, disabled }: { label: string; signed: boolean; signedTime: string; signedName: string; onSign: () => void; disabled?: boolean }) {
+function SignOffButton({ label, signed, signedTime, signedName, onSign, disabled }: { label: string; signed: boolean; signedTime: string; signedName: string; onSign: () => void | Promise<void>; disabled?: boolean }) {
+  const [signing, setSigning] = useState(false);
+
+  const handleSign = async () => {
+    setSigning(true);
+    await onSign();
+    setSigning(false);
+  };
+
   return (
     <div className="space-y-2 py-2">
       <p className="text-sm font-medium text-foreground">{label}</p>
@@ -676,11 +684,12 @@ function SignOffButton({ label, signed, signedTime, signedName, onSign, disabled
         </div>
       ) : (
         <Button
-          onClick={onSign}
-          disabled={disabled}
+          onClick={handleSign}
+          disabled={disabled || signing}
           className="w-full bg-primary text-primary-foreground font-bold rounded-xl h-12 gap-2"
         >
-          <CheckCircle2 className="w-5 h-5" /> Sign Off
+          {signing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+          Sign Off
         </Button>
       )}
     </div>
