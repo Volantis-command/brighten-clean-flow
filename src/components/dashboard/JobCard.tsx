@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Clock, MapPin, Users, Loader2 } from 'lucide-react';
+import { Clock, MapPin, Users, Loader2, Navigation } from 'lucide-react';
+import { MapsActionSheet } from '@/components/MapsActionSheet';
 
 interface JobCardProps {
   propertyName: string;
@@ -11,6 +12,7 @@ interface JobCardProps {
   onClick?: () => void;
   showStartButton?: boolean;
   onStartJob?: () => Promise<void>;
+  showNavigateButton?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -30,10 +32,17 @@ export function JobCard({
   onClick,
   showStartButton,
   onStartJob,
+  showNavigateButton,
 }: JobCardProps) {
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(', ');
   const [starting, setStarting] = useState(false);
+  const [mapsOpen, setMapsOpen] = useState(false);
+
+  const handleNavigateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMapsOpen(true);
+  };
 
   const handleStartClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,23 +85,36 @@ export function JobCard({
         </div>
       )}
 
-      {showStartButton && status === 'scheduled' && (
-        <div className="mt-4">
-          <span
-            onClick={handleStartClick}
-            className="inline-flex items-center justify-center h-14 px-6 bg-primary text-primary-foreground font-bold rounded-2xl text-base gap-2"
-          >
-            {starting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Clocking in…
-              </>
-            ) : (
-              'Start Job →'
-            )}
-          </span>
+      {(showStartButton || showNavigateButton) && (
+        <div className="mt-4 flex gap-3">
+          {showNavigateButton && address && (
+            <span
+              onClick={handleNavigateClick}
+              className="inline-flex items-center justify-center h-14 px-5 bg-accent text-accent-foreground font-extrabold rounded-2xl text-base gap-2"
+            >
+              <Navigation className="h-5 w-5" />
+              Navigate
+            </span>
+          )}
+          {showStartButton && status === 'scheduled' && (
+            <span
+              onClick={handleStartClick}
+              className="inline-flex items-center justify-center h-14 px-6 bg-primary text-primary-foreground font-bold rounded-2xl text-base gap-2 flex-1"
+            >
+              {starting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Clocking in…
+                </>
+              ) : (
+                'Start Job →'
+              )}
+            </span>
+          )}
         </div>
       )}
+
+      <MapsActionSheet open={mapsOpen} onClose={() => setMapsOpen(false)} address={address || ''} />
     </button>
   );
 }

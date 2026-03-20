@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
+import { JobCompletionModal } from '@/components/JobCompletionModal';
 
 // --------------- Types ---------------
 interface FormData {
@@ -62,9 +63,10 @@ const initialFormData = (): FormData => ({
 // --------------- Component ---------------
 export default function JobChecklistPage() {
   const { jobId } = useParams<{ jobId: string }>();
+  const { user, profile } = useAuth();
+  const firstName = profile?.full_name?.split(' ')[0] || 'Cleaner';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   // Fetch job + property
   const { data: job, isLoading: jobLoading } = useQuery({
@@ -131,6 +133,8 @@ export default function JobChecklistPage() {
   const [stopAlert, setStopAlert] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [photoMenuRoom, setPhotoMenuRoom] = useState<string | null>(null);
+  const [completionModal, setCompletionModal] = useState(false);
+  const [nextJobInfo, setNextJobInfo] = useState<{ propertyName: string; address: string | null; scheduledTime: string | null } | null>(null);
 
   // Hydrate from existing form or initialize
   useEffect(() => {
@@ -343,8 +347,30 @@ export default function JobChecklistPage() {
 
     syncToDrive("sync_job_form", { job_id: jobId! });
 
-    toast.success('Job submitted successfully!');
-    navigate('/schedule');
+    // Fetch remaining jobs for today to show next job in modal
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const { data: todayJobs } = await supabase
+      .from('jobs')
+      .select('id, scheduled_time, status, properties(property_name, address, suburb)')
+      .eq('scheduled_date', today)
+      .or(`cleaner_1_id.eq.${user!.id},cleaner_2_id.eq.${user!.id}`)
+      .neq('id', jobId!)
+      .neq('status', 'complete')
+      .order('scheduled_time', { ascending: true });
+
+    const nextJob = todayJobs?.[0];
+    if (nextJob) {
+      const prop = (nextJob as any).properties;
+      setNextJobInfo({
+        propertyName: prop?.property_name || 'Unknown',
+        address: [prop?.address, prop?.suburb].filter(Boolean).join(', ') || null,
+        scheduledTime: nextJob.scheduled_time ? nextJob.scheduled_time.slice(0, 5) : null,
+      });
+    } else {
+      setNextJobInfo(null);
+    }
+
+    setCompletionModal(true);
     setSubmitting(false);
   };
 
@@ -612,6 +638,14 @@ export default function JobChecklistPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <JobCompletionModal
+        open={completionModal}
+        onClose={() => setCompletionModal(false)}
+        firstName={firstName}
+        nextJob={nextJobInfo}
+        onBackToDashboard={() => navigate('/')}
+      />
     </div>
   );
 }

@@ -106,6 +106,7 @@ export default function DashboardPage() {
                   key={job.id}
                   {...job}
                   showStartButton
+                  showNavigateButton
                   onClick={() => navigate(`/jobs/${job.id}`)}
                   onStartJob={() => handleStartJob(job.id)}
                 />
