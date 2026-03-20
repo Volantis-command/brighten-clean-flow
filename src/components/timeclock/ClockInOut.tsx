@@ -130,11 +130,11 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
       if (error) {
         toast.error(error.message);
       } else {
-        await supabase.from('jobs').update({ status: 'complete' }).eq('id', jobId);
         toast.success(`Clocked out! Total: ${formatDuration(totalMinutes)}`);
         queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
         queryClient.invalidateQueries({ queryKey: ['time-entry'] });
+        queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
         onStatusChange?.();
       }
     } catch {
@@ -148,11 +148,11 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
         .update({ clock_out_time: clockOutTime.toISOString(), total_minutes: totalMinutes })
         .eq('id', existingTimeEntry.id);
 
-      await supabase.from('jobs').update({ status: 'complete' }).eq('id', jobId);
       toast.success(`Clocked out! Total: ${formatDuration(totalMinutes)}`);
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['time-entry'] });
+      queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
       onStatusChange?.();
     }
 
