@@ -9,7 +9,9 @@ export function TopBar() {
   return (
     <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-border bg-card">
       <div className="md:hidden">
-        <h1 className="text-lg font-extrabold text-primary">✨ Brightly</h1>
+        <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          Brightly<span className="text-accent">.</span>
+        </h1>
       </div>
       <div className="hidden md:block" />
       <div className="flex items-center gap-3">

@@ -184,7 +184,9 @@ export default function JobChecklistPage() {
       if (!file) return;
       setUploading(roomOrField);
 
-      const fileName = `${jobId}/${roomOrField.replace(/\s+/g, '_')}/${Date.now()}_${file.name}`;
+      const safeRoom = roomOrField.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${jobId}/${safeRoom}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('job-photos')
         .upload(fileName, file, { contentType: file.type });
