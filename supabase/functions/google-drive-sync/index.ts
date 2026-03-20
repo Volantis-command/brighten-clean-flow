@@ -534,10 +534,10 @@ Deno.serve(async (req) => {
       const nameMap: Record<string, string> = {};
       profiles?.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unknown"; });
 
-      // Folder: Cleans / YYYY-MM-DD / PropertyName
-      const cleansFolderId = await createFolder(token, "Cleans");
-      const dateFolderId = await createFolder(token, audit.audit_date || "Unknown", cleansFolderId);
-      const propFolderId = await createFolder(token, propertyName, dateFolderId);
+      // Folder: Brightly Cleans / PropertyName / YYYY-MM-DD
+      const cleansFolderId = await createFolder(token, "Brightly Cleans");
+      const propNameFolderId = await createFolder(token, propertyName, cleansFolderId);
+      const propFolderId = await createFolder(token, audit.audit_date || "Unknown", propNameFolderId);
 
       const html = buildQCAuditHtml(
         audit,
