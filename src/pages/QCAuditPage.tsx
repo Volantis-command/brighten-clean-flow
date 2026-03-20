@@ -16,6 +16,7 @@ import { ArrowLeft, CalendarIcon, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { syncToDrive } from '@/lib/driveSync';
 
 type ScoreValue = 0 | 1 | 2 | null;
 
