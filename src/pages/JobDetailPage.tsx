@@ -1,16 +1,21 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = useAuth();
+  const [deleting, setDeleting] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-detail', jobId],
@@ -163,6 +168,49 @@ export default function JobDetailPage() {
           <ClipboardList className="h-5 w-5" />
           {job.status === 'complete' ? 'View Checklist' : 'Open Checklist'}
         </Button>
+
+        {role === 'admin' && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full gap-2 h-12 text-base font-bold" disabled={deleting}>
+                <Trash2 className="h-5 w-5" />
+                {deleting ? 'Deleting…' : 'Delete Job'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove the job and its associated form data. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    setDeleting(true);
+                    // Delete associated job_forms first
+                    await supabase.from('job_forms').delete().eq('job_id', jobId!);
+                    // Delete the job
+                    const { error } = await supabase.from('jobs').delete().eq('id', jobId!);
+                    if (error) {
+                      toast.error('Failed to delete job: ' + error.message);
+                      setDeleting(false);
+                      return;
+                    }
+                    toast.success('Job deleted successfully');
+                    queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+                    navigate('/schedule');
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );
