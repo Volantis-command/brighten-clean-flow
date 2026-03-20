@@ -16,7 +16,9 @@ import { format } from 'date-fns';
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = useAuth();
+  const [deleting, setDeleting] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-detail', jobId],
