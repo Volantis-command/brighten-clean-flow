@@ -17,9 +17,10 @@ export function useActiveTimeEntry() {
     queryFn: async (): Promise<ActiveTimeEntry | null> => {
       if (!user) return null;
 
-      const { data, error } = await supabase
+      // Step 1: get active time entry
+      const { data: entry, error } = await supabase
         .from('time_entries')
-        .select('id, job_id, clock_in_time, jobs(properties(property_name))')
+        .select('id, job_id, clock_in_time')
         .eq('user_id', user.id)
         .not('clock_in_time', 'is', null)
         .is('clock_out_time', null)
@@ -27,19 +28,29 @@ export function useActiveTimeEntry() {
         .limit(1)
         .maybeSingle();
 
-      if (error || !data) return null;
+      if (error || !entry || !entry.job_id) return null;
 
-      const jobData = data.jobs as any;
-      const propertyName = jobData?.properties?.property_name || 'Unknown Property';
+      // Step 2: get job with property name
+      let propertyName = 'Unknown Property';
+      const { data: job } = await supabase
+        .from('jobs')
+        .select('property_id, properties(property_name)')
+        .eq('id', entry.job_id)
+        .maybeSingle();
+
+      if (job) {
+        const props = job.properties as any;
+        propertyName = props?.property_name || 'Unknown Property';
+      }
 
       return {
-        id: data.id,
-        job_id: data.job_id!,
-        clock_in_time: data.clock_in_time!,
+        id: entry.id,
+        job_id: entry.job_id,
+        clock_in_time: entry.clock_in_time!,
         propertyName,
       };
     },
     enabled: !!user,
-    refetchInterval: 30000, // refresh every 30s
+    refetchInterval: 30000,
   });
 }

@@ -75,7 +75,7 @@ export function ActiveClockBanner() {
   };
 
   return (
-    <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+    <div className="sticky top-0 z-50 bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
       <div className="flex items-center gap-2 text-sm font-bold min-w-0">
         <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shrink-0" />
         <span className="truncate">
