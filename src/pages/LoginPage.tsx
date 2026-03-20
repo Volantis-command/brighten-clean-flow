@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import brightlyLogo from '@/assets/brightly-logo.png';
+
 
 export default function LoginPage() {
   const { signIn } = useAuth();
