@@ -1,6 +1,9 @@
 import { Bot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentPosition } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { JobCard } from '@/components/dashboard/JobCard';
@@ -10,10 +13,12 @@ import { AlertsSection } from '@/components/dashboard/AlertsSection';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentQCScores } from '@/components/dashboard/RecentQCScores';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { toast } from 'sonner';
 
 export default function DashboardPage() {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     jobCards,
     clockedInCleaners,
@@ -26,6 +31,51 @@ export default function DashboardPage() {
     isLoading,
     isAdmin,
   } = useDashboardData();
+
+  const handleStartJob = async (jobId: string) => {
+    if (!user) return;
+
+    // Capture GPS (non-blocking if it fails)
+    let lat: number | null = null;
+    let lng: number | null = null;
+    try {
+      const pos = await getCurrentPosition();
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch {
+      // proceed without GPS
+    }
+
+    // Insert time_entry
+    const { error } = await supabase.from('time_entries').insert({
+      job_id: jobId,
+      user_id: user.id,
+      clock_in_time: new Date().toISOString(),
+      clock_in_lat: lat,
+      clock_in_lng: lng,
+      geo_override: false,
+      geo_distance_meters: null,
+    });
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    // Update job status
+    await supabase.from('jobs').update({ status: 'in_progress' }).eq('id', jobId);
+
+    // Invalidate queries so banner appears
+    queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+    queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['time-entry'] });
+
+    toast.success('Clocked in!');
+
+    // Navigate to job details
+    navigate(`/jobs/${jobId}`);
+  };
 
   if (isLoading) {
     return (
@@ -52,7 +102,13 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-4">
               {jobCards.map((job) => (
-                <JobCard key={job.id} {...job} showStartButton onClick={() => navigate(`/jobs/${job.id}`)} />
+                <JobCard
+                  key={job.id}
+                  {...job}
+                  showStartButton
+                  onClick={() => navigate(`/jobs/${job.id}`)}
+                  onStartJob={() => handleStartJob(job.id)}
+                />
               ))}
             </div>
           )}
