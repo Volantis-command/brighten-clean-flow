@@ -52,7 +52,7 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-4">
               {jobCards.map((job) => (
-                <JobCard key={job.id} {...job} showStartButton onClick={() => {}} />
+                <JobCard key={job.id} {...job} showStartButton onClick={() => navigate(`/jobs/${job.id}`)} />
               ))}
             </div>
           )}
