@@ -66,6 +66,7 @@ export default function JobChecklistPage() {
   const { user, profile } = useAuth();
   const firstName = profile?.full_name?.split(' ')[0] || 'Cleaner';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch job + property
   const { data: job, isLoading: jobLoading } = useQuery({
