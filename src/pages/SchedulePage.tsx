@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format, isSameDay, isToday, isBefore, startOfDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,9 +13,21 @@ import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 export default function SchedulePage() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [statusFilter, setStatusFilter] = useState('all');
+  const initialFilter = searchParams.get('status') || 'all';
+  const [statusFilter, setStatusFilter] = useState(initialFilter);
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    if (value === 'all') {
+      searchParams.delete('status');
+    } else {
+      searchParams.set('status', value);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
 
   // Fetch jobs — admin sees all, cleaner sees their own
   const { data: jobs = [], isLoading } = useQuery({
@@ -77,7 +89,7 @@ export default function SchedulePage() {
 
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-xl font-bold text-primary">{isToday(selectedDate) ? "Today's Jobs" : format(selectedDate, 'EEEE, MMM d')}</h2>
-          <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+          <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
 
         {isLoading ? (
