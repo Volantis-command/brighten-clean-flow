@@ -15,6 +15,7 @@ import { ArrowLeft, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { syncToDrive } from '@/lib/driveSync';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
