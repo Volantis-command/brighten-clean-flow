@@ -637,6 +637,14 @@ export default function JobChecklistPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <JobCompletionModal
+        open={completionModal}
+        onClose={() => setCompletionModal(false)}
+        firstName={firstName}
+        nextJob={nextJobInfo}
+        onBackToDashboard={() => navigate('/')}
+      />
     </div>
   );
 }
