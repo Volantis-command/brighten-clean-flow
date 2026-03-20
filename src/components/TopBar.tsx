@@ -7,19 +7,19 @@ export function TopBar() {
   const firstName = profile?.full_name?.split(' ')[0] || 'User';
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-border bg-card">
+    <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-border bg-primary md:bg-card">
       <div className="md:hidden">
-        <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
+        <h1 className="text-2xl font-extrabold text-primary-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>
           Brightly<span className="text-accent">.</span>
         </h1>
       </div>
       <div className="hidden md:block" />
       <div className="flex items-center gap-3">
-        <button className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-muted transition-colors">
-          <Bell className="h-5 w-5 text-muted-foreground" />
+        <button className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-sidebar-accent md:hover:bg-muted transition-colors">
+          <Bell className="h-5 w-5 text-primary-foreground md:text-muted-foreground" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+          <div className="h-9 w-9 rounded-full bg-sidebar-accent md:bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
             {firstName.charAt(0).toUpperCase()}
           </div>
           <div className="hidden sm:block">
