@@ -34,33 +34,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const syncAuthState = async (session: Session | null) => {
-      setLoading(true);
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchProfileAndRole(session.user.id);
-      } else {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (!nextSession?.user) {
         setProfile(null);
         setRole(null);
       }
-
       setLoading(false);
-    };
+    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        await syncAuthState(session);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (!session?.user) {
+        setProfile(null);
+        setRole(null);
       }
-    );
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      await syncAuthState(session);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    fetchProfileAndRole(user.id);
+  }, [user]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
