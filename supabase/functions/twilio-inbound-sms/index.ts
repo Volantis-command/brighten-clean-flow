@@ -24,9 +24,7 @@ function digitsOnly(phone: string) {
 
 function normalizePhone(phone: string): string {
   const digits = digitsOnly(phone);
-  if (digits.startsWith('61') && digits.length === 11) {
-    return '0' + digits.slice(2);
-  }
+  if (digits.startsWith('61') && digits.length === 11) return `0${digits.slice(2)}`;
   return digits;
 }
 
@@ -36,13 +34,13 @@ function phoneVariants(phone: string): string[] {
   const variants = new Set<string>([phone, rawDigits, normalized]);
 
   if (normalized.startsWith('0') && normalized.length === 10) {
-    variants.add('61' + normalized.slice(1));
-    variants.add('+61' + normalized.slice(1));
+    variants.add(`61${normalized.slice(1)}`);
+    variants.add(`+61${normalized.slice(1)}`);
     variants.add(normalized.slice(1));
   }
 
   if (rawDigits.startsWith('61') && rawDigits.length === 11) {
-    variants.add('0' + rawDigits.slice(2));
+    variants.add(`0${rawDigits.slice(2)}`);
     variants.add(rawDigits.slice(2));
   }
 
@@ -62,9 +60,7 @@ Deno.serve(async (req) => {
     console.log(`[twilio-inbound-sms] From field received exactly: "${from}"`);
     console.log(`[twilio-inbound-sms] Body: "${body}"`);
 
-    if (!from) {
-      return twimlResponse('');
-    }
+    if (!from) return twimlResponse('');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -74,14 +70,14 @@ Deno.serve(async (req) => {
     const variants = phoneVariants(from);
     const normalizedIncoming = normalizePhone(from);
 
-    console.log(`[twilio-inbound-sms] Phone match pseudo-SQL:`);
+    console.log('[twilio-inbound-sms] Phone match pseudo-SQL:');
     console.log(
       `select id, full_name, phone from public.profiles where phone is not null and regexp_replace(phone, '\\D', '', 'g') in (${variants
         .map((v) => `'${digitsOnly(v)}'`)
         .join(', ')});`,
     );
-    console.log(`[twilio-inbound-sms] Incoming phone variants: ${JSON.stringify(variants)}`);
-    console.log(`[twilio-inbound-sms] Normalized incoming phone: ${normalizedIncoming}`);
+    console.log('[twilio-inbound-sms] Incoming phone variants:', variants);
+    console.log('[twilio-inbound-sms] Normalized incoming phone:', normalizedIncoming);
 
     const { data: allProfiles, error: profileError } = await supabase
       .from('profiles')
@@ -103,27 +99,25 @@ Deno.serve(async (req) => {
     });
 
     console.log(
-      `[twilio-inbound-sms] Profiles found for phone search: ${JSON.stringify(
-        matchingProfiles.map((p) => ({
-          id: p.id,
+      '[twilio-inbound-sms] Profiles found for phone search:',
+      matchingProfiles.map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        phone: p.phone,
+        digits: digitsOnly(p.phone || ''),
+        normalized: normalizePhone(p.phone || ''),
+      })),
+    );
+
+    if (matchingProfiles.length === 0) {
+      console.log(
+        '[twilio-inbound-sms] No profile matched. Available stored phones:',
+        (allProfiles || []).map((p) => ({
           full_name: p.full_name,
           phone: p.phone,
           digits: digitsOnly(p.phone || ''),
           normalized: normalizePhone(p.phone || ''),
         })),
-      )}`,
-    );
-
-    if (matchingProfiles.length === 0) {
-      console.log(
-        `[twilio-inbound-sms] No profile matched. Available stored phones: ${JSON.stringify(
-          (allProfiles || []).map((p) => ({
-            full_name: p.full_name,
-            phone: p.phone,
-            digits: digitsOnly(p.phone || ''),
-            normalized: normalizePhone(p.phone || ''),
-          })),
-        )}`,
       );
       return twimlResponse('Sorry, we could not find your account. Please contact your manager. - Brightly');
     }
@@ -131,7 +125,9 @@ Deno.serve(async (req) => {
     const profile = matchingProfiles[0];
     const firstName = (profile.full_name || 'Team member').split(' ')[0];
 
-    console.log(`[twilio-inbound-sms] Matched cleaner profile: ${profile.full_name} (${profile.id}) using stored phone "${profile.phone}"`);
+    console.log(
+      `[twilio-inbound-sms] Matched cleaner profile: ${profile.full_name} (${profile.id}) using stored phone "${profile.phone}"`,
+    );
 
     const { data: allAcceptances, error: acceptancesError } = await supabase
       .from('job_acceptances')
@@ -145,7 +141,7 @@ Deno.serve(async (req) => {
       return twimlResponse('');
     }
 
-    console.log(`[twilio-inbound-sms] All jobs found for profile ${profile.id}: ${JSON.stringify((allAcceptances || []).map((a) => ({
+    const allJobsDebug = (allAcceptances || []).map((a) => ({
       acceptance_id: a.id,
       job_id: a.job_id,
       acceptance_status: a.acceptance_status,
@@ -156,19 +152,21 @@ Deno.serve(async (req) => {
       scheduled_date: (a.jobs as any)?.scheduled_date,
       scheduled_time: (a.jobs as any)?.scheduled_time,
       property_name: (a.jobs as any)?.properties?.property_name,
-    })))});
+    }));
+    console.log('[twilio-inbound-sms] All jobs found for profile:', allJobsDebug);
 
     const candidateAcceptances = (allAcceptances || []).filter((a) => {
       const jobStatus = (a.jobs as any)?.status;
       return jobStatus === 'scheduled' || jobStatus === 'pending';
     });
 
-    console.log(`[twilio-inbound-sms] Candidate jobs with status scheduled/pending: ${JSON.stringify(candidateAcceptances.map((a) => ({
+    const candidateJobsDebug = candidateAcceptances.map((a) => ({
       acceptance_id: a.id,
       job_id: a.job_id,
       acceptance_status: a.acceptance_status,
       job_status: (a.jobs as any)?.status,
-    })))});
+    }));
+    console.log('[twilio-inbound-sms] Candidate jobs with status scheduled/pending:', candidateJobsDebug);
 
     const pendingAcceptance = candidateAcceptances.find((a) => a.acceptance_status === 'pending');
     const acceptance = pendingAcceptance || candidateAcceptances[0] || allAcceptances?.[0];
@@ -180,7 +178,7 @@ Deno.serve(async (req) => {
 
     if (!pendingAcceptance) {
       console.log(
-        `[twilio-inbound-sms] No acceptance_status='pending' rows found. Falling back to most recent candidate acceptance ${acceptance.id} with status ${acceptance.acceptance_status}.`,
+        `[twilio-inbound-sms] No pending acceptance row found. Falling back to most recent candidate acceptance ${acceptance.id} with status ${acceptance.acceptance_status}.`,
       );
     }
 
