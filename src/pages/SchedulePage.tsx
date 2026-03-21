@@ -97,6 +97,27 @@ export default function SchedulePage() {
   const nameMap: Record<string, string> = {};
   profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
 
+  // Build acceptances lookup per job
+  const acceptancesByJob: Record<string, { cleaner_id: string; cleaner_name: string; acceptance_status: string }[]> = {};
+  allAcceptances.forEach((a: any) => {
+    if (!acceptancesByJob[a.job_id]) acceptancesByJob[a.job_id] = [];
+    acceptancesByJob[a.job_id].push({
+      cleaner_id: a.cleaner_id,
+      cleaner_name: nameMap[a.cleaner_id] || 'Unknown',
+      acceptance_status: a.acceptance_status,
+    });
+  });
+
+  // Helper to get acceptance category for a job
+  const getAcceptanceCategory = (jobId: string) => {
+    const acc = acceptancesByJob[jobId];
+    if (!acc || acc.length === 0) return 'none';
+    if (acc.some(a => a.acceptance_status === 'declined')) return 'declined';
+    if (acc.some(a => a.acceptance_status === 'pending')) return 'pending';
+    if (acc.every(a => a.acceptance_status === 'accepted')) return 'confirmed';
+    return 'pending';
+  };
+
   if (isAdmin) {
     // Admin/Head Cleaner view
     const dayJobs = jobs
@@ -104,7 +125,8 @@ export default function SchedulePage() {
         const jobDate = new Date(j.scheduled_date + 'T00:00:00');
         const matchesDay = isSameDay(jobDate, selectedDate);
         const matchesStatus = statusFilter === 'all' || j.status === statusFilter;
-        return matchesDay && matchesStatus;
+        const matchesAcceptance = acceptanceFilter === 'all' || getAcceptanceCategory(j.id) === acceptanceFilter;
+        return matchesDay && matchesStatus && matchesAcceptance;
       });
 
     return (
