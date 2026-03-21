@@ -61,6 +61,8 @@ export function ScheduleJobCard({
   isPastJob,
   invoiceStatus,
   acceptances,
+  priceExGst,
+  isAdmin,
 }: ScheduleJobCardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
