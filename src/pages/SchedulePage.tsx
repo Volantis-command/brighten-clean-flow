@@ -9,6 +9,7 @@ import { Plus } from 'lucide-react';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
+import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 
 export default function SchedulePage() {
   const { role, user } = useAuth();
