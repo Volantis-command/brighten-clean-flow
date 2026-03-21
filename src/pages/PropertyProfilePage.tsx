@@ -217,8 +217,8 @@ export default function PropertyProfilePage() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/properties/${id}/edit`)} className="mt-2 gap-1.5">
             <Pencil className="h-3.5 w-3.5" /> Edit Pricing
           </Button>
+        </CollapsibleSection>
       )}
-
 
       {/* Host Preferences */}
       <CollapsibleSection title="Host Preferences">
