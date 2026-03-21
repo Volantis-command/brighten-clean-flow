@@ -190,6 +190,33 @@ export type Database = {
           },
         ]
       }
+      pricing_settings: {
+        Row: {
+          category: string | null
+          id: string
+          key: string
+          label: string | null
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          category?: string | null
+          id?: string
+          key: string
+          label?: string | null
+          updated_at?: string | null
+          value: number
+        }
+        Update: {
+          category?: string | null
+          id?: string
+          key?: string
+          label?: string | null
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -384,46 +411,151 @@ export type Database = {
       }
       quotes: {
         Row: {
+          actual_gp_dollars: number | null
+          actual_gp_percent: number | null
+          balconies: number | null
           bathrooms: number | null
+          bed_types: Json | null
           bedrooms: number | null
+          bond_certificate: boolean | null
+          builder_name: string | null
+          clean_type: string | null
           client_name: string | null
+          client_phone: string | null
+          consumables_cost: number | null
           created_at: string
+          created_by: string | null
+          deep_clean_multiplier: number | null
+          discount_gp_percent: number | null
+          discounted_price: number | null
           extras: Json | null
+          gp_percent: number | null
+          gst: number | null
+          hours: number | null
           id: string
           internal_notes: string | null
+          kitchens: number | null
+          labour_cost: number | null
+          levels: number | null
+          linen_cost: number | null
+          living_areas: number | null
           notes: string | null
+          outdoor_areas: boolean | null
           price: number | null
+          project_name: string | null
+          property_address: string | null
           property_id: string | null
+          property_name: string | null
+          property_type_build: string | null
+          reference: string | null
+          sell_price_ex_gst: number | null
+          sell_price_inc_gst: number | null
           service_type: string | null
+          sofa_beds: number | null
+          special_requirements: string | null
+          specialist_chemicals: number | null
+          sqm: number | null
           status: string | null
+          total_cost: number | null
+          wet_areas: number | null
         }
         Insert: {
+          actual_gp_dollars?: number | null
+          actual_gp_percent?: number | null
+          balconies?: number | null
           bathrooms?: number | null
+          bed_types?: Json | null
           bedrooms?: number | null
+          bond_certificate?: boolean | null
+          builder_name?: string | null
+          clean_type?: string | null
           client_name?: string | null
+          client_phone?: string | null
+          consumables_cost?: number | null
           created_at?: string
+          created_by?: string | null
+          deep_clean_multiplier?: number | null
+          discount_gp_percent?: number | null
+          discounted_price?: number | null
           extras?: Json | null
+          gp_percent?: number | null
+          gst?: number | null
+          hours?: number | null
           id?: string
           internal_notes?: string | null
+          kitchens?: number | null
+          labour_cost?: number | null
+          levels?: number | null
+          linen_cost?: number | null
+          living_areas?: number | null
           notes?: string | null
+          outdoor_areas?: boolean | null
           price?: number | null
+          project_name?: string | null
+          property_address?: string | null
           property_id?: string | null
+          property_name?: string | null
+          property_type_build?: string | null
+          reference?: string | null
+          sell_price_ex_gst?: number | null
+          sell_price_inc_gst?: number | null
           service_type?: string | null
+          sofa_beds?: number | null
+          special_requirements?: string | null
+          specialist_chemicals?: number | null
+          sqm?: number | null
           status?: string | null
+          total_cost?: number | null
+          wet_areas?: number | null
         }
         Update: {
+          actual_gp_dollars?: number | null
+          actual_gp_percent?: number | null
+          balconies?: number | null
           bathrooms?: number | null
+          bed_types?: Json | null
           bedrooms?: number | null
+          bond_certificate?: boolean | null
+          builder_name?: string | null
+          clean_type?: string | null
           client_name?: string | null
+          client_phone?: string | null
+          consumables_cost?: number | null
           created_at?: string
+          created_by?: string | null
+          deep_clean_multiplier?: number | null
+          discount_gp_percent?: number | null
+          discounted_price?: number | null
           extras?: Json | null
+          gp_percent?: number | null
+          gst?: number | null
+          hours?: number | null
           id?: string
           internal_notes?: string | null
+          kitchens?: number | null
+          labour_cost?: number | null
+          levels?: number | null
+          linen_cost?: number | null
+          living_areas?: number | null
           notes?: string | null
+          outdoor_areas?: boolean | null
           price?: number | null
+          project_name?: string | null
+          property_address?: string | null
           property_id?: string | null
+          property_name?: string | null
+          property_type_build?: string | null
+          reference?: string | null
+          sell_price_ex_gst?: number | null
+          sell_price_inc_gst?: number | null
           service_type?: string | null
+          sofa_beds?: number | null
+          special_requirements?: string | null
+          specialist_chemicals?: number | null
+          sqm?: number | null
           status?: string | null
+          total_cost?: number | null
+          wet_areas?: number | null
         }
         Relationships: [
           {
