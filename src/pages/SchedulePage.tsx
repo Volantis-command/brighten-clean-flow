@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
+import { AcceptanceFilter } from '@/components/schedule/AcceptanceFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 
@@ -18,8 +19,10 @@ export default function SchedulePage() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   const [selectedDate, setSelectedDate] = useState(new Date());
   const initialFilter = searchParams.get('status') || 'all';
+  const initialAcceptance = searchParams.get('acceptance') || 'all';
   useXeroInvoiceSync();
   const [statusFilter, setStatusFilter] = useState(initialFilter);
+  const [acceptanceFilter, setAcceptanceFilter] = useState(initialAcceptance);
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
@@ -31,7 +34,17 @@ export default function SchedulePage() {
     setSearchParams(searchParams, { replace: true });
   };
 
-  // Fetch jobs — admin sees all, cleaner sees their own
+  const handleAcceptanceChange = (value: string) => {
+    setAcceptanceFilter(value);
+    if (value === 'all') {
+      searchParams.delete('acceptance');
+    } else {
+      searchParams.set('acceptance', value);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
+
+  // Fetch jobs
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['schedule-jobs'],
     queryFn: async () => {
@@ -63,6 +76,22 @@ export default function SchedulePage() {
       return data || [];
     },
     enabled: cleanerIds.length > 0,
+  });
+
+  // Fetch all acceptances for visible jobs
+  const jobIds = jobs.map((j: any) => j.id);
+  const { data: allAcceptances = [] } = useQuery({
+    queryKey: ['schedule-acceptances', jobIds],
+    queryFn: async () => {
+      if (jobIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('job_acceptances')
+        .select('*')
+        .in('job_id', jobIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: jobIds.length > 0,
   });
 
   const nameMap: Record<string, string> = {};
