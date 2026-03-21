@@ -28,6 +28,7 @@ export default function DashboardPage() {
     completeCount,
     inProgressCount,
     flaggedCount,
+    actionNeededCount,
     isLoading,
     isAdmin,
   } = useDashboardData();
