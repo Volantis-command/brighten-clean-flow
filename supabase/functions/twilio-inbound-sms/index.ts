@@ -1,5 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
 async function sendTwilioSms(to: string, body: string) {
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
@@ -49,7 +54,7 @@ function phoneVariants(phone: string): string[] {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*' } });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -76,8 +81,6 @@ Deno.serve(async (req) => {
         .map((v) => `'${digitsOnly(v)}'`)
         .join(', ')});`,
     );
-    console.log('[twilio-inbound-sms] Incoming phone variants:', variants);
-    console.log('[twilio-inbound-sms] Normalized incoming phone:', normalizedIncoming);
 
     const { data: allProfiles, error: profileError } = await supabase
       .from('profiles')
@@ -125,96 +128,138 @@ Deno.serve(async (req) => {
     const profile = matchingProfiles[0];
     const firstName = (profile.full_name || 'Team member').split(' ')[0];
 
-    console.log(
-      `[twilio-inbound-sms] Matched cleaner profile: ${profile.full_name} (${profile.id}) using stored phone "${profile.phone}"`,
-    );
+    console.log(`[twilio-inbound-sms] Matched profile ${profile.id} (${profile.full_name})`);
 
-    const { data: allAcceptances, error: acceptancesError } = await supabase
-      .from('job_acceptances')
-      .select('id, job_id, cleaner_id, acceptance_status, sms_sent_at, responded_at, created_at, jobs(id, status, scheduled_date, scheduled_time, properties(property_name))')
-      .eq('cleaner_id', profile.id)
+    const { data: assignedJobs, error: jobsError } = await supabase
+      .from('jobs')
+      .select('id, status, scheduled_date, scheduled_time, created_at, cleaner_1_id, cleaner_2_id, properties(property_name)')
+      .or(`cleaner_1_id.eq.${profile.id},cleaner_2_id.eq.${profile.id}`)
       .order('created_at', { ascending: false })
       .limit(20);
 
-    if (acceptancesError) {
-      console.error('[twilio-inbound-sms] Error fetching acceptances:', acceptancesError);
+    if (jobsError) {
+      console.error('[twilio-inbound-sms] Error fetching assigned jobs:', jobsError);
       return twimlResponse('');
     }
 
-    const allJobsDebug = (allAcceptances || []).map((a) => ({
-      acceptance_id: a.id,
-      job_id: a.job_id,
-      acceptance_status: a.acceptance_status,
-      sms_sent_at: a.sms_sent_at,
-      responded_at: a.responded_at,
-      created_at: a.created_at,
-      job_status: (a.jobs as any)?.status,
-      scheduled_date: (a.jobs as any)?.scheduled_date,
-      scheduled_time: (a.jobs as any)?.scheduled_time,
-      property_name: (a.jobs as any)?.properties?.property_name,
-    }));
-    console.log('[twilio-inbound-sms] All jobs found for profile:', allJobsDebug);
+    console.log(
+      '[twilio-inbound-sms] All jobs found for matched profile:',
+      (assignedJobs || []).map((job) => ({
+        id: job.id,
+        status: job.status,
+        scheduled_date: job.scheduled_date,
+        scheduled_time: job.scheduled_time,
+        cleaner_1_id: job.cleaner_1_id,
+        cleaner_2_id: job.cleaner_2_id,
+        property_name: (job.properties as any)?.property_name,
+      })),
+    );
 
-    const candidateAcceptances = (allAcceptances || []).filter((a) => {
-      const jobStatus = (a.jobs as any)?.status;
-      return jobStatus === 'scheduled' || jobStatus === 'pending';
+    const jobIds = (assignedJobs || []).map((job) => job.id);
+
+    const { data: acceptanceRows, error: acceptanceError } = jobIds.length
+      ? await supabase
+          .from('job_acceptances')
+          .select('id, cleaner_id, job_id, acceptance_status, sms_sent_at, responded_at, created_at')
+          .eq('cleaner_id', profile.id)
+          .in('job_id', jobIds)
+      : { data: [], error: null };
+
+    if (acceptanceError) {
+      console.error('[twilio-inbound-sms] Error fetching acceptance rows:', acceptanceError);
+      return twimlResponse('');
+    }
+
+    const acceptanceByJobId = new Map((acceptanceRows || []).map((row) => [row.job_id, row]));
+
+    console.log(
+      '[twilio-inbound-sms] Acceptance status for each job found:',
+      (assignedJobs || []).map((job) => ({
+        job_id: job.id,
+        job_status: job.status,
+        acceptance_status: acceptanceByJobId.get(job.id)?.acceptance_status ?? null,
+        acceptance_id: acceptanceByJobId.get(job.id)?.id ?? null,
+      })),
+    );
+
+    const candidateJobs = (assignedJobs || []).filter((job) => job.status === 'scheduled' || job.status === 'pending');
+    console.log('[twilio-inbound-sms] Candidate scheduled/pending jobs:', candidateJobs.map((job) => job.id));
+
+    const pendingJob = candidateJobs.find((job) => {
+      const acceptance = acceptanceByJobId.get(job.id);
+      return !acceptance || acceptance.acceptance_status === 'pending';
     });
 
-    const candidateJobsDebug = candidateAcceptances.map((a) => ({
-      acceptance_id: a.id,
-      job_id: a.job_id,
-      acceptance_status: a.acceptance_status,
-      job_status: (a.jobs as any)?.status,
-    }));
-    console.log('[twilio-inbound-sms] Candidate jobs with status scheduled/pending:', candidateJobsDebug);
+    const matchedJob = pendingJob || candidateJobs[0] || assignedJobs?.[0];
 
-    const pendingAcceptance = candidateAcceptances.find((a) => a.acceptance_status === 'pending');
-    const acceptance = pendingAcceptance || candidateAcceptances[0] || allAcceptances?.[0];
-
-    if (!acceptance) {
-      console.log('[twilio-inbound-sms] No acceptances found for this cleaner at all.');
+    if (!matchedJob) {
+      console.log('[twilio-inbound-sms] No assigned jobs found for this cleaner.');
       return twimlResponse(`Hi ${firstName}, you don't have any pending job invitations right now. - Brightly`);
     }
 
-    if (!pendingAcceptance) {
+    if (!pendingJob) {
       console.log(
-        `[twilio-inbound-sms] No pending acceptance row found. Falling back to most recent candidate acceptance ${acceptance.id} with status ${acceptance.acceptance_status}.`,
+        `[twilio-inbound-sms] No pending acceptance row found; falling back to most recent assigned job ${matchedJob.id}.`,
       );
     }
 
-    const job = acceptance.jobs as any;
-    const propName = job?.properties?.property_name || 'your job';
-    const dateStr = job?.scheduled_date || '';
-    const timeStr = job?.scheduled_time?.slice(0, 5) || '';
+    const existingAcceptance = acceptanceByJobId.get(matchedJob.id);
+    const propertyName = (matchedJob.properties as any)?.property_name || 'your job';
+    const dateStr = matchedJob.scheduled_date || '';
+    const timeStr = matchedJob.scheduled_time?.slice(0, 5) || '';
 
     if (body === 'YES' || body === 'Y') {
-      const { error: updateErr } = await supabase
-        .from('job_acceptances')
-        .update({ acceptance_status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('id', acceptance.id);
-
-      if (updateErr) {
-        console.error('[twilio-inbound-sms] Failed to update acceptance to accepted:', updateErr);
-        return twimlResponse('');
+      if (existingAcceptance) {
+        const { error } = await supabase
+          .from('job_acceptances')
+          .update({ acceptance_status: 'accepted', responded_at: new Date().toISOString() })
+          .eq('id', existingAcceptance.id);
+        if (error) {
+          console.error('[twilio-inbound-sms] Failed updating existing acceptance:', error);
+          return twimlResponse('');
+        }
+      } else {
+        const { error } = await supabase.from('job_acceptances').insert({
+          cleaner_id: profile.id,
+          job_id: matchedJob.id,
+          acceptance_status: 'accepted',
+          responded_at: new Date().toISOString(),
+          sms_sent_at: null,
+        });
+        if (error) {
+          console.error('[twilio-inbound-sms] Failed inserting acceptance:', error);
+          return twimlResponse('');
+        }
       }
 
-      console.log(`[twilio-inbound-sms] Acceptance ${acceptance.id} updated to accepted`);
-      await sendTwilioSms(from, `Got it ${firstName}, you're confirmed for ${propName}, ${dateStr} at ${timeStr}. See you there! - Brightly`);
+      await sendTwilioSms(from, `Got it ${firstName}, you're confirmed for ${propertyName}, ${dateStr} at ${timeStr}. See you there! - Brightly`);
       return twimlResponse('');
     }
 
     if (body === 'NO' || body === 'N') {
-      const { error: updateErr } = await supabase
-        .from('job_acceptances')
-        .update({ acceptance_status: 'declined', responded_at: new Date().toISOString() })
-        .eq('id', acceptance.id);
-
-      if (updateErr) {
-        console.error('[twilio-inbound-sms] Failed to update acceptance to declined:', updateErr);
-        return twimlResponse('');
+      if (existingAcceptance) {
+        const { error } = await supabase
+          .from('job_acceptances')
+          .update({ acceptance_status: 'declined', responded_at: new Date().toISOString() })
+          .eq('id', existingAcceptance.id);
+        if (error) {
+          console.error('[twilio-inbound-sms] Failed updating existing acceptance:', error);
+          return twimlResponse('');
+        }
+      } else {
+        const { error } = await supabase.from('job_acceptances').insert({
+          cleaner_id: profile.id,
+          job_id: matchedJob.id,
+          acceptance_status: 'declined',
+          responded_at: new Date().toISOString(),
+          sms_sent_at: null,
+        });
+        if (error) {
+          console.error('[twilio-inbound-sms] Failed inserting declined acceptance:', error);
+          return twimlResponse('');
+        }
       }
 
-      console.log(`[twilio-inbound-sms] Acceptance ${acceptance.id} updated to declined`);
       await sendTwilioSms(from, `No problem ${firstName}, we'll find cover. Thanks for letting us know. - Brightly`);
       return twimlResponse('');
     }
@@ -232,7 +277,7 @@ function twimlResponse(message: string): Response {
     : `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
 
   return new Response(xml, {
-    headers: { 'Content-Type': 'text/xml' },
+    headers: { 'Content-Type': 'text/xml', ...corsHeaders },
   });
 }
 
