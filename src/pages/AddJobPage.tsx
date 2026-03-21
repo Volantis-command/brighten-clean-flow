@@ -94,6 +94,8 @@ export default function AddJobPage() {
       cleaner_2_id: cleaner2 || null,
       notes: combinedNotes || null,
       status: 'scheduled',
+      price_ex_gst: selectedProperty?.price_turnover || null,
+      price_inc_gst: selectedProperty?.price_turnover ? Number(selectedProperty.price_turnover) * 1.1 : null,
     }).select('id').single();
 
     if (error) {

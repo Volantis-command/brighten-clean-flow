@@ -443,6 +443,47 @@ function Step4({ form, updateField }: { form: any; updateField: (f: string, v: a
   );
 }
 
+function PriceField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const num = parseFloat(value) || 0;
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-semibold text-foreground">{label}</Label>
+      <div className="flex items-center gap-3">
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="0.00"
+          className="h-14 rounded-2xl flex-1"
+        />
+        {num > 0 && (
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
+            <p>GST: ${(num * 0.1).toFixed(2)}</p>
+            <p className="font-bold text-foreground">${(num * 1.1).toFixed(2)} inc</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StepPricing({ form, updateField }: { form: any; updateField: (f: string, v: any) => void }) {
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">Set default pricing for each clean type. These prices auto-fill when jobs are created for this property.</p>
+      <PriceField label="Turnover Clean (ex GST)" value={form.price_turnover} onChange={(v) => updateField('price_turnover', v)} />
+      <PriceField label="Deep Clean (ex GST)" value={form.price_deep_clean} onChange={(v) => updateField('price_deep_clean', v)} />
+      <PriceField label="End of Lease (ex GST)" value={form.price_end_of_lease} onChange={(v) => updateField('price_end_of_lease', v)} />
+      <PriceField label="Post-Build (ex GST)" value={form.price_post_build} onChange={(v) => updateField('price_post_build', v)} />
+      <Field label="Pricing Notes">
+        <Textarea value={form.pricing_notes} onChange={(e) => updateField('pricing_notes', e.target.value)} className="rounded-2xl min-h-[80px]" placeholder="e.g. 3 bed, 2 bath, standard rate" />
+      </Field>
+    </>
+  );
+}
+
 function Step5({ form, updateField, cleaners }: { form: any; updateField: (f: string, v: any) => void; cleaners: any[] }) {
   const summaryRows = [
     ['Property', form.property_name],
