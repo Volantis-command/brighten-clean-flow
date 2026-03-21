@@ -1,4 +1,4 @@
-import { Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertTriangle, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TodaySummaryProps {
@@ -6,9 +6,10 @@ interface TodaySummaryProps {
   completeCount: number;
   inProgressCount: number;
   flaggedCount: number;
+  actionNeededCount?: number;
 }
 
-export function TodaySummary({ totalJobs, completeCount, inProgressCount, flaggedCount }: TodaySummaryProps) {
+export function TodaySummary({ totalJobs, completeCount, inProgressCount, flaggedCount, actionNeededCount = 0 }: TodaySummaryProps) {
   const navigate = useNavigate();
 
   const stats = [
@@ -16,12 +17,13 @@ export function TodaySummary({ totalJobs, completeCount, inProgressCount, flagge
     { label: 'Complete', value: completeCount, icon: CheckCircle, className: 'bg-primary text-primary-foreground', path: '/schedule?status=complete' },
     { label: 'In Progress', value: inProgressCount, icon: Clock, className: 'bg-accent text-accent-foreground', path: '/schedule?status=in_progress' },
     { label: 'Flagged', value: flaggedCount, icon: AlertTriangle, className: 'bg-destructive text-destructive-foreground', path: '/schedule?status=flagged' },
+    { label: 'Action Needed', value: actionNeededCount, icon: UserX, className: 'bg-[hsl(45,100%,51%)] text-foreground', path: '/schedule?acceptance=declined' },
   ];
 
   return (
     <div>
       <h2 className="text-xl font-bold text-primary mb-4">Today's Summary</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
