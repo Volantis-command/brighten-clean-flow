@@ -51,6 +51,9 @@ export default function JobDetailPage() {
     enabled: cleanerIds.length > 0,
   });
 
+  // Fetch acceptances
+  const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
+
   // Fetch xero settings for invoice creation
   const { data: xeroSettings = [] } = useQuery({
     queryKey: ['xero-settings'],
@@ -66,6 +69,25 @@ export default function JobDetailPage() {
 
   const nameMap: Record<string, string> = {};
   profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+
+  const handleResendSms = async () => {
+    if (!jobId) return;
+    setResendingTo(jobId);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-job-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast.success('SMS resent to assigned cleaners');
+      refetchAcceptances();
+    } catch (err: any) {
+      toast.error('Failed to resend: ' + err.message);
+    }
+    setResendingTo(null);
+  };
 
   const handlePushInvoice = async () => {
     if (!job) return;
