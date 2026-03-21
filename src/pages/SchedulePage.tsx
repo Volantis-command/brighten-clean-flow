@@ -197,6 +197,7 @@ export default function SchedulePage() {
                     estimatedDuration={null}
                     status={job.status}
                     isPastJob
+                    invoiceStatus={job.invoice_status}
                   />
                 ))}
               </div>
