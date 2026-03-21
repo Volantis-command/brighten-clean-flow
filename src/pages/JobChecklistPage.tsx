@@ -136,6 +136,7 @@ export default function JobChecklistPage() {
   const [photoMenuRoom, setPhotoMenuRoom] = useState<string | null>(null);
   const [completionModal, setCompletionModal] = useState(false);
   const [nextJobInfo, setNextJobInfo] = useState<{ propertyName: string; address: string | null; scheduledTime: string | null } | null>(null);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   // Hydrate from existing form or initialize
   useEffect(() => {
