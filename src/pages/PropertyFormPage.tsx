@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 
-const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Assign & Confirm'];
+const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Pricing', 'Assign & Confirm'];
 
 const STATES = ['QLD', 'NSW', 'VIC', 'WA', 'SA', 'Other'];
 
