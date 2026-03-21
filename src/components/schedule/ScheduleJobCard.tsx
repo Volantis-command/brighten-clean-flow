@@ -106,9 +106,12 @@ export function ScheduleJobCard({
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
-        <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
-          {statusInfo.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {status === 'complete' && <InvoiceBadge status={invoiceStatus} />}
+          <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
+            {statusInfo.label}
+          </span>
+        </div>
       </div>
 
       {address && (
