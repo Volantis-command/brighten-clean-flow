@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { InvoiceBadge } from '@/components/InvoiceBadge';
+import { AcceptanceBadge } from '@/components/AcceptanceBadge';
+import { useJobAcceptances } from '@/hooks/useJobAcceptances';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -20,6 +22,7 @@ export default function JobDetailPage() {
   const { role } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [pushingInvoice, setPushingInvoice] = useState(false);
+  const [resendingTo, setResendingTo] = useState<string | null>(null);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-detail', jobId],
@@ -48,6 +51,9 @@ export default function JobDetailPage() {
     enabled: cleanerIds.length > 0,
   });
 
+  // Fetch acceptances
+  const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
+
   // Fetch xero settings for invoice creation
   const { data: xeroSettings = [] } = useQuery({
     queryKey: ['xero-settings'],
@@ -63,6 +69,25 @@ export default function JobDetailPage() {
 
   const nameMap: Record<string, string> = {};
   profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+
+  const handleResendSms = async () => {
+    if (!jobId) return;
+    setResendingTo(jobId);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-job-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast.success('SMS resent to assigned cleaners');
+      refetchAcceptances();
+    } catch (err: any) {
+      toast.error('Failed to resend: ' + err.message);
+    }
+    setResendingTo(null);
+  };
 
   const handlePushInvoice = async () => {
     if (!job) return;
@@ -185,20 +210,47 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Cleaners */}
+      {/* Cleaners & Acceptance */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Assigned Cleaners</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-sm text-foreground">
-            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>
-              {cleanerIds.length === 0
-                ? 'No cleaners assigned'
-                : cleanerIds.map(id => nameMap[id] || 'Unknown').join(' & ')}
-            </span>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Assigned Cleaners</CardTitle>
+            {role === 'admin' && job.status === 'scheduled' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendSms}
+                disabled={!!resendingTo}
+                className="gap-1.5 text-xs"
+              >
+                {resendingTo ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Resend SMS
+              </Button>
+            )}
           </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {cleanerIds.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No cleaners assigned</p>
+          ) : (
+            cleanerIds.map((id) => {
+              const acceptance = acceptances.find((a) => a.cleaner_id === id);
+              return (
+                <div key={id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{nameMap[id] || 'Unknown'}</span>
+                  </div>
+                  {acceptance && <AcceptanceBadge status={acceptance.acceptance_status} />}
+                </div>
+              );
+            })
+          )}
+          {acceptances.some((a) => a.acceptance_status === 'declined') && (
+            <div className="mt-2 p-3 bg-destructive/10 rounded-xl text-sm text-destructive font-semibold">
+              ⚠️ {acceptances.filter(a => a.acceptance_status === 'declined').map(a => nameMap[a.cleaner_id] || 'A cleaner').join(', ')} declined this job — reassign or find cover
+            </div>
+          )}
         </CardContent>
       </Card>
 

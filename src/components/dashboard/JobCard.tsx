@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { Clock, MapPin, Users, Loader2, Navigation } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
+import { AcceptanceBadge } from '@/components/AcceptanceBadge';
+
+interface JobCardAcceptance {
+  cleaner_id: string;
+  cleaner_name: string;
+  acceptance_status: string;
+}
 
 interface JobCardProps {
   propertyName: string;
@@ -13,6 +20,7 @@ interface JobCardProps {
   showStartButton?: boolean;
   onStartJob?: () => Promise<void>;
   showNavigateButton?: boolean;
+  acceptances?: JobCardAcceptance[];
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -33,6 +41,7 @@ export function JobCard({
   showStartButton,
   onStartJob,
   showNavigateButton,
+  acceptances,
 }: JobCardProps) {
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(', ');
@@ -52,10 +61,22 @@ export function JobCard({
     setStarting(false);
   };
 
+  // Determine left border color based on acceptance status
+  const getBorderClass = () => {
+    if (!acceptances || acceptances.length === 0) return '';
+    const hasDeclined = acceptances.some(a => a.acceptance_status === 'declined');
+    const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
+    const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
+    if (hasDeclined) return 'border-l-4 border-l-destructive';
+    if (allAccepted) return 'border-l-4 border-l-primary';
+    if (hasPending) return 'border-l-4 border-l-[hsl(45,100%,51%)]';
+    return '';
+  };
+
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border"
+      className={`w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border ${getBorderClass()}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
@@ -82,6 +103,17 @@ export function JobCard({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4 shrink-0" />
           <span>{cleanerNames}</span>
+        </div>
+      )}
+
+      {acceptances && acceptances.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {acceptances.map((a) => (
+            <div key={a.cleaner_id} className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">{a.cleaner_name.split(' ')[0]}:</span>
+              <AcceptanceBadge status={a.acceptance_status} compact />
+            </div>
+          ))}
         </div>
       )}
 

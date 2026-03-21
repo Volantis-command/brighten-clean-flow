@@ -131,6 +131,15 @@ export default function AddJobPage() {
       syncToDrive("sync_job_folder", { job_id: jobData.id });
     }
 
+    // Fire-and-forget: send SMS to assigned cleaners
+    if (jobData?.id) {
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-job-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobData.id }),
+      }).catch(() => {});
+    }
+
     toast.success('Job scheduled!');
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });

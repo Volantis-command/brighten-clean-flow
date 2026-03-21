@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Clock, MapPin, Users, Timer, ClipboardList, RotateCcw } from 'lucide-react';
 import { InvoiceBadge } from '@/components/InvoiceBadge';
+import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useNavigate } from 'react-router-dom';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
@@ -10,6 +11,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getCurrentPosition } from '@/lib/geo';
+
+interface ScheduleJobCardAcceptance {
+  cleaner_id: string;
+  cleaner_name: string;
+  acceptance_status: string;
+}
 
 interface ScheduleJobCardProps {
   id: string;
@@ -26,6 +33,7 @@ interface ScheduleJobCardProps {
   showClockIn?: boolean;
   isPastJob?: boolean;
   invoiceStatus?: string | null;
+  acceptances?: ScheduleJobCardAcceptance[];
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -50,6 +58,7 @@ export function ScheduleJobCard({
   showClockIn,
   isPastJob,
   invoiceStatus,
+  acceptances,
 }: ScheduleJobCardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -97,9 +106,20 @@ export function ScheduleJobCard({
     setReturningToProperty(false);
   };
 
+  const getBorderClass = () => {
+    if (!acceptances || acceptances.length === 0) return '';
+    const hasDeclined = acceptances.some(a => a.acceptance_status === 'declined');
+    const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
+    const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
+    if (hasDeclined) return 'border-l-4 border-l-destructive';
+    if (allAccepted) return 'border-l-4 border-l-primary';
+    if (hasPending) return 'border-l-4 border-l-[hsl(45,100%,51%)]';
+    return '';
+  };
+
   return (
     <div
-      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''}`}
+      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${getBorderClass()}`}
       onClick={() => navigate(`/jobs/${id}`)}
       role="button"
       tabIndex={0}
@@ -137,9 +157,20 @@ export function ScheduleJobCard({
       </div>
 
       {cleanerNames && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <Users className="h-4 w-4 shrink-0" />
           <span>{cleanerNames}</span>
+        </div>
+      )}
+
+      {acceptances && acceptances.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {acceptances.map((a) => (
+            <div key={a.cleaner_id} className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">{a.cleaner_name.split(' ')[0]}:</span>
+              <AcceptanceBadge status={a.acceptance_status} compact />
+            </div>
+          ))}
         </div>
       )}
 
