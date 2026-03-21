@@ -3,13 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, Link2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -29,10 +27,8 @@ export default function JobDetailPage() {
   const [showPricePrompt, setShowPricePrompt] = useState(false);
 
   // Pricing state
-  const [priceMode, setPriceMode] = useState<'ex' | 'inc'>('ex');
   const [priceInput, setPriceInput] = useState('');
   const [priceNotes, setPriceNotes] = useState('');
-  const [linkedQuoteId, setLinkedQuoteId] = useState('');
   const [savingPrice, setSavingPrice] = useState(false);
 
   const { data: job, isLoading } = useQuery({
@@ -54,7 +50,6 @@ export default function JobDetailPage() {
     if (job) {
       setPriceInput(job.price_ex_gst ? String(job.price_ex_gst) : '');
       setPriceNotes(job.price_notes || '');
-      setLinkedQuoteId(job.linked_quote_id || '');
     }
   }, [job]);
 
@@ -71,21 +66,6 @@ export default function JobDetailPage() {
   });
 
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
-
-  // Fetch accepted quotes for this property
-  const { data: acceptedQuotes = [] } = useQuery({
-    queryKey: ['accepted-quotes', job?.property_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('quotes')
-        .select('id, reference, sell_price_ex_gst, sell_price_inc_gst, clean_type, client_name')
-        .eq('property_id', job!.property_id!)
-        .eq('status', 'accepted')
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-    enabled: role === 'admin' && !!job?.property_id,
-  });
 
   const { data: xeroSettings = [] } = useQuery({
     queryKey: ['xero-settings'],
@@ -104,8 +84,7 @@ export default function JobDetailPage() {
 
   // Pricing calculations
   const priceNum = parseFloat(priceInput) || 0;
-  const priceExGst = priceMode === 'ex' ? priceNum : priceNum / 1.10;
-  const gst = priceExGst * 0.10;
+  const priceExGst = priceNum;
   const priceIncGst = priceExGst * 1.10;
 
   const handleSavePrice = async () => {
@@ -115,7 +94,6 @@ export default function JobDetailPage() {
       price_ex_gst: priceExGst || null,
       price_inc_gst: priceIncGst || null,
       price_notes: priceNotes || null,
-      linked_quote_id: linkedQuoteId || null,
     }).eq('id', jobId);
     if (error) {
       toast.error(error.message);
@@ -124,15 +102,6 @@ export default function JobDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
     }
     setSavingPrice(false);
-  };
-
-  const handleLinkQuote = (quoteId: string) => {
-    const quote = acceptedQuotes.find((q: any) => q.id === quoteId);
-    if (quote) {
-      setLinkedQuoteId(quoteId);
-      setPriceMode('ex');
-      setPriceInput(String(quote.sell_price_ex_gst || 0));
-    }
   };
 
   const handleResendSms = async () => {
@@ -331,7 +300,7 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Pricing — Admin only */}
+      {/* Pricing — Admin read-only */}
       {role === 'admin' && (
         <Card>
           <CardHeader className="pb-3">
@@ -340,96 +309,58 @@ export default function JobDetailPage() {
               Pricing
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Price type toggle */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPriceMode('ex')}
-                className={`flex-1 h-10 rounded-xl font-bold text-sm transition-colors ${
-                  priceMode === 'ex' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                Ex GST
-              </button>
-              <button
-                onClick={() => setPriceMode('inc')}
-                className={`flex-1 h-10 rounded-xl font-bold text-sm transition-colors ${
-                  priceMode === 'inc' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                Inc GST
-              </button>
-            </div>
-
-            <div>
-              <Label className="text-sm font-semibold">
-                Price ({priceMode === 'ex' ? 'ex GST' : 'inc GST'})
-              </Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                placeholder="0.00"
-                className="h-12 rounded-xl text-lg font-bold"
-              />
-            </div>
-
-            {priceNum > 0 && (
-              <div className="bg-muted/50 rounded-xl p-3 space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Price (ex GST)</span>
-                  <span className="font-bold">${priceExGst.toFixed(2)}</span>
+          <CardContent className="space-y-3">
+            {(job.price_ex_gst && job.price_ex_gst > 0) ? (
+              <div className="space-y-2">
+                <p className="text-lg font-extrabold text-primary">
+                  ${Number(job.price_ex_gst).toFixed(2)} ex GST
+                  <span className="text-sm font-semibold text-muted-foreground ml-2">
+                    (${(Number(job.price_ex_gst) * 1.1).toFixed(2)} inc GST)
+                  </span>
+                </p>
+                {job.price_notes && (
+                  <p className="text-sm text-muted-foreground">{job.price_notes}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Set on property ·{' '}
+                  <button
+                    onClick={() => navigate(`/properties/${job.property_id}/edit`)}
+                    className="text-primary hover:underline font-semibold"
+                  >
+                    Edit property pricing
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">No price set</p>
+                <div>
+                  <Label className="text-sm font-semibold">Override Price (ex GST)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(e.target.value)}
+                    placeholder="0.00"
+                    className="h-10 rounded-xl"
+                  />
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">GST (10%)</span>
-                  <span className="font-bold">${gst.toFixed(2)}</span>
+                <div>
+                  <Label className="text-sm font-semibold">Notes</Label>
+                  <Input
+                    value={priceNotes}
+                    onChange={(e) => setPriceNotes(e.target.value)}
+                    placeholder="e.g. One-off rate"
+                    className="h-10 rounded-xl"
+                  />
                 </div>
-                <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                  <span className="text-muted-foreground font-bold">Total (inc GST)</span>
-                  <span className="font-extrabold text-primary">${priceIncGst.toFixed(2)}</span>
-                </div>
+                <Button onClick={handleSavePrice} disabled={savingPrice} size="sm" className="gap-2 rounded-xl">
+                  {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+                  Save Override
+                </Button>
               </div>
             )}
-
-            <div>
-              <Label className="text-sm font-semibold">Notes</Label>
-              <Input
-                value={priceNotes}
-                onChange={(e) => setPriceNotes(e.target.value)}
-                placeholder="e.g. Standard 3 bed turnover"
-                className="h-10 rounded-xl"
-              />
-            </div>
-
-            {/* Link to quote */}
-            {acceptedQuotes.length > 0 && (
-              <div>
-                <Label className="text-sm font-semibold flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5" />
-                  Link to Quote
-                </Label>
-                <Select value={linkedQuoteId || '__none__'} onValueChange={(v) => v === '__none__' ? setLinkedQuoteId('') : handleLinkQuote(v)}>
-                  <SelectTrigger className="h-10 rounded-xl">
-                    <SelectValue placeholder="Select a quote" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {acceptedQuotes.map((q: any) => (
-                      <SelectItem key={q.id} value={q.id}>
-                        {q.reference || q.clean_type || 'Quote'} — ${q.sell_price_ex_gst?.toFixed(2) || '0.00'} ex GST
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <Button onClick={handleSavePrice} disabled={savingPrice} className="w-full gap-2 rounded-xl">
-              {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
-              Save Price
-            </Button>
           </CardContent>
         </Card>
       )}

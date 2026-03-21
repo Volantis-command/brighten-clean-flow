@@ -193,6 +193,33 @@ export default function PropertyProfilePage() {
         <DetailRow label="Status" value={property.status === 'active' ? 'Active' : 'Inactive'} />
       </CollapsibleSection>
 
+      {/* Pricing — Admin only */}
+      {role === 'admin' && (
+        <CollapsibleSection title="Pricing">
+          {[
+            { label: 'Turnover Clean', value: property.price_turnover },
+            { label: 'Deep Clean', value: property.price_deep_clean },
+            { label: 'End of Lease', value: property.price_end_of_lease },
+            { label: 'Post-Build', value: property.price_post_build },
+          ].map(({ label, value }) => (
+            <div key={label} className="py-2 border-b border-border last:border-b-0">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+              {value ? (
+                <p className="text-sm font-semibold text-foreground">
+                  ${Number(value).toFixed(2)} ex GST · ${(Number(value) * 1.1).toFixed(2)} inc GST
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Not set</p>
+              )}
+            </div>
+          ))}
+          <DetailRow label="Notes" value={property.pricing_notes} />
+          <Button variant="outline" size="sm" onClick={() => navigate(`/properties/${id}/edit`)} className="mt-2 gap-1.5">
+            <Pencil className="h-3.5 w-3.5" /> Edit Pricing
+          </Button>
+        </CollapsibleSection>
+      )}
+
       {/* Host Preferences */}
       <CollapsibleSection title="Host Preferences">
         <DetailRow label="Host Preferences" value={property.host_preferences} />

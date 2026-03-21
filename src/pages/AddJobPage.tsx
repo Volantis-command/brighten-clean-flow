@@ -56,7 +56,7 @@ export default function AddJobPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb')
+        .select('id, property_name, address, suburb, price_turnover')
         .eq('status', 'active')
         .order('property_name');
       if (error) throw error;
@@ -94,6 +94,8 @@ export default function AddJobPage() {
       cleaner_2_id: cleaner2 || null,
       notes: combinedNotes || null,
       status: 'scheduled',
+      price_ex_gst: selectedProperty?.price_turnover || null,
+      price_inc_gst: selectedProperty?.price_turnover ? Number(selectedProperty.price_turnover) * 1.1 : null,
     }).select('id').single();
 
     if (error) {

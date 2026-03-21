@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 
-const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Assign & Confirm'];
+const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Pricing', 'Assign & Confirm'];
 
 const STATES = ['QLD', 'NSW', 'VIC', 'WA', 'SA', 'Other'];
 
@@ -59,6 +59,11 @@ const EMPTY_FORM = {
   status: 'active',
   lat: '',
   lng: '',
+  price_turnover: '',
+  price_deep_clean: '',
+  price_end_of_lease: '',
+  price_post_build: '',
+  pricing_notes: '',
 };
 
 export default function PropertyFormPage() {
@@ -110,6 +115,11 @@ export default function PropertyFormPage() {
         status: existing.status || 'active',
         lat: existing.lat != null ? String(existing.lat) : '',
         lng: existing.lng != null ? String(existing.lng) : '',
+        price_turnover: existing.price_turnover != null ? String(existing.price_turnover) : '',
+        price_deep_clean: existing.price_deep_clean != null ? String(existing.price_deep_clean) : '',
+        price_end_of_lease: existing.price_end_of_lease != null ? String(existing.price_end_of_lease) : '',
+        price_post_build: existing.price_post_build != null ? String(existing.price_post_build) : '',
+        pricing_notes: existing.pricing_notes || '',
       });
     }
   }, [existing]);
@@ -125,12 +135,16 @@ export default function PropertyFormPage() {
       return;
     }
     setSaving(true);
-    const { lat, lng, has_product_restrictions, ...rest } = form;
+    const { lat, lng, has_product_restrictions, price_turnover, price_deep_clean, price_end_of_lease, price_post_build, ...rest } = form;
     const payload = {
       ...rest,
       default_cleaner_id: form.default_cleaner_id || null,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
+      price_turnover: price_turnover ? parseFloat(price_turnover) : null,
+      price_deep_clean: price_deep_clean ? parseFloat(price_deep_clean) : null,
+      price_end_of_lease: price_end_of_lease ? parseFloat(price_end_of_lease) : null,
+      price_post_build: price_post_build ? parseFloat(price_post_build) : null,
     };
 
     if (isEdit) {
@@ -207,7 +221,8 @@ export default function PropertyFormPage() {
         {step === 1 && <Step2 form={form} updateField={updateField} />}
         {step === 2 && <Step3 form={form} updateField={updateField} />}
         {step === 3 && <Step4 form={form} updateField={updateField} />}
-        {step === 4 && <Step5 form={form} updateField={updateField} cleaners={cleaners} />}
+        {step === 4 && <StepPricing form={form} updateField={updateField} />}
+        {step === 5 && <Step5 form={form} updateField={updateField} cleaners={cleaners} />}
       </div>
 
       {/* Navigation */}
@@ -423,6 +438,47 @@ function Step4({ form, updateField }: { form: any; updateField: (f: string, v: a
       </Field>
       <Field label="Any Other Special Instructions">
         <Textarea value={form.host_preferences} onChange={(e) => updateField('host_preferences', e.target.value)} className="rounded-2xl min-h-[120px]" placeholder="Special instructions from the host or property manager…" />
+      </Field>
+    </>
+  );
+}
+
+function PriceField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const num = parseFloat(value) || 0;
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-semibold text-foreground">{label}</Label>
+      <div className="flex items-center gap-3">
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="0.00"
+          className="h-14 rounded-2xl flex-1"
+        />
+        {num > 0 && (
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
+            <p>GST: ${(num * 0.1).toFixed(2)}</p>
+            <p className="font-bold text-foreground">${(num * 1.1).toFixed(2)} inc</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StepPricing({ form, updateField }: { form: any; updateField: (f: string, v: any) => void }) {
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">Set default pricing for each clean type. These prices auto-fill when jobs are created for this property.</p>
+      <PriceField label="Turnover Clean (ex GST)" value={form.price_turnover} onChange={(v) => updateField('price_turnover', v)} />
+      <PriceField label="Deep Clean (ex GST)" value={form.price_deep_clean} onChange={(v) => updateField('price_deep_clean', v)} />
+      <PriceField label="End of Lease (ex GST)" value={form.price_end_of_lease} onChange={(v) => updateField('price_end_of_lease', v)} />
+      <PriceField label="Post-Build (ex GST)" value={form.price_post_build} onChange={(v) => updateField('price_post_build', v)} />
+      <Field label="Pricing Notes">
+        <Textarea value={form.pricing_notes} onChange={(e) => updateField('pricing_notes', e.target.value)} className="rounded-2xl min-h-[80px]" placeholder="e.g. 3 bed, 2 bath, standard rate" />
       </Field>
     </>
   );

@@ -406,6 +406,11 @@ export type Database = {
           lng: number | null
           payment_terms: string | null
           postcode: string | null
+          price_deep_clean: number | null
+          price_end_of_lease: number | null
+          price_post_build: number | null
+          price_turnover: number | null
+          pricing_notes: string | null
           product_restrictions: string | null
           property_name: string
           property_type: string | null
@@ -434,6 +439,11 @@ export type Database = {
           lng?: number | null
           payment_terms?: string | null
           postcode?: string | null
+          price_deep_clean?: number | null
+          price_end_of_lease?: number | null
+          price_post_build?: number | null
+          price_turnover?: number | null
+          pricing_notes?: string | null
           product_restrictions?: string | null
           property_name: string
           property_type?: string | null
@@ -462,6 +472,11 @@ export type Database = {
           lng?: number | null
           payment_terms?: string | null
           postcode?: string | null
+          price_deep_clean?: number | null
+          price_end_of_lease?: number | null
+          price_post_build?: number | null
+          price_turnover?: number | null
+          pricing_notes?: string | null
           product_restrictions?: string | null
           property_name?: string
           property_type?: string | null
