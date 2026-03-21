@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       scheduled_date: (a.jobs as any)?.scheduled_date,
       scheduled_time: (a.jobs as any)?.scheduled_time,
       property_name: (a.jobs as any)?.properties?.property_name,
-    }))}`);
+    })))});
 
     const candidateAcceptances = (allAcceptances || []).filter((a) => {
       const jobStatus = (a.jobs as any)?.status;
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       job_id: a.job_id,
       acceptance_status: a.acceptance_status,
       job_status: (a.jobs as any)?.status,
-    }))}`);
+    })))});
 
     const pendingAcceptance = candidateAcceptances.find((a) => a.acceptance_status === 'pending');
     const acceptance = pendingAcceptance || candidateAcceptances[0] || allAcceptances?.[0];
