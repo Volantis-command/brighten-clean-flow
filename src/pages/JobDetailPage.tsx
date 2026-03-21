@@ -101,8 +101,7 @@ export default function JobDetailPage() {
 
   // Pricing calculations
   const priceNum = parseFloat(priceInput) || 0;
-  const priceExGst = priceMode === 'ex' ? priceNum : priceNum / 1.10;
-  const gst = priceExGst * 0.10;
+  const priceExGst = priceNum;
   const priceIncGst = priceExGst * 1.10;
 
   const handleSavePrice = async () => {
@@ -112,7 +111,6 @@ export default function JobDetailPage() {
       price_ex_gst: priceExGst || null,
       price_inc_gst: priceIncGst || null,
       price_notes: priceNotes || null,
-      linked_quote_id: linkedQuoteId || null,
     }).eq('id', jobId);
     if (error) {
       toast.error(error.message);
@@ -121,15 +119,6 @@ export default function JobDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
     }
     setSavingPrice(false);
-  };
-
-  const handleLinkQuote = (quoteId: string) => {
-    const quote = acceptedQuotes.find((q: any) => q.id === quoteId);
-    if (quote) {
-      setLinkedQuoteId(quoteId);
-      setPriceMode('ex');
-      setPriceInput(String(quote.sell_price_ex_gst || 0));
-    }
   };
 
   const handleResendSms = async () => {
