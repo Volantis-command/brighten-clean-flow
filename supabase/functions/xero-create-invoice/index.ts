@@ -112,6 +112,8 @@ Deno.serve(async (req) => {
       invoiceBody.Contact = { ContactID: contactId };
     }
 
+    console.log('Creating invoice in Xero:', JSON.stringify(invoiceBody));
+
     const invRes = await fetch('https://api.xero.com/api.xro/2.0/Invoices', {
       method: 'POST',
       headers: {
@@ -123,12 +125,14 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ Invoices: [invoiceBody] }),
     });
 
+    const responseText = await invRes.text();
+    console.log('Xero API response status:', invRes.status, 'body:', responseText);
+
     if (!invRes.ok) {
-      const errText = await invRes.text();
-      throw new Error(`Xero invoice creation failed [${invRes.status}]: ${errText}`);
+      throw new Error(`Xero invoice creation failed [${invRes.status}]: ${responseText}`);
     }
 
-    const invData = await invRes.json();
+    const invData = JSON.parse(responseText);
     const invoice = invData?.Invoices?.[0];
     const xeroInvoiceId = invoice?.InvoiceID;
 
