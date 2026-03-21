@@ -61,10 +61,22 @@ export function JobCard({
     setStarting(false);
   };
 
+  // Determine left border color based on acceptance status
+  const getBorderClass = () => {
+    if (!acceptances || acceptances.length === 0) return '';
+    const hasDeclined = acceptances.some(a => a.acceptance_status === 'declined');
+    const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
+    const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
+    if (hasDeclined) return 'border-l-4 border-l-destructive';
+    if (allAccepted) return 'border-l-4 border-l-primary';
+    if (hasPending) return 'border-l-4 border-l-[hsl(45,100%,51%)]';
+    return '';
+  };
+
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border"
+      className={`w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border ${getBorderClass()}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
