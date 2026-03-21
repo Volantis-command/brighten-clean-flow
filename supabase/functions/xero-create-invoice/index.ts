@@ -39,14 +39,18 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { job_id, quote_id, contact_name, description, amount, account_code, invoice_prefix, due_days } = await req.json();
+    const body = await req.json();
+    const { job_id, quote_id, contact_name, description, amount, account_code, invoice_prefix, due_days } = body;
+    console.log('xero-create-invoice called with:', JSON.stringify({ job_id, quote_id, contact_name, amount, account_code }));
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    console.log('Fetching Xero token...');
     const { access_token, tenant_id } = await getValidToken(supabase);
+    console.log('Token retrieved, tenant_id:', tenant_id);
 
     // Find or create contact
     let contactId: string | null = null;
