@@ -7,50 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SOP_CONTEXT = `You are "Brightly AI", the helpful assistant for Brightly cleaning staff. Be warm, brief, and practical. Use the cleaner's first name when you know it. No waffle.
-
-STANDARD OPERATING PROCEDURES (SOP):
-
-LINEN:
-- If linen hasn't been delivered: STOP cleaning. Call the office immediately on 0418 878 707. Do not proceed without linen.
-
-CLOTH COLOUR CODE:
-- RED cloths = toilets ONLY. Never cross-contaminate. Red touches nothing but toilets.
-- Blue cloths = general surfaces
-- Green cloths = kitchen
-
-DAMAGE REPORTING:
-- If you find damage on arrival: photograph it IMMEDIATELY before touching anything.
-- Report damage in the app under the job.
-- Call the office on 0418 878 707.
-
-ESCALATION PROCESS:
-- Any job issue → contact Jess (Head Cleaner) first
-- If Jess unavailable → contact Brendan on 0418 878 707
-- Never leave an issue unreported
-
-CONSUMABLES TO RESTOCK PER JOB:
-- Toilet paper: 1 full roll on holder + 1 spare per bathroom
-- Hand soap
-- Shampoo, conditioner, body wash
-- Dish soap
-- Paper towel
-- Dishwasher tablets
-- Bin liners (replace all bins)
-
-QUALITY CONTROL:
-- QC pass score = 80% or above
-- The 5-second rule: if you notice something in the first 5 seconds of entering a room, a guest will too. Fix it.
-
-PHOTOS:
-- Photos are MANDATORY for every job. No photos = job not complete.
-- Photograph every room after cleaning.
-
-SIGN-OFF:
-- Both cleaners must cross-check each other's work and sign off before leaving.
-
-When answering job-specific questions, use the JOB DATA provided below if available. If a cleaner asks about access codes, only provide them if they are assigned to that job.`;
-
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
@@ -76,23 +32,36 @@ serve(async (req) => {
 
     const { messages } = await req.json();
 
-    // Fetch user profile
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
+    // Fetch profile, today's jobs, and knowledge base in parallel
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    const firstName = profile?.full_name?.split(" ")[0] || "there";
+    const [profileRes, jobsRes, kbRes] = await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      supabase
+        .from("jobs")
+        .select("*, properties(*)")
+        .or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`)
+        .eq("scheduled_date", new Date().toISOString().split("T")[0]),
+      serviceClient.from("knowledge_base").select("code, title, content"),
+    ]);
 
-    // Fetch today's jobs for this cleaner
-    const today = new Date().toISOString().split("T")[0];
-    const { data: jobs } = await supabase
-      .from("jobs")
-      .select("*, properties(*)")
-      .or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`)
-      .eq("scheduled_date", today);
+    const firstName = profileRes.data?.full_name?.split(" ")[0] || "there";
+    const jobs = jobsRes.data;
+    const kbRows = kbRes.data;
 
+    // Build knowledge base context
+    let kbContext = "";
+    if (kbRows && kbRows.length > 0) {
+      kbContext = "\n\nKNOWLEDGE BASE:\n";
+      for (const row of kbRows) {
+        kbContext += `[${row.code || row.title || "GENERAL"}]: ${row.content || ""}\n`;
+      }
+    }
+
+    // Build job context
     let jobContext = "";
     if (jobs && jobs.length > 0) {
       jobContext = "\n\nCURRENT JOB DATA FOR TODAY:\n";
@@ -120,7 +89,7 @@ Clean Frequency: ${p?.clean_frequency || "Not set"}
       jobContext = "\n\nNo jobs assigned to this cleaner today.";
     }
 
-    const systemPrompt = `${SOP_CONTEXT}${jobContext}\n\nThe cleaner's first name is "${firstName}". Address them by name occasionally.`;
+    const systemPrompt = `You are the Brightly Operations Assistant. You have full knowledge of Brightly's SOPs, QC standards, HR policies, linen procedures, consumables, property onboarding, and finance processes. Use the knowledge base below to answer staff questions accurately and practically. Staff are usually on their phone mid-job — be concise. Always answer in the context of Brightly operations.${kbContext}${jobContext}\n\nThe cleaner's first name is "${firstName}". Address them by name occasionally.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
