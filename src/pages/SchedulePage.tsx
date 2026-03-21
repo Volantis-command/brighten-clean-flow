@@ -145,6 +145,8 @@ export default function SchedulePage() {
           <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
 
+        <AcceptanceFilter value={acceptanceFilter} onChange={handleAcceptanceChange} />
+
         {isLoading ? (
           <p className="text-primary font-bold text-center py-8">Loading jobs…</p>
         ) : dayJobs.length === 0 ? (
