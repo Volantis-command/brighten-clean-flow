@@ -34,6 +34,7 @@ export default function FormsPage() {
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  useXeroInvoiceSync();
 
   // Fetch all job forms with joined data
   const { data: forms, isLoading } = useQuery({

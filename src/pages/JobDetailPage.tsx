@@ -25,6 +25,7 @@ export default function JobDetailPage() {
   const [pushingInvoice, setPushingInvoice] = useState(false);
   const [resendingTo, setResendingTo] = useState<string | null>(null);
   const [showPricePrompt, setShowPricePrompt] = useState(false);
+  const [syncingStatus, setSyncingStatus] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
