@@ -35,6 +35,44 @@ export type Database = {
         }
         Relationships: []
       }
+      job_acceptances: {
+        Row: {
+          acceptance_status: string
+          cleaner_id: string
+          created_at: string
+          id: string
+          job_id: string
+          responded_at: string | null
+          sms_sent_at: string | null
+        }
+        Insert: {
+          acceptance_status?: string
+          cleaner_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          responded_at?: string | null
+          sms_sent_at?: string | null
+        }
+        Update: {
+          acceptance_status?: string
+          cleaner_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          responded_at?: string | null
+          sms_sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_acceptances_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_forms: {
         Row: {
           cleaner_id: string | null
