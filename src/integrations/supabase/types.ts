@@ -131,7 +131,11 @@ export type Database = {
           invoice_amount: number | null
           invoice_notes: string | null
           invoice_status: string | null
+          linked_quote_id: string | null
           notes: string | null
+          price_ex_gst: number | null
+          price_inc_gst: number | null
+          price_notes: string | null
           property_id: string | null
           scheduled_date: string
           scheduled_time: string | null
@@ -148,7 +152,11 @@ export type Database = {
           invoice_amount?: number | null
           invoice_notes?: string | null
           invoice_status?: string | null
+          linked_quote_id?: string | null
           notes?: string | null
+          price_ex_gst?: number | null
+          price_inc_gst?: number | null
+          price_notes?: string | null
           property_id?: string | null
           scheduled_date: string
           scheduled_time?: string | null
@@ -165,7 +173,11 @@ export type Database = {
           invoice_amount?: number | null
           invoice_notes?: string | null
           invoice_status?: string | null
+          linked_quote_id?: string | null
           notes?: string | null
+          price_ex_gst?: number | null
+          price_inc_gst?: number | null
+          price_notes?: string | null
           property_id?: string | null
           scheduled_date?: string
           scheduled_time?: string | null
@@ -174,6 +186,13 @@ export type Database = {
           xero_invoice_number?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_linked_quote_id_fkey"
+            columns: ["linked_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_property_id_fkey"
             columns: ["property_id"]
