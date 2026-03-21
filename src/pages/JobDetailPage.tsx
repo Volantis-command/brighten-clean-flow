@@ -67,21 +67,6 @@ export default function JobDetailPage() {
 
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
 
-  // Fetch accepted quotes for this property
-  const { data: acceptedQuotes = [] } = useQuery({
-    queryKey: ['accepted-quotes', job?.property_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('quotes')
-        .select('id, reference, sell_price_ex_gst, sell_price_inc_gst, clean_type, client_name')
-        .eq('property_id', job!.property_id!)
-        .eq('status', 'accepted')
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-    enabled: role === 'admin' && !!job?.property_id,
-  });
-
   const { data: xeroSettings = [] } = useQuery({
     queryKey: ['xero-settings'],
     queryFn: async () => {
