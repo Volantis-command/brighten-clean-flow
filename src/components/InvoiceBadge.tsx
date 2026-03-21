@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { Check } from 'lucide-react';
 
 interface InvoiceBadgeProps {
   status: string | null | undefined;
@@ -9,12 +10,18 @@ export function InvoiceBadge({ status }: InvoiceBadgeProps) {
     return <Badge variant="secondary" className="text-[10px] px-2 py-0.5">No Invoice</Badge>;
   }
 
-  const config: Record<string, { label: string; className: string }> = {
-    draft: { label: 'Draft', className: 'bg-[#FEDB00] text-foreground border-transparent' },
+  const config: Record<string, { label: string; className: string; icon?: boolean }> = {
+    draft: { label: 'Draft', className: 'bg-[hsl(var(--accent))] text-accent-foreground border-transparent' },
     sent: { label: 'Sent', className: 'bg-blue-100 text-blue-800 border-transparent' },
-    paid: { label: 'Paid', className: 'bg-primary text-primary-foreground border-transparent' },
+    paid: { label: 'Paid', className: 'bg-primary text-primary-foreground border-transparent', icon: true },
+    voided: { label: 'Voided', className: 'bg-muted text-muted-foreground border-transparent line-through' },
   };
 
   const c = config[status] || config.draft;
-  return <Badge className={`text-[10px] px-2 py-0.5 ${c.className}`}>{c.label}</Badge>;
+  return (
+    <Badge className={`text-[10px] px-2 py-0.5 gap-1 ${c.className}`}>
+      {c.icon && <Check className="h-3 w-3" />}
+      {c.label}
+    </Badge>
+  );
 }
