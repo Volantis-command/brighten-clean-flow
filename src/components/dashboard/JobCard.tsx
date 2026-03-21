@@ -106,6 +106,17 @@ export function JobCard({
         </div>
       )}
 
+      {acceptances && acceptances.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {acceptances.map((a) => (
+            <div key={a.cleaner_id} className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">{a.cleaner_name.split(' ')[0]}:</span>
+              <AcceptanceBadge status={a.acceptance_status} compact />
+            </div>
+          ))}
+        </div>
+      )}
+
       {(showStartButton || showNavigateButton) && (
         <div className="mt-4 flex gap-3">
           {showNavigateButton && address && (
