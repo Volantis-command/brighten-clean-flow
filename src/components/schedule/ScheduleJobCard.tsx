@@ -157,9 +157,20 @@ export function ScheduleJobCard({
       </div>
 
       {cleanerNames && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <Users className="h-4 w-4 shrink-0" />
           <span>{cleanerNames}</span>
+        </div>
+      )}
+
+      {acceptances && acceptances.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {acceptances.map((a) => (
+            <div key={a.cleaner_id} className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">{a.cleaner_name.split(' ')[0]}:</span>
+              <AcceptanceBadge status={a.acceptance_status} compact />
+            </div>
+          ))}
         </div>
       )}
 
