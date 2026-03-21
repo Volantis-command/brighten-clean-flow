@@ -11,21 +11,40 @@ async function sendTwilioSms(to: string, body: string) {
   await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${credentials}`,
+      Authorization: `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({ To: to, From: fromNumber, Body: body }),
   });
 }
 
-/** Strip all non-digit chars, then normalize AU numbers to 0-prefix */
+function digitsOnly(phone: string) {
+  return phone.replace(/\D/g, '');
+}
+
 function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  // Australian +61 → 0
-  if (digits.startsWith('61') && digits.length === 11) {
-    return '0' + digits.slice(2);
-  }
+  const digits = digitsOnly(phone);
+  if (digits.startsWith('61') && digits.length === 11) return `0${digits.slice(2)}`;
   return digits;
+}
+
+function phoneVariants(phone: string): string[] {
+  const rawDigits = digitsOnly(phone);
+  const normalized = normalizePhone(phone);
+  const variants = new Set<string>([phone, rawDigits, normalized]);
+
+  if (normalized.startsWith('0') && normalized.length === 10) {
+    variants.add(`61${normalized.slice(1)}`);
+    variants.add(`+61${normalized.slice(1)}`);
+    variants.add(normalized.slice(1));
+  }
+
+  if (rawDigits.startsWith('61') && rawDigits.length === 11) {
+    variants.add(`0${rawDigits.slice(2)}`);
+    variants.add(rawDigits.slice(2));
+  }
+
+  return Array.from(variants).filter(Boolean);
 }
 
 Deno.serve(async (req) => {
@@ -35,83 +54,132 @@ Deno.serve(async (req) => {
 
   try {
     const formData = await req.formData();
-    const body = (formData.get('Body') as string || '').trim().toUpperCase();
-    const from = (formData.get('From') as string || '').trim();
+    const body = ((formData.get('Body') as string) || '').trim().toUpperCase();
+    const from = ((formData.get('From') as string) || '').trim();
 
-    console.log(`Inbound SMS from ${from}: "${body}"`);
+    console.log(`[twilio-inbound-sms] From field received exactly: "${from}"`);
+    console.log(`[twilio-inbound-sms] Body: "${body}"`);
 
-    if (!from) {
-      return twimlResponse('');
-    }
+    if (!from) return twimlResponse('');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    const variants = phoneVariants(from);
     const normalizedIncoming = normalizePhone(from);
-    console.log(`Normalized incoming phone: ${normalizedIncoming}`);
 
-    // Fetch ALL profiles with a phone number and match flexibly
+    console.log('[twilio-inbound-sms] Phone match pseudo-SQL:');
+    console.log(
+      `select id, full_name, phone from public.profiles where phone is not null and regexp_replace(phone, '\\D', '', 'g') in (${variants
+        .map((v) => `'${digitsOnly(v)}'`)
+        .join(', ')});`,
+    );
+    console.log('[twilio-inbound-sms] Incoming phone variants:', variants);
+    console.log('[twilio-inbound-sms] Normalized incoming phone:', normalizedIncoming);
+
     const { data: allProfiles, error: profileError } = await supabase
       .from('profiles')
       .select('id, full_name, phone')
       .not('phone', 'is', null);
 
     if (profileError) {
-      console.error('Error fetching profiles:', profileError);
+      console.error('[twilio-inbound-sms] Error fetching profiles:', profileError);
       return twimlResponse('');
     }
 
-    console.log(`Found ${allProfiles?.length || 0} profiles with phone numbers`);
-
-    const profile = allProfiles?.find((p) => {
-      if (!p.phone) return false;
-      const normalizedStored = normalizePhone(p.phone);
-      return normalizedStored === normalizedIncoming;
+    const matchingProfiles = (allProfiles || []).filter((profile) => {
+      const storedDigits = digitsOnly(profile.phone || '');
+      const storedNormalized = normalizePhone(profile.phone || '');
+      return variants.some((variant) => {
+        const variantDigits = digitsOnly(variant);
+        return variantDigits === storedDigits || variantDigits === storedNormalized || normalizedIncoming === storedNormalized;
+      });
     });
 
-    if (!profile) {
-      console.log(`No profile matched for normalized phone: ${normalizedIncoming}`);
-      console.log('Stored phones:', allProfiles?.map(p => `${p.full_name}: ${p.phone} → ${normalizePhone(p.phone!)}`));
+    console.log(
+      '[twilio-inbound-sms] Profiles found for phone search:',
+      matchingProfiles.map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        phone: p.phone,
+        digits: digitsOnly(p.phone || ''),
+        normalized: normalizePhone(p.phone || ''),
+      })),
+    );
+
+    if (matchingProfiles.length === 0) {
+      console.log(
+        '[twilio-inbound-sms] No profile matched. Available stored phones:',
+        (allProfiles || []).map((p) => ({
+          full_name: p.full_name,
+          phone: p.phone,
+          digits: digitsOnly(p.phone || ''),
+          normalized: normalizePhone(p.phone || ''),
+        })),
+      );
       return twimlResponse('Sorry, we could not find your account. Please contact your manager. - Brightly');
     }
 
-    console.log(`Matched profile: ${profile.full_name} (${profile.id})`);
+    const profile = matchingProfiles[0];
     const firstName = (profile.full_name || 'Team member').split(' ')[0];
 
-    // Find their most recent pending acceptance — no job status filter, no time filter
-    const { data: acceptances, error: accError } = await supabase
-      .from('job_acceptances')
-      .select('*, jobs(id, status, scheduled_date, scheduled_time, properties(property_name))')
-      .eq('cleaner_id', profile.id)
-      .eq('acceptance_status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(5);
+    console.log(
+      `[twilio-inbound-sms] Matched cleaner profile: ${profile.full_name} (${profile.id}) using stored phone "${profile.phone}"`,
+    );
 
-    if (accError) {
-      console.error('Error fetching acceptances:', accError);
+    const { data: allAcceptances, error: acceptancesError } = await supabase
+      .from('job_acceptances')
+      .select('id, job_id, cleaner_id, acceptance_status, sms_sent_at, responded_at, created_at, jobs(id, status, scheduled_date, scheduled_time, properties(property_name))')
+      .eq('cleaner_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (acceptancesError) {
+      console.error('[twilio-inbound-sms] Error fetching acceptances:', acceptancesError);
       return twimlResponse('');
     }
 
-    console.log(`Found ${acceptances?.length || 0} pending acceptances for cleaner ${profile.id}`);
-    acceptances?.forEach((a, i) => {
-      const j = a.jobs as any;
-      console.log(`  [${i}] acceptance ${a.id} | job ${j?.id} status=${j?.status} | date=${j?.scheduled_date} | property=${j?.properties?.property_name}`);
+    const allJobsDebug = (allAcceptances || []).map((a) => ({
+      acceptance_id: a.id,
+      job_id: a.job_id,
+      acceptance_status: a.acceptance_status,
+      sms_sent_at: a.sms_sent_at,
+      responded_at: a.responded_at,
+      created_at: a.created_at,
+      job_status: (a.jobs as any)?.status,
+      scheduled_date: (a.jobs as any)?.scheduled_date,
+      scheduled_time: (a.jobs as any)?.scheduled_time,
+      property_name: (a.jobs as any)?.properties?.property_name,
+    }));
+    console.log('[twilio-inbound-sms] All jobs found for profile:', allJobsDebug);
+
+    const candidateAcceptances = (allAcceptances || []).filter((a) => {
+      const jobStatus = (a.jobs as any)?.status;
+      return jobStatus === 'scheduled' || jobStatus === 'pending';
     });
 
-    // Pick the most recent pending one (already ordered by created_at desc)
-    const acceptance = acceptances?.[0];
+    const candidateJobsDebug = candidateAcceptances.map((a) => ({
+      acceptance_id: a.id,
+      job_id: a.job_id,
+      acceptance_status: a.acceptance_status,
+      job_status: (a.jobs as any)?.status,
+    }));
+    console.log('[twilio-inbound-sms] Candidate jobs with status scheduled/pending:', candidateJobsDebug);
+
+    const pendingAcceptance = candidateAcceptances.find((a) => a.acceptance_status === 'pending');
+    const acceptance = pendingAcceptance || candidateAcceptances[0] || allAcceptances?.[0];
+
     if (!acceptance) {
-      // Also check if they have ANY acceptances at all for debugging
-      const { data: allAcc } = await supabase
-        .from('job_acceptances')
-        .select('id, acceptance_status, created_at')
-        .eq('cleaner_id', profile.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      console.log(`No pending acceptances. All recent acceptances:`, allAcc);
+      console.log('[twilio-inbound-sms] No acceptances found for this cleaner at all.');
       return twimlResponse(`Hi ${firstName}, you don't have any pending job invitations right now. - Brightly`);
+    }
+
+    if (!pendingAcceptance) {
+      console.log(
+        `[twilio-inbound-sms] No pending acceptance row found. Falling back to most recent candidate acceptance ${acceptance.id} with status ${acceptance.acceptance_status}.`,
+      );
     }
 
     const job = acceptance.jobs as any;
@@ -126,34 +194,34 @@ Deno.serve(async (req) => {
         .eq('id', acceptance.id);
 
       if (updateErr) {
-        console.error('Failed to update acceptance:', updateErr);
+        console.error('[twilio-inbound-sms] Failed to update acceptance to accepted:', updateErr);
         return twimlResponse('');
       }
 
-      console.log(`Acceptance ${acceptance.id} updated to ACCEPTED`);
-      const reply = `Got it ${firstName}, you're confirmed for ${propName}, ${dateStr} at ${timeStr}. See you there! - Brightly`;
-      await sendTwilioSms(from, reply);
+      console.log(`[twilio-inbound-sms] Acceptance ${acceptance.id} updated to accepted`);
+      await sendTwilioSms(from, `Got it ${firstName}, you're confirmed for ${propName}, ${dateStr} at ${timeStr}. See you there! - Brightly`);
       return twimlResponse('');
-    } else if (body === 'NO' || body === 'N') {
+    }
+
+    if (body === 'NO' || body === 'N') {
       const { error: updateErr } = await supabase
         .from('job_acceptances')
         .update({ acceptance_status: 'declined', responded_at: new Date().toISOString() })
         .eq('id', acceptance.id);
 
       if (updateErr) {
-        console.error('Failed to update acceptance:', updateErr);
+        console.error('[twilio-inbound-sms] Failed to update acceptance to declined:', updateErr);
         return twimlResponse('');
       }
 
-      console.log(`Acceptance ${acceptance.id} updated to DECLINED`);
-      const reply = `No problem ${firstName}, we'll find cover. Thanks for letting us know. - Brightly`;
-      await sendTwilioSms(from, reply);
+      console.log(`[twilio-inbound-sms] Acceptance ${acceptance.id} updated to declined`);
+      await sendTwilioSms(from, `No problem ${firstName}, we'll find cover. Thanks for letting us know. - Brightly`);
       return twimlResponse('');
-    } else {
-      return twimlResponse('Please reply YES or NO to confirm your job. - Brightly');
     }
+
+    return twimlResponse('Please reply YES or NO to confirm your job. - Brightly');
   } catch (err) {
-    console.error('twilio-inbound-sms error:', err);
+    console.error('[twilio-inbound-sms] Unhandled error:', err);
     return twimlResponse('');
   }
 });
