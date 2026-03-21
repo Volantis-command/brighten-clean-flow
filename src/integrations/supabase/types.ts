@@ -35,6 +35,44 @@ export type Database = {
         }
         Relationships: []
       }
+      client_properties: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          guest_ready_sms: boolean | null
+          id: string
+          portal_active: boolean | null
+          property_id: string
+          show_invoices: boolean | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          guest_ready_sms?: boolean | null
+          id?: string
+          portal_active?: boolean | null
+          property_id: string
+          show_invoices?: boolean | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          guest_ready_sms?: boolean | null
+          id?: string
+          portal_active?: boolean | null
+          property_id?: string
+          show_invoices?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_acceptances: {
         Row: {
           acceptance_status: string
@@ -486,6 +524,66 @@ export type Database = {
           turnaround_window?: string | null
         }
         Relationships: []
+      }
+      property_issues: {
+        Row: {
+          acknowledged_by: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          job_id: string | null
+          photo_url: string | null
+          property_id: string | null
+          reported_at: string | null
+          reported_by: string | null
+          resolved_at: string | null
+          room: string | null
+          status: string | null
+        }
+        Insert: {
+          acknowledged_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          job_id?: string | null
+          photo_url?: string | null
+          property_id?: string | null
+          reported_at?: string | null
+          reported_by?: string | null
+          resolved_at?: string | null
+          room?: string | null
+          status?: string | null
+        }
+        Update: {
+          acknowledged_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          job_id?: string | null
+          photo_url?: string | null
+          property_id?: string | null
+          reported_at?: string | null
+          reported_by?: string | null
+          resolved_at?: string | null
+          room?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_issues_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_issues_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       qc_audits: {
         Row: {
