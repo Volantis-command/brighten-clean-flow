@@ -48,6 +48,7 @@ export function ScheduleJobCard({
   onClick,
   showClockIn,
   isPastJob,
+  invoiceStatus,
 }: ScheduleJobCardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
