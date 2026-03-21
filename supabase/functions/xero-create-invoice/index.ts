@@ -9,7 +9,6 @@ async function getValidToken(supabase: any) {
   const { data: tokens } = await supabase.from('xero_tokens').select('*').limit(1).single();
   if (!tokens) throw new Error('Xero not connected');
 
-  // Auto-refresh if needed
   const expiresAt = new Date(tokens.expires_at).getTime();
   if (Date.now() > expiresAt - 5 * 60 * 1000) {
     const clientId = Deno.env.get('XERO_CLIENT_ID')!;
@@ -91,6 +90,9 @@ Deno.serve(async (req) => {
     const dueDate = new Date(today);
     dueDate.setDate(dueDate.getDate() + (parseInt(due_days) || 7));
 
+    // Use the price_ex_gst amount passed from the frontend
+    const unitAmount = parseFloat(amount) || 0;
+
     const invoiceBody: any = {
       Type: 'ACCREC',
       InvoiceNumber: invoiceNumber,
@@ -98,13 +100,14 @@ Deno.serve(async (req) => {
       Date: today.toISOString().split('T')[0],
       DueDate: dueDate.toISOString().split('T')[0],
       Status: 'DRAFT',
-      LineAmountTypes: 'Inclusive',
+      CurrencyCode: 'AUD',
+      LineAmountTypes: 'Exclusive',
       LineItems: [{
         Description: description || 'Cleaning service',
         Quantity: 1,
-        UnitAmount: amount || 0,
-        AccountCode: account_code || '4000',
-        TaxType: 'OUTPUT',
+        UnitAmount: unitAmount.toFixed(2),
+        AccountCode: account_code || '200',
+        TaxType: 'OUTPUT2',
       }],
     };
 
@@ -142,7 +145,7 @@ Deno.serve(async (req) => {
         xero_invoice_id: xeroInvoiceId,
         xero_invoice_number: invoiceNumber,
         invoice_status: 'draft',
-        invoice_amount: amount || 0,
+        invoice_amount: unitAmount,
       }).eq('id', job_id);
     }
 

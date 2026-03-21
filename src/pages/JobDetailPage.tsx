@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
@@ -23,6 +26,14 @@ export default function JobDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [pushingInvoice, setPushingInvoice] = useState(false);
   const [resendingTo, setResendingTo] = useState<string | null>(null);
+  const [showPricePrompt, setShowPricePrompt] = useState(false);
+
+  // Pricing state
+  const [priceMode, setPriceMode] = useState<'ex' | 'inc'>('ex');
+  const [priceInput, setPriceInput] = useState('');
+  const [priceNotes, setPriceNotes] = useState('');
+  const [linkedQuoteId, setLinkedQuoteId] = useState('');
+  const [savingPrice, setSavingPrice] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-detail', jobId],
@@ -38,7 +49,15 @@ export default function JobDetailPage() {
     enabled: !!jobId,
   });
 
-  // Fetch cleaner names
+  // Init pricing fields from job
+  useEffect(() => {
+    if (job) {
+      setPriceInput(job.price_ex_gst ? String(job.price_ex_gst) : '');
+      setPriceNotes(job.price_notes || '');
+      setLinkedQuoteId(job.linked_quote_id || '');
+    }
+  }, [job]);
+
   const cleanerIds = [job?.cleaner_1_id, job?.cleaner_2_id].filter(Boolean) as string[];
   const { data: profiles = [] } = useQuery({
     queryKey: ['job-detail-profiles', cleanerIds],
@@ -51,10 +70,23 @@ export default function JobDetailPage() {
     enabled: cleanerIds.length > 0,
   });
 
-  // Fetch acceptances
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
 
-  // Fetch xero settings for invoice creation
+  // Fetch accepted quotes for this property
+  const { data: acceptedQuotes = [] } = useQuery({
+    queryKey: ['accepted-quotes', job?.property_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('quotes')
+        .select('id, reference, sell_price_ex_gst, sell_price_inc_gst, clean_type, client_name')
+        .eq('property_id', job!.property_id!)
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+    enabled: role === 'admin' && !!job?.property_id,
+  });
+
   const { data: xeroSettings = [] } = useQuery({
     queryKey: ['xero-settings'],
     queryFn: async () => {
@@ -69,6 +101,39 @@ export default function JobDetailPage() {
 
   const nameMap: Record<string, string> = {};
   profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+
+  // Pricing calculations
+  const priceNum = parseFloat(priceInput) || 0;
+  const priceExGst = priceMode === 'ex' ? priceNum : priceNum / 1.10;
+  const gst = priceExGst * 0.10;
+  const priceIncGst = priceExGst * 1.10;
+
+  const handleSavePrice = async () => {
+    if (!jobId) return;
+    setSavingPrice(true);
+    const { error } = await supabase.from('jobs').update({
+      price_ex_gst: priceExGst || null,
+      price_inc_gst: priceIncGst || null,
+      price_notes: priceNotes || null,
+      linked_quote_id: linkedQuoteId || null,
+    }).eq('id', jobId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Price saved');
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+    }
+    setSavingPrice(false);
+  };
+
+  const handleLinkQuote = (quoteId: string) => {
+    const quote = acceptedQuotes.find((q: any) => q.id === quoteId);
+    if (quote) {
+      setLinkedQuoteId(quoteId);
+      setPriceMode('ex');
+      setPriceInput(String(quote.sell_price_ex_gst || 0));
+    }
+  };
 
   const handleResendSms = async () => {
     if (!jobId) return;
@@ -89,15 +154,17 @@ export default function JobDetailPage() {
     setResendingTo(null);
   };
 
-  const handlePushInvoice = async () => {
+  const doPushInvoice = async () => {
     if (!job) return;
     setPushingInvoice(true);
     try {
       const property = job.properties as any;
-      const cleanType = 'Turnover Clean'; // Default, could be enhanced
-      const accountCodeKey = `account_code_turnover`;
+      const cleanType = 'Turnover Clean';
+      const accountCodeKey = 'account_code_turnover';
       const description = `${cleanType} — ${property?.property_name || 'Property'} — ${property?.suburb || ''} — ${job.scheduled_date}`;
-      
+
+      const jobPriceExGst = job.price_ex_gst || priceExGst || 0;
+
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-create-invoice`,
         {
@@ -110,8 +177,8 @@ export default function JobDetailPage() {
             job_id: job.id,
             contact_name: property?.client_name || property?.property_name || 'Unknown Client',
             description,
-            amount: job.invoice_amount || 0,
-            account_code: xeroMap[accountCodeKey] || '4000',
+            amount: jobPriceExGst,
+            account_code: xeroMap[accountCodeKey] || '200',
             invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
             due_days: xeroMap['due_days'] || '7',
           }),
@@ -125,6 +192,16 @@ export default function JobDetailPage() {
       toast.error('Failed to create invoice: ' + err.message);
     }
     setPushingInvoice(false);
+    setShowPricePrompt(false);
+  };
+
+  const handlePushInvoice = () => {
+    const jobPrice = job?.price_ex_gst;
+    if (!jobPrice || jobPrice === 0) {
+      setShowPricePrompt(true);
+    } else {
+      doPushInvoice();
+    }
   };
 
   if (isLoading) {
@@ -254,6 +331,109 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Pricing — Admin only */}
+      {role === 'admin' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Pricing
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Price type toggle */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPriceMode('ex')}
+                className={`flex-1 h-10 rounded-xl font-bold text-sm transition-colors ${
+                  priceMode === 'ex' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                Ex GST
+              </button>
+              <button
+                onClick={() => setPriceMode('inc')}
+                className={`flex-1 h-10 rounded-xl font-bold text-sm transition-colors ${
+                  priceMode === 'inc' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                Inc GST
+              </button>
+            </div>
+
+            <div>
+              <Label className="text-sm font-semibold">
+                Price ({priceMode === 'ex' ? 'ex GST' : 'inc GST'})
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                placeholder="0.00"
+                className="h-12 rounded-xl text-lg font-bold"
+              />
+            </div>
+
+            {priceNum > 0 && (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Price (ex GST)</span>
+                  <span className="font-bold">${priceExGst.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">GST (10%)</span>
+                  <span className="font-bold">${gst.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                  <span className="text-muted-foreground font-bold">Total (inc GST)</span>
+                  <span className="font-extrabold text-primary">${priceIncGst.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label className="text-sm font-semibold">Notes</Label>
+              <Input
+                value={priceNotes}
+                onChange={(e) => setPriceNotes(e.target.value)}
+                placeholder="e.g. Standard 3 bed turnover"
+                className="h-10 rounded-xl"
+              />
+            </div>
+
+            {/* Link to quote */}
+            {acceptedQuotes.length > 0 && (
+              <div>
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <Link2 className="h-3.5 w-3.5" />
+                  Link to Quote
+                </Label>
+                <Select value={linkedQuoteId || '__none__'} onValueChange={(v) => v === '__none__' ? setLinkedQuoteId('') : handleLinkQuote(v)}>
+                  <SelectTrigger className="h-10 rounded-xl">
+                    <SelectValue placeholder="Select a quote" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {acceptedQuotes.map((q: any) => (
+                      <SelectItem key={q.id} value={q.id}>
+                        {q.reference || q.clean_type || 'Quote'} — ${q.sell_price_ex_gst?.toFixed(2) || '0.00'} ex GST
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button onClick={handleSavePrice} disabled={savingPrice} className="w-full gap-2 rounded-xl">
+              {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+              Save Price
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Notes */}
       {job.notes && (
         <Card>
@@ -373,6 +553,27 @@ export default function JobDetailPage() {
           </AlertDialog>
         )}
       </div>
+
+      {/* Price Prompt Modal */}
+      <Dialog open={showPricePrompt} onOpenChange={setShowPricePrompt}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No price set</DialogTitle>
+            <DialogDescription>
+              This job has no price set. Enter a price before creating the invoice, or push with $0.00 and update in Xero manually.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => { setShowPricePrompt(false); }} className="w-full sm:w-auto">
+              Enter Price
+            </Button>
+            <Button onClick={doPushInvoice} disabled={pushingInvoice} className="w-full sm:w-auto gap-2" style={{ backgroundColor: '#13B5EA' }}>
+              {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Push as $0.00
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
