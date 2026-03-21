@@ -24,12 +24,14 @@ const roleLabels: Record<AppRole, string> = {
   admin: 'Admin',
   head_cleaner: 'Head Cleaner',
   cleaner: 'Cleaner',
+  client: 'Client',
 };
 
 const roleBadgeStyles: Record<AppRole, string> = {
   admin: 'bg-primary text-primary-foreground',
   head_cleaner: 'bg-accent text-accent-foreground',
   cleaner: 'bg-secondary text-secondary-foreground',
+  client: 'bg-blue-100 text-blue-800',
 };
 
 function useStaffList() {
