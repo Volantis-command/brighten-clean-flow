@@ -221,7 +221,8 @@ export default function PropertyFormPage() {
         {step === 1 && <Step2 form={form} updateField={updateField} />}
         {step === 2 && <Step3 form={form} updateField={updateField} />}
         {step === 3 && <Step4 form={form} updateField={updateField} />}
-        {step === 4 && <Step5 form={form} updateField={updateField} cleaners={cleaners} />}
+        {step === 4 && <StepPricing form={form} updateField={updateField} />}
+        {step === 5 && <Step5 form={form} updateField={updateField} cleaners={cleaners} />}
       </div>
 
       {/* Navigation */}
