@@ -109,6 +109,33 @@ export type Database = {
           },
         ]
       }
+      knowledge_base: {
+        Row: {
+          category: string | null
+          code: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          title: string | null
+        }
+        Insert: {
+          category?: string | null
+          code?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          title?: string | null
+        }
+        Update: {
+          category?: string | null
+          code?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
