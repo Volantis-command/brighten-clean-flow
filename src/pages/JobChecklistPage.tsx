@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 import { JobCompletionModal } from '@/components/JobCompletionModal';
+import { ReportIssueModal } from '@/components/checklist/ReportIssueModal';
 
 // --------------- Types ---------------
 interface FormData {
