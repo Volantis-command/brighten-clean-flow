@@ -210,20 +210,47 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Cleaners */}
+      {/* Cleaners & Acceptance */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Assigned Cleaners</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-sm text-foreground">
-            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>
-              {cleanerIds.length === 0
-                ? 'No cleaners assigned'
-                : cleanerIds.map(id => nameMap[id] || 'Unknown').join(' & ')}
-            </span>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Assigned Cleaners</CardTitle>
+            {role === 'admin' && job.status === 'scheduled' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendSms}
+                disabled={!!resendingTo}
+                className="gap-1.5 text-xs"
+              >
+                {resendingTo ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Resend SMS
+              </Button>
+            )}
           </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {cleanerIds.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No cleaners assigned</p>
+          ) : (
+            cleanerIds.map((id) => {
+              const acceptance = acceptances.find((a) => a.cleaner_id === id);
+              return (
+                <div key={id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{nameMap[id] || 'Unknown'}</span>
+                  </div>
+                  {acceptance && <AcceptanceBadge status={acceptance.acceptance_status} />}
+                </div>
+              );
+            })
+          )}
+          {acceptances.some((a) => a.acceptance_status === 'declined') && (
+            <div className="mt-2 p-3 bg-destructive/10 rounded-xl text-sm text-destructive font-semibold">
+              ⚠️ {acceptances.filter(a => a.acceptance_status === 'declined').map(a => nameMap[a.cleaner_id] || 'A cleaner').join(', ')} declined this job — reassign or find cover
+            </div>
+          )}
         </CardContent>
       </Card>
 
