@@ -56,7 +56,7 @@ export default function AddJobPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb')
+        .select('id, property_name, address, suburb, price_turnover')
         .eq('status', 'active')
         .order('property_name');
       if (error) throw error;
