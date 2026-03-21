@@ -18,6 +18,7 @@ export default function SchedulePage() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   const [selectedDate, setSelectedDate] = useState(new Date());
   const initialFilter = searchParams.get('status') || 'all';
+  useXeroInvoiceSync();
   const [statusFilter, setStatusFilter] = useState(initialFilter);
 
   const handleStatusChange = (value: string) => {
