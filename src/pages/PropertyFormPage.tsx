@@ -135,12 +135,16 @@ export default function PropertyFormPage() {
       return;
     }
     setSaving(true);
-    const { lat, lng, has_product_restrictions, ...rest } = form;
+    const { lat, lng, has_product_restrictions, price_turnover, price_deep_clean, price_end_of_lease, price_post_build, ...rest } = form;
     const payload = {
       ...rest,
       default_cleaner_id: form.default_cleaner_id || null,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
+      price_turnover: price_turnover ? parseFloat(price_turnover) : null,
+      price_deep_clean: price_deep_clean ? parseFloat(price_deep_clean) : null,
+      price_end_of_lease: price_end_of_lease ? parseFloat(price_end_of_lease) : null,
+      price_post_build: price_post_build ? parseFloat(price_post_build) : null,
     };
 
     if (isEdit) {
