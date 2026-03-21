@@ -38,7 +38,8 @@ function useStaffList() {
     queryFn: async () => {
       const { data: roles, error: rolesErr } = await supabase
         .from('user_roles')
-        .select('user_id, role');
+        .select('user_id, role')
+        .neq('role', 'client');
       if (rolesErr) throw rolesErr;
       if (!roles?.length) return [];
 
