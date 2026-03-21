@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { UserPlus, Pencil, Loader2, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 
-type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
+type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
 interface StaffMember {
   id: string;
