@@ -52,7 +52,6 @@ export default function JobDetailPage() {
     if (job) {
       setPriceInput(job.price_ex_gst ? String(job.price_ex_gst) : '');
       setPriceNotes(job.price_notes || '');
-      setLinkedQuoteId(job.linked_quote_id || '');
     }
   }, [job]);
 
