@@ -42,7 +42,7 @@ function RouteLoading() {
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, role, loading } = useAuth();
 
-  if (loading || (user && role === null)) {
+  if (loading) {
     return <RouteLoading />;
   }
 
@@ -56,7 +56,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 function ClientRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
 
-  if (loading || (user && role === null)) {
+  if (loading) {
     return <RouteLoading />;
   }
 
@@ -69,7 +69,7 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, role, loading } = useAuth();
 
-  if (loading || (user && role === null)) {
+  if (loading) {
     return <RouteLoading />;
   }
 
