@@ -106,9 +106,20 @@ export function ScheduleJobCard({
     setReturningToProperty(false);
   };
 
+  const getBorderClass = () => {
+    if (!acceptances || acceptances.length === 0) return '';
+    const hasDeclined = acceptances.some(a => a.acceptance_status === 'declined');
+    const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
+    const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
+    if (hasDeclined) return 'border-l-4 border-l-destructive';
+    if (allAccepted) return 'border-l-4 border-l-primary';
+    if (hasPending) return 'border-l-4 border-l-[hsl(45,100%,51%)]';
+    return '';
+  };
+
   return (
     <div
-      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''}`}
+      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${getBorderClass()}`}
       onClick={() => navigate(`/jobs/${id}`)}
       role="button"
       tabIndex={0}
