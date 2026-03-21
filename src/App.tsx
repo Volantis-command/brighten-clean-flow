@@ -69,7 +69,8 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, role, loading } = useAuth();
 
-  if (loading) {
+  // Wait for both auth AND role to resolve before rendering routes
+  if (loading || (user && role === null)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-primary font-bold text-lg">Loading...</div>
