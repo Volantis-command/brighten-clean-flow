@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       if (!clientId) return new Response(JSON.stringify({ error: 'XERO_CLIENT_ID not set' }), { status: 500, headers: corsHeaders });
       
       const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/xero-oauth-callback`;
-      const scopes = 'openid profile email accounting.transactions accounting.contacts accounting.settings offline_access';
+      const scopes = 'openid profile email offline_access accounting.invoices accounting.contacts accounting.settings';
       const authUrl = `https://login.xero.com/identity/connect/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=brightly`;
       
       return new Response(JSON.stringify({ url: authUrl }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
