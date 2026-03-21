@@ -367,7 +367,7 @@ export default function JobChecklistPage() {
 
         const settings = Object.fromEntries((xeroSettings || []).map(s => [s.key, s.value]));
         const cleanType = 'turnover'; // default
-        const accountCode = settings[`account_code_${cleanType}`] || settings['account_code_default'] || '4000';
+        const accountCode = settings[`account_code_${cleanType}`] || settings['account_code_default'] || '200';
         const invoicePrefix = settings['invoice_prefix'] || 'BCL-';
         const dueDays = settings['due_days'] || '7';
         const contactName = property?.client_name || property?.property_name || 'Unknown';
@@ -379,7 +379,7 @@ export default function JobChecklistPage() {
             job_id: jobId,
             contact_name: contactName,
             description: desc,
-            amount: job?.invoice_amount || 0,
+            amount: job?.price_ex_gst || 0,
             account_code: accountCode,
             invoice_prefix: invoicePrefix,
             due_days: dueDays,

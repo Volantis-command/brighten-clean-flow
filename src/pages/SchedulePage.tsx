@@ -116,6 +116,8 @@ export default function SchedulePage() {
                 propertyLat={job.properties?.lat}
                 propertyLng={job.properties?.lng}
                 invoiceStatus={job.invoice_status}
+                priceExGst={job.price_ex_gst}
+                isAdmin={true}
               />
             ))}
           </div>
