@@ -41,6 +41,7 @@ export function JobCard({
   showStartButton,
   onStartJob,
   showNavigateButton,
+  acceptances,
 }: JobCardProps) {
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(', ');
