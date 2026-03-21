@@ -22,6 +22,7 @@ export default function JobDetailPage() {
   const { role } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [pushingInvoice, setPushingInvoice] = useState(false);
+  const [resendingTo, setResendingTo] = useState<string | null>(null);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-detail', jobId],
