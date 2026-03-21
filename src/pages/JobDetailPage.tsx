@@ -437,14 +437,25 @@ export default function JobDetailPage() {
                 Push to Xero
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4" />
-                Open in Xero
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in Xero
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleSyncInvoiceStatus}
+                  disabled={syncingStatus}
+                >
+                  {syncingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                  Sync Xero Status
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
