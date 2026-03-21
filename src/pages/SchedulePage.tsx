@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
+import { AcceptanceFilter } from '@/components/schedule/AcceptanceFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 
@@ -18,8 +19,10 @@ export default function SchedulePage() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   const [selectedDate, setSelectedDate] = useState(new Date());
   const initialFilter = searchParams.get('status') || 'all';
+  const initialAcceptance = searchParams.get('acceptance') || 'all';
   useXeroInvoiceSync();
   const [statusFilter, setStatusFilter] = useState(initialFilter);
+  const [acceptanceFilter, setAcceptanceFilter] = useState(initialAcceptance);
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
@@ -31,7 +34,17 @@ export default function SchedulePage() {
     setSearchParams(searchParams, { replace: true });
   };
 
-  // Fetch jobs — admin sees all, cleaner sees their own
+  const handleAcceptanceChange = (value: string) => {
+    setAcceptanceFilter(value);
+    if (value === 'all') {
+      searchParams.delete('acceptance');
+    } else {
+      searchParams.set('acceptance', value);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
+
+  // Fetch jobs
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['schedule-jobs'],
     queryFn: async () => {
@@ -65,8 +78,45 @@ export default function SchedulePage() {
     enabled: cleanerIds.length > 0,
   });
 
+  // Fetch all acceptances for visible jobs
+  const jobIds = jobs.map((j: any) => j.id);
+  const { data: allAcceptances = [] } = useQuery({
+    queryKey: ['schedule-acceptances', jobIds],
+    queryFn: async () => {
+      if (jobIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('job_acceptances')
+        .select('*')
+        .in('job_id', jobIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: jobIds.length > 0,
+  });
+
   const nameMap: Record<string, string> = {};
   profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+
+  // Build acceptances lookup per job
+  const acceptancesByJob: Record<string, { cleaner_id: string; cleaner_name: string; acceptance_status: string }[]> = {};
+  allAcceptances.forEach((a: any) => {
+    if (!acceptancesByJob[a.job_id]) acceptancesByJob[a.job_id] = [];
+    acceptancesByJob[a.job_id].push({
+      cleaner_id: a.cleaner_id,
+      cleaner_name: nameMap[a.cleaner_id] || 'Unknown',
+      acceptance_status: a.acceptance_status,
+    });
+  });
+
+  // Helper to get acceptance category for a job
+  const getAcceptanceCategory = (jobId: string) => {
+    const acc = acceptancesByJob[jobId];
+    if (!acc || acc.length === 0) return 'none';
+    if (acc.some(a => a.acceptance_status === 'declined')) return 'declined';
+    if (acc.some(a => a.acceptance_status === 'pending')) return 'pending';
+    if (acc.every(a => a.acceptance_status === 'accepted')) return 'confirmed';
+    return 'pending';
+  };
 
   if (isAdmin) {
     // Admin/Head Cleaner view
@@ -75,7 +125,8 @@ export default function SchedulePage() {
         const jobDate = new Date(j.scheduled_date + 'T00:00:00');
         const matchesDay = isSameDay(jobDate, selectedDate);
         const matchesStatus = statusFilter === 'all' || j.status === statusFilter;
-        return matchesDay && matchesStatus;
+        const matchesAcceptance = acceptanceFilter === 'all' || getAcceptanceCategory(j.id) === acceptanceFilter;
+        return matchesDay && matchesStatus && matchesAcceptance;
       });
 
     return (
@@ -93,6 +144,8 @@ export default function SchedulePage() {
           <h2 className="text-xl font-bold text-primary">{isToday(selectedDate) ? "Today's Jobs" : format(selectedDate, 'EEEE, MMM d')}</h2>
           <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
+
+        <AcceptanceFilter value={acceptanceFilter} onChange={handleAcceptanceChange} />
 
         {isLoading ? (
           <p className="text-primary font-bold text-center py-8">Loading jobs…</p>
@@ -120,6 +173,7 @@ export default function SchedulePage() {
                 invoiceStatus={job.invoice_status}
                 priceExGst={job.price_ex_gst}
                 isAdmin={true}
+                acceptances={acceptancesByJob[job.id]}
               />
             ))}
           </div>

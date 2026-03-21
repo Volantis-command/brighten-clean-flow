@@ -28,6 +28,7 @@ export default function DashboardPage() {
     completeCount,
     inProgressCount,
     flaggedCount,
+    actionNeededCount,
     isLoading,
     isAdmin,
   } = useDashboardData();
@@ -133,6 +134,7 @@ export default function DashboardPage() {
         completeCount={completeCount}
         inProgressCount={inProgressCount}
         flaggedCount={flaggedCount}
+        actionNeededCount={actionNeededCount}
       />
 
       {/* Today's Jobs */}
