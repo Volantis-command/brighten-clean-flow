@@ -173,6 +173,7 @@ export default function SchedulePage() {
                 invoiceStatus={job.invoice_status}
                 priceExGst={job.price_ex_gst}
                 isAdmin={true}
+                acceptances={acceptancesByJob[job.id]}
               />
             ))}
           </div>
