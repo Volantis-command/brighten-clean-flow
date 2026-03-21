@@ -107,6 +107,16 @@ export default function AppSettingsSection() {
           {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save Settings
         </Button>
+
+        <div className="mt-6 p-4 bg-[hsl(45,100%,51%)]/10 border border-[hsl(45,100%,51%)]/30 rounded-xl">
+          <p className="text-sm font-bold text-foreground mb-1">📱 SMS Webhook Setup</p>
+          <p className="text-xs text-muted-foreground">
+            To enable SMS replies from cleaners, configure your Twilio phone number's inbound webhook URL to:
+          </p>
+          <code className="block mt-2 text-xs bg-muted p-2 rounded-lg break-all select-all">
+            {import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-inbound-sms
+          </code>
+        </div>
       </div>
     </div>
   );

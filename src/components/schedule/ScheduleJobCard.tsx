@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Clock, MapPin, Users, Timer, ClipboardList, RotateCcw } from 'lucide-react';
 import { InvoiceBadge } from '@/components/InvoiceBadge';
+import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useNavigate } from 'react-router-dom';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
