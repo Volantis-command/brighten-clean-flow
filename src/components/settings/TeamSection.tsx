@@ -140,7 +140,7 @@ export default function TeamSection() {
           {staff.map((m) => (
             <div key={m.id} className="bg-card rounded-xl shadow-sm p-4 flex items-center justify-between border border-border">
               <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                <div className="w-3 h-3 rounded-full bg-primary" />
                 <div>
                   <div className="font-semibold text-foreground">{m.full_name || 'No name'}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-3">
