@@ -115,6 +115,11 @@ export default function PropertyFormPage() {
         status: existing.status || 'active',
         lat: existing.lat != null ? String(existing.lat) : '',
         lng: existing.lng != null ? String(existing.lng) : '',
+        price_turnover: existing.price_turnover != null ? String(existing.price_turnover) : '',
+        price_deep_clean: existing.price_deep_clean != null ? String(existing.price_deep_clean) : '',
+        price_end_of_lease: existing.price_end_of_lease != null ? String(existing.price_end_of_lease) : '',
+        price_post_build: existing.price_post_build != null ? String(existing.price_post_build) : '',
+        pricing_notes: existing.pricing_notes || '',
       });
     }
   }, [existing]);
