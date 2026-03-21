@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 import { JobCompletionModal } from '@/components/JobCompletionModal';
+import { ReportIssueModal } from '@/components/checklist/ReportIssueModal';
 
 // --------------- Types ---------------
 interface FormData {
@@ -135,6 +136,7 @@ export default function JobChecklistPage() {
   const [photoMenuRoom, setPhotoMenuRoom] = useState<string | null>(null);
   const [completionModal, setCompletionModal] = useState(false);
   const [nextJobInfo, setNextJobInfo] = useState<{ propertyName: string; address: string | null; scheduledTime: string | null } | null>(null);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   // Hydrate from existing form or initialize
   useEffect(() => {
@@ -347,6 +349,21 @@ export default function JobChecklistPage() {
 
     syncToDrive("sync_job_form", { job_id: jobId! });
 
+    // Send Guest Ready SMS to clients
+    try {
+      supabase.functions.invoke('guest-ready-sms', {
+        body: {
+          job_id: jobId,
+          property_name: property?.property_name,
+          property_address: [property?.address, property?.suburb].filter(Boolean).join(', '),
+        },
+      }).then(({ error }) => {
+        if (error) console.error('Guest Ready SMS failed:', error);
+        else console.log('Guest Ready SMS sent');
+      });
+    } catch (smsErr) {
+      console.error('Guest Ready SMS error:', smsErr);
+    }
     // Auto-create Xero invoice if enabled
     try {
       const { data: autoCreateSetting } = await supabase
@@ -646,6 +663,17 @@ export default function JobChecklistPage() {
         </div>
       </Section>
 
+      {/* Report Issue */}
+      {!isSubmitted && (
+        <Button
+          variant="outline"
+          className="w-full border-destructive text-destructive font-bold rounded-2xl h-14 gap-2"
+          onClick={() => setReportIssueOpen(true)}
+        >
+          <AlertTriangle className="w-5 h-5" /> Report Issue
+        </Button>
+      )}
+
       {/* Submit */}
       {!isSubmitted && (
         <Button
@@ -658,6 +686,15 @@ export default function JobChecklistPage() {
           Submit Job
         </Button>
       )}
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        open={reportIssueOpen}
+        onOpenChange={setReportIssueOpen}
+        jobId={jobId!}
+        propertyId={job?.property_id || ''}
+        roomLabels={roomLabels}
+      />
 
       {!isMandatoryComplete && !isSubmitted && (
         <p className="text-xs text-center text-muted-foreground">

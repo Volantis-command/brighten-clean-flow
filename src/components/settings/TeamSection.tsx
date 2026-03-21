@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { UserPlus, Pencil, Loader2, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 
-type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
+type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
 interface StaffMember {
   id: string;
@@ -24,12 +24,14 @@ const roleLabels: Record<AppRole, string> = {
   admin: 'Admin',
   head_cleaner: 'Head Cleaner',
   cleaner: 'Cleaner',
+  client: 'Client',
 };
 
 const roleBadgeStyles: Record<AppRole, string> = {
   admin: 'bg-primary text-primary-foreground',
   head_cleaner: 'bg-accent text-accent-foreground',
   cleaner: 'bg-secondary text-secondary-foreground',
+  client: 'bg-blue-100 text-blue-800',
 };
 
 function useStaffList() {
@@ -38,7 +40,8 @@ function useStaffList() {
     queryFn: async () => {
       const { data: roles, error: rolesErr } = await supabase
         .from('user_roles')
-        .select('user_id, role');
+        .select('user_id, role')
+        .neq('role', 'client');
       if (rolesErr) throw rolesErr;
       if (!roles?.length) return [];
 

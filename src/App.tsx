@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import ClientLoginPage from "./pages/ClientLoginPage";
 import AppLayout from "./components/AppLayout";
+import ClientPortalLayout from "./components/portal/ClientPortalLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
 import DashboardPage from "./pages/DashboardPage";
 import SchedulePage from "./pages/SchedulePage";
@@ -23,6 +25,8 @@ import StaffPage from "./pages/StaffPage";
 import SettingsPage from "./pages/SettingsPage";
 import QCAuditPage from "./pages/QCAuditPage";
 import FormDetailPage from "./pages/FormDetailPage";
+import ClientPortalPage from "./pages/ClientPortalPage";
+import ClientPropertyDetailPage from "./pages/ClientPropertyDetailPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,13 +43,14 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  if (role === 'client') return <Navigate to="/portal" replace />;
   if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 }
 
-function AppRoutes() {
-  const { user, loading } = useAuth();
+function ClientRoute({ children }: { children: React.ReactNode }) {
+  const { user, role, loading } = useAuth();
 
   if (loading) {
     return (
@@ -55,11 +60,42 @@ function AppRoutes() {
     );
   }
 
+  if (!user) return <Navigate to="/client-login" replace />;
+  if (role && role !== 'client') return <Navigate to="/dashboard" replace />;
+
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  const { user, role, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-primary font-bold text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  const getHomeRedirect = () => {
+    if (!user) return <Navigate to="/login" replace />;
+    if (role === 'client') return <Navigate to="/portal" replace />;
+    return <Navigate to="/dashboard" replace />;
+  };
+
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+      <Route path="/login" element={user ? (role === 'client' ? <Navigate to="/portal" replace /> : <Navigate to="/dashboard" replace />) : <LoginPage />} />
+      <Route path="/client-login" element={user ? (role === 'client' ? <Navigate to="/portal" replace /> : <Navigate to="/dashboard" replace />) : <ClientLoginPage />} />
+      <Route path="/" element={getHomeRedirect()} />
 
+      {/* Client Portal Routes */}
+      <Route element={<ClientRoute><ClientPortalLayout /></ClientRoute>}>
+        <Route path="/portal" element={<ClientPortalPage />} />
+        <Route path="/portal/property/:id" element={<ClientPropertyDetailPage />} />
+      </Route>
+
+      {/* Staff Routes */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
