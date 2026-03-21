@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       job_forms: {
         Row: {
           cleaner_id: string | null
@@ -133,6 +154,27 @@ export type Database = {
           created_at?: string | null
           id?: string
           title?: string | null
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          enabled: boolean
+          id: string
+          key: string
+          updated_at: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: string
+          key: string
+          updated_at?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: string
+          key?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
