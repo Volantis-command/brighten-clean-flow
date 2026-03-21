@@ -31,15 +31,19 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function RouteLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-primary font-bold text-lg">Loading...</div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, role, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-primary font-bold text-lg">Loading...</div>
-      </div>
-    );
+  if (loading || (user && role === null)) {
+    return <RouteLoading />;
   }
 
   if (!user) return <Navigate to="/login" replace />;
@@ -52,16 +56,12 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 function ClientRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-primary font-bold text-lg">Loading...</div>
-      </div>
-    );
+  if (loading || (user && role === null)) {
+    return <RouteLoading />;
   }
 
   if (!user) return <Navigate to="/client-login" replace />;
-  if (role && role !== 'client') return <Navigate to="/dashboard" replace />;
+  if (role !== 'client') return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 }
@@ -69,13 +69,8 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, role, loading } = useAuth();
 
-  // Wait for both auth AND role to resolve before rendering routes
   if (loading || (user && role === null)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-primary font-bold text-lg">Loading...</div>
-      </div>
-    );
+    return <RouteLoading />;
   }
 
   const getHomeRedirect = () => {
@@ -84,19 +79,29 @@ function AppRoutes() {
     return <Navigate to="/dashboard" replace />;
   };
 
+  const getLoginRedirect = () => {
+    if (!user) return <LoginPage />;
+    if (role === 'client') return <Navigate to="/portal" replace />;
+    return <Navigate to="/dashboard" replace />;
+  };
+
+  const getClientLoginRedirect = () => {
+    if (!user) return <ClientLoginPage />;
+    if (role === 'client') return <Navigate to="/portal" replace />;
+    return <Navigate to="/dashboard" replace />;
+  };
+
   return (
     <Routes>
-      <Route path="/login" element={user ? (role === 'client' ? <Navigate to="/portal" replace /> : <Navigate to="/dashboard" replace />) : <LoginPage />} />
-      <Route path="/client-login" element={user ? (role === 'client' ? <Navigate to="/portal" replace /> : <Navigate to="/dashboard" replace />) : <ClientLoginPage />} />
+      <Route path="/login" element={getLoginRedirect()} />
+      <Route path="/client-login" element={getClientLoginRedirect()} />
       <Route path="/" element={getHomeRedirect()} />
 
-      {/* Client Portal Routes */}
       <Route element={<ClientRoute><ClientPortalLayout /></ClientRoute>}>
         <Route path="/portal" element={<ClientPortalPage />} />
         <Route path="/portal/property/:id" element={<ClientPropertyDetailPage />} />
       </Route>
 
-      {/* Staff Routes */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
