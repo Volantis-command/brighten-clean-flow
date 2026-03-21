@@ -663,6 +663,17 @@ export default function JobChecklistPage() {
         </div>
       </Section>
 
+      {/* Report Issue */}
+      {!isSubmitted && (
+        <Button
+          variant="outline"
+          className="w-full border-destructive text-destructive font-bold rounded-2xl h-14 gap-2"
+          onClick={() => setReportIssueOpen(true)}
+        >
+          <AlertTriangle className="w-5 h-5" /> Report Issue
+        </Button>
+      )}
+
       {/* Submit */}
       {!isSubmitted && (
         <Button
@@ -675,6 +686,15 @@ export default function JobChecklistPage() {
           Submit Job
         </Button>
       )}
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        open={reportIssueOpen}
+        onOpenChange={setReportIssueOpen}
+        jobId={jobId!}
+        propertyId={job?.property_id || ''}
+        roomLabels={roomLabels}
+      />
 
       {!isMandatoryComplete && !isSubmitted && (
         <p className="text-xs text-center text-muted-foreground">
