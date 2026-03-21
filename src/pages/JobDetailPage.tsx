@@ -174,6 +174,33 @@ export default function JobDetailPage() {
     }
   };
 
+  const handleSyncInvoiceStatus = async () => {
+    if (!job?.xero_invoice_id) return;
+    setSyncingStatus(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-get-invoice-status`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ xero_invoice_id: job.xero_invoice_id }),
+        }
+      );
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.status && data.status !== job.invoice_status) {
+        await supabase.from('jobs').update({ invoice_status: data.status }).eq('id', jobId!);
+        queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+        toast.success(`Invoice status updated to ${data.status}`);
+      } else {
+        toast.info('Invoice status is up to date');
+      }
+    } catch (err: any) {
+      toast.error('Sync failed: ' + err.message);
+    }
+    setSyncingStatus(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
