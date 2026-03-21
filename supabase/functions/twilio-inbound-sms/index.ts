@@ -125,44 +125,28 @@ Deno.serve(async (req) => {
       return twimlResponse('Sorry, we could not find your account. Please contact your manager. - Brightly');
     }
 
-    const profile = matchingProfiles[0];
-    const firstName = (profile.full_name || 'Team member').split(' ')[0];
+    const matchingProfileIds = matchingProfiles.map((profile) => profile.id);
+    const jobOrFilters = matchingProfileIds.flatMap((id) => [`cleaner_1_id.eq.${id}`, `cleaner_2_id.eq.${id}`]).join(',');
 
-    console.log(`[twilio-inbound-sms] Matched profile ${profile.id} (${profile.full_name})`);
-
-    const { data: assignedJobs, error: jobsError } = await supabase
+    const { data: allAssignedJobs, error: jobsError } = await supabase
       .from('jobs')
       .select('id, status, scheduled_date, scheduled_time, created_at, cleaner_1_id, cleaner_2_id, properties(property_name)')
-      .or(`cleaner_1_id.eq.${profile.id},cleaner_2_id.eq.${profile.id}`)
+      .or(jobOrFilters)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (jobsError) {
       console.error('[twilio-inbound-sms] Error fetching assigned jobs:', jobsError);
       return twimlResponse('');
     }
 
-    console.log(
-      '[twilio-inbound-sms] All jobs found for matched profile:',
-      (assignedJobs || []).map((job) => ({
-        id: job.id,
-        status: job.status,
-        scheduled_date: job.scheduled_date,
-        scheduled_time: job.scheduled_time,
-        cleaner_1_id: job.cleaner_1_id,
-        cleaner_2_id: job.cleaner_2_id,
-        property_name: (job.properties as any)?.property_name,
-      })),
-    );
-
-    const jobIds = (assignedJobs || []).map((job) => job.id);
-
-    const { data: acceptanceRows, error: acceptanceError } = jobIds.length
+    const allJobIds = (allAssignedJobs || []).map((job) => job.id);
+    const { data: acceptanceRows, error: acceptanceError } = allJobIds.length
       ? await supabase
           .from('job_acceptances')
           .select('id, cleaner_id, job_id, acceptance_status, sms_sent_at, responded_at, created_at')
-          .eq('cleaner_id', profile.id)
-          .in('job_id', jobIds)
+          .in('cleaner_id', matchingProfileIds)
+          .in('job_id', allJobIds)
       : { data: [], error: null };
 
     if (acceptanceError) {
@@ -170,40 +154,65 @@ Deno.serve(async (req) => {
       return twimlResponse('');
     }
 
-    const acceptanceByJobId = new Map((acceptanceRows || []).map((row) => [row.job_id, row]));
+    const acceptanceByKey = new Map((acceptanceRows || []).map((row) => [`${row.cleaner_id}:${row.job_id}`, row]));
+
+    const profileCandidates = matchingProfiles.map((profile) => {
+      const jobs = (allAssignedJobs || []).filter((job) => job.cleaner_1_id === profile.id || job.cleaner_2_id === profile.id);
+      const scheduledJobs = jobs.filter((job) => job.status === 'scheduled' || job.status === 'pending');
+      const pendingAcceptanceJob = scheduledJobs.find((job) => {
+        const acceptance = acceptanceByKey.get(`${profile.id}:${job.id}`);
+        return !acceptance || acceptance.acceptance_status === 'pending';
+      });
+
+      return {
+        profile,
+        jobs,
+        scheduledJobs,
+        pendingAcceptanceJob,
+        latestScheduledJob: scheduledJobs[0] || null,
+      };
+    });
 
     console.log(
-      '[twilio-inbound-sms] Acceptance status for each job found:',
-      (assignedJobs || []).map((job) => ({
-        job_id: job.id,
-        job_status: job.status,
-        acceptance_status: acceptanceByJobId.get(job.id)?.acceptance_status ?? null,
-        acceptance_id: acceptanceByJobId.get(job.id)?.id ?? null,
+      '[twilio-inbound-sms] Profile candidates after duplicate-phone resolution:',
+      profileCandidates.map((candidate) => ({
+        profile_id: candidate.profile.id,
+        full_name: candidate.profile.full_name,
+        scheduled_job_ids: candidate.scheduledJobs.map((job) => job.id),
+        pending_job_id: candidate.pendingAcceptanceJob?.id || null,
       })),
     );
 
-    const candidateJobs = (assignedJobs || []).filter((job) => job.status === 'scheduled' || job.status === 'pending');
-    console.log('[twilio-inbound-sms] Candidate scheduled/pending jobs:', candidateJobs.map((job) => job.id));
+    const selectedCandidate =
+      profileCandidates.find((candidate) => candidate.pendingAcceptanceJob) ||
+      profileCandidates.find((candidate) => candidate.latestScheduledJob) ||
+      profileCandidates[0];
 
-    const pendingJob = candidateJobs.find((job) => {
-      const acceptance = acceptanceByJobId.get(job.id);
-      return !acceptance || acceptance.acceptance_status === 'pending';
-    });
+    const profile = selectedCandidate.profile;
+    const firstName = (profile.full_name || 'Team member').split(' ')[0];
+    const matchedJob = selectedCandidate.pendingAcceptanceJob || selectedCandidate.latestScheduledJob || selectedCandidate.jobs[0] || null;
 
-    const matchedJob = pendingJob || candidateJobs[0] || assignedJobs?.[0];
+    console.log(`[twilio-inbound-sms] Selected profile ${profile.id} (${profile.full_name})`);
+    console.log(
+      '[twilio-inbound-sms] All jobs found for selected profile:',
+      selectedCandidate.jobs.map((job) => ({
+        id: job.id,
+        status: job.status,
+        scheduled_date: job.scheduled_date,
+        scheduled_time: job.scheduled_time,
+        cleaner_1_id: job.cleaner_1_id,
+        cleaner_2_id: job.cleaner_2_id,
+        property_name: (job.properties as any)?.property_name,
+        acceptance_status: acceptanceByKey.get(`${profile.id}:${job.id}`)?.acceptance_status ?? null,
+      })),
+    );
 
     if (!matchedJob) {
-      console.log('[twilio-inbound-sms] No assigned jobs found for this cleaner.');
+      console.log('[twilio-inbound-sms] No assigned jobs found for selected cleaner.');
       return twimlResponse(`Hi ${firstName}, you don't have any pending job invitations right now. - Brightly`);
     }
 
-    if (!pendingJob) {
-      console.log(
-        `[twilio-inbound-sms] No pending acceptance row found; falling back to most recent assigned job ${matchedJob.id}.`,
-      );
-    }
-
-    const existingAcceptance = acceptanceByJobId.get(matchedJob.id);
+    const existingAcceptance = acceptanceByKey.get(`${profile.id}:${matchedJob.id}`);
     const propertyName = (matchedJob.properties as any)?.property_name || 'your job';
     const dateStr = matchedJob.scheduled_date || '';
     const timeStr = matchedJob.scheduled_time?.slice(0, 5) || '';
