@@ -59,6 +59,11 @@ const EMPTY_FORM = {
   status: 'active',
   lat: '',
   lng: '',
+  price_turnover: '',
+  price_deep_clean: '',
+  price_end_of_lease: '',
+  price_post_build: '',
+  pricing_notes: '',
 };
 
 export default function PropertyFormPage() {
