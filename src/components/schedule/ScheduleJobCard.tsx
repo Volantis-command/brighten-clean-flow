@@ -24,6 +24,7 @@ interface ScheduleJobCardProps {
   onClick?: () => void;
   showClockIn?: boolean;
   isPastJob?: boolean;
+  invoiceStatus?: string | null;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
