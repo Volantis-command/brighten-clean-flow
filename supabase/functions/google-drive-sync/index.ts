@@ -14,6 +14,34 @@ interface ServiceAccount {
   token_uri: string;
 }
 
+class DriveSyncWarning extends Error {
+  code: string;
+
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = "DriveSyncWarning";
+    this.code = code;
+  }
+}
+
+function isStorageQuotaExceededError(message: string) {
+  return (
+    message.includes("storageQuotaExceeded") ||
+    message.includes("Drive storage quota has been exceeded")
+  );
+}
+
+function wrapDriveError(message: string): never {
+  if (isStorageQuotaExceededError(message)) {
+    throw new DriveSyncWarning(
+      "Google Drive storage quota exceeded. Sync skipped.",
+      "storage_quota_exceeded"
+    );
+  }
+
+  throw new Error(message);
+}
+
 function base64url(data: Uint8Array): string {
   return btoa(String.fromCharCode(...data))
     .replace(/\+/g, "-")
@@ -120,7 +148,7 @@ async function createFolder(
   });
   if (!resp.ok) {
     const t = await resp.text();
-    throw new Error(`Create folder failed: ${resp.status} ${t}`);
+    wrapDriveError(`Create folder failed: ${resp.status} ${t}`);
   }
   const data = await resp.json();
   return data.id;
@@ -162,7 +190,7 @@ async function createGoogleDoc(
   );
   if (!resp.ok) {
     const t = await resp.text();
-    throw new Error(`Create doc failed: ${resp.status} ${t}`);
+    wrapDriveError(`Create doc failed: ${resp.status} ${t}`);
   }
   const data = await resp.json();
   return data.id;
@@ -205,7 +233,7 @@ async function uploadFileToDrive(
   );
   if (!resp.ok) {
     const t = await resp.text();
-    throw new Error(`Upload file failed: ${resp.status} ${t}`);
+    wrapDriveError(`Upload file failed: ${resp.status} ${t}`);
   }
   const data = await resp.json();
   return data.id;
@@ -615,6 +643,21 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
+    if (err instanceof DriveSyncWarning) {
+      console.warn("google-drive-sync warning:", err.message);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          warning: err.code,
+          message: err.message,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     console.error("google-drive-sync error:", err);
     return new Response(JSON.stringify({ error: err.message || "Unknown error" }), {
       status: 500,
