@@ -349,6 +349,21 @@ export default function JobChecklistPage() {
 
     syncToDrive("sync_job_form", { job_id: jobId! });
 
+    // Send Guest Ready SMS to clients
+    try {
+      supabase.functions.invoke('guest-ready-sms', {
+        body: {
+          job_id: jobId,
+          property_name: property?.property_name,
+          property_address: [property?.address, property?.suburb].filter(Boolean).join(', '),
+        },
+      }).then(({ error }) => {
+        if (error) console.error('Guest Ready SMS failed:', error);
+        else console.log('Guest Ready SMS sent');
+      });
+    } catch (smsErr) {
+      console.error('Guest Ready SMS error:', smsErr);
+    }
     // Auto-create Xero invoice if enabled
     try {
       const { data: autoCreateSetting } = await supabase
