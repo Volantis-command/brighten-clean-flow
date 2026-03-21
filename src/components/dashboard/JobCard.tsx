@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { Clock, MapPin, Users, Loader2, Navigation } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
+import { AcceptanceBadge } from '@/components/AcceptanceBadge';
+
+interface JobCardAcceptance {
+  cleaner_id: string;
+  cleaner_name: string;
+  acceptance_status: string;
+}
 
 interface JobCardProps {
   propertyName: string;
@@ -13,6 +20,7 @@ interface JobCardProps {
   showStartButton?: boolean;
   onStartJob?: () => Promise<void>;
   showNavigateButton?: boolean;
+  acceptances?: JobCardAcceptance[];
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
