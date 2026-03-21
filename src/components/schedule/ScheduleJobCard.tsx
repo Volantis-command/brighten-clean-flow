@@ -173,13 +173,27 @@ export function ScheduleJobCard({
       )}
 
       {acceptances && acceptances.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {acceptances.map((a) => (
-            <div key={a.cleaner_id} className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">{a.cleaner_name.split(' ')[0]}:</span>
-              <AcceptanceBadge status={a.acceptance_status} compact />
-            </div>
-          ))}
+        <div className="space-y-1.5 mb-3">
+          <div className="flex flex-wrap gap-1.5">
+            {acceptances.map((a) => (
+              <div key={a.cleaner_id} className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">{a.cleaner_name.split(' ')[0]}:</span>
+                <AcceptanceBadge status={a.acceptance_status} compact />
+              </div>
+            ))}
+          </div>
+          {(() => {
+            const hasDeclined = acceptances.some(a => a.acceptance_status === 'declined');
+            const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
+            const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
+            if (hasDeclined) {
+              const declined = acceptances.find(a => a.acceptance_status === 'declined');
+              return <span className="text-[10px] font-bold text-destructive">✗ {declined?.cleaner_name.split(' ')[0]} Declined — action needed</span>;
+            }
+            if (allAccepted) return <span className="text-[10px] font-bold text-primary">✓ All Confirmed</span>;
+            if (hasPending) return <span className="text-[10px] font-bold text-[hsl(45,100%,40%)]">⏳ Awaiting response</span>;
+            return null;
+          })()}
         </div>
       )}
 
