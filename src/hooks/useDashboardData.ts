@@ -169,6 +169,10 @@ export function useDashboardData() {
   const inProgressCount = jobs.filter((j: any) => j.status === 'in_progress').length;
   const flaggedCount = jobs.filter((j: any) => j.status === 'flagged').length;
 
+  // Action needed: unique jobs in next 48hrs with pending/declined acceptances
+  const actionNeededJobIds = new Set(upcoming48hrAcceptances.map((a: any) => a.job_id));
+  const actionNeededCount = actionNeededJobIds.size;
+
   // Build job cards
   const jobCards = jobs.map((job: any) => ({
     id: job.id,
@@ -189,6 +193,7 @@ export function useDashboardData() {
     completeCount,
     inProgressCount,
     flaggedCount,
+    actionNeededCount,
     isLoading: jobsLoading,
     isAdmin,
   };
