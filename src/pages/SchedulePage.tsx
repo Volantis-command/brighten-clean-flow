@@ -173,6 +173,7 @@ export default function SchedulePage() {
                         propertyLat={job.properties?.lat}
                         propertyLng={job.properties?.lng}
                         showClockIn={isTodayJob}
+                        invoiceStatus={job.invoice_status}
                       />
                     </div>
                   );
