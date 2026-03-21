@@ -29,10 +29,8 @@ export default function JobDetailPage() {
   const [showPricePrompt, setShowPricePrompt] = useState(false);
 
   // Pricing state
-  const [priceMode, setPriceMode] = useState<'ex' | 'inc'>('ex');
   const [priceInput, setPriceInput] = useState('');
   const [priceNotes, setPriceNotes] = useState('');
-  const [linkedQuoteId, setLinkedQuoteId] = useState('');
   const [savingPrice, setSavingPrice] = useState(false);
 
   const { data: job, isLoading } = useQuery({
