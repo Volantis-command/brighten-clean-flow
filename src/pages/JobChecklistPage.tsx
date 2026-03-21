@@ -347,6 +347,52 @@ export default function JobChecklistPage() {
 
     syncToDrive("sync_job_form", { job_id: jobId! });
 
+    // Auto-create Xero invoice if enabled
+    try {
+      const { data: autoCreateSetting } = await supabase
+        .from('xero_settings')
+        .select('value')
+        .eq('key', 'auto_create_invoice')
+        .single();
+
+      const { data: xeroTokens } = await supabase
+        .from('xero_tokens')
+        .select('id')
+        .limit(1);
+
+      if (autoCreateSetting?.value === 'true' && xeroTokens?.length) {
+        const { data: xeroSettings } = await supabase
+          .from('xero_settings')
+          .select('key, value');
+
+        const settings = Object.fromEntries((xeroSettings || []).map(s => [s.key, s.value]));
+        const cleanType = 'turnover'; // default
+        const accountCode = settings[`account_code_${cleanType}`] || settings['account_code_default'] || '4000';
+        const invoicePrefix = settings['invoice_prefix'] || 'BCL-';
+        const dueDays = settings['due_days'] || '7';
+        const contactName = property?.client_name || property?.property_name || 'Unknown';
+        const desc = `Turnover Clean — ${property?.property_name} — ${property?.suburb || ''} — ${job?.scheduled_date}`;
+
+        console.log('Auto-creating Xero invoice for job:', jobId);
+        supabase.functions.invoke('xero-create-invoice', {
+          body: {
+            job_id: jobId,
+            contact_name: contactName,
+            description: desc,
+            amount: job?.invoice_amount || 0,
+            account_code: accountCode,
+            invoice_prefix: invoicePrefix,
+            due_days: dueDays,
+          },
+        }).then(({ error }) => {
+          if (error) console.error('Auto Xero invoice failed:', error);
+          else console.log('Xero invoice created automatically');
+        });
+      }
+    } catch (xeroErr) {
+      console.error('Xero auto-invoice check failed:', xeroErr);
+    }
+
     // Fetch remaining jobs for today to show next job in modal
     const today = format(new Date(), 'yyyy-MM-dd');
     const { data: todayJobs } = await supabase
