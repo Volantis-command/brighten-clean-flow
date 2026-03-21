@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { InvoiceBadge } from '@/components/InvoiceBadge';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -16,13 +19,14 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient();
   const { role } = useAuth();
   const [deleting, setDeleting] = useState(false);
+  const [pushingInvoice, setPushingInvoice] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-detail', jobId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, properties(property_name, address, suburb, bedrooms, bathrooms, lat, lng)')
+        .select('*, properties(property_name, address, suburb, bedrooms, bathrooms, lat, lng, client_name)')
         .eq('id', jobId!)
         .single();
       if (error) throw error;
@@ -44,8 +48,59 @@ export default function JobDetailPage() {
     enabled: cleanerIds.length > 0,
   });
 
+  // Fetch xero settings for invoice creation
+  const { data: xeroSettings = [] } = useQuery({
+    queryKey: ['xero-settings'],
+    queryFn: async () => {
+      const { data } = await supabase.from('xero_settings').select('*');
+      return data || [];
+    },
+    enabled: role === 'admin',
+  });
+
+  const xeroMap: Record<string, string> = {};
+  xeroSettings.forEach((s: any) => { xeroMap[s.key] = s.value; });
+
   const nameMap: Record<string, string> = {};
   profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+
+  const handlePushInvoice = async () => {
+    if (!job) return;
+    setPushingInvoice(true);
+    try {
+      const property = job.properties as any;
+      const cleanType = 'Turnover Clean'; // Default, could be enhanced
+      const accountCodeKey = `account_code_turnover`;
+      const description = `${cleanType} — ${property?.property_name || 'Property'} — ${property?.suburb || ''} — ${job.scheduled_date}`;
+      
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-create-invoice`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            job_id: job.id,
+            contact_name: property?.client_name || property?.property_name || 'Unknown Client',
+            description,
+            amount: job.invoice_amount || 0,
+            account_code: xeroMap[accountCodeKey] || '4000',
+            invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
+            due_days: xeroMap['due_days'] || '7',
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast.success(`Invoice ${data.invoice_number} created in Xero`);
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+    } catch (err: any) {
+      toast.error('Failed to create invoice: ' + err.message);
+    }
+    setPushingInvoice(false);
+  };
 
   if (isLoading) {
     return (
@@ -94,9 +149,12 @@ export default function JobDetailPage() {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="text-xl">{property?.property_name || 'Unknown Property'}</CardTitle>
-            <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
-              {statusInfo.label}
-            </span>
+            <div className="flex items-center gap-2">
+              <InvoiceBadge status={job.invoice_status} />
+              <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
+                {statusInfo.label}
+              </span>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -159,6 +217,48 @@ export default function JobDetailPage() {
         </Card>
       )}
 
+      {/* Invoicing Section - Admin only */}
+      {role === 'admin' && job.status === 'complete' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Invoicing</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {job.xero_invoice_number && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Invoice #</span>
+                <span className="text-sm font-bold">{job.xero_invoice_number}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <InvoiceBadge status={job.invoice_status} />
+            </div>
+
+            {!job.xero_invoice_id ? (
+              <Button
+                onClick={handlePushInvoice}
+                disabled={pushingInvoice}
+                className="w-full gap-2"
+                style={{ backgroundColor: '#13B5EA' }}
+              >
+                {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Push to Xero
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open in Xero
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <div className="space-y-3">
         <Button
@@ -200,9 +300,7 @@ export default function JobDetailPage() {
                 <AlertDialogAction
                   onClick={async () => {
                     setDeleting(true);
-                    // Delete associated job_forms first
                     await supabase.from('job_forms').delete().eq('job_id', jobId!);
-                    // Delete the job
                     const { error } = await supabase.from('jobs').delete().eq('id', jobId!);
                     if (error) {
                       toast.error('Failed to delete job: ' + error.message);

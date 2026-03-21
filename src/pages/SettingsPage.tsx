@@ -4,7 +4,8 @@ import TeamSection from '@/components/settings/TeamSection';
 import PropertiesSection from '@/components/settings/PropertiesSection';
 import AppSettingsSection from '@/components/settings/AppSettingsSection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
-import { Users, Building2, Settings, Bell } from 'lucide-react';
+import XeroSection from '@/components/settings/XeroSection';
+import { Users, Building2, Settings, Bell, Receipt } from 'lucide-react';
 
 export default function SettingsPage() {
   return (
@@ -12,7 +13,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-extrabold text-primary">Settings</h1>
 
       <Tabs defaultValue="team" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 bg-muted rounded-xl">
+        <TabsList className="w-full grid grid-cols-5 bg-muted rounded-xl">
           <TabsTrigger value="team" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">Team</span>
@@ -27,7 +28,11 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Bell className="w-4 h-4" />
-            <span className="hidden sm:inline">Notifications</span>
+            <span className="hidden sm:inline">Alerts</span>
+          </TabsTrigger>
+          <TabsTrigger value="xero" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Receipt className="w-4 h-4" />
+            <span className="hidden sm:inline">Xero</span>
           </TabsTrigger>
         </TabsList>
 
@@ -35,6 +40,7 @@ export default function SettingsPage() {
         <TabsContent value="properties"><PropertiesSection /></TabsContent>
         <TabsContent value="app"><AppSettingsSection /></TabsContent>
         <TabsContent value="notifications"><NotificationsSection /></TabsContent>
+        <TabsContent value="xero"><XeroSection /></TabsContent>
       </Tabs>
     </div>
   );
