@@ -80,6 +80,55 @@ export function useDashboardData() {
     enabled: isAdmin,
   });
 
+  // Fetch job acceptances for today's jobs + next 48hrs for action needed count
+  const allJobIds = jobs.map((j: any) => j.id);
+  const { data: jobAcceptances = [] } = useQuery({
+    queryKey: ['dashboard-acceptances', allJobIds],
+    queryFn: async () => {
+      if (allJobIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('job_acceptances')
+        .select('*')
+        .in('job_id', allJobIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: allJobIds.length > 0,
+  });
+
+  // Fetch upcoming 48hr jobs for action needed
+  const in48hrs = format(addHours(new Date(), 48), 'yyyy-MM-dd');
+  const { data: upcoming48hrJobs = [] } = useQuery({
+    queryKey: ['dashboard-upcoming-48hr', today, in48hrs],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id')
+        .gte('scheduled_date', today)
+        .lte('scheduled_date', in48hrs)
+        .in('status', ['scheduled', 'pending']);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: upcoming48hrAcceptances = [] } = useQuery({
+    queryKey: ['dashboard-upcoming-48hr-acceptances', upcoming48hrJobs.map((j: any) => j.id)],
+    queryFn: async () => {
+      const ids = upcoming48hrJobs.map((j: any) => j.id);
+      if (ids.length === 0) return [];
+      const { data, error } = await supabase
+        .from('job_acceptances')
+        .select('job_id, acceptance_status')
+        .in('job_id', ids)
+        .in('acceptance_status', ['pending', 'declined']);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: upcoming48hrJobs.length > 0,
+  });
+
   // Build cleaner name lookup
   const cleanerNameMap: Record<string, string> = {};
   cleanerProfiles.forEach((p: any) => {
