@@ -90,11 +90,16 @@ export type Database = {
           created_at: string
           estimated_duration: number | null
           id: string
+          invoice_amount: number | null
+          invoice_notes: string | null
+          invoice_status: string | null
           notes: string | null
           property_id: string | null
           scheduled_date: string
           scheduled_time: string | null
           status: string
+          xero_invoice_id: string | null
+          xero_invoice_number: string | null
         }
         Insert: {
           cleaner_1_id?: string | null
@@ -102,11 +107,16 @@ export type Database = {
           created_at?: string
           estimated_duration?: number | null
           id?: string
+          invoice_amount?: number | null
+          invoice_notes?: string | null
+          invoice_status?: string | null
           notes?: string | null
           property_id?: string | null
           scheduled_date: string
           scheduled_time?: string | null
           status?: string
+          xero_invoice_id?: string | null
+          xero_invoice_number?: string | null
         }
         Update: {
           cleaner_1_id?: string | null
@@ -114,11 +124,16 @@ export type Database = {
           created_at?: string
           estimated_duration?: number | null
           id?: string
+          invoice_amount?: number | null
+          invoice_notes?: string | null
+          invoice_status?: string | null
           notes?: string | null
           property_id?: string | null
           scheduled_date?: string
           scheduled_time?: string | null
           status?: string
+          xero_invoice_id?: string | null
+          xero_invoice_number?: string | null
         }
         Relationships: [
           {
@@ -527,6 +542,7 @@ export type Database = {
           status: string | null
           total_cost: number | null
           wet_areas: number | null
+          xero_invoice_id: string | null
         }
         Insert: {
           actual_gp_dollars?: number | null
@@ -576,6 +592,7 @@ export type Database = {
           status?: string | null
           total_cost?: number | null
           wet_areas?: number | null
+          xero_invoice_id?: string | null
         }
         Update: {
           actual_gp_dollars?: number | null
@@ -625,6 +642,7 @@ export type Database = {
           status?: string | null
           total_cost?: number | null
           wet_areas?: number | null
+          xero_invoice_id?: string | null
         }
         Relationships: [
           {
@@ -707,6 +725,54 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      xero_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      xero_tokens: {
+        Row: {
+          access_token: string
+          expires_at: string | null
+          id: string
+          refresh_token: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          expires_at?: string | null
+          id?: string
+          refresh_token: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          expires_at?: string | null
+          id?: string
+          refresh_token?: string
+          tenant_id?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

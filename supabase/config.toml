@@ -2,3 +2,15 @@ project_id = "mkknrxoqturkmpcmhvtt"
 
 [functions.google-drive-sync]
 verify_jwt = false
+
+[functions.xero-oauth-callback]
+verify_jwt = false
+
+[functions.xero-refresh-token]
+verify_jwt = false
+
+[functions.xero-create-invoice]
+verify_jwt = false
+
+[functions.xero-get-invoice-status]
+verify_jwt = false

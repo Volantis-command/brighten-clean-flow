@@ -115,6 +115,7 @@ export default function SchedulePage() {
                 cleaner2Name={job.cleaner_2_id ? nameMap[job.cleaner_2_id] : null}
                 propertyLat={job.properties?.lat}
                 propertyLng={job.properties?.lng}
+                invoiceStatus={job.invoice_status}
               />
             ))}
           </div>
@@ -172,6 +173,7 @@ export default function SchedulePage() {
                         propertyLat={job.properties?.lat}
                         propertyLng={job.properties?.lng}
                         showClockIn={isTodayJob}
+                        invoiceStatus={job.invoice_status}
                       />
                     </div>
                   );
@@ -195,6 +197,7 @@ export default function SchedulePage() {
                     estimatedDuration={null}
                     status={job.status}
                     isPastJob
+                    invoiceStatus={job.invoice_status}
                   />
                 ))}
               </div>

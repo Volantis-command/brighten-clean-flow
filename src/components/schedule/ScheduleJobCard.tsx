@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Clock, MapPin, Users, Timer, ClipboardList, RotateCcw } from 'lucide-react';
+import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useNavigate } from 'react-router-dom';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
@@ -24,6 +25,7 @@ interface ScheduleJobCardProps {
   onClick?: () => void;
   showClockIn?: boolean;
   isPastJob?: boolean;
+  invoiceStatus?: string | null;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -47,6 +49,7 @@ export function ScheduleJobCard({
   onClick,
   showClockIn,
   isPastJob,
+  invoiceStatus,
 }: ScheduleJobCardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -103,9 +106,12 @@ export function ScheduleJobCard({
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
-        <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
-          {statusInfo.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {status === 'complete' && <InvoiceBadge status={invoiceStatus} />}
+          <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
+            {statusInfo.label}
+          </span>
+        </div>
       </div>
 
       {address && (
