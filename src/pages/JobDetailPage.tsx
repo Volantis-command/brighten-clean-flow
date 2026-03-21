@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ export default function JobDetailPage() {
   const [pushingInvoice, setPushingInvoice] = useState(false);
   const [resendingTo, setResendingTo] = useState<string | null>(null);
   const [showPricePrompt, setShowPricePrompt] = useState(false);
+  const [syncingStatus, setSyncingStatus] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -171,6 +172,33 @@ export default function JobDetailPage() {
     } else {
       doPushInvoice();
     }
+  };
+
+  const handleSyncInvoiceStatus = async () => {
+    if (!job?.xero_invoice_id) return;
+    setSyncingStatus(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-get-invoice-status`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ xero_invoice_id: job.xero_invoice_id }),
+        }
+      );
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.status && data.status !== job.invoice_status) {
+        await supabase.from('jobs').update({ invoice_status: data.status }).eq('id', jobId!);
+        queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+        toast.success(`Invoice status updated to ${data.status}`);
+      } else {
+        toast.info('Invoice status is up to date');
+      }
+    } catch (err: any) {
+      toast.error('Sync failed: ' + err.message);
+    }
+    setSyncingStatus(false);
   };
 
   if (isLoading) {
@@ -409,14 +437,25 @@ export default function JobDetailPage() {
                 Push to Xero
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4" />
-                Open in Xero
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in Xero
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleSyncInvoiceStatus}
+                  disabled={syncingStatus}
+                >
+                  {syncingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                  Sync Xero Status
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

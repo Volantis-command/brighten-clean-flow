@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ export default function FormsPage() {
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  useXeroInvoiceSync();
 
   // Fetch all job forms with joined data
   const { data: forms, isLoading } = useQuery({

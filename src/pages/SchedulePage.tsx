@@ -9,6 +9,7 @@ import { Plus } from 'lucide-react';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
+import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 
 export default function SchedulePage() {
   const { role, user } = useAuth();
@@ -17,6 +18,7 @@ export default function SchedulePage() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   const [selectedDate, setSelectedDate] = useState(new Date());
   const initialFilter = searchParams.get('status') || 'all';
+  useXeroInvoiceSync();
   const [statusFilter, setStatusFilter] = useState(initialFilter);
 
   const handleStatusChange = (value: string) => {

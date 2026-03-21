@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.twilio-inbound-sms]
 verify_jwt = false
+
+[functions.xero-sync-invoice-status]
+verify_jwt = false
