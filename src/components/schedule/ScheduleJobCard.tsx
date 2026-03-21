@@ -12,6 +12,12 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getCurrentPosition } from '@/lib/geo';
 
+interface ScheduleJobCardAcceptance {
+  cleaner_id: string;
+  cleaner_name: string;
+  acceptance_status: string;
+}
+
 interface ScheduleJobCardProps {
   id: string;
   propertyName: string;
@@ -27,6 +33,7 @@ interface ScheduleJobCardProps {
   showClockIn?: boolean;
   isPastJob?: boolean;
   invoiceStatus?: string | null;
+  acceptances?: ScheduleJobCardAcceptance[];
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
