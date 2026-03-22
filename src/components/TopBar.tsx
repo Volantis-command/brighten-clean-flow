@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell } from 'lucide-react';
+import { NotificationBell } from '@/components/NotificationBell';
 
 export function TopBar() {
   const { profile, role } = useAuth();
@@ -15,9 +15,7 @@ export function TopBar() {
       </div>
       <div className="hidden md:block" />
       <div className="flex items-center gap-3">
-        <button className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-sidebar-accent md:hover:bg-muted transition-colors">
-          <Bell className="h-5 w-5 text-primary-foreground md:text-muted-foreground" />
-        </button>
+        <NotificationBell />
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-full bg-sidebar-accent md:bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
             {firstName.charAt(0).toUpperCase()}
