@@ -62,8 +62,10 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            message: `📅 New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'}`,
-            type: 'clean_request',
+            title: 'New Booking Request',
+            message: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'}`,
+            type: 'booking_request',
+            link: '/requests',
           }))
         );
       }

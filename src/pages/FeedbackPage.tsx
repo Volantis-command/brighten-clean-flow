@@ -87,8 +87,10 @@ export default function FeedbackPage() {
           await supabase.from('notifications').insert(
             admins.map((a: any) => ({
               user_id: a.user_id,
-              message: `⚠ Low feedback score: ${score}/10 for ${job?.properties?.property_name || 'property'} — Review needed`,
-              type: 'feedback_alert',
+              title: 'Feedback Received',
+              message: `Feedback received for ${job?.properties?.property_name || 'property'} — ${score}/10${score < 8 ? ' ⚠ Review needed' : ''}`,
+              type: 'feedback',
+              link: `/clients/${feedback.client_id}`,
             }))
           );
         }

@@ -152,8 +152,10 @@ export default function OnboardingPage() {
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            message: `${name} completed onboarding for ${property.property_name}${requestDate ? ` and requested a clean on ${requestDate}` : ''}`,
-            type: 'client_onboard',
+            title: 'Onboarding Submitted',
+            message: `${name} submitted their onboarding form for ${property.property_name}${requestDate ? ` and requested a clean on ${requestDate}` : ''}`,
+            type: 'onboarding',
+            link: `/clients/${clientId}`,
           }))
         );
       }
