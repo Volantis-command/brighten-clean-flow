@@ -179,7 +179,7 @@ export default function StaffPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {staff.map((m) => (
-            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border">
+            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border cursor-pointer" onClick={() => setSelectedStaff(m)}>
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
@@ -201,10 +201,10 @@ export default function StaffPage() {
 
               {isAdmin && (
                 <div className="flex gap-2 mt-auto pt-2">
-                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl" onClick={() => openEdit(m)}>
+                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl" onClick={(e) => { e.stopPropagation(); openEdit(m); }}>
                     <Pencil className="w-4 h-4" /> Edit
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setRemoveMember(m)}>
+                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setRemoveMember(m); }}>
                     <Trash2 className="w-4 h-4" /> Remove
                   </Button>
                 </div>
