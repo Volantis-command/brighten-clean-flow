@@ -1,14 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, addHours } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addHours } from 'date-fns';
 
 export function useDashboardData() {
   const { user, role } = useAuth();
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const now = new Date();
+  const today = format(now, 'yyyy-MM-dd');
   const isAdmin = role === 'admin' || role === 'head_cleaner';
 
-  // Fetch today's jobs
+  const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
+  const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+
+  // ── Today's jobs (full data for cards) ──
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['dashboard-jobs', today, role],
     queryFn: async () => {
@@ -17,11 +23,9 @@ export function useDashboardData() {
         .select('*, properties(property_name, address, suburb)')
         .eq('scheduled_date', today)
         .order('scheduled_time', { ascending: true });
-
       if (!isAdmin && user) {
         query = query.or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`);
       }
-
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
@@ -29,162 +33,187 @@ export function useDashboardData() {
     enabled: !!user,
   });
 
-  // Fetch cleaner profiles for job display
-  const cleanerIds = [
-    ...new Set(
-      jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean)
-    ),
-  ];
-
+  // ── Cleaner profiles ──
+  const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
   const { data: cleanerProfiles = [] } = useQuery({
     queryKey: ['cleaner-profiles', cleanerIds],
     queryFn: async () => {
-      if (cleanerIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', cleanerIds);
-      if (error) throw error;
+      if (!cleanerIds.length) return [];
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
       return data || [];
     },
     enabled: cleanerIds.length > 0,
   });
+  const cleanerNameMap: Record<string, string> = {};
+  cleanerProfiles.forEach((p: any) => { cleanerNameMap[p.id] = p.full_name || 'Unknown'; });
 
-  // Fetch active time entries (clocked in but not out) for live status
+  // ── Active time entries (live status) ──
   const { data: activeTimeEntries = [] } = useQuery({
     queryKey: ['active-time-entries', today],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('time_entries')
         .select('user_id, job_id, jobs(properties(property_name))')
         .not('clock_in_time', 'is', null)
         .is('clock_out_time', null);
-      if (error) throw error;
       return data || [];
     },
     enabled: isAdmin,
   });
 
-  // Fetch recent QC scores
+  // ── Week jobs (for scheduled + completed this week + revenue) ──
+  const { data: weekJobs = [] } = useQuery({
+    queryKey: ['dashboard-week-jobs', weekStart, weekEnd],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, status, price_ex_gst, invoice_status, cleaner_1_id, cleaner_2_id')
+        .gte('scheduled_date', weekStart)
+        .lte('scheduled_date', weekEnd);
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
+  // ── Month financial data ──
+  const { data: monthJobs = [] } = useQuery({
+    queryKey: ['dashboard-month-jobs', monthStart, monthEnd],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, status, price_ex_gst, invoice_status')
+        .gte('scheduled_date', monthStart)
+        .lte('scheduled_date', monthEnd);
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
+  // ── Unpaid invoices (all time, complete + price > 0 + not paid/voided) ──
+  const { data: unpaidInvoices = [] } = useQuery({
+    queryKey: ['dashboard-unpaid-invoices'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, price_ex_gst, invoice_status')
+        .eq('status', 'complete')
+        .gt('price_ex_gst', 0)
+        .not('invoice_status', 'in', '("paid","voided")');
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
+  // ── Pending booking requests ──
+  const { data: pendingRequestsCount = 0 } = useQuery({
+    queryKey: ['pending-requests-count'],
+    queryFn: async () => {
+      const { count } = await supabase.from('clean_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+      return count || 0;
+    },
+    enabled: isAdmin,
+  });
+
+  // ── Onboarding forms not sent ──
+  const { data: onboardingNotSentCount = 0 } = useQuery({
+    queryKey: ['onboarding-not-sent'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('client_properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('onboard_used', false)
+        .is('onboarding_sent_at', null);
+      return count || 0;
+    },
+    enabled: isAdmin,
+  });
+
+  // ── All cleaners (non-client staff) for "no jobs this week" ──
+  const { data: allCleanerIds = [] } = useQuery({
+    queryKey: ['all-cleaner-ids'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['cleaner', 'head_cleaner']);
+      return (data || []).map(r => r.user_id);
+    },
+    enabled: isAdmin,
+  });
+
+  // ── Jobs with no cleaner assigned (upcoming) ──
+  const { data: unassignedJobsCount = 0 } = useQuery({
+    queryKey: ['unassigned-jobs-count', today],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .gte('scheduled_date', today)
+        .is('cleaner_1_id', null)
+        .in('status', ['scheduled', 'pending']);
+      return count || 0;
+    },
+    enabled: isAdmin,
+  });
+
+  // ── Recent QC scores ──
   const { data: qcScores = [] } = useQuery({
     queryKey: ['recent-qc-scores'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('qc_audits')
         .select('id, percentage, result, property_id, inspector_id, properties(property_name)')
         .order('created_at', { ascending: false })
         .limit(5);
-      if (error) throw error;
       return data || [];
     },
     enabled: isAdmin,
   });
 
-  // Fetch job acceptances for today's jobs + next 48hrs for action needed count
-  const allJobIds = jobs.map((j: any) => j.id);
-  const { data: jobAcceptances = [] } = useQuery({
-    queryKey: ['dashboard-acceptances', allJobIds],
-    queryFn: async () => {
-      if (allJobIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('job_acceptances')
-        .select('*')
-        .in('job_id', allJobIds);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: allJobIds.length > 0,
-  });
+  // ── Derived KPIs ──
 
-  // Fetch upcoming 48hr jobs for action needed
-  const in48hrs = format(addHours(new Date(), 48), 'yyyy-MM-dd');
-  const { data: upcoming48hrJobs = [] } = useQuery({
-    queryKey: ['dashboard-upcoming-48hr', today, in48hrs],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('id')
-        .gte('scheduled_date', today)
-        .lte('scheduled_date', in48hrs)
-        .in('status', ['scheduled', 'pending']);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: isAdmin,
-  });
+  // Today
+  const totalJobsToday = jobs.length;
+  const inProgressToday = jobs.filter((j: any) => j.status === 'in_progress').length;
+  const completedToday = jobs.filter((j: any) => j.status === 'complete').length;
+  const flaggedCount = jobs.filter((j: any) => j.status === 'flagged').length;
 
-  const { data: upcoming48hrAcceptances = [] } = useQuery({
-    queryKey: ['dashboard-upcoming-48hr-acceptances', upcoming48hrJobs.map((j: any) => j.id)],
-    queryFn: async () => {
-      const ids = upcoming48hrJobs.map((j: any) => j.id);
-      if (ids.length === 0) return [];
-      const { data, error } = await supabase
-        .from('job_acceptances')
-        .select('job_id, acceptance_status')
-        .in('job_id', ids)
-        .in('acceptance_status', ['pending', 'declined']);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: upcoming48hrJobs.length > 0,
-  });
+  // This week
+  const scheduledThisWeek = weekJobs.length;
+  const completedThisWeek = weekJobs.filter((j: any) => j.status === 'complete').length;
+  const revenueThisWeek = weekJobs
+    .filter((j: any) => j.status === 'complete' && j.price_ex_gst)
+    .reduce((sum: number, j: any) => sum + Number(j.price_ex_gst), 0);
 
-  // Fetch pending booking requests count
-  const { data: pendingRequestsCount = 0 } = useQuery({
-    queryKey: ['pending-requests-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('clean_requests')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending');
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: isAdmin,
-  });
+  // Financial
+  const unpaidCount = unpaidInvoices.length;
+  const unpaidTotal = unpaidInvoices.reduce((sum: number, j: any) => sum + Number(j.price_ex_gst || 0), 0);
+  const paidThisMonth = monthJobs
+    .filter((j: any) => j.invoice_status === 'paid' && j.price_ex_gst)
+    .reduce((sum: number, j: any) => sum + Number(j.price_ex_gst), 0);
+  const outstandingThisMonth = monthJobs
+    .filter((j: any) => j.status === 'complete' && j.price_ex_gst && j.invoice_status !== 'paid' && j.invoice_status !== 'voided')
+    .reduce((sum: number, j: any) => sum + Number(j.price_ex_gst), 0);
 
-  // Fetch completed unpaid jobs count
-  const { data: completedUnpaidCount = 0 } = useQuery({
-    queryKey: ['completed-unpaid-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('jobs')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'complete')
-        .gt('price_ex_gst', 0)
-        .not('invoice_status', 'in', '("paid","voided")');
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: isAdmin,
-  });
+  // Alerts — cleaners with no jobs this week
+  const weekCleanerIds = new Set(weekJobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id].filter(Boolean)));
+  const idleCleanersCount = allCleanerIds.filter(id => !weekCleanerIds.has(id)).length;
 
-  // Build cleaner name lookup
-  const cleanerNameMap: Record<string, string> = {};
-  cleanerProfiles.forEach((p: any) => {
-    cleanerNameMap[p.id] = p.full_name || 'Unknown';
-  });
-
-  // Build live status
+  // Live status
   const clockedInCleaners = activeTimeEntries.map((entry: any) => ({
     name: cleanerNameMap[entry.user_id] || 'Unknown',
     propertyName: (entry as any).jobs?.properties?.property_name || 'Unknown property',
   }));
 
-  // Build alerts
+  // Alerts
   const alerts: { id: string; message: string; type: 'flagged' | 'incomplete_form' | 'critical_item' }[] = [];
   jobs.forEach((job: any) => {
     if (job.status === 'flagged') {
-      const propName = job.properties?.property_name || 'Unknown';
-      alerts.push({
-        id: `flagged-${job.id}`,
-        message: `Flagged job at ${propName} — requires attention`,
-        type: 'flagged',
-      });
+      alerts.push({ id: `flagged-${job.id}`, message: `Flagged job at ${job.properties?.property_name || 'Unknown'} — requires attention`, type: 'flagged' });
     }
   });
 
-  // Build QC display data
+  // QC display
   const qcDisplayScores = qcScores.map((qc: any) => ({
     id: qc.id,
     cleanerName: cleanerNameMap[qc.inspector_id] || 'Inspector',
@@ -193,17 +222,7 @@ export function useDashboardData() {
     result: qc.result || 'fail',
   }));
 
-  // Summary counts
-  const totalJobs = jobs.length;
-  const completeCount = jobs.filter((j: any) => j.status === 'complete').length;
-  const inProgressCount = jobs.filter((j: any) => j.status === 'in_progress').length;
-  const flaggedCount = jobs.filter((j: any) => j.status === 'flagged').length;
-
-  // Action needed: unique jobs in next 48hrs with pending/declined acceptances
-  const actionNeededJobIds = new Set(upcoming48hrAcceptances.map((a: any) => a.job_id));
-  const actionNeededCount = actionNeededJobIds.size;
-
-  // Build job cards
+  // Job cards
   const jobCards = jobs.map((job: any) => ({
     id: job.id,
     propertyName: job.properties?.property_name || 'Unknown Property',
@@ -219,14 +238,29 @@ export function useDashboardData() {
     clockedInCleaners,
     alerts,
     qcDisplayScores,
-    totalJobs,
-    completeCount,
-    inProgressCount,
-    flaggedCount,
-    actionNeededCount,
-    pendingRequestsCount,
-    completedUnpaidCount,
     isLoading: jobsLoading,
     isAdmin,
+    // KPIs
+    kpi: {
+      // Row 1 — Today
+      totalJobsToday,
+      inProgressToday,
+      completedToday,
+      flaggedCount,
+      // Row 2 — This Week
+      scheduledThisWeek,
+      completedThisWeek,
+      revenueThisWeek,
+      // Row 3 — Financial
+      unpaidCount,
+      unpaidTotal,
+      paidThisMonth,
+      outstandingThisMonth,
+      // Row 4 — Alerts
+      pendingRequestsCount,
+      onboardingNotSentCount,
+      idleCleanersCount,
+      unassignedJobsCount,
+    },
   };
 }

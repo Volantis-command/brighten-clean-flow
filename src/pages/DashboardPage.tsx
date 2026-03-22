@@ -24,59 +24,35 @@ export default function DashboardPage() {
     clockedInCleaners,
     alerts,
     qcDisplayScores,
-    totalJobs,
-    completeCount,
-    inProgressCount,
-    flaggedCount,
-    actionNeededCount,
-    pendingRequestsCount,
-    completedUnpaidCount,
+    kpi,
     isLoading,
     isAdmin,
   } = useDashboardData();
 
   const handleStartJob = async (jobId: string) => {
     if (!user) return;
-
-    // Capture GPS (non-blocking if it fails)
     let lat: number | null = null;
     let lng: number | null = null;
     try {
       const pos = await getCurrentPosition();
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
-    } catch {
-      // proceed without GPS
-    }
+    } catch { /* proceed without GPS */ }
 
-    // Insert time_entry
     const { error } = await supabase.from('time_entries').insert({
-      job_id: jobId,
-      user_id: user.id,
+      job_id: jobId, user_id: user.id,
       clock_in_time: new Date().toISOString(),
-      clock_in_lat: lat,
-      clock_in_lng: lng,
-      geo_override: false,
-      geo_distance_meters: null,
+      clock_in_lat: lat, clock_in_lng: lng,
+      geo_override: false, geo_distance_meters: null,
     });
+    if (error) { toast.error(error.message); return; }
 
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    // Update job status
     await supabase.from('jobs').update({ status: 'in_progress' }).eq('id', jobId);
-
-    // Invalidate queries so banner appears
     queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['time-entry'] });
-
     toast.success('Clocked in!');
-
-    // Navigate to job details
     navigate(`/jobs/${jobId}`);
   };
 
@@ -93,7 +69,6 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6 max-w-2xl">
         <DashboardGreeting />
-
         <div>
           <h2 className="text-xl font-bold text-primary mb-4">My Jobs Today</h2>
           {jobCards.length === 0 ? (
@@ -105,22 +80,15 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-4">
               {jobCards.map((job) => (
-                <JobCard
-                  key={job.id}
-                  {...job}
-                  showStartButton
-                  showNavigateButton
+                <JobCard key={job.id} {...job} showStartButton showNavigateButton
                   onClick={() => navigate(`/jobs/${job.id}`)}
-                  onStartJob={() => handleStartJob(job.id)}
-                />
+                  onStartJob={() => handleStartJob(job.id)} />
               ))}
             </div>
           )}
         </div>
-
         <Button variant="outline" size="lg" onClick={() => navigate('/ai-assistant')} className="gap-2">
-          <Bot className="h-5 w-5" />
-          AI Assistant
+          <Bot className="h-5 w-5" /> AI Assistant
         </Button>
       </div>
     );
@@ -130,18 +98,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <DashboardGreeting />
+      <TodaySummary kpi={kpi} />
 
-      <TodaySummary
-        totalJobs={totalJobs}
-        completeCount={completeCount}
-        inProgressCount={inProgressCount}
-        flaggedCount={flaggedCount}
-        actionNeededCount={actionNeededCount}
-        pendingRequestsCount={pendingRequestsCount}
-        completedUnpaidCount={completedUnpaidCount}
-      />
-
-      {/* Today's Jobs */}
       <div>
         <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
         {jobCards.length === 0 ? (
@@ -158,11 +116,8 @@ export default function DashboardPage() {
       </div>
 
       <LiveStatusStrip clockedInCleaners={clockedInCleaners} />
-
       <AlertsSection alerts={alerts} />
-
       <QuickActions />
-
       <RecentQCScores scores={qcDisplayScores} />
     </div>
   );
