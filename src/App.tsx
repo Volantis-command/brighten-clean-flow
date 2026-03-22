@@ -27,6 +27,10 @@ import QCAuditPage from "./pages/QCAuditPage";
 import FormDetailPage from "./pages/FormDetailPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
 import ClientPropertyDetailPage from "./pages/ClientPropertyDetailPage";
+import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
+import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
