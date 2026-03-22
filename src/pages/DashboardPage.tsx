@@ -136,6 +136,7 @@ export default function DashboardPage() {
         inProgressCount={inProgressCount}
         flaggedCount={flaggedCount}
         actionNeededCount={actionNeededCount}
+        pendingRequestsCount={pendingRequestsCount}
       />
 
       {/* Today's Jobs */}
