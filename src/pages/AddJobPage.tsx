@@ -331,7 +331,7 @@ export default function AddJobPage() {
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
                 {cleaners.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} className={leaveMap[c.id] ? 'opacity-50' : ''}>
+                  <SelectItem key={c.id} value={c.id} disabled={isCleanerDisabled(c.id)} className={cn(unavailableMap[c.id] ? 'opacity-40 line-through' : leaveMap[c.id] ? 'opacity-60' : '')}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
