@@ -26,6 +26,7 @@ import SettingsPage from "./pages/SettingsPage";
 import ClientsPage from "./pages/ClientsPage";
 import QCAuditPage from "./pages/QCAuditPage";
 import FormDetailPage from "./pages/FormDetailPage";
+import ClientDetailPage from "./pages/ClientDetailPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
 import ClientPropertyDetailPage from "./pages/ClientPropertyDetailPage";
 import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
@@ -130,6 +131,7 @@ function AppRoutes() {
         <Route path="/quoting" element={<ProtectedRoute allowedRoles={['admin']}><QuotingPage /></ProtectedRoute>} />
         <Route path="/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffPage /></ProtectedRoute>} />
         <Route path="/clients" element={<ProtectedRoute allowedRoles={['admin']}><ClientsPage /></ProtectedRoute>} />
+        <Route path="/clients/:id" element={<ProtectedRoute allowedRoles={['admin']}><ClientDetailPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
       </Route>

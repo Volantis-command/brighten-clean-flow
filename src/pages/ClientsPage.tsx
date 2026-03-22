@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ function useClientsList() {
 const BASE_URL = window.location.origin;
 
 export default function ClientsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: clients = [], isLoading } = useClientsList();
   const [createOpen, setCreateOpen] = useState(false);
@@ -184,8 +186,8 @@ export default function ClientsPage() {
             </TableHeader>
             <TableBody>
               {clients.map(c => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-semibold">{c.full_name || '—'}</TableCell>
+                <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
+                  <TableCell className="font-semibold text-primary">{c.full_name || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{c.phone || '—'}</TableCell>
                   <TableCell>
