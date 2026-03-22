@@ -143,6 +143,22 @@ export function useDashboardData() {
     enabled: isAdmin,
   });
 
+  // Fetch completed unpaid jobs count
+  const { data: completedUnpaidCount = 0 } = useQuery({
+    queryKey: ['completed-unpaid-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'complete')
+        .gt('price_ex_gst', 0)
+        .not('invoice_status', 'in', '("paid","voided")');
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isAdmin,
+  });
+
   // Build cleaner name lookup
   const cleanerNameMap: Record<string, string> = {};
   cleanerProfiles.forEach((p: any) => {
