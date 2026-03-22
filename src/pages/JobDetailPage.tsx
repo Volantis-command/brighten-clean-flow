@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -283,6 +283,45 @@ export default function JobDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Recurring Series Banner */}
+      {(job as any).series_id && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Repeat className="h-5 w-5 text-primary" />
+              <p className="text-sm font-bold text-primary">Recurring Job — Part of a series</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/jobs/${jobId}/edit`)}>
+                Edit this job only
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/jobs/${jobId}/edit`)}>
+                Edit all future jobs
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!confirm('Cancel all future scheduled jobs in this series?')) return;
+                  const { error } = await supabase.from('jobs')
+                    .delete()
+                    .eq('series_id', (job as any).series_id)
+                    .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
+                    .eq('status', 'scheduled')
+                    .neq('id', jobId!);
+                  if (error) { toast.error(error.message); return; }
+                  toast.success('Future jobs in series cancelled');
+                  queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                }}
+              >
+                Cancel all future jobs
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cleaners & Acceptance */}
       <Card>

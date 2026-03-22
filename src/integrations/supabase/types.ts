@@ -331,6 +331,59 @@ export type Database = {
           },
         ]
       }
+      job_series: {
+        Row: {
+          clean_type: string | null
+          cleaner_1_id: string | null
+          cleaner_2_id: string | null
+          created_at: string
+          end_date: string | null
+          frequency: string
+          id: string
+          interval_weeks: number
+          notes: string | null
+          price_ex_gst: number | null
+          property_id: string | null
+          start_date: string
+        }
+        Insert: {
+          clean_type?: string | null
+          cleaner_1_id?: string | null
+          cleaner_2_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          interval_weeks?: number
+          notes?: string | null
+          price_ex_gst?: number | null
+          property_id?: string | null
+          start_date: string
+        }
+        Update: {
+          clean_type?: string | null
+          cleaner_1_id?: string | null
+          cleaner_2_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          interval_weeks?: number
+          notes?: string | null
+          price_ex_gst?: number | null
+          property_id?: string | null
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_series_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           cleaner_1_id: string | null
@@ -350,6 +403,7 @@ export type Database = {
           property_id: string | null
           scheduled_date: string
           scheduled_time: string | null
+          series_id: string | null
           status: string
           xero_invoice_id: string | null
           xero_invoice_number: string | null
@@ -372,6 +426,7 @@ export type Database = {
           property_id?: string | null
           scheduled_date: string
           scheduled_time?: string | null
+          series_id?: string | null
           status?: string
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
@@ -394,6 +449,7 @@ export type Database = {
           property_id?: string | null
           scheduled_date?: string
           scheduled_time?: string | null
+          series_id?: string | null
           status?: string
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
@@ -411,6 +467,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "job_series"
             referencedColumns: ["id"]
           },
         ]

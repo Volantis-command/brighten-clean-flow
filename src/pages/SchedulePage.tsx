@@ -174,6 +174,7 @@ export default function SchedulePage() {
                 priceExGst={job.price_ex_gst}
                 isAdmin={true}
                 acceptances={acceptancesByJob[job.id]}
+                seriesId={job.series_id}
               />
             ))}
           </div>
@@ -232,6 +233,7 @@ export default function SchedulePage() {
                         propertyLng={job.properties?.lng}
                         showClockIn={isTodayJob}
                         invoiceStatus={job.invoice_status}
+                        seriesId={job.series_id}
                       />
                     </div>
                   );
@@ -256,6 +258,7 @@ export default function SchedulePage() {
                     status={job.status}
                     isPastJob
                     invoiceStatus={job.invoice_status}
+                    seriesId={job.series_id}
                   />
                 ))}
               </div>

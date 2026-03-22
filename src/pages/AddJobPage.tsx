@@ -16,6 +16,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncToDrive } from '@/lib/driveSync';
+import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
+import { generateRecurringDates } from '@/lib/recurringJobs';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -50,6 +52,7 @@ export default function AddJobPage() {
   const [sofaBed, setSofaBed] = useState('na');
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [propertySearch, setPropertySearch] = useState('');
+  const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties-active'],
@@ -78,13 +81,40 @@ export default function AddJobPage() {
 
     setSaving(true);
 
-    // Build combined notes
     const combinedNotes = [
       notes,
       sofaBed !== 'na' ? `Sofa bed: ${sofaBed === 'yes' ? 'Yes — needs to be made' : 'No'}` : '',
       specialInstructions ? `Special instructions: ${specialInstructions}` : '',
     ].filter(Boolean).join('\n\n');
 
+    const priceExGst = selectedProperty?.price_turnover || null;
+    const priceIncGst = priceExGst ? Number(priceExGst) * 1.1 : null;
+
+    let seriesId: string | null = null;
+
+    // Create series if recurring
+    if (recurring.enabled) {
+      const { data: seriesData, error: seriesError } = await supabase.from('job_series' as any).insert({
+        frequency: recurring.frequency,
+        interval_weeks: getIntervalWeeks(recurring),
+        start_date: format(date, 'yyyy-MM-dd'),
+        end_date: recurring.endType === 'until' && recurring.endDate ? format(recurring.endDate, 'yyyy-MM-dd') : null,
+        property_id: propertyId,
+        cleaner_1_id: cleaner1,
+        cleaner_2_id: cleaner2 || null,
+        notes: combinedNotes || null,
+        price_ex_gst: priceExGst,
+      } as any).select('id').single();
+
+      if (seriesError) {
+        toast.error('Failed to create series: ' + seriesError.message);
+        setSaving(false);
+        return;
+      }
+      seriesId = (seriesData as any)?.id || null;
+    }
+
+    // Create the first job
     const { data: jobData, error } = await supabase.from('jobs').insert({
       property_id: propertyId,
       scheduled_date: format(date, 'yyyy-MM-dd'),
@@ -94,14 +124,40 @@ export default function AddJobPage() {
       cleaner_2_id: cleaner2 || null,
       notes: combinedNotes || null,
       status: 'scheduled',
-      price_ex_gst: selectedProperty?.price_turnover || null,
-      price_inc_gst: selectedProperty?.price_turnover ? Number(selectedProperty.price_turnover) * 1.1 : null,
-    }).select('id').single();
+      price_ex_gst: priceExGst,
+      price_inc_gst: priceIncGst,
+      series_id: seriesId,
+    } as any).select('id').single();
 
     if (error) {
       toast.error(error.message);
       setSaving(false);
       return;
+    }
+
+    // Create future recurring jobs
+    if (recurring.enabled && seriesId) {
+      const futureDates = generateRecurringDates(date, recurring);
+      if (futureDates.length > 0) {
+        const futureJobs = futureDates.map((d) => ({
+          property_id: propertyId,
+          scheduled_date: d,
+          scheduled_time: time,
+          estimated_duration: parseInt(duration),
+          cleaner_1_id: cleaner1,
+          cleaner_2_id: cleaner2 || null,
+          notes: combinedNotes || null,
+          status: 'scheduled',
+          price_ex_gst: priceExGst,
+          price_inc_gst: priceIncGst,
+          series_id: seriesId,
+        }));
+
+        // Batch insert in chunks of 50
+        for (let i = 0; i < futureJobs.length; i += 50) {
+          await supabase.from('jobs').insert(futureJobs.slice(i, i + 50) as any);
+        }
+      }
     }
 
     // Auto-create job_form record
@@ -142,7 +198,8 @@ export default function AddJobPage() {
       }).catch(() => {});
     }
 
-    toast.success('Job scheduled!');
+    const jobCount = recurring.enabled ? generateRecurringDates(date, recurring).length + 1 : 1;
+    toast.success(recurring.enabled ? `${jobCount} recurring jobs scheduled!` : 'Job scheduled!');
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
     navigate('/schedule');
@@ -256,6 +313,9 @@ export default function AddJobPage() {
           </FormField>
         </Section>
 
+        {/* Recurring */}
+        <RecurringJobSection config={recurring} onChange={setRecurring} />
+
         {/* Job Details */}
         <Section title="Job Details">
           <FormField label="Notes for Cleaners">
@@ -295,7 +355,7 @@ export default function AddJobPage() {
         </Section>
 
         <Button variant="accent" size="lg" onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? 'Scheduling…' : 'Schedule Job'}
+          {saving ? 'Scheduling…' : recurring.enabled ? 'Schedule Recurring Jobs' : 'Schedule Job'}
         </Button>
       </div>
     </div>

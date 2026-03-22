@@ -14,6 +14,8 @@ import { ArrowLeft, CalendarIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
+import { generateRecurringDates } from '@/lib/recurringJobs';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -32,6 +34,7 @@ export default function EditJobPage() {
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
   const [saving, setSaving] = useState(false);
+  const [editScope, setEditScope] = useState<'this' | 'future'>('this');
 
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState('09:00');
@@ -40,6 +43,7 @@ export default function EditJobPage() {
   const [cleaner2, setCleaner2] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('scheduled');
+  const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['edit-job', jobId],
@@ -55,6 +59,17 @@ export default function EditJobPage() {
     enabled: !!jobId,
   });
 
+  // Load series info if this job belongs to a series
+  const seriesId = (job as any)?.series_id;
+  const { data: series } = useQuery({
+    queryKey: ['job-series', seriesId],
+    queryFn: async () => {
+      const { data } = await supabase.from('job_series' as any).select('*').eq('id', seriesId).single();
+      return data as any;
+    },
+    enabled: !!seriesId,
+  });
+
   useEffect(() => {
     if (job) {
       setDate(parseISO(job.scheduled_date));
@@ -67,13 +82,26 @@ export default function EditJobPage() {
     }
   }, [job]);
 
+  useEffect(() => {
+    if (series) {
+      setRecurring({
+        enabled: true,
+        frequency: series.frequency || 'weekly',
+        customWeeks: series.interval_weeks || 1,
+        endType: series.end_date ? 'until' : 'ongoing',
+        endDate: series.end_date ? parseISO(series.end_date) : undefined,
+        preferredDays: [],
+      });
+    }
+  }, [series]);
+
   const handleSave = async () => {
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
 
     setSaving(true);
 
-    const { error } = await supabase.from('jobs').update({
+    const updatePayload: any = {
       scheduled_date: format(date, 'yyyy-MM-dd'),
       scheduled_time: time,
       estimated_duration: parseInt(duration),
@@ -81,15 +109,51 @@ export default function EditJobPage() {
       cleaner_2_id: cleaner2 || null,
       notes: notes || null,
       status,
-    }).eq('id', jobId!);
+    };
 
-    if (error) {
-      toast.error(error.message);
-      setSaving(false);
-      return;
+    if (editScope === 'future' && seriesId) {
+      // Update all future jobs in the series
+      const { error } = await supabase.from('jobs')
+        .update({
+          scheduled_time: time,
+          estimated_duration: parseInt(duration),
+          cleaner_1_id: cleaner1,
+          cleaner_2_id: cleaner2 || null,
+          notes: notes || null,
+        } as any)
+        .eq('series_id', seriesId)
+        .gte('scheduled_date', format(date, 'yyyy-MM-dd'))
+        .eq('status', 'scheduled');
+
+      if (error) {
+        toast.error(error.message);
+        setSaving(false);
+        return;
+      }
+
+      // Also update the series record
+      await supabase.from('job_series' as any).update({
+        cleaner_1_id: cleaner1,
+        cleaner_2_id: cleaner2 || null,
+        notes: notes || null,
+        interval_weeks: getIntervalWeeks(recurring),
+        frequency: recurring.frequency,
+        end_date: recurring.endType === 'until' && recurring.endDate ? format(recurring.endDate, 'yyyy-MM-dd') : null,
+      } as any).eq('id', seriesId);
+
+      toast.success('All future jobs updated!');
+    } else {
+      // Update just this job
+      const { error } = await supabase.from('jobs').update(updatePayload).eq('id', jobId!);
+
+      if (error) {
+        toast.error(error.message);
+        setSaving(false);
+        return;
+      }
+      toast.success('Job updated!');
     }
 
-    toast.success('Job updated!');
     queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
@@ -127,6 +191,32 @@ export default function EditJobPage() {
       </div>
 
       <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Edit Job</h1>
+
+      {seriesId && (
+        <div className="bg-primary/5 rounded-2xl p-4 space-y-2">
+          <p className="text-sm font-bold text-primary">🔄 This is a recurring job</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setEditScope('this')}
+              className={cn(
+                'flex-1 h-10 rounded-xl font-bold text-xs transition-colors',
+                editScope === 'this' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              )}
+            >
+              Edit this job only
+            </button>
+            <button
+              onClick={() => setEditScope('future')}
+              className={cn(
+                'flex-1 h-10 rounded-xl font-bold text-xs transition-colors',
+                editScope === 'future' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              )}
+            >
+              Edit all future jobs
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Property (read-only) */}
@@ -219,7 +309,7 @@ export default function EditJobPage() {
         </Section>
 
         <Button variant="accent" size="lg" onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? 'Saving…' : 'Save Changes'}
+          {saving ? 'Saving…' : editScope === 'future' ? 'Update All Future Jobs' : 'Save Changes'}
         </Button>
       </div>
     </div>
