@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const {
     jobCards,
+    upcomingJobCards,
     clockedInCleaners,
     alerts,
     qcDisplayScores,
