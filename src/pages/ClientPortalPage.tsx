@@ -21,7 +21,7 @@ function getPropertyStatus(jobs: any[], timeEntries: any[]) {
 }
 
 export default function ClientPortalPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   // Fetch client's linked properties
