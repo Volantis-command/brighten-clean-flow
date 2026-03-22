@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
+import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2 } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
