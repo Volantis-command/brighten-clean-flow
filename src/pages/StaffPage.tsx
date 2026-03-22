@@ -70,6 +70,7 @@ export default function StaffPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
 
   // Create form
   const [createEmail, setCreateEmail] = useState('');
