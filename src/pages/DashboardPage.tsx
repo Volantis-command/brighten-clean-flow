@@ -31,6 +31,8 @@ export default function DashboardPage() {
     isAdmin,
   } = useDashboardData();
 
+  const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
+
   const handleStartJob = async (jobId: string) => {
     if (!user) return;
     let lat: number | null = null;
