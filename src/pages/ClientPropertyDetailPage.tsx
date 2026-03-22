@@ -4,9 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Download, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Loader2, Download, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Clock, MessageSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
+import CleanBookingForm from '@/components/portal/CleanBookingForm';
 
 export default function ClientPropertyDetailPage() {
   const { id: propertyId } = useParams<{ id: string }>();
