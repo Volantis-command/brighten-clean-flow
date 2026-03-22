@@ -65,7 +65,7 @@ export default function ClientsPage() {
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
-  const [createPassword, setCreatePassword] = useState('');
+  
   const [createPropertyIds, setCreatePropertyIds] = useState<string[]>([]);
 
   const { data: allProperties = [] } = useQuery({
