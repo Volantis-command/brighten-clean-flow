@@ -83,15 +83,18 @@ export default function AddJobPage() {
   // Conflict state for selected cleaners
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
   const cleaner1OnLeave = !!leaveMap[cleaner1];
+  const cleaner1Unavailable = !!unavailableMap[cleaner1];
   const cleaner1Conflicts = conflictMap[cleaner1] || [];
-  const cleaner1HasIssue = cleaner1 && (cleaner1OnLeave || cleaner1Conflicts.length > 0);
+  const cleaner1HasIssue = cleaner1 && (cleaner1Unavailable || cleaner1OnLeave || cleaner1Conflicts.length > 0);
 
   const cleaner2Name = cleaners.find((c: any) => c.id === cleaner2)?.full_name || 'Cleaner';
   const cleaner2OnLeave = cleaner2 ? !!leaveMap[cleaner2] : false;
+  const cleaner2Unavailable = cleaner2 ? !!unavailableMap[cleaner2] : false;
   const cleaner2Conflicts = cleaner2 ? (conflictMap[cleaner2] || []) : [];
-  const cleaner2HasIssue = cleaner2 && (cleaner2OnLeave || cleaner2Conflicts.length > 0);
+  const cleaner2HasIssue = cleaner2 && (cleaner2Unavailable || cleaner2OnLeave || cleaner2Conflicts.length > 0);
 
-  const hasAnyConflict = cleaner1HasIssue || cleaner2HasIssue;
+  // Hard block if either cleaner is unavailable (weekly availability)
+  const hasHardBlock = (cleaner1 && cleaner1Unavailable) || (cleaner2 && cleaner2Unavailable);
 
   // Reset conflict acknowledged when cleaner or date changes
   const handleCleaner1Change = (v: string) => { setCleaner1(v); setConflictAcknowledged(false); };
