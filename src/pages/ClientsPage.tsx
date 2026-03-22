@@ -53,6 +53,7 @@ function useClientsList() {
 const BASE_URL = window.location.origin;
 
 export default function ClientsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: clients = [], isLoading } = useClientsList();
   const [createOpen, setCreateOpen] = useState(false);
