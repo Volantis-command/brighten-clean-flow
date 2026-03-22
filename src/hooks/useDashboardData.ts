@@ -33,6 +33,29 @@ export function useDashboardData() {
     enabled: !!user,
   });
 
+  // ── Upcoming 7 days jobs for cleaners ──
+  const upcomingEnd = format(addDays(now, 7), 'yyyy-MM-dd');
+  const { data: upcomingJobs = [] } = useQuery({
+    queryKey: ['dashboard-upcoming-7d', today, upcomingEnd, role],
+    queryFn: async () => {
+      if (!user) return [];
+      let query = supabase
+        .from('jobs')
+        .select('*, properties(property_name, address, suburb)')
+        .gt('scheduled_date', today)
+        .lte('scheduled_date', upcomingEnd)
+        .order('scheduled_date', { ascending: true })
+        .order('scheduled_time', { ascending: true });
+      if (!isAdmin) {
+        query = query.or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   // ── Cleaner profiles ──
   const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
   const { data: cleanerProfiles = [] } = useQuery({
