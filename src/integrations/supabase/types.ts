@@ -648,6 +648,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          weekly_availability: Json | null
         }
         Insert: {
           avatar_url?: string | null
@@ -656,6 +657,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
+          weekly_availability?: Json | null
         }
         Update: {
           avatar_url?: string | null
@@ -664,6 +666,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          weekly_availability?: Json | null
         }
         Relationships: []
       }
@@ -1073,6 +1076,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_leave: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          notes: string | null
+          reason: string | null
+          start_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          start_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          start_date?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       time_entries: {
         Row: {

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
+import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2 } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
@@ -70,6 +71,7 @@ export default function StaffPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
 
   // Create form
   const [createEmail, setCreateEmail] = useState('');
@@ -153,6 +155,36 @@ export default function StaffPage() {
 
   const isAdmin = currentRole === 'admin';
 
+  // Selected staff detail view
+  if (selectedStaff) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedStaff(null)} className="gap-1">
+            <ArrowLeft className="h-4 w-4" /> Back to Staff
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-2xl">
+            {(selectedStaff.full_name || '?')[0].toUpperCase()}
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-primary">{selectedStaff.full_name || 'No name'}</h1>
+            <Badge className={roleBadgeStyles[selectedStaff.role]}>{roleLabels[selectedStaff.role]}</Badge>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
+          {selectedStaff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {selectedStaff.email}</p>}
+          {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
+        </div>
+
+        <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -179,7 +211,7 @@ export default function StaffPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {staff.map((m) => (
-            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border">
+            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setSelectedStaff(m)}>
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
@@ -201,10 +233,10 @@ export default function StaffPage() {
 
               {isAdmin && (
                 <div className="flex gap-2 mt-auto pt-2">
-                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl" onClick={() => openEdit(m)}>
+                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl" onClick={(e) => { e.stopPropagation(); openEdit(m); }}>
                     <Pencil className="w-4 h-4" /> Edit
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setRemoveMember(m)}>
+                  <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setRemoveMember(m); }}>
                     <Trash2 className="w-4 h-4" /> Remove
                   </Button>
                 </div>

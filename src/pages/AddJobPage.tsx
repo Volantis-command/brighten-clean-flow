@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
+import { useAllCleanerLeave } from '@/hooks/useCleanerConflicts';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 import { syncToDrive } from '@/lib/driveSync';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
 import { generateRecurringDates } from '@/lib/recurringJobs';
+import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -41,6 +43,7 @@ export default function AddJobPage() {
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
   const [saving, setSaving] = useState(false);
+  const [conflictAcknowledged, setConflictAcknowledged] = useState(false);
 
   const [propertyId, setPropertyId] = useState('');
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -53,6 +56,8 @@ export default function AddJobPage() {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [propertySearch, setPropertySearch] = useState('');
   const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
+
+  const { leaveMap, conflictMap } = useAllCleanerLeave(date);
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties-active'],
@@ -74,10 +79,38 @@ export default function AddJobPage() {
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
 
+  // Conflict state for selected cleaners
+  const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
+  const cleaner1OnLeave = !!leaveMap[cleaner1];
+  const cleaner1Conflicts = conflictMap[cleaner1] || [];
+  const cleaner1HasIssue = cleaner1 && (cleaner1OnLeave || cleaner1Conflicts.length > 0);
+
+  const cleaner2Name = cleaners.find((c: any) => c.id === cleaner2)?.full_name || 'Cleaner';
+  const cleaner2OnLeave = cleaner2 ? !!leaveMap[cleaner2] : false;
+  const cleaner2Conflicts = cleaner2 ? (conflictMap[cleaner2] || []) : [];
+  const cleaner2HasIssue = cleaner2 && (cleaner2OnLeave || cleaner2Conflicts.length > 0);
+
+  const hasAnyConflict = cleaner1HasIssue || cleaner2HasIssue;
+
+  // Reset conflict acknowledged when cleaner or date changes
+  const handleCleaner1Change = (v: string) => { setCleaner1(v); setConflictAcknowledged(false); };
+  const handleCleaner2Change = (v: string) => { setCleaner2(v === '__none__' ? '' : v); setConflictAcknowledged(false); };
+  const handleDateChange = (d: Date | undefined) => { setDate(d); setConflictAcknowledged(false); };
+
+  const getCleanerLabel = (c: any) => {
+    const name = c.full_name || c.email;
+    const onLeave = !!leaveMap[c.id];
+    const hasJobs = (conflictMap[c.id] || []).length > 0;
+    if (onLeave) return `${name} (on leave)`;
+    if (hasJobs) return `${name} (has job)`;
+    return name;
+  };
+
   const handleSave = async () => {
     if (!propertyId) { toast.error('Please select a property.'); return; }
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
+    if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
     setSaving(true);
 
@@ -92,9 +125,8 @@ export default function AddJobPage() {
 
     let seriesId: string | null = null;
 
-    // Create series if recurring
     if (recurring.enabled) {
-      const { data: seriesData, error: seriesError } = await supabase.from('job_series' as any).insert({
+      const { data: seriesData, error: seriesError } = await supabase.from('job_series').insert({
         frequency: recurring.frequency,
         interval_weeks: getIntervalWeeks(recurring),
         start_date: format(date, 'yyyy-MM-dd'),
@@ -114,7 +146,6 @@ export default function AddJobPage() {
       seriesId = (seriesData as any)?.id || null;
     }
 
-    // Create the first job
     const { data: jobData, error } = await supabase.from('jobs').insert({
       property_id: propertyId,
       scheduled_date: format(date, 'yyyy-MM-dd'),
@@ -135,7 +166,6 @@ export default function AddJobPage() {
       return;
     }
 
-    // Create future recurring jobs
     if (recurring.enabled && seriesId) {
       const futureDates = generateRecurringDates(date, recurring);
       if (futureDates.length > 0) {
@@ -152,15 +182,12 @@ export default function AddJobPage() {
           price_inc_gst: priceIncGst,
           series_id: seriesId,
         }));
-
-        // Batch insert in chunks of 50
         for (let i = 0; i < futureJobs.length; i += 50) {
           await supabase.from('jobs').insert(futureJobs.slice(i, i + 50) as any);
         }
       }
     }
 
-    // Auto-create job_form record
     if (jobData?.id) {
       await supabase.from('job_forms').insert({
         job_id: jobData.id,
@@ -171,7 +198,6 @@ export default function AddJobPage() {
       });
     }
 
-    // Send notifications to assigned cleaners
     const propName = selectedProperty?.property_name || 'a property';
     const notifMessage = `New job assigned: ${propName} on ${format(date, 'MMM d, yyyy')} at ${time}`;
     const notifInserts = [cleaner1, cleaner2].filter(Boolean).map((uid) => ({
@@ -184,12 +210,10 @@ export default function AddJobPage() {
       await supabase.from('notifications').insert(notifInserts);
     }
 
-    // Fire-and-forget: create Drive folder for this job date
     if (jobData?.id) {
       syncToDrive("sync_job_folder", { job_id: jobData.id });
     }
 
-    // Fire-and-forget: send SMS to assigned cleaners
     if (jobData?.id) {
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-job-sms`, {
         method: 'POST',
@@ -270,7 +294,7 @@ export default function AddJobPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={date} onSelect={handleDateChange} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </FormField>
@@ -293,24 +317,53 @@ export default function AddJobPage() {
         {/* Cleaners */}
         <Section title="Assigned Cleaners">
           <FormField label="Cleaner 1 *">
-            <Select value={cleaner1} onValueChange={setCleaner1}>
+            <Select value={cleaner1} onValueChange={handleCleaner1Change}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
-                {cleaners.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <FormField label="Cleaner 2">
-            <Select value={cleaner2 || '__none__'} onValueChange={(v) => setCleaner2(v === '__none__' ? '' : v)}>
-              <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
-                {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                {cleaners.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id} className={leaveMap[c.id] ? 'opacity-50' : ''}>
+                    {getCleanerLabel(c)}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
+
+          {/* Cleaner 1 conflict warning */}
+          {cleaner1HasIssue && !conflictAcknowledged && (
+            <CleanerConflictWarning
+              cleanerName={cleaner1Name}
+              conflicts={cleaner1Conflicts}
+              isOnLeave={cleaner1OnLeave}
+              onConfirm={() => setConflictAcknowledged(true)}
+              onCancel={() => setCleaner1('')}
+            />
+          )}
+
+          <FormField label="Cleaner 2">
+            <Select value={cleaner2 || '__none__'} onValueChange={handleCleaner2Change}>
+              <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
+                  <SelectItem key={c.id} value={c.id} className={leaveMap[c.id] ? 'opacity-50' : ''}>
+                    {getCleanerLabel(c)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          {/* Cleaner 2 conflict warning */}
+          {cleaner2HasIssue && !conflictAcknowledged && (
+            <CleanerConflictWarning
+              cleanerName={cleaner2Name}
+              conflicts={cleaner2Conflicts}
+              isOnLeave={cleaner2OnLeave}
+              onConfirm={() => setConflictAcknowledged(true)}
+              onCancel={() => setCleaner2('')}
+            />
+          )}
         </Section>
 
         {/* Recurring */}
