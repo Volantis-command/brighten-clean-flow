@@ -58,6 +58,7 @@ export default function AddJobPage() {
   const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
 
   const { leaveMap, conflictMap } = useAllCleanerLeave(date);
+  const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties-active'],
