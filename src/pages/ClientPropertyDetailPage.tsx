@@ -17,6 +17,8 @@ export default function ClientPropertyDetailPage() {
   const queryClient = useQueryClient();
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [showBooking, setShowBooking] = useState(false);
 
   // Fetch property
   const { data: property, isLoading } = useQuery({
