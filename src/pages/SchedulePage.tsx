@@ -258,6 +258,7 @@ export default function SchedulePage() {
                     status={job.status}
                     isPastJob
                     invoiceStatus={job.invoice_status}
+                    seriesId={job.series_id}
                   />
                 ))}
               </div>

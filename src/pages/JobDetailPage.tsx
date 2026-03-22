@@ -284,6 +284,45 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Recurring Series Banner */}
+      {(job as any).series_id && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Repeat className="h-5 w-5 text-primary" />
+              <p className="text-sm font-bold text-primary">Recurring Job — Part of a series</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/jobs/${jobId}/edit`)}>
+                Edit this job only
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/jobs/${jobId}/edit`)}>
+                Edit all future jobs
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!confirm('Cancel all future scheduled jobs in this series?')) return;
+                  const { error } = await supabase.from('jobs')
+                    .delete()
+                    .eq('series_id', (job as any).series_id)
+                    .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
+                    .eq('status', 'scheduled')
+                    .neq('id', jobId!);
+                  if (error) { toast.error(error.message); return; }
+                  toast.success('Future jobs in series cancelled');
+                  queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                }}
+              >
+                Cancel all future jobs
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Cleaners & Acceptance */}
       <Card>
         <CardHeader className="pb-3">
