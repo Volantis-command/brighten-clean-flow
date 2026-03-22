@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -35,8 +37,12 @@ export default function LoginPage() {
         setIsSignUp(false);
       }
     } else {
-      const { error } = await signIn(email, password);
-      if (error) setError(error.message);
+      const { error, role } = await signIn(email, password);
+      if (error) {
+        setError(error.message);
+      } else {
+        navigate(role === 'client' ? '/portal' : '/dashboard', { replace: true });
+      }
     }
     setLoading(false);
   };
