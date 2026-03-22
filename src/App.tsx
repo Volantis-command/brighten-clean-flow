@@ -33,6 +33,7 @@ import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
 import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import BookingRequestsPage from "./pages/BookingRequestsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
