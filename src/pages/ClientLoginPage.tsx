@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label';
 
 export default function ClientLoginPage() {
   const { signIn } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,8 +17,12 @@ export default function ClientLoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error } = await signIn(email, password);
-    if (error) setError(error.message);
+    const { error, role } = await signIn(email, password);
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate(role === 'client' ? '/portal' : '/dashboard', { replace: true });
+    }
     setLoading(false);
   };
 
