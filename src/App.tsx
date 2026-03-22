@@ -33,6 +33,7 @@ import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
 import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import BookingRequestsPage from "./pages/BookingRequestsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -133,6 +134,7 @@ function AppRoutes() {
         <Route path="/clients" element={<ProtectedRoute allowedRoles={['admin']}><ClientsPage /></ProtectedRoute>} />
         <Route path="/clients/:id" element={<ProtectedRoute allowedRoles={['admin']}><ClientDetailPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/requests" element={<ProtectedRoute allowedRoles={['admin']}><BookingRequestsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
       </Route>
 

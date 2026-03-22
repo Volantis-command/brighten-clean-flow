@@ -65,7 +65,7 @@ export default function ClientsPage() {
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
-  const [createPassword, setCreatePassword] = useState('');
+  
   const [createPropertyIds, setCreatePropertyIds] = useState<string[]>([]);
 
   const { data: allProperties = [] } = useQuery({
@@ -78,8 +78,9 @@ export default function ClientsPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const autoPassword = crypto.randomUUID().slice(0, 12) + 'Aa1!';
       const { data, error } = await supabase.functions.invoke('invite-staff', {
-        body: { action: 'create_user', email: createEmail, role: 'client', full_name: createName, phone: createPhone, password: createPassword },
+        body: { action: 'create_user', email: createEmail, role: 'client', full_name: createName, phone: createPhone, password: autoPassword },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -87,12 +88,22 @@ export default function ClientsPage() {
         const inserts = createPropertyIds.map(pid => ({ client_id: data.user_id, property_id: pid }));
         await supabase.from('client_properties').insert(inserts);
       }
+      // Auto-send onboarding SMS if phone provided
+      if (createPhone && data?.user_id) {
+        const { data: links } = await supabase.from('client_properties').select('onboard_token').eq('client_id', data.user_id).limit(1);
+        const token = links?.[0]?.onboard_token;
+        if (token) {
+          await supabase.functions.invoke('send-job-sms', {
+            body: { to: createPhone, message: `Hi ${createName}, welcome to Brightly! Set up your property portal here: ${BASE_URL}/onboard/${token}` },
+          }).catch(() => {});
+        }
+      }
     },
     onSuccess: () => {
       toast.success('Client account created!');
       queryClient.invalidateQueries({ queryKey: ['clients-list'] });
       setCreateOpen(false);
-      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreatePropertyIds([]);
+      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePropertyIds([]);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -289,7 +300,7 @@ export default function ClientsPage() {
           <div className="space-y-4">
             <div><Label>Full Name *</Label><Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" /></div>
             <div><Label>Email *</Label><Input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} placeholder="client@example.com" /></div>
-            <div><Label>Temporary Password *</Label><Input type="text" value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Min 6 characters" /></div>
+            
             <div><Label>Phone</Label><Input value={createPhone} onChange={e => setCreatePhone(e.target.value)} placeholder="0412 345 678" /></div>
             <div>
               <Label>Link Properties</Label>
@@ -307,7 +318,7 @@ export default function ClientsPage() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              disabled={!createEmail || !createName || createMutation.isPending}
               className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
