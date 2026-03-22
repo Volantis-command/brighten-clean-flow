@@ -36,6 +36,7 @@ interface ScheduleJobCardProps {
   acceptances?: ScheduleJobCardAcceptance[];
   priceExGst?: number | null;
   isAdmin?: boolean;
+  seriesId?: string | null;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
