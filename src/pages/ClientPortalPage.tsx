@@ -21,7 +21,7 @@ function getPropertyStatus(jobs: any[], timeEntries: any[]) {
 }
 
 export default function ClientPortalPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   // Fetch client's linked properties
@@ -126,11 +126,15 @@ export default function ClientPortalPage() {
     );
   }
 
+  const firstName = profile?.full_name?.split(' ')[0] || 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-extrabold text-primary">Your Properties</h2>
-        <p className="text-sm text-muted-foreground mt-1">Real-time status of your cleaning operations</p>
+        <h2 className="text-2xl font-extrabold text-primary">Good {greeting}, {firstName}</h2>
+        <p className="text-sm text-muted-foreground mt-1">Here's your properties</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

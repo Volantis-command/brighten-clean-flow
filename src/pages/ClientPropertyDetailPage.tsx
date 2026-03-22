@@ -4,9 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Download, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Loader2, Download, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Clock, MessageSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
+import CleanBookingForm from '@/components/portal/CleanBookingForm';
 
 export default function ClientPropertyDetailPage() {
   const { id: propertyId } = useParams<{ id: string }>();
@@ -15,6 +17,8 @@ export default function ClientPropertyDetailPage() {
   const queryClient = useQueryClient();
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [showBooking, setShowBooking] = useState(false);
 
   // Fetch property
   const { data: property, isLoading } = useQuery({
@@ -113,6 +117,17 @@ export default function ClientPropertyDetailPage() {
     enabled: !!activeJobId,
   });
 
+  // Messages
+  const { data: messages = [] } = useQuery({
+    queryKey: ['client-messages', user?.id, propertyId],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase.from('client_messages' as any).select('*').eq('client_id', user.id).eq('property_id', propertyId!).order('sent_at', { ascending: true });
+      return (data as any[]) || [];
+    },
+    enabled: !!user && !!propertyId,
+  });
+
   // Upcoming jobs
   const upcomingJobs = jobs.filter((j: any) => j.status === 'scheduled' || j.status === 'pending').slice(0, 3);
   const completedJobs = jobs.filter((j: any) => j.status === 'complete');
@@ -132,27 +147,39 @@ export default function ClientPropertyDetailPage() {
     },
   });
 
-  // Request a clean
-  const requestCleanMutation = useMutation({
+  // Send message
+  const sendMessageMutation = useMutation({
     mutationFn: async () => {
-      // Send notification to all admins
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (adminRoles?.length) {
-        const notifs = adminRoles.map((r: any) => ({
-          user_id: r.user_id,
-          message: `Clean request from client for ${property?.property_name}`,
-          type: 'clean_request',
-        }));
-        await supabase.from('notifications').insert(notifs);
-      }
+      if (!messageText.trim() || !user) return;
+      const { error } = await supabase.from('client_messages' as any).insert({
+        client_id: user.id,
+        property_id: propertyId,
+        message: messageText.trim(),
+        direction: 'inbound',
+      } as any);
+      if (error) throw error;
     },
-    onSuccess: () => toast.success('Clean request sent to Brightly!'),
+    onSuccess: () => {
+      setMessageText('');
+      queryClient.invalidateQueries({ queryKey: ['client-messages'] });
+      toast.success('Message sent to Brightly');
+    },
   });
 
   // Time entry for active job
   const lastEntry = timeEntries[0];
   const activeTimeEntry = timeEntries.find((te: any) => te.clock_in_time && !te.clock_out_time);
   const latestAudit = audits.find((a: any) => a.job_id === activeJobId) || audits[0];
+
+  // Property Health Score
+  const last5Audits = audits.slice(0, 5);
+  const healthScore = last5Audits.length > 0 ? Math.round(last5Audits.reduce((sum: number, a: any) => sum + (a.percentage || 0), 0) / last5Audits.length) : null;
+  const prevHealthScore = audits.length >= 2 ? Math.round(audits.slice(1, 6).reduce((s: number, a: any) => s + (a.percentage || 0), 0) / Math.min(audits.length - 1, 5)) : null;
+  const healthTrend = healthScore && prevHealthScore ? (healthScore > prevHealthScore ? 'up' : healthScore < prevHealthScore ? 'down' : 'stable') : 'stable';
+
+  // Guest countdown
+  const guestCheckin = (property as any)?.guest_checkin_at;
+  const guestCountdown = guestCheckin ? differenceInMinutes(new Date(guestCheckin), new Date()) : null;
 
   // Group photos by room
   const photosByRoom: Record<string, any[]> = {};
@@ -173,6 +200,15 @@ export default function ClientPropertyDetailPage() {
   const isInProgress = !!activeTimeEntry;
   const isGuestReady = lastCompleteJob && !isInProgress;
   const hasIssues = issues.some((i: any) => i.status === 'open');
+
+  if (showBooking) {
+    return (
+      <div className="max-w-3xl mx-auto pb-20">
+        <Button variant="ghost" size="sm" onClick={() => setShowBooking(false)} className="gap-1 mb-4"><ArrowLeft className="h-4 w-4" /> Back</Button>
+        <CleanBookingForm propertyId={propertyId!} clientId={user!.id} propertyName={property.property_name} onComplete={() => setShowBooking(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-20">
@@ -207,8 +243,37 @@ export default function ClientPropertyDetailPage() {
         </div>
       </div>
 
+      {/* Guest Countdown */}
+      {guestCountdown !== null && guestCountdown > 0 && (
+        <div className={`rounded-2xl p-4 text-center font-bold ${isGuestReady ? 'bg-primary/10 border border-primary/20 text-primary' : 'bg-accent/10 border border-accent/20 text-accent-foreground'}`}>
+          {isGuestReady ? '✓ Ready for your guests' : `Next guest arrives in ${Math.floor(guestCountdown / 60)}h ${guestCountdown % 60}m`}
+        </div>
+      )}
+
       <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
       <p className="text-sm text-muted-foreground -mt-4">{[property.address, property.suburb].filter(Boolean).join(', ')}</p>
+
+      {/* Property Health Score */}
+      {healthScore !== null && (
+        <Section title="Property Health">
+          <div className="flex items-center gap-4">
+            <div className={`text-3xl font-extrabold ${healthScore >= 85 ? 'text-primary' : healthScore >= 70 ? 'text-orange-500' : 'text-destructive'}`}>
+              {healthScore}%
+            </div>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              {healthTrend === 'up' && <><TrendingUp className="w-4 h-4 text-primary" /> Improving</>}
+              {healthTrend === 'down' && <><TrendingDown className="w-4 h-4 text-destructive" /> Declining</>}
+              {healthTrend === 'stable' && <><Minus className="w-4 h-4" /> Stable</>}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Average of last {last5Audits.length} QC scores</p>
+        </Section>
+      )}
+
+      {/* Book a Clean */}
+      <Button onClick={() => setShowBooking(true)} className="w-full h-14 rounded-2xl text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+        Book a Clean
+      </Button>
 
       {/* Last Clean Summary */}
       {lastCompleteJob && (
@@ -364,12 +429,10 @@ export default function ClientPropertyDetailPage() {
           </div>
         )}
         <Button
-          variant="outline"
-          className="w-full mt-3 font-bold"
-          onClick={() => requestCleanMutation.mutate()}
-          disabled={requestCleanMutation.isPending}
+          className="w-full mt-3 font-bold bg-primary text-primary-foreground"
+          onClick={() => setShowBooking(true)}
         >
-          Request a Clean
+          Book a Clean
         </Button>
       </Section>
 
@@ -385,6 +448,28 @@ export default function ClientPropertyDetailPage() {
           <Download className="w-4 h-4" /> Download Clean Report
         </Button>
       )}
+
+      {/* Message Brightly */}
+      <Section title="Message Brightly">
+        <div className="space-y-3">
+          {messages.length > 0 && (
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {messages.map((msg: any) => (
+                <div key={msg.id} className={`text-sm p-2 rounded-lg ${msg.direction === 'inbound' ? 'bg-primary/5 text-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  <p>{msg.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(new Date(msg.sent_at), 'dd MMM, h:mm a')}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Type your message..." className="min-h-[60px] rounded-xl" />
+            <Button onClick={() => sendMessageMutation.mutate()} disabled={!messageText.trim() || sendMessageMutation.isPending} className="self-end">
+              <MessageSquare className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }

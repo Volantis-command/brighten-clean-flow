@@ -35,13 +35,107 @@ export type Database = {
         }
         Relationships: []
       }
+      clean_requests: {
+        Row: {
+          attention_areas: Json | null
+          clean_type: string | null
+          client_id: string
+          created_at: string | null
+          frequency: string | null
+          id: string
+          notes: string | null
+          preferred_time: string | null
+          property_id: string | null
+          requested_date: string | null
+          same_cleaner: boolean | null
+          status: string | null
+        }
+        Insert: {
+          attention_areas?: Json | null
+          clean_type?: string | null
+          client_id: string
+          created_at?: string | null
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          preferred_time?: string | null
+          property_id?: string | null
+          requested_date?: string | null
+          same_cleaner?: boolean | null
+          status?: string | null
+        }
+        Update: {
+          attention_areas?: Json | null
+          clean_type?: string | null
+          client_id?: string
+          created_at?: string | null
+          frequency?: string | null
+          id?: string
+          notes?: string | null
+          preferred_time?: string | null
+          property_id?: string | null
+          requested_date?: string | null
+          same_cleaner?: boolean | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clean_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_messages: {
+        Row: {
+          client_id: string
+          direction: string
+          id: string
+          message: string
+          property_id: string | null
+          read_at: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          client_id: string
+          direction?: string
+          id?: string
+          message: string
+          property_id?: string | null
+          read_at?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          direction?: string
+          id?: string
+          message?: string
+          property_id?: string | null
+          read_at?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_messages_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_properties: {
         Row: {
           client_id: string
           created_at: string | null
           guest_ready_sms: boolean | null
           id: string
+          onboard_token: string | null
+          onboard_used: boolean | null
           portal_active: boolean | null
+          portal_token: string | null
           property_id: string
           show_invoices: boolean | null
         }
@@ -50,7 +144,10 @@ export type Database = {
           created_at?: string | null
           guest_ready_sms?: boolean | null
           id?: string
+          onboard_token?: string | null
+          onboard_used?: boolean | null
           portal_active?: boolean | null
+          portal_token?: string | null
           property_id: string
           show_invoices?: boolean | null
         }
@@ -59,7 +156,10 @@ export type Database = {
           created_at?: string | null
           guest_ready_sms?: boolean | null
           id?: string
+          onboard_token?: string | null
+          onboard_used?: boolean | null
           portal_active?: boolean | null
+          portal_token?: string | null
           property_id?: string
           show_invoices?: boolean | null
         }
@@ -107,6 +207,72 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_feedback: {
+        Row: {
+          attention_areas: Json | null
+          client_id: string
+          comments: string | null
+          created_at: string | null
+          feedback_token: string | null
+          id: string
+          job_id: string | null
+          nps_score: number | null
+          photo_urls: Json | null
+          property_id: string | null
+          reasons: Json | null
+          same_cleaner_preference: string | null
+          score: number | null
+          submitted_at: string | null
+        }
+        Insert: {
+          attention_areas?: Json | null
+          client_id: string
+          comments?: string | null
+          created_at?: string | null
+          feedback_token?: string | null
+          id?: string
+          job_id?: string | null
+          nps_score?: number | null
+          photo_urls?: Json | null
+          property_id?: string | null
+          reasons?: Json | null
+          same_cleaner_preference?: string | null
+          score?: number | null
+          submitted_at?: string | null
+        }
+        Update: {
+          attention_areas?: Json | null
+          client_id?: string
+          comments?: string | null
+          created_at?: string | null
+          feedback_token?: string | null
+          id?: string
+          job_id?: string | null
+          nps_score?: number | null
+          photo_urls?: Json | null
+          property_id?: string | null
+          reasons?: Json | null
+          same_cleaner_preference?: string | null
+          score?: number | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_feedback_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_feedback_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -165,6 +331,7 @@ export type Database = {
           cleaner_2_id: string | null
           created_at: string
           estimated_duration: number | null
+          feedback_score: number | null
           id: string
           invoice_amount: number | null
           invoice_notes: string | null
@@ -186,6 +353,7 @@ export type Database = {
           cleaner_2_id?: string | null
           created_at?: string
           estimated_duration?: number | null
+          feedback_score?: number | null
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
@@ -207,6 +375,7 @@ export type Database = {
           cleaner_2_id?: string | null
           created_at?: string
           estimated_duration?: number | null
+          feedback_score?: number | null
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
@@ -437,6 +606,7 @@ export type Database = {
           client_name: string | null
           created_at: string
           default_cleaner_id: string | null
+          guest_checkin_at: string | null
           host_preferences: string | null
           id: string
           lat: number | null
@@ -444,6 +614,7 @@ export type Database = {
           lng: number | null
           payment_terms: string | null
           postcode: string | null
+          preferred_cleaner_id: string | null
           price_deep_clean: number | null
           price_end_of_lease: number | null
           price_post_build: number | null
@@ -470,6 +641,7 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           default_cleaner_id?: string | null
+          guest_checkin_at?: string | null
           host_preferences?: string | null
           id?: string
           lat?: number | null
@@ -477,6 +649,7 @@ export type Database = {
           lng?: number | null
           payment_terms?: string | null
           postcode?: string | null
+          preferred_cleaner_id?: string | null
           price_deep_clean?: number | null
           price_end_of_lease?: number | null
           price_post_build?: number | null
@@ -503,6 +676,7 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           default_cleaner_id?: string | null
+          guest_checkin_at?: string | null
           host_preferences?: string | null
           id?: string
           lat?: number | null
@@ -510,6 +684,7 @@ export type Database = {
           lng?: number | null
           payment_terms?: string | null
           postcode?: string | null
+          preferred_cleaner_id?: string | null
           price_deep_clean?: number | null
           price_end_of_lease?: number | null
           price_post_build?: number | null
