@@ -131,11 +131,14 @@ export function ScheduleJobCard({
       tabIndex={0}
     >
       <div className="flex items-start justify-between gap-3 mb-1">
-        <div>
-          <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
-          {isAdmin && priceExGst != null && priceExGst > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">${priceExGst.toFixed(2)} ex GST</p>
-          )}
+        <div className="flex items-center gap-2">
+          {seriesId && <Repeat className="h-4 w-4 text-primary shrink-0" />}
+          <div>
+            <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
+            {isAdmin && priceExGst != null && priceExGst > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">${priceExGst.toFixed(2)} ex GST</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {status === 'complete' && <InvoiceBadge status={invoiceStatus} />}
