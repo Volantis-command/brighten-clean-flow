@@ -155,6 +155,36 @@ export default function StaffPage() {
 
   const isAdmin = currentRole === 'admin';
 
+  // Selected staff detail view
+  if (selectedStaff) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedStaff(null)} className="gap-1">
+            <ArrowLeft className="h-4 w-4" /> Back to Staff
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-2xl">
+            {(selectedStaff.full_name || '?')[0].toUpperCase()}
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-primary">{selectedStaff.full_name || 'No name'}</h1>
+            <Badge className={roleBadgeStyles[selectedStaff.role]}>{roleLabels[selectedStaff.role]}</Badge>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
+          {selectedStaff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {selectedStaff.email}</p>}
+          {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
+        </div>
+
+        <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -181,7 +211,7 @@ export default function StaffPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {staff.map((m) => (
-            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border cursor-pointer" onClick={() => setSelectedStaff(m)}>
+            <div key={m.id} className="bg-card rounded-2xl shadow-md p-5 flex flex-col gap-3 border border-border cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setSelectedStaff(m)}>
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
