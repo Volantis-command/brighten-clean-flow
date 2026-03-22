@@ -139,6 +139,7 @@ function AppRoutes() {
         <Route path="/requests" element={<ProtectedRoute allowedRoles={['admin']}><BookingRequestsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute allowedRoles={['admin']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<CleanerProfilePage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
