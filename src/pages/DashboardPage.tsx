@@ -120,6 +120,25 @@ export default function DashboardPage() {
       </div>
 
       <LiveStatusStrip clockedInCleaners={clockedInCleaners} />
+
+      {/* Leave conflict alerts */}
+      {leaveAlerts.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-primary mb-4">⚠️ Leave Conflicts</h2>
+          <div className="space-y-2">
+            {leaveAlerts.map((a, i) => (
+              <div key={i} className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3 cursor-pointer hover:bg-destructive/15 transition-colors"
+                onClick={() => navigate(`/jobs/${a.jobId}`)}>
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <p className="text-sm font-semibold text-foreground">
+                  {a.cleanerName} is on leave on {format(parseISO(a.date), 'MMM d')} but assigned to {a.propertyName}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <AlertsSection alerts={alerts} />
       <QuickActions />
       <RecentQCScores scores={qcDisplayScores} />
