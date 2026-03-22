@@ -208,6 +208,7 @@ export function useDashboardData() {
     inProgressCount,
     flaggedCount,
     actionNeededCount,
+    pendingRequestsCount,
     isLoading: jobsLoading,
     isAdmin,
   };
