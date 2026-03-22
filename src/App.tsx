@@ -26,6 +26,7 @@ import SettingsPage from "./pages/SettingsPage";
 import ClientsPage from "./pages/ClientsPage";
 import QCAuditPage from "./pages/QCAuditPage";
 import FormDetailPage from "./pages/FormDetailPage";
+import ClientDetailPage from "./pages/ClientDetailPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
 import ClientPropertyDetailPage from "./pages/ClientPropertyDetailPage";
 import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
