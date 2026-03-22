@@ -333,6 +333,8 @@ export default function EditJobPage() {
               cleanerName={cleaner2Name}
               conflicts={c2FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
               isOnLeave={c2Conflicts.isOnLeave}
+              isUnavailable={c2Unavailable}
+              dayName={dayName}
               leaveReason={c2Conflicts.leaveOnDate[0]?.reason}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner2(job.cleaner_2_id || '')}
