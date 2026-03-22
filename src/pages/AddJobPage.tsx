@@ -345,6 +345,8 @@ export default function AddJobPage() {
               cleanerName={cleaner1Name}
               conflicts={cleaner1Conflicts}
               isOnLeave={cleaner1OnLeave}
+              isUnavailable={cleaner1Unavailable}
+              dayName={dayName}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner1('')}
             />
