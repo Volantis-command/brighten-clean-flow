@@ -30,6 +30,7 @@ export default function DashboardPage() {
     flaggedCount,
     actionNeededCount,
     pendingRequestsCount,
+    completedUnpaidCount,
     isLoading,
     isAdmin,
   } = useDashboardData();
