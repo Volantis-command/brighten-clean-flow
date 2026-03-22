@@ -1,4 +1,4 @@
-import { Calendar, CheckCircle, Clock, AlertTriangle, UserX } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertTriangle, UserX, CalendarPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TodaySummaryProps {
@@ -7,9 +7,10 @@ interface TodaySummaryProps {
   inProgressCount: number;
   flaggedCount: number;
   actionNeededCount?: number;
+  pendingRequestsCount?: number;
 }
 
-export function TodaySummary({ totalJobs, completeCount, inProgressCount, flaggedCount, actionNeededCount = 0 }: TodaySummaryProps) {
+export function TodaySummary({ totalJobs, completeCount, inProgressCount, flaggedCount, actionNeededCount = 0, pendingRequestsCount = 0 }: TodaySummaryProps) {
   const navigate = useNavigate();
 
   const stats = [
@@ -18,6 +19,9 @@ export function TodaySummary({ totalJobs, completeCount, inProgressCount, flagge
     { label: 'In Progress', value: inProgressCount, icon: Clock, className: 'bg-accent text-accent-foreground', path: '/schedule?status=in_progress' },
     { label: 'Flagged', value: flaggedCount, icon: AlertTriangle, className: 'bg-destructive text-destructive-foreground', path: '/schedule?status=flagged' },
     { label: 'Action Needed', value: actionNeededCount, icon: UserX, className: 'bg-[hsl(45,100%,51%)] text-foreground', path: '/schedule?acceptance=declined' },
+    ...(pendingRequestsCount > 0 ? [{
+      label: 'Booking Requests', value: pendingRequestsCount, icon: CalendarPlus, className: 'bg-[hsl(280,60%,55%)] text-white', path: '/requests',
+    }] : []),
   ];
 
   return (
