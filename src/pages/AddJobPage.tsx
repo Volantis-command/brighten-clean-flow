@@ -103,12 +103,16 @@ export default function AddJobPage() {
 
   const getCleanerLabel = (c: any) => {
     const name = c.full_name || c.email;
+    const isUnavail = !!unavailableMap[c.id];
     const onLeave = !!leaveMap[c.id];
     const hasJobs = (conflictMap[c.id] || []).length > 0;
-    if (onLeave) return `${name} (on leave)`;
+    if (isUnavail) return `❌ ${name} (not available)`;
+    if (onLeave) return `⚠️ ${name} (on leave)`;
     if (hasJobs) return `${name} (has job)`;
-    return name;
+    return `✅ ${name}`;
   };
+
+  const isCleanerDisabled = (id: string) => !!unavailableMap[id];
 
   const handleSave = async () => {
     if (!propertyId) { toast.error('Please select a property.'); return; }
