@@ -1,4 +1,4 @@
-import { Calendar, CheckCircle, Clock, AlertTriangle, UserX, CalendarPlus } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertTriangle, UserX, CalendarPlus, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TodaySummaryProps {
@@ -8,9 +8,10 @@ interface TodaySummaryProps {
   flaggedCount: number;
   actionNeededCount?: number;
   pendingRequestsCount?: number;
+  completedUnpaidCount?: number;
 }
 
-export function TodaySummary({ totalJobs, completeCount, inProgressCount, flaggedCount, actionNeededCount = 0, pendingRequestsCount = 0 }: TodaySummaryProps) {
+export function TodaySummary({ totalJobs, completeCount, inProgressCount, flaggedCount, actionNeededCount = 0, pendingRequestsCount = 0, completedUnpaidCount = 0 }: TodaySummaryProps) {
   const navigate = useNavigate();
 
   const stats = [
@@ -19,6 +20,9 @@ export function TodaySummary({ totalJobs, completeCount, inProgressCount, flagge
     { label: 'In Progress', value: inProgressCount, icon: Clock, className: 'bg-accent text-accent-foreground', path: '/schedule?status=in_progress' },
     { label: 'Flagged', value: flaggedCount, icon: AlertTriangle, className: 'bg-destructive text-destructive-foreground', path: '/schedule?status=flagged' },
     { label: 'Action Needed', value: actionNeededCount, icon: UserX, className: 'bg-[hsl(45,100%,51%)] text-foreground', path: '/schedule?acceptance=declined' },
+    ...(completedUnpaidCount > 0 ? [{
+      label: 'Unpaid Jobs', value: completedUnpaidCount, icon: DollarSign, className: 'bg-[hsl(0,72%,51%)] text-white', path: '/schedule?status=complete&invoice=unpaid',
+    }] : []),
     ...(pendingRequestsCount > 0 ? [{
       label: 'Booking Requests', value: pendingRequestsCount, icon: CalendarPlus, className: 'bg-[hsl(280,60%,55%)] text-white', path: '/requests',
     }] : []),

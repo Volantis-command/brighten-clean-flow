@@ -30,6 +30,7 @@ export default function DashboardPage() {
     flaggedCount,
     actionNeededCount,
     pendingRequestsCount,
+    completedUnpaidCount,
     isLoading,
     isAdmin,
   } = useDashboardData();
@@ -137,6 +138,7 @@ export default function DashboardPage() {
         flaggedCount={flaggedCount}
         actionNeededCount={actionNeededCount}
         pendingRequestsCount={pendingRequestsCount}
+        completedUnpaidCount={completedUnpaidCount}
       />
 
       {/* Today's Jobs */}
