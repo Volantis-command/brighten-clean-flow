@@ -318,7 +318,7 @@ export default function ClientsPage() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              disabled={!createEmail || !createName || createMutation.isPending}
               className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
