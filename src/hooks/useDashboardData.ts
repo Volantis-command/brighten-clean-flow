@@ -256,8 +256,19 @@ export function useDashboardData() {
     cleaner2Name: job.cleaner_2_id ? cleanerNameMap[job.cleaner_2_id] || null : null,
   }));
 
+  // Upcoming job cards (next 7 days, for cleaner view)
+  const upcomingJobCards = upcomingJobs.map((job: any) => ({
+    id: job.id,
+    propertyName: job.properties?.property_name || 'Unknown Property',
+    address: [job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null,
+    scheduledTime: job.scheduled_time ? job.scheduled_time.slice(0, 5) : null,
+    scheduledDate: job.scheduled_date,
+    status: job.status,
+  }));
+
   return {
     jobCards,
+    upcomingJobCards,
     clockedInCleaners,
     alerts,
     qcDisplayScores,
