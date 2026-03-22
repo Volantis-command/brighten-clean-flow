@@ -174,6 +174,7 @@ export default function SchedulePage() {
                 priceExGst={job.price_ex_gst}
                 isAdmin={true}
                 acceptances={acceptancesByJob[job.id]}
+                seriesId={job.series_id}
               />
             ))}
           </div>
