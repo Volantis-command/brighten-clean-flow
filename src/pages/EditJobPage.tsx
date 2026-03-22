@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
+import { useCleanerConflicts } from '@/hooks/useCleanerConflicts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,7 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
-import { generateRecurringDates } from '@/lib/recurringJobs';
+import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -35,6 +36,7 @@ export default function EditJobPage() {
   const { data: cleaners = [] } = useCleanersList();
   const [saving, setSaving] = useState(false);
   const [editScope, setEditScope] = useState<'this' | 'future'>('this');
+  const [conflictAcknowledged, setConflictAcknowledged] = useState(false);
 
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState('09:00');
@@ -59,16 +61,30 @@ export default function EditJobPage() {
     enabled: !!jobId,
   });
 
-  // Load series info if this job belongs to a series
   const seriesId = (job as any)?.series_id;
   const { data: series } = useQuery({
     queryKey: ['job-series', seriesId],
     queryFn: async () => {
-      const { data } = await supabase.from('job_series' as any).select('*').eq('id', seriesId).single();
+      const { data } = await supabase.from('job_series').select('*').eq('id', seriesId).single();
       return data as any;
     },
     enabled: !!seriesId,
   });
+
+  // Conflict detection for cleaner 1
+  const c1Conflicts = useCleanerConflicts(cleaner1, date);
+  // Filter out current job from conflicts
+  const c1FilteredConflicts = c1Conflicts.conflicts.filter(c => c.id !== jobId);
+  const c1HasIssue = c1FilteredConflicts.length > 0 || c1Conflicts.isOnLeave;
+
+  const c2Conflicts = useCleanerConflicts(cleaner2 || undefined, date);
+  const c2FilteredConflicts = c2Conflicts.conflicts.filter(c => c.id !== jobId);
+  const c2HasIssue = cleaner2 && (c2FilteredConflicts.length > 0 || c2Conflicts.isOnLeave);
+
+  const hasAnyConflict = c1HasIssue || c2HasIssue;
+
+  const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
+  const cleaner2Name = cleaners.find((c: any) => c.id === cleaner2)?.full_name || 'Cleaner';
 
   useEffect(() => {
     if (job) {
@@ -98,6 +114,7 @@ export default function EditJobPage() {
   const handleSave = async () => {
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
+    if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
     setSaving(true);
 
@@ -112,7 +129,6 @@ export default function EditJobPage() {
     };
 
     if (editScope === 'future' && seriesId) {
-      // Update all future jobs in the series
       const { error } = await supabase.from('jobs')
         .update({
           scheduled_time: time,
@@ -125,14 +141,9 @@ export default function EditJobPage() {
         .gte('scheduled_date', format(date, 'yyyy-MM-dd'))
         .eq('status', 'scheduled');
 
-      if (error) {
-        toast.error(error.message);
-        setSaving(false);
-        return;
-      }
+      if (error) { toast.error(error.message); setSaving(false); return; }
 
-      // Also update the series record
-      await supabase.from('job_series' as any).update({
+      await supabase.from('job_series').update({
         cleaner_1_id: cleaner1,
         cleaner_2_id: cleaner2 || null,
         notes: notes || null,
@@ -143,14 +154,8 @@ export default function EditJobPage() {
 
       toast.success('All future jobs updated!');
     } else {
-      // Update just this job
       const { error } = await supabase.from('jobs').update(updatePayload).eq('id', jobId!);
-
-      if (error) {
-        toast.error(error.message);
-        setSaving(false);
-        return;
-      }
+      if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success('Job updated!');
     }
 
@@ -219,7 +224,6 @@ export default function EditJobPage() {
       )}
 
       <div className="space-y-6">
-        {/* Property (read-only) */}
         <Section title="Property">
           <div className="bg-secondary rounded-2xl px-4 py-3">
             <p className="font-bold text-foreground text-sm">{property?.property_name}</p>
@@ -227,7 +231,6 @@ export default function EditJobPage() {
           </div>
         </Section>
 
-        {/* Status */}
         <Section title="Status">
           <FormField label="Job Status">
             <Select value={status} onValueChange={setStatus}>
@@ -242,7 +245,6 @@ export default function EditJobPage() {
           </FormField>
         </Section>
 
-        {/* Date & Time */}
         <Section title="Date & Time">
           <FormField label="Date *">
             <Popover>
@@ -253,7 +255,7 @@ export default function EditJobPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={date} onSelect={(d) => { setDate(d); setConflictAcknowledged(false); }} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </FormField>
@@ -273,18 +275,29 @@ export default function EditJobPage() {
           </div>
         </Section>
 
-        {/* Cleaners */}
         <Section title="Assigned Cleaners">
           <FormField label="Cleaner 1 *">
-            <Select value={cleaner1} onValueChange={setCleaner1}>
+            <Select value={cleaner1} onValueChange={(v) => { setCleaner1(v); setConflictAcknowledged(false); }}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
                 {cleaners.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>)}
               </SelectContent>
             </Select>
           </FormField>
+
+          {c1HasIssue && !conflictAcknowledged && (
+            <CleanerConflictWarning
+              cleanerName={cleaner1Name}
+              conflicts={c1FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
+              isOnLeave={c1Conflicts.isOnLeave}
+              leaveReason={c1Conflicts.leaveOnDate[0]?.reason}
+              onConfirm={() => setConflictAcknowledged(true)}
+              onCancel={() => setCleaner1(job.cleaner_1_id || '')}
+            />
+          )}
+
           <FormField label="Cleaner 2">
-            <Select value={cleaner2 || '__none__'} onValueChange={(v) => setCleaner2(v === '__none__' ? '' : v)}>
+            <Select value={cleaner2 || '__none__'} onValueChange={(v) => { setCleaner2(v === '__none__' ? '' : v); setConflictAcknowledged(false); }}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
@@ -294,9 +307,19 @@ export default function EditJobPage() {
               </SelectContent>
             </Select>
           </FormField>
+
+          {c2HasIssue && !conflictAcknowledged && (
+            <CleanerConflictWarning
+              cleanerName={cleaner2Name}
+              conflicts={c2FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
+              isOnLeave={c2Conflicts.isOnLeave}
+              leaveReason={c2Conflicts.leaveOnDate[0]?.reason}
+              onConfirm={() => setConflictAcknowledged(true)}
+              onCancel={() => setCleaner2(job.cleaner_2_id || '')}
+            />
+          )}
         </Section>
 
-        {/* Notes */}
         <Section title="Notes">
           <FormField label="Notes for Cleaners">
             <Textarea
