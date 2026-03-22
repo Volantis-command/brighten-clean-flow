@@ -28,10 +28,10 @@ export default function CleanerProfilePage() {
             <span>{profile.email}</span>
           </div>
         )}
-        {profile?.phone && (
+        {(profile as any)?.phone && (
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Phone className="h-4 w-4" />
-            <span>{profile.phone}</span>
+            <span>{(profile as any).phone}</span>
           </div>
         )}
       </div>
