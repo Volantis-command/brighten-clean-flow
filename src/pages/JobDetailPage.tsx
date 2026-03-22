@@ -289,6 +289,103 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Cleaner-specific: Open in Maps */}
+      {(role === 'cleaner' || role === 'head_cleaner') && address && (
+        <Button
+          variant="accent"
+          size="lg"
+          className="w-full gap-2 h-14 text-base font-bold rounded-2xl"
+          onClick={() => setMapsOpen(true)}
+        >
+          <Navigation className="h-5 w-5" />
+          Open in Maps
+        </Button>
+      )}
+
+      {/* Access Instructions */}
+      {(property?.access_method || property?.access_code || property?.access_notes) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Access Instructions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {property?.access_method && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Access</span>
+                <span className="font-semibold text-foreground">{property.access_method}</span>
+              </div>
+            )}
+            {property?.access_code && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Code</span>
+                <span className="font-mono font-bold text-foreground bg-muted px-3 py-1 rounded-lg">{property.access_code}</span>
+              </div>
+            )}
+            {property?.access_notes && (
+              <p className="text-sm text-foreground bg-muted rounded-xl p-3 mt-2">{property.access_notes}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Guest Arrival Countdown */}
+      {property?.guest_checkin_at && (
+        <Card className={isPast(new Date(property.guest_checkin_at)) 
+          ? 'border-destructive/30 bg-destructive/5' 
+          : job.status === 'complete' 
+            ? 'border-primary/30 bg-primary/5' 
+            : 'border-accent/30 bg-accent/5'
+        }>
+          <CardContent className="py-4">
+            {job.status === 'complete' ? (
+              <p className="text-sm font-bold text-primary">✓ Ready for your guests</p>
+            ) : isPast(new Date(property.guest_checkin_at)) ? (
+              <p className="text-sm font-bold text-destructive">⚠️ Guest check-in time has passed!</p>
+            ) : (
+              <div>
+                <p className="text-sm font-bold text-foreground">
+                  🏠 Next guest arrives in {formatDistanceToNow(new Date(property.guest_checkin_at))}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Check-in: {format(new Date(property.guest_checkin_at), 'h:mm a, MMM d')}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Host Preferences — for cleaners */}
+      {(property?.host_preferences || property?.product_restrictions) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Property Notes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {property?.host_preferences && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Host Preferences</p>
+                <p className="text-sm text-foreground">{property.host_preferences}</p>
+              </div>
+            )}
+            {property?.product_restrictions && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Product Restrictions</p>
+                <p className="text-sm text-foreground">{property.product_restrictions}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <MapsActionSheet open={mapsOpen} onClose={() => setMapsOpen(false)} address={address || ''} />
+
       {/* Recurring Series Banner */}
       {(job as any).series_id && (
         <Card className="border-primary/20 bg-primary/5">
