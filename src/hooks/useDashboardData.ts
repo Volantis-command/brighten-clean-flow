@@ -225,6 +225,7 @@ export function useDashboardData() {
     flaggedCount,
     actionNeededCount,
     pendingRequestsCount,
+    completedUnpaidCount,
     isLoading: jobsLoading,
     isAdmin,
   };
