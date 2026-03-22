@@ -292,7 +292,11 @@ export default function EditJobPage() {
             <Select value={cleaner1} onValueChange={(v) => { setCleaner1(v); setConflictAcknowledged(false); }}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
-                {cleaners.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>)}
+                {cleaners.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                    {getCleanerLabel(c)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormField>
