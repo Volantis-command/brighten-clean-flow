@@ -358,7 +358,7 @@ export default function AddJobPage() {
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} className={leaveMap[c.id] ? 'opacity-50' : ''}>
+                  <SelectItem key={c.id} value={c.id} disabled={isCleanerDisabled(c.id)} className={cn(unavailableMap[c.id] ? 'opacity-40 line-through' : leaveMap[c.id] ? 'opacity-60' : '')}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
