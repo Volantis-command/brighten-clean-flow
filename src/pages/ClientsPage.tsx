@@ -78,8 +78,9 @@ export default function ClientsPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const autoPassword = crypto.randomUUID().slice(0, 12) + 'Aa1!';
       const { data, error } = await supabase.functions.invoke('invite-staff', {
-        body: { action: 'create_user', email: createEmail, role: 'client', full_name: createName, phone: createPhone, password: createPassword },
+        body: { action: 'create_user', email: createEmail, role: 'client', full_name: createName, phone: createPhone, password: autoPassword },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -87,12 +88,22 @@ export default function ClientsPage() {
         const inserts = createPropertyIds.map(pid => ({ client_id: data.user_id, property_id: pid }));
         await supabase.from('client_properties').insert(inserts);
       }
+      // Auto-send onboarding SMS if phone provided
+      if (createPhone && data?.user_id) {
+        const { data: links } = await supabase.from('client_properties').select('onboard_token').eq('client_id', data.user_id).limit(1);
+        const token = links?.[0]?.onboard_token;
+        if (token) {
+          await supabase.functions.invoke('send-job-sms', {
+            body: { to: createPhone, message: `Hi ${createName}, welcome to Brightly! Set up your property portal here: ${BASE_URL}/onboard/${token}` },
+          }).catch(() => {});
+        }
+      }
     },
     onSuccess: () => {
       toast.success('Client account created!');
       queryClient.invalidateQueries({ queryKey: ['clients-list'] });
       setCreateOpen(false);
-      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreatePropertyIds([]);
+      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePropertyIds([]);
     },
     onError: (e: Error) => toast.error(e.message),
   });
