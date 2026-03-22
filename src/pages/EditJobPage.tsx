@@ -320,7 +320,9 @@ export default function EditJobPage() {
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                    {getCleanerLabel(c)}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
