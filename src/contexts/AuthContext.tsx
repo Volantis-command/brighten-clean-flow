@@ -8,7 +8,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: { full_name: string; email: string; avatar_url: string | null } | null;
-  role: AppRole | null;
+  role: AppRole | null | undefined;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any; role: AppRole | null }>;
   signOut: () => Promise<void>;
@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthContextType['profile']>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
+  const [role, setRole] = useState<AppRole | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   const fetchProfileAndRole = async (userId: string) => {
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
+        setRole(undefined);
         setLoading(true);
       } else {
         setProfile(null);
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        setRole(undefined);
         setLoading(true);
       } else {
         setProfile(null);

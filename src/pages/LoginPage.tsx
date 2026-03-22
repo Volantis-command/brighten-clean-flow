@@ -41,7 +41,9 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        navigate(role === 'client' ? '/portal' : '/dashboard', { replace: true });
+        const redirectPath = role === 'client' ? '/portal' : '/dashboard';
+        console.log(`User role detected: ${role ?? 'none'}, redirecting to: ${redirectPath}`);
+        navigate(redirectPath, { replace: true });
       }
     }
     setLoading(false);
