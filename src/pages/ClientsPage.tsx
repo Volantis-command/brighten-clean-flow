@@ -186,8 +186,8 @@ export default function ClientsPage() {
             </TableHeader>
             <TableBody>
               {clients.map(c => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-semibold">{c.full_name || '—'}</TableCell>
+                <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
+                  <TableCell className="font-semibold text-primary">{c.full_name || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{c.phone || '—'}</TableCell>
                   <TableCell>
