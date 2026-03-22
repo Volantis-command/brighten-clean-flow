@@ -35,6 +35,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import BookingRequestsPage from "./pages/BookingRequestsPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import CleanerProfilePage from "./pages/CleanerProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
