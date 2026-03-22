@@ -448,6 +448,28 @@ export default function ClientPropertyDetailPage() {
           <Download className="w-4 h-4" /> Download Clean Report
         </Button>
       )}
+
+      {/* Message Brightly */}
+      <Section title="Message Brightly">
+        <div className="space-y-3">
+          {messages.length > 0 && (
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {messages.map((msg: any) => (
+                <div key={msg.id} className={`text-sm p-2 rounded-lg ${msg.direction === 'inbound' ? 'bg-primary/5 text-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  <p>{msg.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(new Date(msg.sent_at), 'dd MMM, h:mm a')}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Type your message..." className="min-h-[60px] rounded-xl" />
+            <Button onClick={() => sendMessageMutation.mutate()} disabled={!messageText.trim() || sendMessageMutation.isPending} className="self-end">
+              <MessageSquare className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }
