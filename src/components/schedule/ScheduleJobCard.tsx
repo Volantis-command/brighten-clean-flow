@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, MapPin, Users, Timer, ClipboardList, RotateCcw } from 'lucide-react';
+import { Clock, MapPin, Users, Timer, ClipboardList, RotateCcw, Repeat } from 'lucide-react';
 import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
