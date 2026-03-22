@@ -23,6 +23,7 @@ import AIAssistantPage from "./pages/AIAssistantPage";
 import QuotingPage from "./pages/QuotingPage";
 import StaffPage from "./pages/StaffPage";
 import SettingsPage from "./pages/SettingsPage";
+import ClientsPage from "./pages/ClientsPage";
 import QCAuditPage from "./pages/QCAuditPage";
 import FormDetailPage from "./pages/FormDetailPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
