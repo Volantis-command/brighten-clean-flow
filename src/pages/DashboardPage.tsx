@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react';
+import { Bot, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,7 +13,9 @@ import { AlertsSection } from '@/components/dashboard/AlertsSection';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentQCScores } from '@/components/dashboard/RecentQCScores';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
 import { toast } from 'sonner';
+import { format, parseISO } from 'date-fns';
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
