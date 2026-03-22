@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
-import { useAllCleanerLeave } from '@/hooks/useCleanerConflicts';
+import { useAllCleanerLeave, useAllCleanerAvailability } from '@/hooks/useCleanerConflicts';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,7 @@ export default function AddJobPage() {
   const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
 
   const { leaveMap, conflictMap } = useAllCleanerLeave(date);
+  const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties-active'],
@@ -82,15 +83,18 @@ export default function AddJobPage() {
   // Conflict state for selected cleaners
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
   const cleaner1OnLeave = !!leaveMap[cleaner1];
+  const cleaner1Unavailable = !!unavailableMap[cleaner1];
   const cleaner1Conflicts = conflictMap[cleaner1] || [];
-  const cleaner1HasIssue = cleaner1 && (cleaner1OnLeave || cleaner1Conflicts.length > 0);
+  const cleaner1HasIssue = cleaner1 && (cleaner1Unavailable || cleaner1OnLeave || cleaner1Conflicts.length > 0);
 
   const cleaner2Name = cleaners.find((c: any) => c.id === cleaner2)?.full_name || 'Cleaner';
   const cleaner2OnLeave = cleaner2 ? !!leaveMap[cleaner2] : false;
+  const cleaner2Unavailable = cleaner2 ? !!unavailableMap[cleaner2] : false;
   const cleaner2Conflicts = cleaner2 ? (conflictMap[cleaner2] || []) : [];
-  const cleaner2HasIssue = cleaner2 && (cleaner2OnLeave || cleaner2Conflicts.length > 0);
+  const cleaner2HasIssue = cleaner2 && (cleaner2Unavailable || cleaner2OnLeave || cleaner2Conflicts.length > 0);
 
-  const hasAnyConflict = cleaner1HasIssue || cleaner2HasIssue;
+  // Hard block if either cleaner is unavailable (weekly availability)
+  const hasHardBlock = (cleaner1 && cleaner1Unavailable) || (cleaner2 && cleaner2Unavailable);
 
   // Reset conflict acknowledged when cleaner or date changes
   const handleCleaner1Change = (v: string) => { setCleaner1(v); setConflictAcknowledged(false); };
@@ -99,17 +103,23 @@ export default function AddJobPage() {
 
   const getCleanerLabel = (c: any) => {
     const name = c.full_name || c.email;
+    const isUnavail = !!unavailableMap[c.id];
     const onLeave = !!leaveMap[c.id];
     const hasJobs = (conflictMap[c.id] || []).length > 0;
-    if (onLeave) return `${name} (on leave)`;
+    if (isUnavail) return `❌ ${name} (not available)`;
+    if (onLeave) return `⚠️ ${name} (on leave)`;
     if (hasJobs) return `${name} (has job)`;
-    return name;
+    return `✅ ${name}`;
   };
+
+  const isCleanerDisabled = (id: string) => !!unavailableMap[id];
 
   const handleSave = async () => {
     if (!propertyId) { toast.error('Please select a property.'); return; }
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
+    if (hasHardBlock) { toast.error('Cannot save — a cleaner is not available on this day.'); return; }
+    const hasAnyConflict = cleaner1HasIssue || cleaner2HasIssue;
     if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
     setSaving(true);
@@ -321,7 +331,7 @@ export default function AddJobPage() {
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
                 {cleaners.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} className={leaveMap[c.id] ? 'opacity-50' : ''}>
+                  <SelectItem key={c.id} value={c.id} disabled={isCleanerDisabled(c.id)} className={cn(unavailableMap[c.id] ? 'opacity-40 line-through' : leaveMap[c.id] ? 'opacity-60' : '')}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
@@ -335,6 +345,8 @@ export default function AddJobPage() {
               cleanerName={cleaner1Name}
               conflicts={cleaner1Conflicts}
               isOnLeave={cleaner1OnLeave}
+              isUnavailable={cleaner1Unavailable}
+              dayName={dayName}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner1('')}
             />
@@ -346,7 +358,7 @@ export default function AddJobPage() {
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} className={leaveMap[c.id] ? 'opacity-50' : ''}>
+                  <SelectItem key={c.id} value={c.id} disabled={isCleanerDisabled(c.id)} className={cn(unavailableMap[c.id] ? 'opacity-40 line-through' : leaveMap[c.id] ? 'opacity-60' : '')}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
@@ -360,6 +372,8 @@ export default function AddJobPage() {
               cleanerName={cleaner2Name}
               conflicts={cleaner2Conflicts}
               isOnLeave={cleaner2OnLeave}
+              isUnavailable={cleaner2Unavailable}
+              dayName={dayName}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner2('')}
             />

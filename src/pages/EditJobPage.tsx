@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
-import { useCleanerConflicts } from '@/hooks/useCleanerConflicts';
+import { useCleanerConflicts, useAllCleanerAvailability } from '@/hooks/useCleanerConflicts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,20 +71,31 @@ export default function EditJobPage() {
     enabled: !!seriesId,
   });
 
+  // Availability check
+  const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
+
   // Conflict detection for cleaner 1
   const c1Conflicts = useCleanerConflicts(cleaner1, date);
-  // Filter out current job from conflicts
   const c1FilteredConflicts = c1Conflicts.conflicts.filter(c => c.id !== jobId);
-  const c1HasIssue = c1FilteredConflicts.length > 0 || c1Conflicts.isOnLeave;
+  const c1Unavailable = !!unavailableMap[cleaner1];
+  const c1HasIssue = c1Unavailable || c1FilteredConflicts.length > 0 || c1Conflicts.isOnLeave;
 
   const c2Conflicts = useCleanerConflicts(cleaner2 || undefined, date);
   const c2FilteredConflicts = c2Conflicts.conflicts.filter(c => c.id !== jobId);
-  const c2HasIssue = cleaner2 && (c2FilteredConflicts.length > 0 || c2Conflicts.isOnLeave);
+  const c2Unavailable = cleaner2 ? !!unavailableMap[cleaner2] : false;
+  const c2HasIssue = cleaner2 && (c2Unavailable || c2FilteredConflicts.length > 0 || c2Conflicts.isOnLeave);
 
+  const hasHardBlock = (cleaner1 && c1Unavailable) || (cleaner2 && c2Unavailable);
   const hasAnyConflict = c1HasIssue || c2HasIssue;
 
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
   const cleaner2Name = cleaners.find((c: any) => c.id === cleaner2)?.full_name || 'Cleaner';
+
+  const getCleanerLabel = (c: any) => {
+    const name = c.full_name || c.email;
+    if (unavailableMap[c.id]) return `❌ ${name} (not available)`;
+    return name;
+  };
 
   useEffect(() => {
     if (job) {
@@ -114,6 +125,7 @@ export default function EditJobPage() {
   const handleSave = async () => {
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
+    if (hasHardBlock) { toast.error('Cannot save — a cleaner is not available on this day.'); return; }
     if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
     setSaving(true);
@@ -280,7 +292,11 @@ export default function EditJobPage() {
             <Select value={cleaner1} onValueChange={(v) => { setCleaner1(v); setConflictAcknowledged(false); }}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
-                {cleaners.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>)}
+                {cleaners.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                    {getCleanerLabel(c)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormField>
@@ -290,6 +306,8 @@ export default function EditJobPage() {
               cleanerName={cleaner1Name}
               conflicts={c1FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
               isOnLeave={c1Conflicts.isOnLeave}
+              isUnavailable={c1Unavailable}
+              dayName={dayName}
               leaveReason={c1Conflicts.leaveOnDate[0]?.reason}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner1(job.cleaner_1_id || '')}
@@ -302,7 +320,9 @@ export default function EditJobPage() {
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                    {getCleanerLabel(c)}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -313,6 +333,8 @@ export default function EditJobPage() {
               cleanerName={cleaner2Name}
               conflicts={c2FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
               isOnLeave={c2Conflicts.isOnLeave}
+              isUnavailable={c2Unavailable}
+              dayName={dayName}
               leaveReason={c2Conflicts.leaveOnDate[0]?.reason}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner2(job.cleaner_2_id || '')}
