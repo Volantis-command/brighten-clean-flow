@@ -24,10 +24,11 @@ export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [pushingInvoice, setPushingInvoice] = useState(false);
   const [resendingTo, setResendingTo] = useState<string | null>(null);
+  const [mapsOpen, setMapsOpen] = useState(false);
   const [showPricePrompt, setShowPricePrompt] = useState(false);
   const [syncingStatus, setSyncingStatus] = useState(false);
 
