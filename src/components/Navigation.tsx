@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
@@ -15,16 +15,53 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'head_cleaner'] },
-  { label: 'Forms', path: '/forms', icon: FileText, roles: ['admin', 'head_cleaner', 'cleaner'] },
-  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner', 'cleaner'] },
+  { label: 'Forms', path: '/forms', icon: FileText, roles: ['admin', 'head_cleaner'] },
+  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner'] },
   { label: 'Quoting', path: '/quoting', icon: Calculator, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
   { label: 'Staff', path: '/staff', icon: Users, roles: ['admin'] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
+// Cleaners get a simplified 3-tab bottom nav
+const cleanerMobileItems: NavItem[] = [
+  { label: 'Today', path: '/dashboard', icon: LayoutDashboard, roles: ['cleaner'] },
+  { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['cleaner'] },
+  { label: 'Profile', path: '/profile', icon: User, roles: ['cleaner'] },
+];
+
 export function MobileNav() {
   const { role } = useAuth();
+
+  // Cleaners get a simplified 3-item nav with bigger tap targets
+  if (role === 'cleaner') {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden safe-area-bottom">
+        <div className="flex justify-around items-center py-1 px-2">
+          {cleanerMobileItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 px-4 py-3 rounded-2xl transition-colors min-w-[72px] ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className="h-6 w-6" />
+                  <span className="text-xs font-bold">{item.label}</span>
+                  {isActive && <div className="w-8 h-1 bg-accent rounded-full" />}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    );
+  }
+
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
 
   return (
@@ -58,6 +95,8 @@ export function MobileNav() {
 
 export function DesktopSidebar() {
   const { role, profile, signOut } = useAuth();
+  
+  // Don't show sidebar for cleaners on desktop either — they use a simpler layout
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
 
   const roleBadgeLabel = role === 'head_cleaner' ? 'Head Cleaner' : role === 'admin' ? 'Admin' : 'Cleaner';

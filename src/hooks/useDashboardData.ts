@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addHours } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
 
 export function useDashboardData() {
   const { user, role } = useAuth();
@@ -24,6 +24,29 @@ export function useDashboardData() {
         .eq('scheduled_date', today)
         .order('scheduled_time', { ascending: true });
       if (!isAdmin && user) {
+        query = query.or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // ── Upcoming 7 days jobs for cleaners ──
+  const upcomingEnd = format(addDays(now, 7), 'yyyy-MM-dd');
+  const { data: upcomingJobs = [] } = useQuery({
+    queryKey: ['dashboard-upcoming-7d', today, upcomingEnd, role],
+    queryFn: async () => {
+      if (!user) return [];
+      let query = supabase
+        .from('jobs')
+        .select('*, properties(property_name, address, suburb)')
+        .gt('scheduled_date', today)
+        .lte('scheduled_date', upcomingEnd)
+        .order('scheduled_date', { ascending: true })
+        .order('scheduled_time', { ascending: true });
+      if (!isAdmin) {
         query = query.or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`);
       }
       const { data, error } = await query;
@@ -233,8 +256,19 @@ export function useDashboardData() {
     cleaner2Name: job.cleaner_2_id ? cleanerNameMap[job.cleaner_2_id] || null : null,
   }));
 
+  // Upcoming job cards (next 7 days, for cleaner view)
+  const upcomingJobCards = upcomingJobs.map((job: any) => ({
+    id: job.id,
+    propertyName: job.properties?.property_name || 'Unknown Property',
+    address: [job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null,
+    scheduledTime: job.scheduled_time ? job.scheduled_time.slice(0, 5) : null,
+    scheduledDate: job.scheduled_date,
+    status: job.status,
+  }));
+
   return {
     jobCards,
+    upcomingJobCards,
     clockedInCleaners,
     alerts,
     qcDisplayScores,

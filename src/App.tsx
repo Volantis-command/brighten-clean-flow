@@ -35,6 +35,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import BookingRequestsPage from "./pages/BookingRequestsPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import CleanerProfilePage from "./pages/CleanerProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -138,6 +139,7 @@ function AppRoutes() {
         <Route path="/requests" element={<ProtectedRoute allowedRoles={['admin']}><BookingRequestsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute allowedRoles={['admin']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<CleanerProfilePage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

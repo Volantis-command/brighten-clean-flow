@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const {
     jobCards,
+    upcomingJobCards,
     clockedInCleaners,
     alerts,
     qcDisplayScores,
@@ -70,11 +71,20 @@ export default function DashboardPage() {
 
   // Cleaner dashboard
   if (role === 'cleaner') {
+    // Group upcoming by date
+    const upcomingByDate: Record<string, typeof upcomingJobCards> = {};
+    upcomingJobCards.forEach((j) => {
+      if (!upcomingByDate[j.scheduledDate]) upcomingByDate[j.scheduledDate] = [];
+      upcomingByDate[j.scheduledDate].push(j);
+    });
+
     return (
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-lg mx-auto">
         <DashboardGreeting />
+
+        {/* Today's Jobs */}
         <div>
-          <h2 className="text-xl font-bold text-primary mb-4">My Jobs Today</h2>
+          <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
           {jobCards.length === 0 ? (
             <div className="bg-card rounded-2xl shadow-md p-8 text-center">
               <p className="text-4xl mb-3">🌴</p>
@@ -91,9 +101,42 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        <Button variant="outline" size="lg" onClick={() => navigate('/ai-assistant')} className="gap-2">
-          <Bot className="h-5 w-5" /> AI Assistant
-        </Button>
+
+        {/* Upcoming 7 Days */}
+        {Object.keys(upcomingByDate).length > 0 && (
+          <div>
+            <h2 className="text-xl font-bold text-primary mb-4">Upcoming</h2>
+            <div className="space-y-4">
+              {Object.entries(upcomingByDate).map(([dateStr, dateJobs]) => (
+                <div key={dateStr}>
+                  <p className="text-xs font-bold text-muted-foreground uppercase mb-2">
+                    {format(new Date(dateStr + 'T00:00:00'), 'EEEE, MMM d')}
+                  </p>
+                  {dateJobs.map((job) => (
+                    <button
+                      key={job.id}
+                      onClick={() => navigate(`/jobs/${job.id}`)}
+                      className="w-full text-left bg-card rounded-2xl shadow-sm p-4 mb-2 hover:shadow-md transition-shadow border border-border flex items-center gap-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-foreground text-sm truncate">{job.propertyName}</p>
+                        {job.address && <p className="text-xs text-muted-foreground truncate">{job.address}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {job.scheduledTime && <p className="text-sm font-bold text-foreground">{job.scheduledTime}</p>}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          job.status === 'scheduled' ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground'
+                        }`}>
+                          {job.status === 'scheduled' ? 'Scheduled' : job.status}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
