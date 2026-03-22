@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { UserPlus, Pencil, Loader2, Mail, Phone } from 'lucide-react';
+import { UserPlus, Pencil, Loader2, Mail, Phone, Link2, Copy, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -61,12 +63,50 @@ function useStaffList() {
   });
 }
 
+function useClientList() {
+  return useQuery({
+    queryKey: ['client-list'],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'client');
+      if (rolesErr) throw rolesErr;
+      if (!roles?.length) return [];
+
+      const userIds = roles.map((r) => r.user_id);
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', userIds);
+
+      // Fetch client_properties for each
+      const { data: clientProps } = await supabase.from('client_properties' as any).select('*').in('client_id', userIds);
+
+      // Fetch property names
+      const propIds = [...new Set((clientProps || []).map((cp: any) => cp.property_id))];
+      const { data: properties } = propIds.length ? await supabase.from('properties').select('id, property_name').in('id', propIds) : { data: [] };
+
+      const propNameMap: Record<string, string> = {};
+      (properties || []).forEach((p: any) => { propNameMap[p.id] = p.property_name; });
+
+      return (profiles || []).map((p) => ({
+        ...p,
+        role: 'client' as AppRole,
+        links: ((clientProps || []) as any[]).filter((cp: any) => cp.client_id === p.id).map((cp: any) => ({
+          ...cp,
+          property_name: propNameMap[cp.property_id] || 'Unknown',
+        })),
+      }));
+    },
+  });
+}
+
 export default function TeamSection() {
   const queryClient = useQueryClient();
   const { data: staff = [], isLoading } = useStaffList();
+  const { data: clients = [], isLoading: loadingClients } = useClientList();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
+  const [activeTab, setActiveTab] = useState('staff');
 
   // Create form
   const [createEmail, setCreateEmail] = useState('');
@@ -91,8 +131,9 @@ export default function TeamSection() {
     mutationFn: () =>
       invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword }),
     onSuccess: () => {
-      toast.success('Staff account created!');
+      toast.success(createRole === 'client' ? 'Client account created!' : 'Staff account created!');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['client-list'] });
       queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
       setCreateOpen(false);
       setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreateRole('cleaner');
@@ -104,8 +145,9 @@ export default function TeamSection() {
     mutationFn: () =>
       invokeFn({ action: 'update_role', user_id: editMember!.id, role: editRole, full_name: editName, phone: editPhone }),
     onSuccess: () => {
-      toast.success('Staff member updated');
+      toast.success('Updated');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['client-list'] });
       queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
       setEditMember(null);
     },
@@ -119,55 +161,107 @@ export default function TeamSection() {
     setEditRole(m.role);
   };
 
-  const activeCount = staff.length;
+  const copyMagicLink = (token: string) => {
+    const url = `${window.location.origin}/client/${token}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Magic link copied!');
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-primary">Team</h2>
-          <p className="text-sm text-muted-foreground">{activeCount} active staff member{activeCount !== 1 ? 's' : ''}</p>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="staff">Staff</TabsTrigger>
+            <TabsTrigger value="clients">Clients</TabsTrigger>
+          </TabsList>
+          <Button onClick={() => { setCreateRole(activeTab === 'clients' ? 'client' : 'cleaner'); setCreateOpen(true); }} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+            <UserPlus className="w-5 h-5" />
+            {activeTab === 'clients' ? 'Add Client' : 'Add Staff'}
+          </Button>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
-          <UserPlus className="w-5 h-5" />
-          Add Staff
-        </Button>
-      </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-      ) : staff.length === 0 ? (
-        <div className="bg-card rounded-2xl shadow-md p-6 text-center text-muted-foreground">No staff members yet.</div>
-      ) : (
-        <div className="space-y-2">
-          {staff.map((m) => (
-            <div key={m.id} className="bg-card rounded-xl shadow-sm p-4 flex items-center justify-between border border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-                <div>
-                  <div className="font-semibold text-foreground">{m.full_name || 'No name'}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-3">
-                    {m.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{m.email}</span>}
-                    {m.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{m.phone}</span>}
+        <TabsContent value="staff">
+          {isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : staff.length === 0 ? (
+            <div className="bg-card rounded-2xl shadow-md p-6 text-center text-muted-foreground">No staff members yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {staff.map((m) => (
+                <div key={m.id} className="bg-card rounded-xl shadow-sm p-4 flex items-center justify-between border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
+                    <div>
+                      <div className="font-semibold text-foreground">{m.full_name || 'No name'}</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-3">
+                        {m.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{m.email}</span>}
+                        {m.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{m.phone}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={roleBadgeStyles[m.role]}>{roleLabels[m.role]}</Badge>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className={roleBadgeStyles[m.role]}>{roleLabels[m.role]}</Badge>
-                <Button variant="ghost" size="sm" onClick={() => openEdit(m)}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="clients">
+          {loadingClients ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : clients.length === 0 ? (
+            <div className="bg-card rounded-2xl shadow-md p-6 text-center text-muted-foreground">No clients yet.</div>
+          ) : (
+            <div className="space-y-3">
+              {clients.map((c: any) => (
+                <div key={c.id} className="bg-card rounded-xl shadow-sm p-4 border border-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-foreground">{c.full_name || 'No name'}</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-3">
+                        {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>}
+                        {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
+                      </div>
+                    </div>
+                    <Badge className={roleBadgeStyles.client}>Client</Badge>
+                  </div>
+                  {c.links?.length > 0 && (
+                    <div className="space-y-2">
+                      {c.links.map((link: any) => (
+                        <div key={link.id} className="flex items-center justify-between bg-muted/50 rounded-lg p-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">{link.property_name}</span>
+                            <div className="flex items-center gap-1.5">
+                              {link.portal_active && <span className="text-xs text-primary font-bold">Active</span>}
+                              {link.guest_ready_sms && <span className="text-xs text-muted-foreground">SMS ✓</span>}
+                            </div>
+                          </div>
+                          {link.portal_token && (
+                            <Button variant="ghost" size="sm" onClick={() => copyMagicLink(link.portal_token)} className="gap-1 text-xs">
+                              <Copy className="w-3 h-3" /> Magic Link
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Add Staff Member</DialogTitle>
+            <DialogTitle>{createRole === 'client' ? 'Add Client' : 'Add Staff Member'}</DialogTitle>
             <DialogDescription>Create a new account with login credentials.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -183,6 +277,7 @@ export default function TeamSection() {
                   <SelectItem value="cleaner">Cleaner</SelectItem>
                   <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -205,8 +300,8 @@ export default function TeamSection() {
       <Dialog open={!!editMember} onOpenChange={(o) => !o && setEditMember(null)}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Staff Member</DialogTitle>
-            <DialogDescription>Update {editMember?.full_name || 'staff member'} details.</DialogDescription>
+            <DialogTitle>Edit {editMember?.role === 'client' ? 'Client' : 'Staff Member'}</DialogTitle>
+            <DialogDescription>Update {editMember?.full_name || 'member'} details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div><Label>Full Name</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} /></div>
@@ -219,6 +314,7 @@ export default function TeamSection() {
                   <SelectItem value="cleaner">Cleaner</SelectItem>
                   <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>
             </div>
