@@ -134,7 +134,9 @@ export type Database = {
           id: string
           onboard_token: string | null
           onboard_used: boolean | null
+          onboarding_sent_at: string | null
           portal_active: boolean | null
+          portal_link_sent_at: string | null
           portal_token: string | null
           property_id: string
           show_invoices: boolean | null
@@ -146,7 +148,9 @@ export type Database = {
           id?: string
           onboard_token?: string | null
           onboard_used?: boolean | null
+          onboarding_sent_at?: string | null
           portal_active?: boolean | null
+          portal_link_sent_at?: string | null
           portal_token?: string | null
           property_id: string
           show_invoices?: boolean | null
@@ -158,7 +162,9 @@ export type Database = {
           id?: string
           onboard_token?: string | null
           onboard_used?: boolean | null
+          onboarding_sent_at?: string | null
           portal_active?: boolean | null
+          portal_link_sent_at?: string | null
           portal_token?: string | null
           property_id?: string
           show_invoices?: boolean | null
