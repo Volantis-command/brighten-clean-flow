@@ -331,7 +331,8 @@ export default function JobChecklistPage() {
 
     await supabase.from('jobs').update({ status: 'complete' }).eq('id', jobId!);
 
-    const notifMessage = `Job completed: ${property?.property_name} on ${job?.scheduled_date}`;
+    const cleanerName = profile?.full_name?.split(' ')[0] || 'Cleaner';
+    const notifMessage = `Job completed — ${property?.property_name} by ${cleanerName}`;
     const { data: adminRoles } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -340,7 +341,7 @@ export default function JobChecklistPage() {
     if (adminRoles?.length) {
       const notifs = adminRoles
         .filter((r) => r.user_id !== user!.id)
-        .map((r) => ({ user_id: r.user_id, message: notifMessage, type: 'job_complete' }));
+        .map((r) => ({ user_id: r.user_id, message: notifMessage, type: 'job_complete', title: 'Job Completed', link: `/jobs/${jobId}` }));
       if (notifs.length) await supabase.from('notifications').insert(notifs);
     }
 

@@ -80,15 +80,17 @@ export default function FeedbackPage() {
         await supabase.from('jobs').update({ feedback_score: score }).eq('id', feedback.job_id);
       }
 
-      // Notify admin on low scores
-      if (score && score < 8) {
+      // Notify admin on all feedback
+      if (score) {
         const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
         if (admins?.length) {
           await supabase.from('notifications').insert(
             admins.map((a: any) => ({
               user_id: a.user_id,
-              message: `⚠ Low feedback score: ${score}/10 for ${job?.properties?.property_name || 'property'} — Review needed`,
-              type: 'feedback_alert',
+              title: 'Feedback Received',
+              message: `Feedback received for ${job?.properties?.property_name || 'property'} — ${score}/10${score < 8 ? ' ⚠ Review needed' : ''}`,
+              type: 'feedback',
+              link: `/clients/${feedback.client_id}`,
             }))
           );
         }
