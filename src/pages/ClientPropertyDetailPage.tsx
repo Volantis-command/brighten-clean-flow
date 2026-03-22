@@ -400,12 +400,10 @@ export default function ClientPropertyDetailPage() {
           </div>
         )}
         <Button
-          variant="outline"
-          className="w-full mt-3 font-bold"
-          onClick={() => requestCleanMutation.mutate()}
-          disabled={requestCleanMutation.isPending}
+          className="w-full mt-3 font-bold bg-primary text-primary-foreground"
+          onClick={() => setShowBooking(true)}
         >
-          Request a Clean
+          Book a Clean
         </Button>
       </Section>
 
