@@ -80,8 +80,8 @@ export default function FeedbackPage() {
         await supabase.from('jobs').update({ feedback_score: score }).eq('id', feedback.job_id);
       }
 
-      // Notify admin on low scores
-      if (score && score < 8) {
+      // Notify admin on all feedback
+      if (score) {
         const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
         if (admins?.length) {
           await supabase.from('notifications').insert(
