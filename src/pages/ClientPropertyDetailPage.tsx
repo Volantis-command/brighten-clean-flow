@@ -243,8 +243,37 @@ export default function ClientPropertyDetailPage() {
         </div>
       </div>
 
+      {/* Guest Countdown */}
+      {guestCountdown !== null && guestCountdown > 0 && (
+        <div className={`rounded-2xl p-4 text-center font-bold ${isGuestReady ? 'bg-primary/10 border border-primary/20 text-primary' : 'bg-accent/10 border border-accent/20 text-accent-foreground'}`}>
+          {isGuestReady ? '✓ Ready for your guests' : `Next guest arrives in ${Math.floor(guestCountdown / 60)}h ${guestCountdown % 60}m`}
+        </div>
+      )}
+
       <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
       <p className="text-sm text-muted-foreground -mt-4">{[property.address, property.suburb].filter(Boolean).join(', ')}</p>
+
+      {/* Property Health Score */}
+      {healthScore !== null && (
+        <Section title="Property Health">
+          <div className="flex items-center gap-4">
+            <div className={`text-3xl font-extrabold ${healthScore >= 85 ? 'text-primary' : healthScore >= 70 ? 'text-orange-500' : 'text-destructive'}`}>
+              {healthScore}%
+            </div>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              {healthTrend === 'up' && <><TrendingUp className="w-4 h-4 text-primary" /> Improving</>}
+              {healthTrend === 'down' && <><TrendingDown className="w-4 h-4 text-destructive" /> Declining</>}
+              {healthTrend === 'stable' && <><Minus className="w-4 h-4" /> Stable</>}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Average of last {last5Audits.length} QC scores</p>
+        </Section>
+      )}
+
+      {/* Book a Clean */}
+      <Button onClick={() => setShowBooking(true)} className="w-full h-14 rounded-2xl text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+        Book a Clean
+      </Button>
 
       {/* Last Clean Summary */}
       {lastCompleteJob && (
