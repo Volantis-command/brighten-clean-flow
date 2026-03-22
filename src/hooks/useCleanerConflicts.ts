@@ -113,6 +113,36 @@ export function useAllCleanerLeave(date: Date | undefined) {
   return { leaveMap, conflictMap };
 }
 
+// Map day index (0=Sun) to short day name used in weekly_availability
+const DAY_INDEX_TO_NAME = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+// Fetch all cleaners' weekly availability for a given date's day-of-week
+export function useAllCleanerAvailability(date: Date | undefined, cleanerIds: string[]) {
+  const dayName = date ? DAY_INDEX_TO_NAME[date.getDay()] : '';
+
+  const { data: unavailableMap = {} } = useQuery({
+    queryKey: ['all-cleaner-availability', dayName, cleanerIds.join(',')],
+    queryFn: async () => {
+      if (!dayName || cleanerIds.length === 0) return {};
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, weekly_availability')
+        .in('id', cleanerIds);
+      const map: Record<string, boolean> = {};
+      (data || []).forEach((p: any) => {
+        const avail: string[] = p.weekly_availability || ['mon', 'tue', 'wed', 'thu', 'fri'];
+        if (!avail.includes(dayName)) {
+          map[p.id] = true; // true = unavailable
+        }
+      });
+      return map;
+    },
+    enabled: !!dayName && cleanerIds.length > 0,
+  });
+
+  return { unavailableMap, dayName };
+}
+
 // Dashboard: jobs in next 7 days where assigned cleaner is on leave
 export function useLeaveConflictAlerts() {
   const today = format(new Date(), 'yyyy-MM-dd');
