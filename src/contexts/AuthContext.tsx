@@ -10,7 +10,7 @@ interface AuthContextType {
   profile: { full_name: string; email: string; avatar_url: string | null } | null;
   role: AppRole | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any; role: AppRole | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -32,8 +32,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.rpc('get_user_role', { _user_id: userId }),
       ]);
 
+      const resolvedRole = (roleRes.data as AppRole | null) ?? null;
+
       setProfile(profileRes.data ?? null);
-      setRole((roleRes.data as AppRole | null) ?? null);
+      setRole(resolvedRole);
+
+      return resolvedRole;
     } finally {
       setLoading(false);
     }
@@ -74,8 +78,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error || !data.user) {
+      return { error, role: null };
+    }
+
+    const resolvedRole = await fetchProfileAndRole(data.user.id);
+
+    return { error: null, role: resolvedRole };
   };
 
   const signOut = async () => {
