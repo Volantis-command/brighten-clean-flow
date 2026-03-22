@@ -119,6 +119,8 @@ export default function AppSettingsSection() {
           </code>
         </div>
       </div>
+
+      <DangerZoneSection />
     </div>
   );
 }
