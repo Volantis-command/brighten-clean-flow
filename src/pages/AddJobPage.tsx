@@ -118,6 +118,8 @@ export default function AddJobPage() {
     if (!propertyId) { toast.error('Please select a property.'); return; }
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
+    if (hasHardBlock) { toast.error('Cannot save — a cleaner is not available on this day.'); return; }
+    const hasAnyConflict = cleaner1HasIssue || cleaner2HasIssue;
     if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
     setSaving(true);
