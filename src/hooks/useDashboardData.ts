@@ -129,6 +129,20 @@ export function useDashboardData() {
     enabled: upcoming48hrJobs.length > 0,
   });
 
+  // Fetch pending booking requests count
+  const { data: pendingRequestsCount = 0 } = useQuery({
+    queryKey: ['pending-requests-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('clean_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isAdmin,
+  });
+
   // Build cleaner name lookup
   const cleanerNameMap: Record<string, string> = {};
   cleanerProfiles.forEach((p: any) => {
