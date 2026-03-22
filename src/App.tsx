@@ -106,6 +106,12 @@ function AppRoutes() {
         <Route path="/portal/property/:id" element={<ClientPropertyDetailPage />} />
       </Route>
 
+      {/* Public routes — no auth required */}
+      <Route path="/client/:token" element={<MagicLinkPortalPage />} />
+      <Route path="/client/:token/property/:id" element={<MagicLinkPropertyPage />} />
+      <Route path="/feedback/:token" element={<FeedbackPage />} />
+      <Route path="/onboard/:token" element={<OnboardingPage />} />
+
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
