@@ -729,6 +729,53 @@ export default function JobDetailPage() {
         </Card>
       )}
 
+      {/* Photo Gallery — Before & After */}
+      {role === 'admin' && (beforePhotos.length > 0 || completionPhotos.length > 0) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Photos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {beforePhotos.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Before (Client Submitted)</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {beforePhotos.map((p: any, i: number) => (
+                    <div key={i} className="space-y-1">
+                      <a href={p.url} target="_blank" rel="noopener noreferrer">
+                        <img src={p.url} alt={p.label || `Before ${i+1}`} className="w-full aspect-square object-cover rounded-xl hover:opacity-80 transition-opacity" />
+                      </a>
+                      {p.label && <p className="text-xs text-muted-foreground truncate">{p.label}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {completionPhotos.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">After (Completion)</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {completionPhotos.map((p: any) => (
+                    <div key={p.id} className="space-y-1">
+                      <a href={p.file_url} target="_blank" rel="noopener noreferrer">
+                        <img src={p.file_url} alt={p.room_label || 'Completion'} className="w-full aspect-square object-cover rounded-xl hover:opacity-80 transition-opacity" />
+                      </a>
+                      {p.room_label && <p className="text-xs text-muted-foreground truncate">{p.room_label}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {beforePhotos.length > 0 && completionPhotos.length > 0 && (
+              <p className="text-xs text-center text-muted-foreground">Side-by-side: {beforePhotos.length} before, {completionPhotos.length} after</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <div className="space-y-3">
         <Button
