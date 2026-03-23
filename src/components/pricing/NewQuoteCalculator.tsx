@@ -15,7 +15,7 @@ import { Save, Copy, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const CLEAN_TYPES = ['Turnover Clean', 'Deep Clean', 'Post-Build', 'End of Lease'] as const;
+const CLEAN_TYPES = ['Turnover Clean', 'Deep Clean', 'Post-Build', 'End of Lease', 'Residential One-Off'] as const;
 const BED_OPTIONS: BedType[] = ['King', 'Queen', 'King Single', 'Single'];
 
 type FormState = {
