@@ -17,6 +17,7 @@ import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
 import OnboardingStatusSection from '@/components/client-detail/OnboardingStatusSection';
 import AssignedPropertiesSection from '@/components/client-detail/AssignedPropertiesSection';
 import EditClientDialog from '@/components/client-detail/EditClientDialog';
+import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 
 function useClientDetail(clientId: string) {
   return useQuery({
@@ -123,6 +124,7 @@ export default function ClientDetailPage() {
   const [notes, setNotes] = useState('');
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
 
   if (data?.profile && !notesLoaded) {
@@ -183,6 +185,15 @@ export default function ClientDetailPage() {
         phone={profile?.phone}
         onBack={() => navigate('/clients')}
         onEdit={() => setEditOpen(true)}
+        onScheduleClean={() => setScheduleOpen(true)}
+      />
+
+      <ScheduleCleanModal
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        clientId={id!}
+        clientName={profile?.full_name || 'Client'}
+        properties={data.properties.map(p => ({ id: p.id, property_name: p.property_name, address: p.address }))}
       />
 
       <Tabs defaultValue="overview" className="w-full">

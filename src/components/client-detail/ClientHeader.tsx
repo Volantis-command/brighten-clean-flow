@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, Phone, Pencil } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Pencil, CalendarPlus } from 'lucide-react';
 
 interface ClientHeaderProps {
   name: string;
@@ -7,12 +7,13 @@ interface ClientHeaderProps {
   phone?: string | null;
   onBack: () => void;
   onEdit: () => void;
+  onScheduleClean?: () => void;
   onViewPortal?: () => void;
   onCopyLink?: () => void;
   portalLink?: string | null;
 }
 
-export default function ClientHeader({ name, email, phone, onBack, onEdit }: ClientHeaderProps) {
+export default function ClientHeader({ name, email, phone, onBack, onEdit, onScheduleClean }: ClientHeaderProps) {
   return (
     <>
       <div className="flex items-center gap-3">
@@ -28,9 +29,16 @@ export default function ClientHeader({ name, email, phone, onBack, onEdit }: Cli
             {phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{phone}</span>}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          <Pencil className="w-4 h-4 mr-1" /> Edit
-        </Button>
+        <div className="flex gap-2">
+          {onScheduleClean && (
+            <Button size="sm" onClick={onScheduleClean}>
+              <CalendarPlus className="w-4 h-4 mr-1" /> Schedule a Clean
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Pencil className="w-4 h-4 mr-1" /> Edit
+          </Button>
+        </div>
       </div>
     </>
   );
