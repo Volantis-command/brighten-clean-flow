@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.send-review-rebook-sms]
 verify_jwt = false
+
+[functions.receive-guesty-webhook]
+verify_jwt = false

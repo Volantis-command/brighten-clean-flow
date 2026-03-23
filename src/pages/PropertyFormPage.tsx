@@ -14,6 +14,9 @@ import { ArrowLeft, ArrowRight, Building2, Home, Landmark, HelpCircle, Lock, Key
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
+import AirbnbPropertyTabs from '@/components/property/AirbnbPropertyTabs';
+
+
 
 const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Pricing', 'Assign & Confirm'];
 
@@ -33,7 +36,7 @@ const ACCESS_METHODS = [
   { value: 'Other', icon: HelpCircle },
 ];
 
-const EMPTY_FORM = {
+const EMPTY_FORM: Record<string, any> = {
   property_name: '',
   address: '',
   suburb: '',
@@ -64,6 +67,41 @@ const EMPTY_FORM = {
   price_end_of_lease: '',
   price_post_build: '',
   pricing_notes: '',
+  // Airbnb fields
+  client_type: 'residential',
+  toilets: 1,
+  has_outdoor_area: false,
+  outdoor_description: '',
+  has_pool: false,
+  has_oven: false,
+  has_glass_screens: false,
+  max_guests: 0,
+  avg_nightly_rate: '',
+  platform: '',
+  linen_supply: 'no',
+  linen_config: {},
+  linen_changeover: 'every_clean',
+  linen_storage: '',
+  spare_linen: 'we_bring',
+  consumables_config: [],
+  clean_standard: 'airbnb_standard',
+  pain_points: '',
+  skip_areas: '',
+  fragrance_preference: '',
+  pet_situation: 'no_pets',
+  alarm_code: '',
+  parking_instructions: '',
+  bin_details: '',
+  wifi_password: '',
+  neighbour_notes: '',
+  checkout_time: '10:00',
+  checkin_time: '14:00',
+  assigned_cleaner_ids: [],
+  backup_cleaner_id: '',
+  min_notice: '24h',
+  override_price: false,
+  pricing_agreement_notes: '',
+  guesty_listing_id: '',
 };
 
 export default function PropertyFormPage() {
@@ -90,6 +128,7 @@ export default function PropertyFormPage() {
   useEffect(() => {
     if (existing) {
       setForm({
+        ...EMPTY_FORM,
         property_name: existing.property_name || '',
         address: existing.address || '',
         suburb: existing.suburb || '',
@@ -120,6 +159,41 @@ export default function PropertyFormPage() {
         price_end_of_lease: existing.price_end_of_lease != null ? String(existing.price_end_of_lease) : '',
         price_post_build: existing.price_post_build != null ? String(existing.price_post_build) : '',
         pricing_notes: existing.pricing_notes || '',
+        // Airbnb fields
+        client_type: (existing as any).client_type || 'residential',
+        toilets: (existing as any).toilets || 1,
+        has_outdoor_area: (existing as any).has_outdoor_area || false,
+        outdoor_description: (existing as any).outdoor_description || '',
+        has_pool: (existing as any).has_pool || false,
+        has_oven: (existing as any).has_oven || false,
+        has_glass_screens: (existing as any).has_glass_screens || false,
+        max_guests: (existing as any).max_guests || 0,
+        avg_nightly_rate: (existing as any).avg_nightly_rate != null ? String((existing as any).avg_nightly_rate) : '',
+        platform: (existing as any).platform || '',
+        linen_supply: (existing as any).linen_supply || 'no',
+        linen_config: (existing as any).linen_config || {},
+        linen_changeover: (existing as any).linen_changeover || 'every_clean',
+        linen_storage: (existing as any).linen_storage || '',
+        spare_linen: (existing as any).spare_linen || 'we_bring',
+        consumables_config: (existing as any).consumables_config || [],
+        clean_standard: (existing as any).clean_standard || 'airbnb_standard',
+        pain_points: (existing as any).pain_points || '',
+        skip_areas: (existing as any).skip_areas || '',
+        fragrance_preference: (existing as any).fragrance_preference || '',
+        pet_situation: (existing as any).pet_situation || 'no_pets',
+        alarm_code: (existing as any).alarm_code || '',
+        parking_instructions: (existing as any).parking_instructions || '',
+        bin_details: (existing as any).bin_details || '',
+        wifi_password: (existing as any).wifi_password || '',
+        neighbour_notes: (existing as any).neighbour_notes || '',
+        checkout_time: (existing as any).checkout_time || '10:00',
+        checkin_time: (existing as any).checkin_time || '14:00',
+        assigned_cleaner_ids: (existing as any).assigned_cleaner_ids || [],
+        backup_cleaner_id: (existing as any).backup_cleaner_id || '',
+        min_notice: (existing as any).min_notice || '24h',
+        override_price: (existing as any).override_price || false,
+        pricing_agreement_notes: (existing as any).pricing_agreement_notes || '',
+        guesty_listing_id: (existing as any).guesty_listing_id || '',
       });
     }
   }, [existing]);
@@ -135,20 +209,22 @@ export default function PropertyFormPage() {
       return;
     }
     setSaving(true);
-    const { lat, lng, has_product_restrictions, price_turnover, price_deep_clean, price_end_of_lease, price_post_build, ...rest } = form;
-    const payload = {
+    const { lat, lng, has_product_restrictions, price_turnover, price_deep_clean, price_end_of_lease, price_post_build, avg_nightly_rate, ...rest } = form;
+    const payload: Record<string, any> = {
       ...rest,
       default_cleaner_id: form.default_cleaner_id || null,
+      backup_cleaner_id: form.backup_cleaner_id || null,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
       price_turnover: price_turnover ? parseFloat(price_turnover) : null,
       price_deep_clean: price_deep_clean ? parseFloat(price_deep_clean) : null,
       price_end_of_lease: price_end_of_lease ? parseFloat(price_end_of_lease) : null,
       price_post_build: price_post_build ? parseFloat(price_post_build) : null,
+      avg_nightly_rate: avg_nightly_rate ? parseFloat(avg_nightly_rate) : null,
     };
 
     if (isEdit) {
-      const { error } = await supabase.from('properties').update(payload).eq('id', id!);
+      const { error } = await supabase.from('properties').update(payload as any).eq('id', id!);
       if (error) {
         toast.error(error.message);
       } else {
@@ -158,7 +234,7 @@ export default function PropertyFormPage() {
         navigate(`/properties/${id}`);
       }
     } else {
-      const { data, error } = await supabase.from('properties').insert(payload).select().single();
+      const { data, error } = await supabase.from('properties').insert(payload as any).select().single();
       if (error) {
         toast.error(error.message);
       } else {
@@ -224,6 +300,14 @@ export default function PropertyFormPage() {
         {step === 4 && <StepPricing form={form} updateField={updateField} />}
         {step === 5 && <Step5 form={form} updateField={updateField} cleaners={cleaners} />}
       </div>
+
+      {/* Airbnb Extended Tabs — always visible for airbnb type */}
+      {form.client_type === 'airbnb' && (
+        <div className="bg-card rounded-2xl shadow-md p-5">
+          <h2 className="text-lg font-bold text-primary mb-4">🏠 Airbnb / PM Configuration</h2>
+          <AirbnbPropertyTabs form={form} updateField={updateField} />
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="flex gap-3">
@@ -313,9 +397,35 @@ function NumberSelector({ value, onChange, max = 5 }: { value: number; onChange:
 function Step1({ form, updateField }: { form: any; updateField: (f: string, v: any) => void }) {
   return (
     <>
+      <Field label="Client Type">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: 'residential', label: '🏠 Residential', desc: 'One-off / regular house clean' },
+            { value: 'airbnb', label: '🏨 Airbnb / PM', desc: 'Multiple properties, turnovers' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updateField('client_type', opt.value)}
+              className={cn(
+                'p-4 rounded-2xl border-2 text-left transition-all',
+                form.client_type === opt.value ? 'border-primary bg-secondary' : 'border-border hover:border-primary/40'
+              )}
+            >
+              <p className="font-bold text-sm text-foreground">{opt.label}</p>
+              <p className="text-xs text-muted-foreground">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+      </Field>
       <Field label="Property Name / Nickname *">
         <Input value={form.property_name} onChange={(e) => updateField('property_name', e.target.value)} className="h-14 rounded-2xl" placeholder="e.g. Coastal Retreat Apt 12" />
       </Field>
+      {form.client_type === 'airbnb' && (
+        <Field label="Guesty Listing ID">
+          <Input value={form.guesty_listing_id || ''} onChange={(e) => updateField('guesty_listing_id', e.target.value)} className="h-14 rounded-2xl" placeholder="For auto-job creation from Guesty" />
+        </Field>
+      )}
       <Field label="Full Address">
         <Input value={form.address} onChange={(e) => updateField('address', e.target.value)} className="h-14 rounded-2xl" placeholder="Street address" />
       </Field>

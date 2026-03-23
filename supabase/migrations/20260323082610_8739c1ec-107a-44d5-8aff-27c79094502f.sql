@@ -1,0 +1,47 @@
+
+-- Add Airbnb/PM columns to properties
+ALTER TABLE public.properties
+  ADD COLUMN IF NOT EXISTS client_type text DEFAULT 'residential',
+  ADD COLUMN IF NOT EXISTS guesty_listing_id text,
+  ADD COLUMN IF NOT EXISTS checkout_time time,
+  ADD COLUMN IF NOT EXISTS checkin_time time,
+  ADD COLUMN IF NOT EXISTS linen_config jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS consumables_config jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS pain_points text,
+  ADD COLUMN IF NOT EXISTS access_details jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS assigned_cleaner_ids jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS backup_cleaner_id uuid,
+  ADD COLUMN IF NOT EXISTS toilets integer DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS has_outdoor_area boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS outdoor_description text,
+  ADD COLUMN IF NOT EXISTS has_pool boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_oven boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_glass_screens boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS max_guests integer,
+  ADD COLUMN IF NOT EXISTS avg_nightly_rate numeric,
+  ADD COLUMN IF NOT EXISTS platform text,
+  ADD COLUMN IF NOT EXISTS linen_supply text DEFAULT 'no',
+  ADD COLUMN IF NOT EXISTS linen_changeover text DEFAULT 'every_clean',
+  ADD COLUMN IF NOT EXISTS linen_storage text,
+  ADD COLUMN IF NOT EXISTS spare_linen text DEFAULT 'we_bring',
+  ADD COLUMN IF NOT EXISTS clean_standard text DEFAULT 'airbnb_standard',
+  ADD COLUMN IF NOT EXISTS skip_areas text,
+  ADD COLUMN IF NOT EXISTS fragrance_preference text,
+  ADD COLUMN IF NOT EXISTS pet_situation text DEFAULT 'no_pets',
+  ADD COLUMN IF NOT EXISTS alarm_code text,
+  ADD COLUMN IF NOT EXISTS parking_instructions text,
+  ADD COLUMN IF NOT EXISTS bin_details text,
+  ADD COLUMN IF NOT EXISTS wifi_password text,
+  ADD COLUMN IF NOT EXISTS neighbour_notes text,
+  ADD COLUMN IF NOT EXISTS min_notice text DEFAULT '24h',
+  ADD COLUMN IF NOT EXISTS override_price boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS pricing_agreement_notes text,
+  ADD COLUMN IF NOT EXISTS checklist_template jsonb DEFAULT '[]'::jsonb;
+
+-- Add Airbnb/PM columns to jobs
+ALTER TABLE public.jobs
+  ADD COLUMN IF NOT EXISTS guest_checkout_time timestamp with time zone,
+  ADD COLUMN IF NOT EXISTS guest_checkin_time timestamp with time zone,
+  ADD COLUMN IF NOT EXISTS turnaround_minutes integer,
+  ADD COLUMN IF NOT EXISTS is_urgent boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS source text DEFAULT 'manual';
