@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -78,14 +79,39 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function SpaRedirectHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const redirect = sessionStorage.getItem('spa-redirect');
+    if (redirect) {
+      sessionStorage.removeItem('spa-redirect');
+      navigate(redirect, { replace: true });
+    }
+  }, [navigate]);
+  return null;
+}
+
 function AppRoutes() {
   const { user, role, loading } = useAuth();
+  const location = useLocation();
+
+  // Handle ?redirect= query param from old 404.html fallback
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    if (redirect && location.pathname === '/') {
+      window.location.replace(redirect);
+    }
+  }, [location]);
 
   if (loading || (user && role === undefined)) {
     return <RouteLoading />;
   }
 
   const getHomeRedirect = () => {
+    // Check for pending SPA redirect before sending to login
+    const pendingRedirect = sessionStorage.getItem('spa-redirect');
+    if (pendingRedirect) return <RouteLoading />;
     if (!user) return <Navigate to="/login" replace />;
     if (role === 'client') return <Navigate to="/portal" replace />;
     return <Navigate to="/dashboard" replace />;
@@ -160,6 +186,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <SpaRedirectHandler />
           <ActiveClockBanner />
           <AppRoutes />
         </AuthProvider>
