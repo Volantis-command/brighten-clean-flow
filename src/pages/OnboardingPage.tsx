@@ -56,7 +56,7 @@ export default function OnboardingPage() {
 
   // Clean request fields
   const [requestDate, setRequestDate] = useState('');
-  const [cleanType, setCleanType] = useState('Turnover Clean');
+  const [cleanType, setCleanType] = useState('House Clean');
   const [preferredTime, setPreferredTime] = useState('Flexible');
   const [cleanNotes, setCleanNotes] = useState('');
 
