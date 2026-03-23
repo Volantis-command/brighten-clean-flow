@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2, CheckCircle2, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 interface PropertyForm {
   property_name: string;

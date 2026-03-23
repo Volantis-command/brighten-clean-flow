@@ -53,7 +53,7 @@ function useClientsList() {
   });
 }
 
-const BASE_URL = window.location.origin;
+const BASE_URL = getAppBaseUrl();
 
 export default function ClientsPage() {
   const navigate = useNavigate();
