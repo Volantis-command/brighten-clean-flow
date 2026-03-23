@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone } from 'lucide-react';
+import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import SendQuoteRequestModal from '@/components/clients/SendQuoteRequestModal';
+import LeadsTab from '@/components/clients/LeadsTab';
 
 interface ClientMember {
   id: string;
