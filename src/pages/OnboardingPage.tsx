@@ -170,8 +170,8 @@ export default function OnboardingPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4">
         <p className="text-4xl mb-3">🔗</p>
-        <p className="font-bold text-lg">Invalid or expired onboarding link</p>
-        <p className="text-sm text-muted-foreground">Contact Brightly for a new link.</p>
+        <p className="font-bold text-lg text-foreground">This link is invalid or has expired.</p>
+        <p className="text-sm text-muted-foreground mt-1">Please contact Brightly Cleaning for a new link.</p>
       </div>
     );
   }
