@@ -61,13 +61,13 @@ export default function AddJobPage() {
   const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   const { data: properties = [] } = useQuery({
-    queryKey: ['properties-active'],
+    queryKey: ['properties-all'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb, price_turnover')
-        .eq('status', 'active')
-        .order('property_name');
+        .select('id, property_name, address, suburb, price_turnover, client_name')
+        .in('status', ['active', 'onboarding'])
+        .order('client_name', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data || [];
     },
