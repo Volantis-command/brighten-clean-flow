@@ -135,6 +135,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         gpOverride: editQuote.gp_percent != null ? String(Math.round(editQuote.gp_percent * 100)) : '',
         discountGp: editQuote.discount_gp_percent != null ? String(editQuote.discount_gp_percent) : '',
         notes: editQuote.notes || '',
+        residentialAddons: Array.isArray(editQuote.extras) && editQuote.extras.length > 0 ? editQuote.extras : INITIAL.residentialAddons,
+        includeGst: true,
       });
     }
   }, [editQuote]);
