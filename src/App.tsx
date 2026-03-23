@@ -118,6 +118,8 @@ function AppRoutes() {
       <Route path="/client/:token/property/:id" element={<MagicLinkPropertyPage />} />
       <Route path="/feedback/:token" element={<FeedbackPage />} />
       <Route path="/onboard/:token" element={<OnboardingPage />} />
+      <Route path="/quote/:token" element={<QuoteRequestFormPage />} />
+      <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
