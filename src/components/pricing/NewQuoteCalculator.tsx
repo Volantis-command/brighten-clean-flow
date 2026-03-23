@@ -84,6 +84,14 @@ const INITIAL: FormState = {
   gpOverride: '',
   discountGp: '',
   notes: '',
+  residentialAddons: [
+    { name: 'Oven clean', price: 45, enabled: false },
+    { name: 'Fridge clean', price: 25, enabled: false },
+    { name: 'Window cleaning', price: 35, enabled: false },
+    { name: 'Garage sweep', price: 20, enabled: false },
+    { name: 'Wall spot cleaning', price: 20, enabled: false },
+  ],
+  includeGst: true,
 };
 
 export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void }) {
