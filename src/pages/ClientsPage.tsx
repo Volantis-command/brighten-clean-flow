@@ -262,6 +262,14 @@ export default function ClientsPage() {
           </Table>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="leads" className="mt-4">
+          <LeadsTab />
+        </TabsContent>
+      </Tabs>
+
+      <SendQuoteRequestModal open={quoteRequestOpen} onOpenChange={setQuoteRequestOpen} />
 
       {/* Send Onboarding Modal */}
       <Dialog open={onboardOpen} onOpenChange={setOnboardOpen}>
