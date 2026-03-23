@@ -42,7 +42,18 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('clean_requests' as any).insert({
+      // Create job as awaiting_quote instead of clean_request
+      const { data: jobData } = await supabase.from('jobs').insert({
+        property_id: propertyId,
+        scheduled_date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        scheduled_time: preferredTime === 'morning' ? '08:00' : preferredTime === 'afternoon' ? '12:00' : null,
+        status: 'awaiting_quote',
+        notes: [cleanType.replace(/_/g, ' '), notes].filter(Boolean).join(' — ') || null,
+        source: 'client_portal',
+      } as any).select('id').single();
+
+      // Also create clean_request for tracking
+      await supabase.from('clean_requests' as any).insert({
         client_id: clientId,
         property_id: propertyId,
         requested_date: date ? format(date, 'yyyy-MM-dd') : null,
@@ -54,18 +65,18 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
         same_cleaner: sameCleaner,
         status: 'pending',
       } as any);
-      if (error) throw error;
 
       // Notify admins
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
+        const notifLink = jobData?.id ? `/jobs/${jobData.id}` : '/requests';
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            title: 'New Booking Request',
-            message: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'}`,
+            title: 'New Booking Request — Awaiting Quote',
+            message: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'} — set price to schedule.`,
             type: 'booking_request',
-            link: '/requests',
+            link: notifLink,
           }))
         );
       }
