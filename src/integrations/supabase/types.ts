@@ -396,10 +396,13 @@ export type Database = {
           deposit_refunded: boolean | null
           estimated_duration: number | null
           feedback_score: number | null
+          guest_checkin_time: string | null
+          guest_checkout_time: string | null
           id: string
           invoice_amount: number | null
           invoice_notes: string | null
           invoice_status: string | null
+          is_urgent: boolean | null
           linked_quote_id: string | null
           notes: string | null
           price_ex_gst: number | null
@@ -411,8 +414,10 @@ export type Database = {
           scheduled_date: string
           scheduled_time: string | null
           series_id: string | null
+          source: string | null
           status: string
           stripe_payment_intent_id: string | null
+          turnaround_minutes: number | null
           xero_invoice_id: string | null
           xero_invoice_number: string | null
         }
@@ -427,10 +432,13 @@ export type Database = {
           deposit_refunded?: boolean | null
           estimated_duration?: number | null
           feedback_score?: number | null
+          guest_checkin_time?: string | null
+          guest_checkout_time?: string | null
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
           invoice_status?: string | null
+          is_urgent?: boolean | null
           linked_quote_id?: string | null
           notes?: string | null
           price_ex_gst?: number | null
@@ -442,8 +450,10 @@ export type Database = {
           scheduled_date: string
           scheduled_time?: string | null
           series_id?: string | null
+          source?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          turnaround_minutes?: number | null
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
         }
@@ -458,10 +468,13 @@ export type Database = {
           deposit_refunded?: boolean | null
           estimated_duration?: number | null
           feedback_score?: number | null
+          guest_checkin_time?: string | null
+          guest_checkout_time?: string | null
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
           invoice_status?: string | null
+          is_urgent?: boolean | null
           linked_quote_id?: string | null
           notes?: string | null
           price_ex_gst?: number | null
@@ -473,8 +486,10 @@ export type Database = {
           scheduled_date?: string
           scheduled_time?: string | null
           series_id?: string | null
+          source?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          turnaround_minutes?: number | null
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
         }
@@ -709,108 +724,216 @@ export type Database = {
       properties: {
         Row: {
           access_code: string | null
+          access_details: Json | null
           access_method: string | null
           access_notes: string | null
           address: string | null
+          alarm_code: string | null
           amenities_notes: string | null
+          assigned_cleaner_ids: Json | null
+          avg_nightly_rate: number | null
+          backup_cleaner_id: string | null
           bathrooms: number | null
           bedrooms: number | null
           billing_email: string | null
+          bin_details: string | null
+          checkin_time: string | null
+          checklist_template: Json | null
+          checkout_time: string | null
           clean_frequency: string | null
+          clean_standard: string | null
           client_name: string | null
+          client_type: string | null
+          consumables_config: Json | null
           created_at: string
           default_cleaner_id: string | null
+          fragrance_preference: string | null
           guest_checkin_at: string | null
+          guesty_listing_id: string | null
+          has_glass_screens: boolean | null
+          has_outdoor_area: boolean | null
+          has_oven: boolean | null
+          has_pool: boolean | null
           host_preferences: string | null
           id: string
           lat: number | null
+          linen_changeover: string | null
+          linen_config: Json | null
           linen_fold_style: string | null
+          linen_storage: string | null
+          linen_supply: string | null
           lng: number | null
+          max_guests: number | null
+          min_notice: string | null
+          neighbour_notes: string | null
+          outdoor_description: string | null
+          override_price: boolean | null
+          pain_points: string | null
+          parking_instructions: string | null
           payment_terms: string | null
+          pet_situation: string | null
+          platform: string | null
           postcode: string | null
           preferred_cleaner_id: string | null
           price_deep_clean: number | null
           price_end_of_lease: number | null
           price_post_build: number | null
           price_turnover: number | null
+          pricing_agreement_notes: string | null
           pricing_notes: string | null
           product_restrictions: string | null
           property_name: string
           property_type: string | null
+          skip_areas: string | null
+          spare_linen: string | null
           state: string | null
           status: string | null
           suburb: string | null
+          toilets: number | null
           turnaround_window: string | null
+          wifi_password: string | null
         }
         Insert: {
           access_code?: string | null
+          access_details?: Json | null
           access_method?: string | null
           access_notes?: string | null
           address?: string | null
+          alarm_code?: string | null
           amenities_notes?: string | null
+          assigned_cleaner_ids?: Json | null
+          avg_nightly_rate?: number | null
+          backup_cleaner_id?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           billing_email?: string | null
+          bin_details?: string | null
+          checkin_time?: string | null
+          checklist_template?: Json | null
+          checkout_time?: string | null
           clean_frequency?: string | null
+          clean_standard?: string | null
           client_name?: string | null
+          client_type?: string | null
+          consumables_config?: Json | null
           created_at?: string
           default_cleaner_id?: string | null
+          fragrance_preference?: string | null
           guest_checkin_at?: string | null
+          guesty_listing_id?: string | null
+          has_glass_screens?: boolean | null
+          has_outdoor_area?: boolean | null
+          has_oven?: boolean | null
+          has_pool?: boolean | null
           host_preferences?: string | null
           id?: string
           lat?: number | null
+          linen_changeover?: string | null
+          linen_config?: Json | null
           linen_fold_style?: string | null
+          linen_storage?: string | null
+          linen_supply?: string | null
           lng?: number | null
+          max_guests?: number | null
+          min_notice?: string | null
+          neighbour_notes?: string | null
+          outdoor_description?: string | null
+          override_price?: boolean | null
+          pain_points?: string | null
+          parking_instructions?: string | null
           payment_terms?: string | null
+          pet_situation?: string | null
+          platform?: string | null
           postcode?: string | null
           preferred_cleaner_id?: string | null
           price_deep_clean?: number | null
           price_end_of_lease?: number | null
           price_post_build?: number | null
           price_turnover?: number | null
+          pricing_agreement_notes?: string | null
           pricing_notes?: string | null
           product_restrictions?: string | null
           property_name: string
           property_type?: string | null
+          skip_areas?: string | null
+          spare_linen?: string | null
           state?: string | null
           status?: string | null
           suburb?: string | null
+          toilets?: number | null
           turnaround_window?: string | null
+          wifi_password?: string | null
         }
         Update: {
           access_code?: string | null
+          access_details?: Json | null
           access_method?: string | null
           access_notes?: string | null
           address?: string | null
+          alarm_code?: string | null
           amenities_notes?: string | null
+          assigned_cleaner_ids?: Json | null
+          avg_nightly_rate?: number | null
+          backup_cleaner_id?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           billing_email?: string | null
+          bin_details?: string | null
+          checkin_time?: string | null
+          checklist_template?: Json | null
+          checkout_time?: string | null
           clean_frequency?: string | null
+          clean_standard?: string | null
           client_name?: string | null
+          client_type?: string | null
+          consumables_config?: Json | null
           created_at?: string
           default_cleaner_id?: string | null
+          fragrance_preference?: string | null
           guest_checkin_at?: string | null
+          guesty_listing_id?: string | null
+          has_glass_screens?: boolean | null
+          has_outdoor_area?: boolean | null
+          has_oven?: boolean | null
+          has_pool?: boolean | null
           host_preferences?: string | null
           id?: string
           lat?: number | null
+          linen_changeover?: string | null
+          linen_config?: Json | null
           linen_fold_style?: string | null
+          linen_storage?: string | null
+          linen_supply?: string | null
           lng?: number | null
+          max_guests?: number | null
+          min_notice?: string | null
+          neighbour_notes?: string | null
+          outdoor_description?: string | null
+          override_price?: boolean | null
+          pain_points?: string | null
+          parking_instructions?: string | null
           payment_terms?: string | null
+          pet_situation?: string | null
+          platform?: string | null
           postcode?: string | null
           preferred_cleaner_id?: string | null
           price_deep_clean?: number | null
           price_end_of_lease?: number | null
           price_post_build?: number | null
           price_turnover?: number | null
+          pricing_agreement_notes?: string | null
           pricing_notes?: string | null
           product_restrictions?: string | null
           property_name?: string
           property_type?: string | null
+          skip_areas?: string | null
+          spare_linen?: string | null
           state?: string | null
           status?: string | null
           suburb?: string | null
+          toilets?: number | null
           turnaround_window?: string | null
+          wifi_password?: string | null
         }
         Relationships: []
       }
