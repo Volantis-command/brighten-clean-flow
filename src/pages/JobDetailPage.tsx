@@ -31,6 +31,8 @@ export default function JobDetailPage() {
   const [mapsOpen, setMapsOpen] = useState(false);
   const [showPricePrompt, setShowPricePrompt] = useState(false);
   const [syncingStatus, setSyncingStatus] = useState(false);
+  const [sendingReviewSms, setSendingReviewSms] = useState(false);
+  const [sendingRebookSms, setSendingRebookSms] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
