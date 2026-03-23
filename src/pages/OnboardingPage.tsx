@@ -143,18 +143,30 @@ export default function OnboardingPage() {
         ].filter(Boolean).join('\n'),
       }).eq('id', propertyId);
 
-      // Create job with status 'awaiting_quote' if date provided
+      // Create job with status 'awaiting_quote' if date provided — but only if no job exists yet
       let jobId: string | null = null;
       if (requestDate) {
-        const { data: jobData } = await supabase.from('jobs').insert({
-          property_id: propertyId,
-          scheduled_date: requestDate,
-          scheduled_time: preferredTime === 'Morning (8am-12pm)' ? '08:00' : preferredTime === 'Afternoon (12pm-4pm)' ? '12:00' : null,
-          status: 'awaiting_quote',
-          notes: [cleanType, cleanNotes].filter(Boolean).join(' — ') || null,
-          source: 'client_portal',
-        } as any).select('id').single();
-        jobId = jobData?.id || null;
+        // Check for existing job from this property to prevent duplicates
+        const { data: existingJob } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('property_id', propertyId)
+          .eq('source', 'client_portal')
+          .maybeSingle();
+
+        if (!existingJob) {
+          const { data: jobData } = await supabase.from('jobs').insert({
+            property_id: propertyId,
+            scheduled_date: requestDate,
+            scheduled_time: preferredTime === 'Morning (8am-12pm)' ? '08:00' : preferredTime === 'Afternoon (12pm-4pm)' ? '12:00' : null,
+            status: 'awaiting_quote',
+            notes: [cleanType, cleanNotes].filter(Boolean).join(' — ') || null,
+            source: 'client_portal',
+          } as any).select('id').single();
+          jobId = jobData?.id || null;
+        } else {
+          jobId = existingJob.id;
+        }
       }
 
       // Mark onboard token as used
