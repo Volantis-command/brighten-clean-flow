@@ -544,6 +544,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             discountGp={form.discountGp}
             onGpOverrideChange={(v) => upd('gpOverride', v)}
             onDiscountGpChange={(v) => upd('discountGp', v)}
+            hideConsumables={isResidential}
           />
           <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} />
         </div>
