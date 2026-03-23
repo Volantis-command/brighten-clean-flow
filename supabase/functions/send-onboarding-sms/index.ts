@@ -29,7 +29,6 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch client profile
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('id, full_name, phone')
@@ -48,18 +47,53 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use client_id as the onboarding token directly
     const token = client_id;
 
-    // Build onboarding URL
-    const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '').replace('https://','') || '';
-    // Use a generic app URL — the frontend will pass it
-    const onboardUrl = `https://brighten-clean-flow.lovable.app/onboard/${token}`;
+    // Ensure a client_properties row exists with onboard_token set
+    const { data: existing } = await supabase
+      .from('client_properties')
+      .select('id')
+      .eq('client_id', client_id)
+      .limit(1)
+      .maybeSingle();
 
+    if (existing) {
+      await supabase
+        .from('client_properties')
+        .update({
+          onboard_token: token,
+          onboard_used: false,
+          onboarding_sent_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+    } else {
+      // Create a placeholder client_properties row (no property yet — client will fill it in)
+      // We need a property_id — create a placeholder property
+      const { data: prop } = await supabase
+        .from('properties')
+        .insert({
+          property_name: `${profile.full_name || 'New'} - Pending Onboarding`,
+          client_name: profile.full_name,
+          status: 'onboarding',
+        })
+        .select('id')
+        .single();
+
+      if (prop) {
+        await supabase.from('client_properties').insert({
+          client_id,
+          property_id: prop.id,
+          onboard_token: token,
+          onboard_used: false,
+          onboarding_sent_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    const onboardUrl = `https://brighten-clean-flow.lovable.app/onboard/${token}`;
     const firstName = (profile.full_name || 'there').split(' ')[0];
     const smsBody = `Hi ${firstName}, welcome to Brightly Cleaning! Please fill out your property details here — it only takes a few minutes: ${onboardUrl}`;
 
-    // Send via Twilio
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
@@ -71,7 +105,6 @@ Deno.serve(async (req) => {
     }
 
     const toFormatted = formatAuPhone(profile.phone);
-
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const credentials = btoa(`${accountSid}:${authToken}`);
 
@@ -91,12 +124,6 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // Update onboarding_sent_at on any existing client_properties row
-    await supabase
-      .from('client_properties')
-      .update({ onboarding_sent_at: new Date().toISOString() })
-      .eq('client_id', client_id);
 
     return new Response(JSON.stringify({ 
       success: true, 
