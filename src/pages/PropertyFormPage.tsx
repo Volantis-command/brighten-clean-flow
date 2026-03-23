@@ -301,6 +301,14 @@ export default function PropertyFormPage() {
         {step === 5 && <Step5 form={form} updateField={updateField} cleaners={cleaners} />}
       </div>
 
+      {/* Airbnb Extended Tabs — always visible for airbnb type */}
+      {form.client_type === 'airbnb' && (
+        <div className="bg-card rounded-2xl shadow-md p-5">
+          <h2 className="text-lg font-bold text-primary mb-4">🏠 Airbnb / PM Configuration</h2>
+          <AirbnbPropertyTabs form={form} updateField={updateField} />
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="flex gap-3">
         {step > 0 && (
