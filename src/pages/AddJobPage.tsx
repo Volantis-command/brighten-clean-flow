@@ -61,13 +61,13 @@ export default function AddJobPage() {
   const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   const { data: properties = [] } = useQuery({
-    queryKey: ['properties-active'],
+    queryKey: ['properties-all'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb, price_turnover')
-        .eq('status', 'active')
-        .order('property_name');
+        .select('id, property_name, address, suburb, price_turnover, client_name')
+        .in('status', ['active', 'onboarding'])
+        .order('client_name', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data || [];
     },
@@ -75,7 +75,8 @@ export default function AddJobPage() {
 
   const filteredProperties = properties.filter((p) =>
     p.property_name.toLowerCase().includes(propertySearch.toLowerCase()) ||
-    (p.address || '').toLowerCase().includes(propertySearch.toLowerCase())
+    (p.address || '').toLowerCase().includes(propertySearch.toLowerCase()) ||
+    ((p as any).client_name || '').toLowerCase().includes(propertySearch.toLowerCase())
   );
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
@@ -288,16 +289,29 @@ export default function AddJobPage() {
                     {filteredProperties.length === 0 ? (
                       <p className="p-4 text-sm text-muted-foreground">No properties found.</p>
                     ) : (
-                      filteredProperties.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => { setPropertyId(p.id); setPropertySearch(''); }}
-                          className="w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                        >
-                          <p className="font-bold text-foreground text-sm">{p.property_name}</p>
-                          <p className="text-xs text-muted-foreground">{[p.address, p.suburb].filter(Boolean).join(', ')}</p>
-                        </button>
-                      ))
+                      (() => {
+                        const grouped: Record<string, typeof filteredProperties> = {};
+                        filteredProperties.forEach(p => {
+                          const client = (p as any).client_name || 'Unassigned';
+                          if (!grouped[client]) grouped[client] = [];
+                          grouped[client].push(p);
+                        });
+                        return Object.entries(grouped).map(([client, props]) => (
+                          <div key={client}>
+                            <p className="px-4 py-1.5 text-xs font-bold text-muted-foreground bg-muted/50 sticky top-0">{client}</p>
+                            {props.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => { setPropertyId(p.id); setPropertySearch(''); }}
+                                className="w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                              >
+                                <p className="font-bold text-foreground text-sm">{p.property_name}</p>
+                                <p className="text-xs text-muted-foreground">{[p.address, p.suburb].filter(Boolean).join(', ')}</p>
+                              </button>
+                            ))}
+                          </div>
+                        ));
+                      })()
                     )}
                   </div>
                 )}
@@ -307,6 +321,9 @@ export default function AddJobPage() {
                 <div className="flex-1">
                   <p className="font-bold text-foreground text-sm">{selectedProperty?.property_name}</p>
                   <p className="text-xs text-muted-foreground">{[selectedProperty?.address, selectedProperty?.suburb].filter(Boolean).join(', ')}</p>
+                  {(selectedProperty as any)?.client_name && (
+                    <p className="text-xs text-primary font-semibold mt-0.5">Client: {(selectedProperty as any).client_name}</p>
+                  )}
                 </div>
                 <button onClick={() => setPropertyId('')} className="text-sm font-bold text-primary hover:underline">Change</button>
               </div>
