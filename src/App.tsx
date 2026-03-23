@@ -38,6 +38,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
 import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
+import TimesheetsPage from "./pages/TimesheetsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -143,6 +144,7 @@ function AppRoutes() {
         <Route path="/requests" element={<ProtectedRoute allowedRoles={['admin']}><BookingRequestsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute allowedRoles={['admin']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />
       </Route>
 

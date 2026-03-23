@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
 import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
+import { StaffPaySection } from '@/components/staff/StaffPaySection';
+import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,7 +69,8 @@ export default function StaffPage() {
   const { role: currentRole } = useAuth();
   const queryClient = useQueryClient();
   const { data: staff = [], isLoading } = useStaffList();
-
+  const staffIds = staff.map(s => s.id);
+  const { data: perfBadges = {} } = useStaffPerformanceBadges(staffIds);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
@@ -181,6 +184,8 @@ export default function StaffPage() {
           {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
         </div>
 
+        <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
+        <StaffPerformanceSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
       </div>
     );
@@ -216,7 +221,10 @@ export default function StaffPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
-                  <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
+                   <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
+                   {perfBadges[m.id] && perfBadges[m.id].badge !== '—' && (
+                     <Badge className={`mt-1 text-[10px] ${perfBadges[m.id].badgeColor}`}>{perfBadges[m.id].badge}</Badge>
+                   )}
                 </div>
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-lg">
                   {(m.full_name || '?')[0].toUpperCase()}

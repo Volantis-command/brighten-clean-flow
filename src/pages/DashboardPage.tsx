@@ -12,6 +12,7 @@ import { LiveStatusStrip } from '@/components/dashboard/LiveStatusStrip';
 import { AlertsSection } from '@/components/dashboard/AlertsSection';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentQCScores } from '@/components/dashboard/RecentQCScores';
+import { TeamPerformance } from '@/components/dashboard/TeamPerformance';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
 import { toast } from 'sonner';
@@ -185,6 +186,7 @@ export default function DashboardPage() {
       <AlertsSection alerts={alerts} />
       <QuickActions />
       <RecentQCScores scores={qcDisplayScores} />
+      <TeamPerformance />
     </div>
   );
 }
