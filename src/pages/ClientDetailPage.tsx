@@ -124,6 +124,7 @@ export default function ClientDetailPage() {
   const [notes, setNotes] = useState('');
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
 
   if (data?.profile && !notesLoaded) {
