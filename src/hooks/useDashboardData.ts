@@ -215,7 +215,7 @@ export function useDashboardData() {
   const scheduledThisWeek = weekJobs.length;
   const completedThisWeek = weekJobs.filter((j: any) => j.status === 'complete').length;
   const revenueThisWeek = weekJobs
-    .filter((j: any) => j.status === 'complete' && j.price_ex_gst)
+    .filter((j: any) => j.status === 'complete' && j.price_ex_gst && j.price_ex_gst > 0)
     .reduce((sum: number, j: any) => sum + Number(j.price_ex_gst), 0);
 
   // Financial
