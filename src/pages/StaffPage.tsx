@@ -69,7 +69,8 @@ export default function StaffPage() {
   const { role: currentRole } = useAuth();
   const queryClient = useQueryClient();
   const { data: staff = [], isLoading } = useStaffList();
-
+  const staffIds = staff.map(s => s.id);
+  const { data: perfBadges = {} } = useStaffPerformanceBadges(staffIds);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
