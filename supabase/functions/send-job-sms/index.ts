@@ -42,7 +42,18 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { job_id } = await req.json();
+    const body = await req.json();
+    const { job_id, to, message } = body;
+
+    // Direct SMS mode: send a custom message to a specific number
+    if (to && message) {
+      const smsResult = await sendTwilioSms(formatAuPhone(to), message);
+      return new Response(JSON.stringify(smsResult), {
+        status: smsResult.success ? 200 : 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!job_id) {
       return new Response(JSON.stringify({ error: 'Missing job_id' }), { status: 400, headers: corsHeaders });
     }
