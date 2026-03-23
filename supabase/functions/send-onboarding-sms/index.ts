@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       const { data: prop } = await supabase
         .from('properties')
         .insert({
-          property_name: `${profile.full_name || 'New'} - Pending Onboarding`,
+          property_name: profile.full_name || 'New Client Property',
           client_name: profile.full_name,
           status: 'onboarding',
         })

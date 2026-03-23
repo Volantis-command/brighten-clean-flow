@@ -336,7 +336,7 @@ export default function OnboardingPage() {
                 <Select value={cleanType} onValueChange={setCleanType}>
                   <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {['Turnover Clean', 'Deep Clean', 'End of Lease', 'Post-Build'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {['House Clean', 'Deep Clean', 'End of Lease Clean', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
