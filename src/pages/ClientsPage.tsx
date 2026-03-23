@@ -324,7 +324,25 @@ export default function ClientsPage() {
           <div className="space-y-4">
             <div><Label>Full Name *</Label><Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" /></div>
             <div><Label>Email *</Label><Input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} placeholder="client@example.com" /></div>
-            
+            <div>
+              <Label>Client Type</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {[
+                  { value: 'residential', label: 'Residential', desc: 'One-off or regular, single property, hourly rate' },
+                  { value: 'airbnb', label: 'Airbnb / PM', desc: 'Multiple properties, turnovers, linen + consumables' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setCreateClientType(opt.value)}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${createClientType === opt.value ? 'border-primary bg-secondary' : 'border-border hover:border-primary/40'}`}
+                  >
+                    <p className="font-bold text-sm text-foreground">{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div><Label>Phone</Label><Input value={createPhone} onChange={e => setCreatePhone(e.target.value)} placeholder="0412 345 678" /></div>
             <div>
               <Label>Link Properties</Label>
