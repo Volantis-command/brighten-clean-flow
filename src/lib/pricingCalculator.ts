@@ -92,10 +92,13 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
     ? calculateLinenCost(input.bedTypes, input.sofaBeds, input.bathrooms, input.kitchens, rates)
     : 0;
 
-  // 3. Consumables
-  const consumablesCost = input.cleanType === 'Post-Build'
-    ? consumablesFlat + (input.specialistChemicals || 0)
-    : consumablesFlat;
+  // 3. Consumables — excluded for Residential One-Off (labour-only pricing)
+  const noConsumables = input.cleanType === 'Residential One-Off';
+  const consumablesCost = noConsumables
+    ? 0
+    : input.cleanType === 'Post-Build'
+      ? consumablesFlat + (input.specialistChemicals || 0)
+      : consumablesFlat;
 
   // 4. Total cost
   const totalCost = labourCost + linenCost + consumablesCost;

@@ -17,12 +17,14 @@ export default function PriceLivePanel({
   discountGp,
   onGpOverrideChange,
   onDiscountGpChange,
+  hideConsumables,
 }: {
   result: CalcResult;
   gpOverride: string;
   discountGp: string;
   onGpOverrideChange: (v: string) => void;
   onDiscountGpChange: (v: string) => void;
+  hideConsumables?: boolean;
 }) {
   return (
     <div className="rounded-2xl border-2 border-primary/30 bg-card p-5 space-y-4">
@@ -33,8 +35,8 @@ export default function PriceLivePanel({
 
       <div className="space-y-1 text-sm">
         <Row label="Labour" value={result.labourCost} />
-        <Row label="Linen" value={result.linenCost} />
-        <Row label="Consumables" value={result.consumablesCost} />
+        {result.linenCost > 0 && <Row label="Linen" value={result.linenCost} />}
+        {!hideConsumables && <Row label="Consumables" value={result.consumablesCost} />}
         <div className="border-t border-border my-2" />
         <Row label="Total Cost" value={result.totalCost} bold />
         <div className="flex justify-between">
