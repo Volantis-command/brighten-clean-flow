@@ -17,6 +17,7 @@ interface KPI {
   paidThisMonth: number;
   outstandingThisMonth: number;
   pendingRequestsCount: number;
+  awaitingQuoteCount: number;
   onboardingNotSentCount: number;
   idleCleanersCount: number;
   unassignedJobsCount: number;
@@ -61,8 +62,9 @@ export function TodaySummary({ kpi }: Props) {
     {
       title: 'Alerts',
       items: [
-        ...(kpi.pendingRequestsCount > 0 ? [{ label: 'Booking Requests', value: kpi.pendingRequestsCount, icon: CalendarPlus, bg: 'bg-[hsl(50,100%,50%)]', text: 'text-[hsl(162,72%,16%)]', path: '/requests' }] : []),
-        ...(kpi.onboardingNotSentCount > 0 ? [{ label: 'Onboarding Unsent', value: kpi.onboardingNotSentCount, icon: FileText, bg: 'bg-[hsl(50,100%,50%)]', text: 'text-[hsl(162,72%,16%)]', path: '/clients' }] : []),
+        ...(kpi.awaitingQuoteCount > 0 ? [{ label: 'Awaiting Quote', value: kpi.awaitingQuoteCount, icon: AlertTriangle, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/schedule?status=awaiting_quote' }] : []),
+        ...(kpi.pendingRequestsCount > 0 ? [{ label: 'Booking Requests', value: kpi.pendingRequestsCount, icon: CalendarPlus, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/requests' }] : []),
+        ...(kpi.onboardingNotSentCount > 0 ? [{ label: 'Onboarding Unsent', value: kpi.onboardingNotSentCount, icon: FileText, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/clients' }] : []),
         ...(kpi.idleCleanersCount > 0 ? [{ label: 'Idle Cleaners', value: kpi.idleCleanersCount, icon: Users, bg: 'bg-[hsl(50,100%,50%)]', text: 'text-[hsl(162,72%,16%)]', path: '/staff' }] : []),
         ...(kpi.unassignedJobsCount > 0 ? [{ label: 'Unassigned Jobs', value: kpi.unassignedJobsCount, icon: UserX, bg: 'bg-destructive', text: 'text-destructive-foreground', path: '/schedule' }] : []),
       ],

@@ -42,7 +42,18 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('clean_requests' as any).insert({
+      // Create job as awaiting_quote instead of clean_request
+      const { data: jobData } = await supabase.from('jobs').insert({
+        property_id: propertyId,
+        scheduled_date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        scheduled_time: preferredTime === 'morning' ? '08:00' : preferredTime === 'afternoon' ? '12:00' : null,
+        status: 'awaiting_quote',
+        notes: [cleanType.replace(/_/g, ' '), notes].filter(Boolean).join(' — ') || null,
+        source: 'client_portal',
+      } as any).select('id').single();
+
+      // Also create clean_request for tracking
+      await supabase.from('clean_requests' as any).insert({
         client_id: clientId,
         property_id: propertyId,
         requested_date: date ? format(date, 'yyyy-MM-dd') : null,
@@ -54,18 +65,18 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
         same_cleaner: sameCleaner,
         status: 'pending',
       } as any);
-      if (error) throw error;
 
       // Notify admins
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
+        const notifLink = jobData?.id ? `/jobs/${jobData.id}` : '/requests';
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            title: 'New Booking Request',
-            message: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'}`,
+            title: 'New Booking Request — Awaiting Quote',
+            message: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'} — set price to schedule.`,
             type: 'booking_request',
-            link: '/requests',
+            link: notifLink,
           }))
         );
       }
@@ -81,8 +92,8 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
     return (
       <div className="text-center py-12 space-y-4">
         <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-        <h2 className="text-2xl font-extrabold text-primary">Request Submitted!</h2>
-        <p className="text-muted-foreground">Brightly will confirm your clean shortly.</p>
+        <h2 className="text-2xl font-extrabold text-primary">Request Received!</h2>
+        <p className="text-muted-foreground">We'll confirm your booking and price shortly.</p>
         <Button onClick={onComplete} className="mt-4">Back to Portal</Button>
       </div>
     );
@@ -164,9 +175,9 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
           <div>
             <Label>Type of Clean</Label>
             <div className="grid grid-cols-2 gap-2 mt-1">
-              {['turnover', 'deep_clean', 'post_build', 'end_of_lease'].map(ct => (
+              {['house_clean', 'deep_clean', 'end_of_lease', 'other'].map(ct => (
                 <button key={ct} onClick={() => setCleanType(ct)} className={`p-3 rounded-xl border text-sm font-semibold ${cleanType === ct ? 'border-primary bg-primary/5' : 'border-border'}`}>
-                  {ct.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())}
+                  {ct === 'house_clean' ? 'House Clean' : ct === 'deep_clean' ? 'Deep Clean' : ct === 'end_of_lease' ? 'End of Lease' : 'Other'}
                 </button>
               ))}
             </div>

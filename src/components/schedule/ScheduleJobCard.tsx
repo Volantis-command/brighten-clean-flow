@@ -40,6 +40,7 @@ interface ScheduleJobCardProps {
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
+  awaiting_quote: { label: '⚠️ Needs Quote', className: 'bg-[hsl(45,100%,51%)] text-[hsl(162,72%,16%)]' },
   scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
   in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
   complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
