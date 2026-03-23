@@ -52,19 +52,23 @@ Deno.serve(async (req) => {
     // Ensure a client_properties row exists with onboard_token set
     const { data: existing } = await supabase
       .from('client_properties')
-      .select('id')
+      .select('id, onboard_used')
       .eq('client_id', client_id)
       .limit(1)
       .maybeSingle();
 
     if (existing) {
+      // Only reset onboard_used if it hasn't been used yet
+      const updateData: any = {
+        onboard_token: token,
+        onboarding_sent_at: new Date().toISOString(),
+      };
+      if (!existing.onboard_used) {
+        updateData.onboard_used = false;
+      }
       await supabase
         .from('client_properties')
-        .update({
-          onboard_token: token,
-          onboard_used: false,
-          onboarding_sent_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', existing.id);
     } else {
       // Create a placeholder client_properties row (no property yet — client will fill it in)
