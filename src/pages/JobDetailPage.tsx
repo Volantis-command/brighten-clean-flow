@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon } from 'lucide-react';
+  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CreditCard } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
@@ -33,6 +33,9 @@ export default function JobDetailPage() {
   const [syncingStatus, setSyncingStatus] = useState(false);
   const [sendingReviewSms, setSendingReviewSms] = useState(false);
   const [sendingRebookSms, setSendingRebookSms] = useState(false);
+  const [refundingDeposit, setRefundingDeposit] = useState(false);
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -566,7 +569,99 @@ export default function JobDetailPage() {
         </Card>
       )}
 
-      {/* Notes */}
+      {/* Deposit Info — Admin only */}
+      {role === 'admin' && (job as any).deposit_paid && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Deposit
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Deposit Amount</span>
+              <span className="font-bold text-primary">${Number((job as any).deposit_amount || 0).toFixed(2)} ✓</span>
+            </div>
+            {(job as any).deposit_paid_at && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Paid on</span>
+                <span className="font-semibold">{format(new Date((job as any).deposit_paid_at), 'd MMM yyyy, h:mm a')}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Balance owing</span>
+              <span className="font-bold">${(Number(job.price_inc_gst || 0) - Number((job as any).deposit_amount || 0)).toFixed(2)}</span>
+            </div>
+            {(job as any).stripe_payment_intent_id && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Stripe ID</span>
+                <span className="font-mono text-xs">{(job as any).stripe_payment_intent_id}</span>
+              </div>
+            )}
+            {(job as any).deposit_refunded ? (
+              <div className="p-3 bg-destructive/10 rounded-xl text-sm text-destructive font-semibold">
+                ✓ Deposit refunded{(job as any).deposit_refund_reason ? ` — ${(job as any).deposit_refund_reason}` : ''}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                onClick={() => setShowRefundDialog(true)}
+              >
+                Refund Deposit
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Refund Dialog */}
+      <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refund Deposit</DialogTitle>
+            <DialogDescription>
+              Refund ${Number((job as any)?.deposit_amount || 0).toFixed(2)} to the client via Stripe. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Reason (optional)</Label>
+            <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="e.g. Client cancelled" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRefundDialog(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={refundingDeposit}
+              onClick={async () => {
+                setRefundingDeposit(true);
+                try {
+                  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-refund-deposit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, reason: refundReason }),
+                  });
+                  const data = await res.json();
+                  if (data.error) throw new Error(data.error);
+                  toast.success('Deposit refunded successfully');
+                  queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                  setShowRefundDialog(false);
+                } catch (err: any) {
+                  toast.error('Refund failed: ' + err.message);
+                }
+                setRefundingDeposit(false);
+              }}
+              className="gap-2"
+            >
+              {refundingDeposit ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Confirm Refund
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {job.notes && (
         <Card>
           <CardHeader className="pb-3">

@@ -389,6 +389,11 @@ export type Database = {
           cleaner_1_id: string | null
           cleaner_2_id: string | null
           created_at: string
+          deposit_amount: number | null
+          deposit_paid: boolean | null
+          deposit_paid_at: string | null
+          deposit_refund_reason: string | null
+          deposit_refunded: boolean | null
           estimated_duration: number | null
           feedback_score: number | null
           id: string
@@ -407,6 +412,7 @@ export type Database = {
           scheduled_time: string | null
           series_id: string | null
           status: string
+          stripe_payment_intent_id: string | null
           xero_invoice_id: string | null
           xero_invoice_number: string | null
         }
@@ -414,6 +420,11 @@ export type Database = {
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           created_at?: string
+          deposit_amount?: number | null
+          deposit_paid?: boolean | null
+          deposit_paid_at?: string | null
+          deposit_refund_reason?: string | null
+          deposit_refunded?: boolean | null
           estimated_duration?: number | null
           feedback_score?: number | null
           id?: string
@@ -432,6 +443,7 @@ export type Database = {
           scheduled_time?: string | null
           series_id?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
         }
@@ -439,6 +451,11 @@ export type Database = {
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           created_at?: string
+          deposit_amount?: number | null
+          deposit_paid?: boolean | null
+          deposit_paid_at?: string | null
+          deposit_refund_reason?: string | null
+          deposit_refunded?: boolean | null
           estimated_duration?: number | null
           feedback_score?: number | null
           id?: string
@@ -457,6 +474,7 @@ export type Database = {
           scheduled_time?: string | null
           series_id?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
         }
@@ -944,6 +962,11 @@ export type Database = {
           clean_type: string | null
           converted_client_id: string | null
           created_at: string
+          deposit_amount: number | null
+          deposit_paid: boolean | null
+          deposit_paid_at: string | null
+          deposit_refund_reason: string | null
+          deposit_refunded: boolean | null
           email: string | null
           estimated_hours: number | null
           extra_notes: string | null
@@ -963,6 +986,7 @@ export type Database = {
           quote_sent_at: string | null
           referral_source: string | null
           status: string
+          stripe_payment_intent_id: string | null
           tcs_accepted: boolean | null
           tcs_accepted_at: string | null
           tcs_version: string | null
@@ -980,6 +1004,11 @@ export type Database = {
           clean_type?: string | null
           converted_client_id?: string | null
           created_at?: string
+          deposit_amount?: number | null
+          deposit_paid?: boolean | null
+          deposit_paid_at?: string | null
+          deposit_refund_reason?: string | null
+          deposit_refunded?: boolean | null
           email?: string | null
           estimated_hours?: number | null
           extra_notes?: string | null
@@ -999,6 +1028,7 @@ export type Database = {
           quote_sent_at?: string | null
           referral_source?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
           tcs_accepted?: boolean | null
           tcs_accepted_at?: string | null
           tcs_version?: string | null
@@ -1016,6 +1046,11 @@ export type Database = {
           clean_type?: string | null
           converted_client_id?: string | null
           created_at?: string
+          deposit_amount?: number | null
+          deposit_paid?: boolean | null
+          deposit_paid_at?: string | null
+          deposit_refund_reason?: string | null
+          deposit_refunded?: boolean | null
           email?: string | null
           estimated_hours?: number | null
           extra_notes?: string | null
@@ -1035,6 +1070,7 @@ export type Database = {
           quote_sent_at?: string | null
           referral_source?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
           tcs_accepted?: boolean | null
           tcs_accepted_at?: string | null
           tcs_version?: string | null
