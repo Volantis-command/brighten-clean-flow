@@ -288,6 +288,13 @@ export default function QuoteRequestFormPage() {
           </div>
         </div>
 
+        {/* Property Photos */}
+        <QuotePhotoUpload
+          token={token || ''}
+          photos={photos}
+          onChange={setPhotos}
+        />
+
         {/* Note */}
         <div className="bg-[#FEDB00]/20 rounded-2xl p-4 text-center">
           <p className="text-sm font-semibold text-[#0C463D]">
