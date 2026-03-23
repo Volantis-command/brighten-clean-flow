@@ -651,27 +651,39 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           email: string | null
+          employment_type: string | null
           full_name: string | null
+          hourly_rate: number | null
           id: string
+          pay_cycle: string | null
           phone: string | null
+          super_rate: number | null
           weekly_availability: Json | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          employment_type?: string | null
           full_name?: string | null
+          hourly_rate?: number | null
           id: string
+          pay_cycle?: string | null
           phone?: string | null
+          super_rate?: number | null
           weekly_availability?: Json | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          employment_type?: string | null
           full_name?: string | null
+          hourly_rate?: number | null
           id?: string
+          pay_cycle?: string | null
           phone?: string | null
+          super_rate?: number | null
           weekly_availability?: Json | null
         }
         Relationships: []
@@ -1226,6 +1238,9 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
           clock_in_lat: number | null
           clock_in_lng: number | null
           clock_in_time: string | null
@@ -1233,14 +1248,20 @@ export type Database = {
           clock_out_lng: number | null
           clock_out_time: string | null
           created_at: string
+          edit_reason: string | null
+          flagged: boolean | null
           geo_distance_meters: number | null
           geo_override: boolean | null
           id: string
           job_id: string | null
+          manual_hours: number | null
           total_minutes: number | null
           user_id: string
         }
         Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_in_time?: string | null
@@ -1248,14 +1269,20 @@ export type Database = {
           clock_out_lng?: number | null
           clock_out_time?: string | null
           created_at?: string
+          edit_reason?: string | null
+          flagged?: boolean | null
           geo_distance_meters?: number | null
           geo_override?: boolean | null
           id?: string
           job_id?: string | null
+          manual_hours?: number | null
           total_minutes?: number | null
           user_id: string
         }
         Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_in_time?: string | null
@@ -1263,10 +1290,13 @@ export type Database = {
           clock_out_lng?: number | null
           clock_out_time?: string | null
           created_at?: string
+          edit_reason?: string | null
+          flagged?: boolean | null
           geo_distance_meters?: number | null
           geo_override?: boolean | null
           id?: string
           job_id?: string | null
+          manual_hours?: number | null
           total_minutes?: number | null
           user_id?: string
         }
