@@ -688,6 +688,21 @@ export default function JobChecklistPage() {
         </Button>
       )}
 
+      {/* Photo warning for one-off jobs */}
+      {!isSubmitted && needsMinPhotos && (
+        <div className="bg-accent/20 rounded-2xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-foreground">
+              ⚠️ Please upload at least 3 completion photos before finishing this job.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You've uploaded {totalPhotos}/3 photos. One-off jobs require completion photos.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Submit */}
       {!isSubmitted && (
         <Button
