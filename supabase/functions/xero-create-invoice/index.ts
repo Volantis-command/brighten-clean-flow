@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
         Quantity: 1,
         UnitAmount: unitAmount.toFixed(2),
         AccountCode: account_code || '200',
-        TaxType: 'OUTPUT2',
+        TaxType: 'OUTPUT',
       }],
     };
 
