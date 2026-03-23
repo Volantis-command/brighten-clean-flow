@@ -50,6 +50,9 @@ type FormState = {
   gpOverride: string;
   discountGp: string;
   notes: string;
+  // Residential One-Off
+  residentialAddons: { name: string; price: number; enabled: boolean }[];
+  includeGst: boolean;
 };
 
 const INITIAL: FormState = {
