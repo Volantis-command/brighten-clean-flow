@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import SendQuoteRequestModal from '@/components/clients/SendQuoteRequestModal';
 import LeadsTab from '@/components/clients/LeadsTab';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 interface ClientMember {
   id: string;
