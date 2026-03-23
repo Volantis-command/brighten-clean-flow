@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { label: 'Quoting', path: '/quoting', icon: Calculator, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
   { label: 'Staff', path: '/staff', icon: Users, roles: ['admin'] },
+  { label: 'Timesheets', path: '/timesheets', icon: ClipboardList, roles: ['admin'] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
