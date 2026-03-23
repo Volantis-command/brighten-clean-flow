@@ -19,11 +19,12 @@ export function StaffPaySection({ staffId, staffName }: Props) {
   const { data: profile, isLoading } = useQuery({
     queryKey: ['staff-pay', staffId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('hourly_rate, employment_type, super_rate, pay_cycle')
         .eq('id', staffId)
         .single();
+      if (error) throw error;
       return data;
     },
   });
@@ -36,9 +37,9 @@ export function StaffPaySection({ staffId, staffName }: Props) {
   useEffect(() => {
     if (profile) {
       setRate(profile.hourly_rate?.toString() || '');
-      setEmpType((profile as any).employment_type || 'employee');
-      setSuperRate((profile as any).super_rate?.toString() || '11.5');
-      setPayCycle((profile as any).pay_cycle || 'fortnightly');
+      setEmpType(profile.employment_type || 'employee');
+      setSuperRate(profile.super_rate?.toString() || '11.5');
+      setPayCycle(profile.pay_cycle || 'fortnightly');
     }
   }, [profile]);
 
@@ -49,12 +50,12 @@ export function StaffPaySection({ staffId, staffName }: Props) {
         employment_type: empType,
         super_rate: parseFloat(superRate),
         pay_cycle: payCycle,
-      } as any).eq('id', staffId);
+      }).eq('id', staffId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff-pay', staffId] });
-      toast.success('Pay settings saved');
+      toast.success('Pay settings saved ✓');
     },
     onError: (e: Error) => toast.error(e.message),
   });
