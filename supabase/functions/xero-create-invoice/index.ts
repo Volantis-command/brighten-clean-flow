@@ -82,9 +82,8 @@ Deno.serve(async (req) => {
 
     // Generate invoice number
     const prefix = invoice_prefix || 'BCL-';
-    const { count } = await supabase.from('jobs').select('id', { count: 'exact', head: true }).neq('xero_invoice_number', null);
-    const seq = String((count || 0) + 1).padStart(3, '0');
-    const invoiceNumber = `${prefix}${new Date().getFullYear()}-${seq}`;
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const invoiceNumber = `${prefix}${new Date().getFullYear()}-${timestamp}`;
 
     const today = new Date();
     const dueDate = new Date(today);
