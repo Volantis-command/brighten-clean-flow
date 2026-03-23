@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User } from 'lucide-react';
+import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
