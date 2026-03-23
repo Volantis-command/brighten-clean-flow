@@ -401,6 +401,8 @@ export type Database = {
           price_inc_gst: number | null
           price_notes: string | null
           property_id: string | null
+          rebook_sms_sent_at: string | null
+          review_sms_sent_at: string | null
           scheduled_date: string
           scheduled_time: string | null
           series_id: string | null
@@ -424,6 +426,8 @@ export type Database = {
           price_inc_gst?: number | null
           price_notes?: string | null
           property_id?: string | null
+          rebook_sms_sent_at?: string | null
+          review_sms_sent_at?: string | null
           scheduled_date: string
           scheduled_time?: string | null
           series_id?: string | null
@@ -447,6 +451,8 @@ export type Database = {
           price_inc_gst?: number | null
           price_notes?: string | null
           property_id?: string | null
+          rebook_sms_sent_at?: string | null
+          review_sms_sent_at?: string | null
           scheduled_date?: string
           scheduled_time?: string | null
           series_id?: string | null
