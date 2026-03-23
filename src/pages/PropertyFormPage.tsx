@@ -397,9 +397,35 @@ function NumberSelector({ value, onChange, max = 5 }: { value: number; onChange:
 function Step1({ form, updateField }: { form: any; updateField: (f: string, v: any) => void }) {
   return (
     <>
+      <Field label="Client Type">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: 'residential', label: '🏠 Residential', desc: 'One-off / regular house clean' },
+            { value: 'airbnb', label: '🏨 Airbnb / PM', desc: 'Multiple properties, turnovers' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updateField('client_type', opt.value)}
+              className={cn(
+                'p-4 rounded-2xl border-2 text-left transition-all',
+                form.client_type === opt.value ? 'border-primary bg-secondary' : 'border-border hover:border-primary/40'
+              )}
+            >
+              <p className="font-bold text-sm text-foreground">{opt.label}</p>
+              <p className="text-xs text-muted-foreground">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+      </Field>
       <Field label="Property Name / Nickname *">
         <Input value={form.property_name} onChange={(e) => updateField('property_name', e.target.value)} className="h-14 rounded-2xl" placeholder="e.g. Coastal Retreat Apt 12" />
       </Field>
+      {form.client_type === 'airbnb' && (
+        <Field label="Guesty Listing ID">
+          <Input value={form.guesty_listing_id || ''} onChange={(e) => updateField('guesty_listing_id', e.target.value)} className="h-14 rounded-2xl" placeholder="For auto-job creation from Guesty" />
+        </Field>
+      )}
       <Field label="Full Address">
         <Input value={form.address} onChange={(e) => updateField('address', e.target.value)} className="h-14 rounded-2xl" placeholder="Street address" />
       </Field>
