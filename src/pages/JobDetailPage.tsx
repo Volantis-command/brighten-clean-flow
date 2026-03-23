@@ -988,25 +988,61 @@ export default function JobDetailPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this job?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove the job and its associated form data. This action cannot be undone.
+                  This cannot be undone. The client will NOT be notified automatically.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <div className="flex items-center gap-2 px-1 py-2">
+                <Checkbox
+                  id="send-cancel-sms"
+                  checked={sendCancellationSms}
+                  onCheckedChange={(v) => setSendCancellationSms(!!v)}
+                />
+                <label htmlFor="send-cancel-sms" className="text-sm text-muted-foreground cursor-pointer">
+                  Also send cancellation SMS to client
+                </label>
+              </div>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={async () => {
                     setDeleting(true);
-                    await supabase.from('job_forms').delete().eq('job_id', jobId!);
-                    const { error } = await supabase.from('jobs').delete().eq('id', jobId!);
-                    if (error) {
-                      toast.error('Failed to delete job: ' + error.message);
+                    try {
+                      // Clean up related records
+                      await supabase.from('job_forms').delete().eq('job_id', jobId!);
+                      await supabase.from('job_acceptances').delete().eq('job_id', jobId!);
+                      await supabase.from('time_entries').delete().eq('job_id', jobId!);
+
+                      // If linked to a quote_request, mark it cancelled
+                      if (job?.linked_quote_id) {
+                        await supabase.from('quote_requests').update({ status: 'cancelled' }).eq('id', job.linked_quote_id);
+                      }
+
+                      // Send cancellation SMS if checked
+                      if (sendCancellationSms && job?.properties) {
+                        const property = job.properties as any;
+                        try {
+                          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-client-booking-sms`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ job_id: jobId, is_cancellation: true }),
+                          });
+                        } catch { /* best effort */ }
+                      }
+
+                      const { error } = await supabase.from('jobs').delete().eq('id', jobId!);
+                      if (error) {
+                        toast.error('Failed to delete job: ' + error.message);
+                        setDeleting(false);
+                        return;
+                      }
+                      toast.success('Job deleted successfully');
+                      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                      queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+                      navigate('/schedule');
+                    } catch (err: any) {
+                      toast.error('Delete failed: ' + err.message);
                       setDeleting(false);
-                      return;
                     }
-                    toast.success('Job deleted successfully');
-                    queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
-                    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
-                    navigate('/schedule');
                   }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
