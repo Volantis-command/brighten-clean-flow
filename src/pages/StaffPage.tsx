@@ -221,7 +221,10 @@ export default function StaffPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
-                  <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
+                   <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
+                   {perfBadges[m.id] && perfBadges[m.id].badge !== '—' && (
+                     <Badge className={`mt-1 text-[10px] ${perfBadges[m.id].badgeColor}`}>{perfBadges[m.id].badge}</Badge>
+                   )}
                 </div>
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-lg">
                   {(m.full_name || '?')[0].toUpperCase()}
