@@ -46,6 +46,7 @@ export default function QuoteRequestFormPage() {
   const [extraNotes, setExtraNotes] = useState('');
   const [referralSource, setReferralSource] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
+  const [photos, setPhotos] = useState<{ url: string; label: string }[]>([]);
 
   useEffect(() => {
     async function load() {
