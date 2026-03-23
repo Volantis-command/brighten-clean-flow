@@ -916,6 +916,105 @@ export type Database = {
           },
         ]
       }
+      quote_requests: {
+        Row: {
+          accepted_at: string | null
+          addons: Json | null
+          address: string | null
+          bathrooms: number | null
+          bedrooms: number | null
+          clean_type: string | null
+          converted_client_id: string | null
+          created_at: string
+          email: string | null
+          estimated_hours: number | null
+          extra_notes: string | null
+          first_name: string | null
+          form_submitted_at: string | null
+          has_garage: boolean | null
+          hourly_rate: number | null
+          id: string
+          is_occupied: boolean | null
+          last_name: string | null
+          phone: string | null
+          preferred_date: string | null
+          preferred_time: string | null
+          property_size: string | null
+          property_type: string | null
+          quote_sent_at: string | null
+          referral_source: string | null
+          status: string
+          toilets: number | null
+          token: string
+          total_ex_gst: number | null
+          total_inc_gst: number | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          addons?: Json | null
+          address?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          clean_type?: string | null
+          converted_client_id?: string | null
+          created_at?: string
+          email?: string | null
+          estimated_hours?: number | null
+          extra_notes?: string | null
+          first_name?: string | null
+          form_submitted_at?: string | null
+          has_garage?: boolean | null
+          hourly_rate?: number | null
+          id?: string
+          is_occupied?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          preferred_date?: string | null
+          preferred_time?: string | null
+          property_size?: string | null
+          property_type?: string | null
+          quote_sent_at?: string | null
+          referral_source?: string | null
+          status?: string
+          toilets?: number | null
+          token?: string
+          total_ex_gst?: number | null
+          total_inc_gst?: number | null
+        }
+        Update: {
+          accepted_at?: string | null
+          addons?: Json | null
+          address?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          clean_type?: string | null
+          converted_client_id?: string | null
+          created_at?: string
+          email?: string | null
+          estimated_hours?: number | null
+          extra_notes?: string | null
+          first_name?: string | null
+          form_submitted_at?: string | null
+          has_garage?: boolean | null
+          hourly_rate?: number | null
+          id?: string
+          is_occupied?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          preferred_date?: string | null
+          preferred_time?: string | null
+          property_size?: string | null
+          property_type?: string | null
+          quote_sent_at?: string | null
+          referral_source?: string | null
+          status?: string
+          toilets?: number | null
+          token?: string
+          total_ex_gst?: number | null
+          total_inc_gst?: number | null
+        }
+        Relationships: []
+      }
       quotes: {
         Row: {
           actual_gp_dollars: number | null
