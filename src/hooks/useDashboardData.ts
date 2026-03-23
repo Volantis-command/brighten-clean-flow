@@ -137,6 +137,16 @@ export function useDashboardData() {
     enabled: isAdmin,
   });
 
+  // ── Awaiting quote jobs ──
+  const { data: awaitingQuoteCount = 0 } = useQuery({
+    queryKey: ['awaiting-quote-count'],
+    queryFn: async () => {
+      const { count } = await supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'awaiting_quote');
+      return count || 0;
+    },
+    enabled: isAdmin,
+  });
+
   // ── Onboarding forms not sent ──
   const { data: onboardingNotSentCount = 0 } = useQuery({
     queryKey: ['onboarding-not-sent'],
