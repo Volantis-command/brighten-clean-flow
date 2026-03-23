@@ -186,6 +186,7 @@ export default function DashboardPage() {
       <AlertsSection alerts={alerts} />
       <QuickActions />
       <RecentQCScores scores={qcDisplayScores} />
+      <TeamPerformance />
     </div>
   );
 }
