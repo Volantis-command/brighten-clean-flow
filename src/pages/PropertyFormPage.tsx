@@ -15,17 +15,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 import AirbnbPropertyTabs from '@/components/property/AirbnbPropertyTabs';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Building2, Home, Landmark, HelpCircle, Lock, KeyRound, Smartphone, UserCheck, Check } from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import { syncToDrive } from '@/lib/driveSync';
+
+
 
 const STEPS = ['Property Details', 'Access', 'Client Details', 'Host Preferences', 'Pricing', 'Assign & Confirm'];
 
