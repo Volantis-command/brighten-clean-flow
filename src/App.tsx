@@ -38,6 +38,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
 import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
+import TimesheetsPage from "./pages/TimesheetsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
