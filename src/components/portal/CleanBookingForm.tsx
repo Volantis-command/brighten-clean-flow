@@ -92,8 +92,8 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
     return (
       <div className="text-center py-12 space-y-4">
         <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-        <h2 className="text-2xl font-extrabold text-primary">Request Submitted!</h2>
-        <p className="text-muted-foreground">Brightly will confirm your clean shortly.</p>
+        <h2 className="text-2xl font-extrabold text-primary">Request Received!</h2>
+        <p className="text-muted-foreground">We'll confirm your booking and price shortly.</p>
         <Button onClick={onComplete} className="mt-4">Back to Portal</Button>
       </div>
     );
