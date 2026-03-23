@@ -162,7 +162,7 @@ export default function TeamSection() {
   };
 
   const copyMagicLink = (token: string) => {
-    const url = `${window.location.origin}/client/${token}`;
+    const url = `${getAppBaseUrl()}/client/${token}`;
     navigator.clipboard.writeText(url);
     toast.success('Magic link copied!');
   };
