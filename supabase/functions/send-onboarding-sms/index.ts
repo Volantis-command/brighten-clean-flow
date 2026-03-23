@@ -48,26 +48,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch onboard token from client_properties
-    const { data: link, error: linkErr } = await supabase
-      .from('client_properties')
-      .select('id, onboard_token')
-      .eq('client_id', client_id)
-      .limit(1)
-      .single();
-
-    if (linkErr || !link) {
-      return new Response(JSON.stringify({ error: 'No property linked to this client. Assign a property first.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const token = link.onboard_token;
-    if (!token) {
-      return new Response(JSON.stringify({ error: 'No onboarding token found for this client.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Use client_id as the onboarding token directly
+    const token = client_id;
 
     // Build onboarding URL
     const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '').replace('https://','') || '';
