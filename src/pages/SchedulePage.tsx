@@ -1,114 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { format, isSameDay, isToday, isBefore, startOfDay } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, isToday, startOfDay, isBefore } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { WeekCalendar } from '@/components/schedule/WeekCalendar';
+import { Plus, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
+import { CalendarDayView } from '@/components/schedule/CalendarDayView';
+import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
+import { CalendarMonthView } from '@/components/schedule/CalendarMonthView';
+import { CalendarLegend } from '@/components/schedule/CalendarLegend';
+import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { AcceptanceFilter } from '@/components/schedule/AcceptanceFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
+import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SchedulePage() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = role === 'admin' || role === 'head_cleaner';
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const initialFilter = searchParams.get('status') || 'all';
-  const initialAcceptance = searchParams.get('acceptance') || 'all';
   useXeroInvoiceSync();
-  const [statusFilter, setStatusFilter] = useState(initialFilter);
-  const [acceptanceFilter, setAcceptanceFilter] = useState(initialAcceptance);
+
+  const { jobs, isLoading, nameMap, acceptancesByJob } = useScheduleJobs();
+
+  // View state
+  const [view, setView] = useState<CalendarView>(() => {
+    const saved = localStorage.getItem('schedule-view');
+    return (saved as CalendarView) || 'week';
+  });
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedJob, setSelectedJob] = useState<ScheduleJob | null>(null);
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
+  const [acceptanceFilter, setAcceptanceFilter] = useState(searchParams.get('acceptance') || 'all');
+
+  useEffect(() => {
+    localStorage.setItem('schedule-view', view);
+  }, [view]);
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
-    if (value === 'all') {
-      searchParams.delete('status');
-    } else {
-      searchParams.set('status', value);
-    }
-    setSearchParams(searchParams, { replace: true });
+    const params = new URLSearchParams(searchParams);
+    if (value === 'all') params.delete('status');
+    else params.set('status', value);
+    setSearchParams(params, { replace: true });
   };
 
   const handleAcceptanceChange = (value: string) => {
     setAcceptanceFilter(value);
-    if (value === 'all') {
-      searchParams.delete('acceptance');
-    } else {
-      searchParams.set('acceptance', value);
-    }
-    setSearchParams(searchParams, { replace: true });
+    const params = new URLSearchParams(searchParams);
+    if (value === 'all') params.delete('acceptance');
+    else params.set('acceptance', value);
+    setSearchParams(params, { replace: true });
   };
 
-  // Fetch jobs
-  const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ['schedule-jobs'],
-    queryFn: async () => {
-      let query = supabase
-        .from('jobs')
-        .select('*, properties(property_name, address, suburb, lat, lng)')
-        .order('scheduled_date', { ascending: true })
-        .order('scheduled_time', { ascending: true });
-
-      if (!isAdmin && user) {
-        query = query.or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Fetch cleaner profiles
-  const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
-  const { data: profiles = [] } = useQuery({
-    queryKey: ['schedule-profiles', cleanerIds],
-    queryFn: async () => {
-      if (cleanerIds.length === 0) return [];
-      const { data, error } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: cleanerIds.length > 0,
-  });
-
-  // Fetch all acceptances for visible jobs
-  const jobIds = jobs.map((j: any) => j.id);
-  const { data: allAcceptances = [] } = useQuery({
-    queryKey: ['schedule-acceptances', jobIds],
-    queryFn: async () => {
-      if (jobIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('job_acceptances')
-        .select('*')
-        .in('job_id', jobIds);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: jobIds.length > 0,
-  });
-
-  const nameMap: Record<string, string> = {};
-  profiles.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
-
-  // Build acceptances lookup per job
-  const acceptancesByJob: Record<string, { cleaner_id: string; cleaner_name: string; acceptance_status: string }[]> = {};
-  allAcceptances.forEach((a: any) => {
-    if (!acceptancesByJob[a.job_id]) acceptancesByJob[a.job_id] = [];
-    acceptancesByJob[a.job_id].push({
-      cleaner_id: a.cleaner_id,
-      cleaner_name: nameMap[a.cleaner_id] || 'Unknown',
-      acceptance_status: a.acceptance_status,
-    });
-  });
-
-  // Helper to get acceptance category for a job
   const getAcceptanceCategory = (jobId: string) => {
     const acc = acceptancesByJob[jobId];
     if (!acc || acc.length === 0) return 'none';
@@ -118,78 +67,151 @@ export default function SchedulePage() {
     return 'pending';
   };
 
-  if (isAdmin) {
-    // Admin/Head Cleaner view
-    const dayJobs = jobs
-      .filter((j: any) => {
-        const jobDate = new Date(j.scheduled_date + 'T00:00:00');
-        const matchesDay = isSameDay(jobDate, selectedDate);
-        const matchesStatus = statusFilter === 'all' || j.status === statusFilter;
-        const matchesAcceptance = acceptanceFilter === 'all' || getAcceptanceCategory(j.id) === acceptanceFilter;
-        return matchesDay && matchesStatus && matchesAcceptance;
-      });
+  // Apply filters
+  const filteredJobs = jobs.filter(j => {
+    if (statusFilter !== 'all' && j.status !== statusFilter) return false;
+    if (acceptanceFilter !== 'all' && getAcceptanceCategory(j.id) !== acceptanceFilter) return false;
+    return true;
+  });
 
+  // Navigation
+  const navigateDate = (dir: 'prev' | 'next') => {
+    setSelectedDate(d => {
+      switch (view) {
+        case 'day': return dir === 'next' ? addDays(d, 1) : subDays(d, 1);
+        case 'week': return dir === 'next' ? addWeeks(d, 1) : subWeeks(d, 1);
+        case 'month': return dir === 'next' ? addMonths(d, 1) : subMonths(d, 1);
+      }
+    });
+  };
+
+  const getHeaderLabel = () => {
+    switch (view) {
+      case 'day': return format(selectedDate, 'EEEE, d MMMM yyyy');
+      case 'week': return format(selectedDate, 'MMMM yyyy');
+      case 'month': return format(selectedDate, 'MMMM yyyy');
+    }
+  };
+
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    if (view === 'month') setView('day');
+  };
+
+  const handleJobClick = (job: ScheduleJob) => {
+    setSelectedJob(job);
+  };
+
+  // Admin calendar view
+  if (isAdmin) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="space-y-4">
+        {/* Top bar */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
-          <Button variant="accent" onClick={() => navigate('/schedule/new')} className="gap-2">
-            <Plus className="h-5 w-5" /> Schedule Job
-          </Button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <CalendarViewToggle view={view} onChange={setView} />
+            <Button variant="accent" onClick={() => navigate('/schedule/new')} className="gap-2">
+              <Plus className="h-5 w-5" /> Schedule Job
+            </Button>
+          </div>
         </div>
 
-        <WeekCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        {/* Date navigation */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigateDate('prev')}
+              className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <h2 className="text-lg font-extrabold text-foreground min-w-[200px] text-center">
+              {getHeaderLabel()}
+            </h2>
+            <button
+              onClick={() => navigateDate('next')}
+              className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+            {!isToday(selectedDate) && (
+              <Button variant="outline" size="sm" className="gap-1.5 ml-2" onClick={() => setSelectedDate(new Date())}>
+                <CalendarDays className="h-4 w-4" /> Today
+              </Button>
+            )}
+          </div>
 
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h2 className="text-xl font-bold text-primary">{isToday(selectedDate) ? "Today's Jobs" : format(selectedDate, 'EEEE, MMM d')}</h2>
-          <StatusFilter value={statusFilter} onChange={handleStatusChange} />
+          <div className="flex items-center gap-3 flex-wrap">
+            <StatusFilter value={statusFilter} onChange={handleStatusChange} />
+          </div>
         </div>
 
         <AcceptanceFilter value={acceptanceFilter} onChange={handleAcceptanceChange} />
 
+        {/* Calendar body */}
         {isLoading ? (
-          <p className="text-primary font-bold text-center py-8">Loading jobs…</p>
-        ) : dayJobs.length === 0 ? (
-          <div className="bg-card rounded-2xl shadow-md p-8 text-center">
-            <p className="text-4xl mb-3">📋</p>
-            <p className="text-lg font-bold text-foreground mb-1">No jobs for this day.</p>
-            <p className="text-sm text-muted-foreground">Tap "Schedule Job" to add one.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {dayJobs.map((job: any) => (
-              <ScheduleJobCard
-                key={job.id}
-                id={job.id}
-                propertyName={job.properties?.property_name || 'Unknown'}
-                address={[job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null}
-                scheduledTime={job.scheduled_time?.slice(0, 5) || null}
-                estimatedDuration={job.estimated_duration ? job.estimated_duration / 60 : null}
-                status={job.status}
-                cleaner1Name={job.cleaner_1_id ? nameMap[job.cleaner_1_id] : null}
-                cleaner2Name={job.cleaner_2_id ? nameMap[job.cleaner_2_id] : null}
-                propertyLat={job.properties?.lat}
-                propertyLng={job.properties?.lng}
-                invoiceStatus={job.invoice_status}
-                priceExGst={job.price_ex_gst}
-                isAdmin={true}
-                acceptances={acceptancesByJob[job.id]}
-                seriesId={job.series_id}
-              />
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-xl" />
             ))}
           </div>
+        ) : (
+          <>
+            {view === 'day' && (
+              <CalendarDayView
+                date={selectedDate}
+                jobs={filteredJobs}
+                nameMap={nameMap}
+                acceptancesByJob={acceptancesByJob}
+                onJobClick={handleJobClick}
+              />
+            )}
+            {view === 'week' && (
+              <CalendarWeekView
+                date={selectedDate}
+                jobs={filteredJobs}
+                nameMap={nameMap}
+                acceptancesByJob={acceptancesByJob}
+                onJobClick={handleJobClick}
+                onDateClick={handleDateClick}
+              />
+            )}
+            {view === 'month' && (
+              <CalendarMonthView
+                date={selectedDate}
+                jobs={filteredJobs}
+                nameMap={nameMap}
+                onJobClick={handleJobClick}
+                onDateClick={handleDateClick}
+              />
+            )}
+          </>
+        )}
+
+        {/* Legend */}
+        <CalendarLegend />
+
+        {/* Job detail slide-over */}
+        {selectedJob && (
+          <JobDetailSlideOver
+            job={selectedJob}
+            nameMap={nameMap}
+            acceptances={acceptancesByJob[selectedJob.id]}
+            onClose={() => setSelectedJob(null)}
+          />
         )}
       </div>
     );
   }
 
-  // Cleaner view — upcoming jobs sorted by date
+  // Cleaner view — list-based
   const today = startOfDay(new Date());
-  const upcomingJobs = jobs.filter((j: any) => {
+  const upcomingJobs = jobs.filter(j => {
     const jobDate = new Date(j.scheduled_date + 'T00:00:00');
     return !isBefore(jobDate, today);
   });
-  const pastJobs = jobs.filter((j: any) => {
+  const pastJobs = jobs.filter(j => {
     const jobDate = new Date(j.scheduled_date + 'T00:00:00');
     return isBefore(jobDate, today);
   }).slice(0, 10);
@@ -199,10 +221,13 @@ export default function SchedulePage() {
       <h1 className="text-2xl md:text-3xl font-extrabold text-primary">My Schedule</h1>
 
       {isLoading ? (
-        <p className="text-primary font-bold text-center py-8">Loading schedule…</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
       ) : (
         <>
-          {/* Upcoming */}
           <div>
             <h2 className="text-xl font-bold text-primary mb-4">Upcoming Jobs</h2>
             {upcomingJobs.length === 0 ? (
@@ -212,7 +237,7 @@ export default function SchedulePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {upcomingJobs.map((job: any) => {
+                {upcomingJobs.map(job => {
                   const jobDate = new Date(job.scheduled_date + 'T00:00:00');
                   const isTodayJob = isToday(jobDate);
                   return (
@@ -229,8 +254,8 @@ export default function SchedulePage() {
                         status={job.status}
                         cleaner1Name={job.cleaner_1_id && job.cleaner_1_id !== user?.id ? nameMap[job.cleaner_1_id] : null}
                         cleaner2Name={job.cleaner_2_id && job.cleaner_2_id !== user?.id ? nameMap[job.cleaner_2_id] : null}
-                        propertyLat={job.properties?.lat}
-                        propertyLng={job.properties?.lng}
+                        propertyLat={job.properties?.lat ? Number(job.properties.lat) : undefined}
+                        propertyLng={job.properties?.lng ? Number(job.properties.lng) : undefined}
                         showClockIn={isTodayJob}
                         invoiceStatus={job.invoice_status}
                         seriesId={job.series_id}
@@ -242,12 +267,11 @@ export default function SchedulePage() {
             )}
           </div>
 
-          {/* Past */}
           {pastJobs.length > 0 && (
             <div>
               <h2 className="text-xl font-bold text-primary mb-4">Past Jobs</h2>
               <div className="space-y-3">
-                {pastJobs.map((job: any) => (
+                {pastJobs.map(job => (
                   <ScheduleJobCard
                     key={job.id}
                     id={job.id}
