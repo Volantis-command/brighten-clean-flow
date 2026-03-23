@@ -91,10 +91,10 @@ export default function BookingRequestsPage() {
       // Update request status
       await supabase.from('clean_requests').update({ status: 'approved' }).eq('id', selectedRequest.id);
 
-      // Send SMS to client
+      // Send SMS to client via guest-ready-sms or direct Twilio
       const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', selectedRequest.client_id).single();
       if (profile?.phone) {
-        await supabase.functions.invoke('send-job-sms', {
+        await supabase.functions.invoke('guest-ready-sms', {
           body: {
             to: profile.phone,
             message: `Hi ${profile.full_name?.split(' ')[0]}, your clean at ${selectedRequest.property_name} has been confirmed for ${confirmDate || selectedRequest.requested_date}. - Brightly`,
