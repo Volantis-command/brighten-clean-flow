@@ -185,6 +185,15 @@ export default function ClientDetailPage() {
         phone={profile?.phone}
         onBack={() => navigate('/clients')}
         onEdit={() => setEditOpen(true)}
+        onScheduleClean={() => setScheduleOpen(true)}
+      />
+
+      <ScheduleCleanModal
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        clientId={id!}
+        clientName={profile?.full_name || 'Client'}
+        properties={data.properties.map(p => ({ id: p.id, property_name: p.property_name, address: p.address }))}
       />
 
       <Tabs defaultValue="overview" className="w-full">
