@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { CalendarJobCard } from './CalendarJobCard';
 import { getStatusColor } from './CalendarStatusColors';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 
@@ -12,26 +13,76 @@ interface CalendarWeekViewProps {
   acceptancesByJob: Record<string, any[]>;
   onJobClick: (job: ScheduleJob) => void;
   onDateClick: (date: Date) => void;
+  onAddJob?: (date: Date, hour?: number) => void;
+  onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
 }
 
-export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onDateClick }: CalendarWeekViewProps) {
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am-6pm
+
+function getTimeSlot(time: string | null): number {
+  if (!time) return 8;
+  const [h] = time.split(':').map(Number);
+  return Math.max(7, Math.min(h, 18));
+}
+
+export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onDateClick, onAddJob, onJobDrop }: CalendarWeekViewProps) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const jobsByDayHour = useMemo(() => {
+    const map: Record<string, Record<number, ScheduleJob[]>> = {};
+    days.forEach(d => {
+      const key = format(d, 'yyyy-MM-dd');
+      map[key] = {};
+      HOURS.forEach(h => { map[key][h] = []; });
+    });
+    jobs.forEach(j => {
+      const jd = new Date(j.scheduled_date + 'T00:00:00');
+      const dayMatch = days.find(d => isSameDay(d, jd));
+      if (!dayMatch) return;
+      const key = format(dayMatch, 'yyyy-MM-dd');
+      const h = getTimeSlot(j.scheduled_time);
+      if (map[key]?.[h]) map[key][h].push(j);
+    });
+    return map;
+  }, [jobs, days]);
 
   const jobsByDay = useMemo(() => {
     const map: Record<string, ScheduleJob[]> = {};
     days.forEach(d => {
       const key = format(d, 'yyyy-MM-dd');
-      map[key] = jobs.filter(j => isSameDay(new Date(j.scheduled_date + 'T00:00:00'), d))
-        .sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || ''));
+      map[key] = jobs.filter(j => isSameDay(new Date(j.scheduled_date + 'T00:00:00'), d));
     });
     return map;
   }, [jobs, days]);
 
+  const handleDragStart = useCallback((e: React.DragEvent, job: ScheduleJob) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ jobId: job.id }));
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, dayKey: string, hour?: number) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      const job = jobs.find(j => j.id === data.jobId);
+      if (job && onJobDrop) {
+        const newTime = hour !== undefined ? `${String(hour).padStart(2, '0')}:00:00` : undefined;
+        onJobDrop(job, dayKey, newTime);
+      }
+    } catch {}
+  }, [jobs, onJobDrop]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
   return (
     <div className="bg-card rounded-2xl shadow-md overflow-hidden">
       {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border">
+        <div className="border-r border-border/50" />
         {days.map(day => {
           const key = format(day, 'yyyy-MM-dd');
           const dayJobs = jobsByDay[key] || [];
@@ -58,7 +109,6 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
               )}>
                 {format(day, 'd')}
               </span>
-              {/* Status dots */}
               {dayJobs.length > 0 && (
                 <div className="flex items-center gap-0.5 mt-1">
                   {dayJobs.slice(0, 5).map(j => (
@@ -74,52 +124,62 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
         })}
       </div>
 
-      {/* Job cards grid */}
-      <div className="grid grid-cols-7 min-h-[400px]">
-        {days.map(day => {
-          const key = format(day, 'yyyy-MM-dd');
-          const dayJobs = jobsByDay[key] || [];
-          const showCount = 3;
-          const visible = dayJobs.slice(0, showCount);
-          const remaining = dayJobs.length - showCount;
+      {/* Time grid */}
+      <div className="max-h-[600px] overflow-y-auto">
+        {HOURS.map(hour => (
+          <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/30 min-h-[56px]">
+            {/* Time label */}
+            <div className="py-2 px-2 text-[10px] font-bold text-muted-foreground text-right border-r border-border/50 flex items-start justify-end">
+              {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
+            </div>
 
-          return (
-            <div
-              key={key}
-              className={cn(
-                'border-r border-border/50 last:border-r-0 p-2 space-y-1.5 min-h-[200px]',
-                isToday(day) && 'bg-primary/[0.02]'
-              )}
-            >
-              {dayJobs.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <span className="text-[10px] text-muted-foreground/40">—</span>
-                </div>
-              ) : (
-                <>
-                  {visible.map(job => (
-                    <CalendarJobCard
-                      key={job.id}
-                      job={job}
-                      nameMap={nameMap}
-                      acceptances={acceptancesByJob[job.id]}
-                      compact
-                      onClick={() => onJobClick(job)}
-                    />
-                  ))}
-                  {remaining > 0 && (
+            {/* Day columns */}
+            {days.map(day => {
+              const key = format(day, 'yyyy-MM-dd');
+              const hourJobs = jobsByDayHour[key]?.[hour] || [];
+
+              return (
+                <div
+                  key={`${key}-${hour}`}
+                  className={cn(
+                    'border-r border-border/30 last:border-r-0 p-0.5 group/cell relative',
+                    isToday(day) && 'bg-primary/[0.02]'
+                  )}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, key, hour)}
+                >
+                  {hourJobs.length > 0 ? (
+                    <div className="space-y-0.5">
+                      {hourJobs.map(job => (
+                        <div
+                          key={job.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, job)}
+                          className="cursor-grab active:cursor-grabbing"
+                        >
+                          <CalendarJobCard
+                            job={job}
+                            nameMap={nameMap}
+                            acceptances={acceptancesByJob[job.id]}
+                            compact
+                            onClick={() => onJobClick(job)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
                     <button
-                      onClick={() => onDateClick(day)}
-                      className="w-full text-center text-[10px] font-bold text-primary py-1 rounded-lg hover:bg-primary/10 transition-colors"
+                      onClick={() => onAddJob?.(day, hour)}
+                      className="w-full h-full min-h-[48px] flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity rounded border border-dashed border-border/40 text-muted-foreground/50 hover:border-primary/30 hover:text-primary"
                     >
-                      +{remaining} more
+                      <Plus className="h-3 w-3" />
                     </button>
                   )}
-                </>
-              )}
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
