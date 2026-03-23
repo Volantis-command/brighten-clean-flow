@@ -62,6 +62,21 @@ export default function OnboardingPage() {
 
   const [submitted, setSubmitted] = useState(false);
 
+  // Check if already submitted first
+  const { data: alreadyUsed } = useQuery({
+    queryKey: ['onboard-token-used', token],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('client_properties')
+        .select('id, portal_token')
+        .eq('onboard_token', token!)
+        .eq('onboard_used', true)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!token,
+  });
+
   const { data: tokenData, isLoading } = useQuery({
     queryKey: ['onboard-token', token],
     queryFn: async () => {
@@ -74,7 +89,7 @@ export default function OnboardingPage() {
       if (error) throw error;
       return data as any;
     },
-    enabled: !!token,
+    enabled: !!token && !alreadyUsed,
   });
 
   // Pre-fill property from linked data
@@ -128,18 +143,30 @@ export default function OnboardingPage() {
         ].filter(Boolean).join('\n'),
       }).eq('id', propertyId);
 
-      // Create job with status 'awaiting_quote' if date provided
+      // Create job with status 'awaiting_quote' if date provided — but only if no job exists yet
       let jobId: string | null = null;
       if (requestDate) {
-        const { data: jobData } = await supabase.from('jobs').insert({
-          property_id: propertyId,
-          scheduled_date: requestDate,
-          scheduled_time: preferredTime === 'Morning (8am-12pm)' ? '08:00' : preferredTime === 'Afternoon (12pm-4pm)' ? '12:00' : null,
-          status: 'awaiting_quote',
-          notes: [cleanType, cleanNotes].filter(Boolean).join(' — ') || null,
-          source: 'client_portal',
-        } as any).select('id').single();
-        jobId = jobData?.id || null;
+        // Check for existing job from this property to prevent duplicates
+        const { data: existingJob } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('property_id', propertyId)
+          .eq('source', 'client_portal')
+          .maybeSingle();
+
+        if (!existingJob) {
+          const { data: jobData } = await supabase.from('jobs').insert({
+            property_id: propertyId,
+            scheduled_date: requestDate,
+            scheduled_time: preferredTime === 'Morning (8am-12pm)' ? '08:00' : preferredTime === 'Afternoon (12pm-4pm)' ? '12:00' : null,
+            status: 'awaiting_quote',
+            notes: [cleanType, cleanNotes].filter(Boolean).join(' — ') || null,
+            source: 'client_portal',
+          } as any).select('id').single();
+          jobId = jobData?.id || null;
+        } else {
+          jobId = existingJob.id;
+        }
       }
 
       // Mark onboard token as used
@@ -167,6 +194,25 @@ export default function OnboardingPage() {
   });
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#FDFDFC]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+
+  // Already submitted — show friendly message
+  if (alreadyUsed) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4 text-center">
+        <CheckCircle2 className="w-16 h-16 text-primary mb-4" />
+        <h2 className="text-2xl font-extrabold text-primary mb-2">Already Submitted</h2>
+        <p className="text-muted-foreground max-w-sm mb-4">
+          You've already submitted your details. We'll be in touch shortly with your quote.
+        </p>
+        {alreadyUsed.portal_token && (
+          <a href={`${window.location.origin}/client/${alreadyUsed.portal_token}`} className="text-primary font-bold underline">
+            View your portal →
+          </a>
+        )}
+        <p className="text-sm text-muted-foreground mt-6">Questions? Call Brightly Cleaning.</p>
+      </div>
+    );
+  }
 
   if (!tokenData) {
     return (
