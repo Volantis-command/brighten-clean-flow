@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, isToday, startOfDay, isBefore } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Plus, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
@@ -10,12 +11,14 @@ import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
 import { CalendarMonthView } from '@/components/schedule/CalendarMonthView';
 import { CalendarLegend } from '@/components/schedule/CalendarLegend';
 import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
+import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { AcceptanceFilter } from '@/components/schedule/AcceptanceFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 export default function SchedulePage() {
   const { role, user } = useAuth();
@@ -24,9 +27,8 @@ export default function SchedulePage() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   useXeroInvoiceSync();
 
-  const { jobs, isLoading, nameMap, acceptancesByJob } = useScheduleJobs();
+  const { jobs, isLoading, nameMap, acceptancesByJob, invalidate } = useScheduleJobs();
 
-  // View state
   const [view, setView] = useState<CalendarView>(() => {
     const saved = localStorage.getItem('schedule-view');
     return (saved as CalendarView) || 'week';
@@ -34,7 +36,6 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedJob, setSelectedJob] = useState<ScheduleJob | null>(null);
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [acceptanceFilter, setAcceptanceFilter] = useState(searchParams.get('acceptance') || 'all');
 
@@ -67,14 +68,12 @@ export default function SchedulePage() {
     return 'pending';
   };
 
-  // Apply filters
   const filteredJobs = jobs.filter(j => {
     if (statusFilter !== 'all' && j.status !== statusFilter) return false;
     if (acceptanceFilter !== 'all' && getAcceptanceCategory(j.id) !== acceptanceFilter) return false;
     return true;
   });
 
-  // Navigation
   const navigateDate = (dir: 'prev' | 'next') => {
     setSelectedDate(d => {
       switch (view) {
@@ -102,6 +101,63 @@ export default function SchedulePage() {
     setSelectedJob(job);
   };
 
+  const handleAddJob = useCallback((date: Date, hour?: number) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const timeStr = hour !== undefined ? `${String(hour).padStart(2, '0')}:00` : '';
+    navigate(`/schedule/new?date=${dateStr}${timeStr ? `&time=${timeStr}` : ''}`);
+  }, [navigate]);
+
+  const handleJobDrop = useCallback(async (job: ScheduleJob, newDate: string, newTime?: string) => {
+    // Check if anything actually changed
+    if (job.scheduled_date === newDate && (!newTime || job.scheduled_time === newTime)) return;
+
+    const update: Record<string, any> = { scheduled_date: newDate };
+    if (newTime) update.scheduled_time = newTime;
+
+    const { error } = await supabase.from('jobs').update(update).eq('id', job.id);
+    if (error) {
+      toast.error(`Failed to move job: ${error.message}`);
+      return;
+    }
+
+    const formattedDate = format(new Date(newDate + 'T00:00:00'), 'EEE, d MMM');
+    const timeLabel = newTime ? ` at ${newTime.slice(0, 5)}` : '';
+
+    // Check for cleaner conflicts on new date
+    const cleanerId = job.cleaner_1_id;
+    if (cleanerId) {
+      const { data: conflicts } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('scheduled_date', newDate)
+        .neq('id', job.id)
+        .or(`cleaner_1_id.eq.${cleanerId},cleaner_2_id.eq.${cleanerId}`)
+        .in('status', ['scheduled', 'in_progress']);
+
+      if (conflicts && conflicts.length > 0) {
+        const cleanerName = nameMap[cleanerId] || 'Cleaner';
+        toast.warning(`⚠️ ${cleanerName} already has ${conflicts.length} job(s) on ${formattedDate}`, { duration: 5000 });
+      }
+    }
+
+    toast.success(`Job moved to ${formattedDate}${timeLabel} ✓`, {
+      action: {
+        label: 'Notify cleaner',
+        onClick: async () => {
+          try {
+            await supabase.functions.invoke('send-job-sms', { body: { job_id: job.id } });
+            toast.success('Cleaner notified ✓');
+          } catch (e: any) {
+            toast.error(`SMS failed: ${e.message}`);
+          }
+        },
+      },
+      duration: 8000,
+    });
+
+    invalidate();
+  }, [nameMap, invalidate]);
+
   // Admin calendar view
   if (isAdmin) {
     return (
@@ -111,7 +167,7 @@ export default function SchedulePage() {
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
           <div className="flex items-center gap-3 flex-wrap">
             <CalendarViewToggle view={view} onChange={setView} />
-            <Button variant="accent" onClick={() => navigate('/schedule/new')} className="gap-2">
+            <Button variant="accent" onClick={() => handleAddJob(selectedDate)} className="gap-2">
               <Plus className="h-5 w-5" /> Schedule Job
             </Button>
           </div>
@@ -149,6 +205,9 @@ export default function SchedulePage() {
 
         <AcceptanceFilter value={acceptanceFilter} onChange={handleAcceptanceChange} />
 
+        {/* Stats bar — all views */}
+        <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
+
         {/* Calendar body */}
         {isLoading ? (
           <div className="space-y-3">
@@ -165,6 +224,8 @@ export default function SchedulePage() {
                 nameMap={nameMap}
                 acceptancesByJob={acceptancesByJob}
                 onJobClick={handleJobClick}
+                onAddJob={handleAddJob}
+                onJobDrop={handleJobDrop}
               />
             )}
             {view === 'week' && (
@@ -175,6 +236,8 @@ export default function SchedulePage() {
                 acceptancesByJob={acceptancesByJob}
                 onJobClick={handleJobClick}
                 onDateClick={handleDateClick}
+                onAddJob={handleAddJob}
+                onJobDrop={handleJobDrop}
               />
             )}
             {view === 'month' && (
@@ -184,15 +247,15 @@ export default function SchedulePage() {
                 nameMap={nameMap}
                 onJobClick={handleJobClick}
                 onDateClick={handleDateClick}
+                onAddJob={(date) => handleAddJob(date)}
+                onJobDrop={(job, newDate) => handleJobDrop(job, newDate)}
               />
             )}
           </>
         )}
 
-        {/* Legend */}
         <CalendarLegend />
 
-        {/* Job detail slide-over */}
         {selectedJob && (
           <JobDetailSlideOver
             job={selectedJob}
@@ -205,7 +268,7 @@ export default function SchedulePage() {
     );
   }
 
-  // Cleaner view — list-based
+  // Cleaner view
   const today = startOfDay(new Date());
   const upcomingJobs = jobs.filter(j => {
     const jobDate = new Date(j.scheduled_date + 'T00:00:00');
