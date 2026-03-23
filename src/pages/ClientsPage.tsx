@@ -176,10 +176,23 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-extrabold text-primary">Clients</h1>
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
-          <UserPlus className="w-5 h-5" /> Add Client
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setQuoteRequestOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
+            <FileText className="w-5 h-5" /> Send Quote Request
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+            <UserPlus className="w-5 h-5" /> Add Client
+          </Button>
+        </div>
       </div>
+
+      <Tabs defaultValue="clients" className="w-full">
+        <TabsList className="w-full grid grid-cols-2 rounded-2xl h-12">
+          <TabsTrigger value="clients" className="rounded-xl font-bold">Clients</TabsTrigger>
+          <TabsTrigger value="leads" className="rounded-xl font-bold">Leads</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="clients" className="mt-4">
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
