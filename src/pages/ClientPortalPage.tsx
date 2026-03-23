@@ -6,17 +6,25 @@ import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 function getPropertyStatus(jobs: any[], timeEntries: any[]) {
-  if (!jobs.length) return { status: 'awaiting', label: 'Awaiting Clean', color: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' };
-  
-  const latestJob = jobs[0];
-  // Check if any cleaner is currently clocked in on this property
-  const activeEntry = timeEntries.find(te => te.job_id === latestJob.id && te.clock_in_time && !te.clock_out_time);
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+
+  const activeEntry = timeEntries.find(te => te.clock_in_time && !te.clock_out_time);
   if (activeEntry) return { status: 'in_progress', label: 'Clean in Progress', color: 'bg-accent/20 text-accent-foreground', dot: 'bg-accent' };
-  
-  if (latestJob.status === 'complete') {
-    return { status: 'guest_ready', label: 'Guest Ready', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
+
+  const todayJob = jobs.find((j: any) => j.scheduled_date === todayStr && ['scheduled', 'confirmed', 'in_progress'].includes(j.status));
+  if (todayJob) return { status: 'clean_today', label: 'Clean Today', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
+
+  const lastComplete = jobs.find((j: any) => j.status === 'complete');
+  if (lastComplete) {
+    const completedDate = new Date(lastComplete.scheduled_date + 'T00:00:00');
+    const daysDiff = Math.floor((today.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff <= 2) return { status: 'recently_cleaned', label: 'Recently Cleaned', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
   }
-  
+
+  const nextScheduled = jobs.find((j: any) => ['scheduled', 'confirmed'].includes(j.status) && j.scheduled_date >= todayStr);
+  if (nextScheduled) return { status: 'scheduled', label: 'Scheduled', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' };
+
   return { status: 'awaiting', label: 'Awaiting Clean', color: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' };
 }
 
@@ -24,7 +32,6 @@ export default function ClientPortalPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch client's linked properties
   const { data: clientProps = [], isLoading: loadingLinks } = useQuery({
     queryKey: ['client-properties', user?.id],
     queryFn: async () => {
@@ -41,22 +48,17 @@ export default function ClientPortalPage() {
 
   const propertyIds = clientProps.map((cp: any) => cp.property_id);
 
-  // Fetch properties
   const { data: properties = [], isLoading: loadingProps } = useQuery({
     queryKey: ['client-property-details', propertyIds],
     queryFn: async () => {
       if (!propertyIds.length) return [];
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .in('id', propertyIds);
+      const { data, error } = await supabase.from('properties').select('*').in('id', propertyIds);
       if (error) throw error;
       return data || [];
     },
     enabled: propertyIds.length > 0,
   });
 
-  // Fetch latest jobs for each property
   const { data: jobs = [] } = useQuery({
     queryKey: ['client-property-jobs', propertyIds],
     queryFn: async () => {
@@ -65,32 +67,37 @@ export default function ClientPortalPage() {
         .from('jobs')
         .select('*')
         .in('property_id', propertyIds)
-        .order('scheduled_date', { ascending: false })
-        .order('scheduled_time', { ascending: false });
+        .order('scheduled_date', { ascending: false });
       if (error) throw error;
       return data || [];
     },
     enabled: propertyIds.length > 0,
   });
 
-  // Fetch time entries for active clock detection
   const { data: timeEntries = [] } = useQuery({
     queryKey: ['client-time-entries', propertyIds],
     queryFn: async () => {
       const jobIds = jobs.map((j: any) => j.id);
       if (!jobIds.length) return [];
-      const { data, error } = await supabase
-        .from('time_entries')
-        .select('*')
-        .in('job_id', jobIds)
-        .is('clock_out_time', null);
+      const { data, error } = await supabase.from('time_entries').select('*').in('job_id', jobIds).is('clock_out_time', null);
       if (error) throw error;
       return data || [];
     },
     enabled: jobs.length > 0,
   });
 
-  // Fetch latest QC scores
+  // Cleaner profiles
+  const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
+  const { data: cleanerProfiles = [] } = useQuery({
+    queryKey: ['client-cleaners', cleanerIds],
+    queryFn: async () => {
+      if (!cleanerIds.length) return [];
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
+      return data || [];
+    },
+    enabled: cleanerIds.length > 0,
+  });
+
   const { data: audits = [] } = useQuery({
     queryKey: ['client-audits', propertyIds],
     queryFn: async () => {
@@ -107,6 +114,12 @@ export default function ClientPortalPage() {
   });
 
   const isLoading = loadingLinks || loadingProps;
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  const getCleanerName = (id: string) => {
+    const p = cleanerProfiles.find((c: any) => c.id === id);
+    return p?.full_name?.split(' ')[0] || null;
+  };
 
   if (isLoading) {
     return (
@@ -142,8 +155,11 @@ export default function ClientPortalPage() {
           const propJobs = jobs.filter((j: any) => j.property_id === prop.id);
           const statusInfo = getPropertyStatus(propJobs, timeEntries);
           const lastCompleteJob = propJobs.find((j: any) => j.status === 'complete');
-          const nextScheduledJob = propJobs.find((j: any) => j.status === 'scheduled' || j.status === 'pending');
+          const nextScheduledJob = propJobs.find((j: any) =>
+            ['scheduled', 'confirmed', 'in_progress'].includes(j.status) && j.scheduled_date >= todayStr
+          );
           const latestAudit = audits.find((a: any) => a.property_id === prop.id);
+          const nextCleanerName = nextScheduledJob?.cleaner_1_id ? getCleanerName(nextScheduledJob.cleaner_1_id) : null;
 
           return (
             <button
@@ -164,15 +180,21 @@ export default function ClientPortalPage() {
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
+                  <span className="text-muted-foreground">Next clean</span>
+                  <p className="font-semibold text-foreground">
+                    {nextScheduledJob
+                      ? format(new Date(nextScheduledJob.scheduled_date + 'T00:00:00'), 'EEE, d MMM') +
+                        (nextScheduledJob.scheduled_time ? ' at ' + nextScheduledJob.scheduled_time.slice(0, 5) : '')
+                      : '—'}
+                  </p>
+                  {nextCleanerName && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Your cleaner: {nextCleanerName}</p>
+                  )}
+                </div>
+                <div>
                   <span className="text-muted-foreground">Last cleaned</span>
                   <p className="font-semibold text-foreground">
                     {lastCompleteJob ? format(new Date(lastCompleteJob.scheduled_date + 'T00:00:00'), 'dd MMM yyyy') : '—'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Next clean</span>
-                  <p className="font-semibold text-foreground">
-                    {nextScheduledJob ? format(new Date(nextScheduledJob.scheduled_date + 'T00:00:00'), 'dd MMM yyyy') : '—'}
                   </p>
                 </div>
                 {latestAudit && (
