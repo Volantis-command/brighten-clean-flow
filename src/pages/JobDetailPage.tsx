@@ -26,6 +26,7 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient();
   const { role, user } = useAuth();
   const [deleting, setDeleting] = useState(false);
+  const [sendCancellationSms, setSendCancellationSms] = useState(false);
   const [pushingInvoice, setPushingInvoice] = useState(false);
   const [resendingTo, setResendingTo] = useState<string | null>(null);
   const [mapsOpen, setMapsOpen] = useState(false);
