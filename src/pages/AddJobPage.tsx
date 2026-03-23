@@ -225,11 +225,17 @@ export default function AddJobPage() {
     }
 
     if (jobData?.id) {
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-job-sms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobData.id }),
-      }).catch(() => {});
+      try {
+        const res = await supabase.functions.invoke('send-job-sms', {
+          body: { job_id: jobData.id },
+        });
+        const data = res.data as any;
+        if (data?.error) {
+          toast.error(`⚠️ Job saved but SMS failed: ${data.error}`);
+        }
+      } catch (err: any) {
+        toast.error(`⚠️ Job saved but SMS to cleaner failed: ${err.message}`);
+      }
     }
 
     const jobCount = recurring.enabled ? generateRecurringDates(date, recurring).length + 1 : 1;

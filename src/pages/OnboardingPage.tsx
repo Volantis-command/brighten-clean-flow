@@ -56,7 +56,7 @@ export default function OnboardingPage() {
 
   // Clean request fields
   const [requestDate, setRequestDate] = useState('');
-  const [cleanType, setCleanType] = useState('Turnover Clean');
+  const [cleanType, setCleanType] = useState('House Clean');
   const [preferredTime, setPreferredTime] = useState('Flexible');
   const [cleanNotes, setCleanNotes] = useState('');
 
@@ -336,7 +336,7 @@ export default function OnboardingPage() {
                 <Select value={cleanType} onValueChange={setCleanType}>
                   <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {['Turnover Clean', 'Deep Clean', 'End of Lease', 'Post-Build'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {['House Clean', 'Deep Clean', 'End of Lease Clean', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

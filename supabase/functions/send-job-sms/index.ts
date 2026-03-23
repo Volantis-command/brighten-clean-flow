@@ -5,6 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function formatAuPhone(phone: string): string {
+  let cleaned = phone.replace(/[\s\-()]/g, '');
+  if (cleaned.startsWith('+61')) return cleaned;
+  if (cleaned.startsWith('61') && cleaned.length >= 11) return '+' + cleaned;
+  if (cleaned.startsWith('0')) return '+61' + cleaned.slice(1);
+  return '+61' + cleaned;
+}
+
 async function sendTwilioSms(to: string, body: string): Promise<{ success: boolean; sid?: string; error?: string }> {
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
@@ -98,7 +106,7 @@ Deno.serve(async (req) => {
 
       const message = `Hi ${firstName}, you have a new Brightly job:\n\n📅 ${formattedDate} at ${timeStr}\n📍 ${propName}, ${suburb}\n\nReply YES to accept or NO to decline.\n\n- Brightly`;
 
-      const smsResult = await sendTwilioSms(profile.phone, message);
+      const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
 
       // Upsert acceptance record
       await supabase.from('job_acceptances').upsert({
