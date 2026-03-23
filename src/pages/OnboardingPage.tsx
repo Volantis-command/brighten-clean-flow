@@ -62,6 +62,21 @@ export default function OnboardingPage() {
 
   const [submitted, setSubmitted] = useState(false);
 
+  // Check if already submitted first
+  const { data: alreadyUsed } = useQuery({
+    queryKey: ['onboard-token-used', token],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('client_properties')
+        .select('id, portal_token')
+        .eq('onboard_token', token!)
+        .eq('onboard_used', true)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!token,
+  });
+
   const { data: tokenData, isLoading } = useQuery({
     queryKey: ['onboard-token', token],
     queryFn: async () => {
@@ -74,7 +89,7 @@ export default function OnboardingPage() {
       if (error) throw error;
       return data as any;
     },
-    enabled: !!token,
+    enabled: !!token && !alreadyUsed,
   });
 
   // Pre-fill property from linked data
