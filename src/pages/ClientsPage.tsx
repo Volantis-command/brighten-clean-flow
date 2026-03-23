@@ -62,6 +62,7 @@ export default function ClientsPage() {
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
+  const [quoteRequestOpen, setQuoteRequestOpen] = useState(false);
 
   // Create form state
   const [createEmail, setCreateEmail] = useState('');
