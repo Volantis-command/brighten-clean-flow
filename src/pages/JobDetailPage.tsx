@@ -604,6 +604,101 @@ export default function JobDetailPage() {
         </Card>
       )}
 
+      {/* Post-Job SMS Status — Admin only, completed jobs */}
+      {role === 'admin' && job.status === 'complete' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Post-Job SMS
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Review SMS */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Google Review SMS</p>
+                <p className="text-xs text-muted-foreground">
+                  {(job as any).review_sms_sent_at
+                    ? `Sent ${format(new Date((job as any).review_sms_sent_at), 'd MMM yyyy, h:mm a')}`
+                    : 'Not sent yet — scheduled after delay'}
+                </p>
+              </div>
+              {!(job as any).review_sms_sent_at && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sendingReviewSms}
+                  onClick={async () => {
+                    setSendingReviewSms(true);
+                    try {
+                      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-review-rebook-sms`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ job_id: jobId, type: 'review' }),
+                      });
+                      const data = await res.json();
+                      if (data.error) throw new Error(data.error);
+                      toast.success('Review SMS sent');
+                      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                    } catch (err: any) {
+                      toast.error('Failed: ' + err.message);
+                    }
+                    setSendingReviewSms(false);
+                  }}
+                  className="gap-1.5 text-xs"
+                >
+                  {sendingReviewSms ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className="h-3 w-3" />}
+                  Send Now
+                </Button>
+              )}
+            </div>
+
+            {/* Rebook SMS */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Re-booking SMS</p>
+                <p className="text-xs text-muted-foreground">
+                  {(job as any).rebook_sms_sent_at
+                    ? `Sent ${format(new Date((job as any).rebook_sms_sent_at), 'd MMM yyyy, h:mm a')}`
+                    : (job as any).series_id
+                      ? 'Skipped (recurring client)'
+                      : 'Not sent yet — scheduled after delay'}
+                </p>
+              </div>
+              {!(job as any).rebook_sms_sent_at && !(job as any).series_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sendingRebookSms}
+                  onClick={async () => {
+                    setSendingRebookSms(true);
+                    try {
+                      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-review-rebook-sms`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ job_id: jobId, type: 'rebook' }),
+                      });
+                      const data = await res.json();
+                      if (data.error) throw new Error(data.error);
+                      toast.success('Re-booking SMS sent');
+                      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                    } catch (err: any) {
+                      toast.error('Failed: ' + err.message);
+                    }
+                    setSendingRebookSms(false);
+                  }}
+                  className="gap-1.5 text-xs"
+                >
+                  {sendingRebookSms ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Send Now
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <div className="space-y-3">
         <Button
