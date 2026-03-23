@@ -233,9 +233,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         consumables_cost: result.consumablesCost,
         total_cost: result.totalCost,
         gp_percent: result.effectiveGp,
-        sell_price_ex_gst: result.sellPriceExGst,
-        gst: result.gst,
-        sell_price_inc_gst: result.sellPriceIncGst,
+        sell_price_ex_gst: isResidential ? residentialExGst : result.sellPriceExGst,
+        gst: isResidential ? residentialGst : result.gst,
+        sell_price_inc_gst: isResidential ? residentialIncGst : result.sellPriceIncGst,
         actual_gp_dollars: result.actualGpDollars,
         actual_gp_percent: result.actualGpPercent,
         discount_gp_percent: form.discountGp ? parseFloat(form.discountGp) : null,
@@ -256,9 +256,6 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         price: isResidential ? residentialIncGst : result.sellPriceIncGst,
         service_type: form.cleanType,
         extras: isResidential ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
-        sell_price_ex_gst: isResidential ? residentialExGst : result.sellPriceExGst,
-        gst: isResidential ? residentialGst : result.gst,
-        sell_price_inc_gst: isResidential ? residentialIncGst : result.sellPriceIncGst,
       };
 
       if (editQuote) {
