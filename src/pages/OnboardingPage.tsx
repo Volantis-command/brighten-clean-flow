@@ -128,17 +128,18 @@ export default function OnboardingPage() {
         ].filter(Boolean).join('\n'),
       }).eq('id', propertyId);
 
-      // Create clean request if date provided
+      // Create job with status 'awaiting_quote' if date provided
+      let jobId: string | null = null;
       if (requestDate) {
-        await supabase.from('clean_requests').insert({
-          client_id: clientId,
+        const { data: jobData } = await supabase.from('jobs').insert({
           property_id: propertyId,
-          requested_date: requestDate,
-          clean_type: cleanType,
-          preferred_time: preferredTime,
-          notes: cleanNotes || null,
-          status: 'pending',
-        });
+          scheduled_date: requestDate,
+          scheduled_time: preferredTime === 'Morning (8am-12pm)' ? '08:00' : preferredTime === 'Afternoon (12pm-4pm)' ? '12:00' : null,
+          status: 'awaiting_quote',
+          notes: [cleanType, cleanNotes].filter(Boolean).join(' — ') || null,
+          source: 'client_portal',
+        } as any).select('id').single();
+        jobId = jobData?.id || null;
       }
 
       // Mark onboard token as used
@@ -149,13 +150,14 @@ export default function OnboardingPage() {
       if (admins?.length) {
         const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', clientId).single();
         const name = profile?.full_name || 'A client';
+        const notifLink = jobId ? `/jobs/${jobId}` : `/clients/${clientId}`;
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            title: 'Onboarding Submitted',
-            message: `${name} submitted their onboarding form for ${property.property_name}${requestDate ? ` and requested a clean on ${requestDate}` : ''}`,
+            title: 'Onboarding Submitted — Awaiting Quote',
+            message: `${name} submitted onboarding for ${property.property_name}${requestDate ? ` — ${cleanType} on ${requestDate}. Set price to schedule.` : ''}`,
             type: 'onboarding',
-            link: `/clients/${clientId}`,
+            link: notifLink,
           }))
         );
       }

@@ -505,8 +505,111 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Pricing — Admin read-only */}
-      {role === 'admin' && (
+      {/* Awaiting Quote Banner + Set Price Section */}
+      {role === 'admin' && job.status === 'awaiting_quote' && (
+        <Card className="border-[hsl(45,100%,51%)]/50 bg-[hsl(45,100%,51%)]/10">
+          <CardContent className="py-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangleIcon className="h-5 w-5 text-[hsl(45,100%,40%)]" />
+              <p className="text-sm font-bold text-foreground">This job needs a price before it can be scheduled</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-semibold">Price ex GST ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  placeholder="0.00"
+                  className="h-12 rounded-xl text-lg font-bold"
+                />
+                {priceNum > 0 && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Inc GST: <span className="font-bold text-foreground">${(priceNum * 1.1).toFixed(2)}</span>
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label className="text-sm font-semibold">Internal Notes</Label>
+                <Input
+                  value={priceNotes}
+                  onChange={(e) => setPriceNotes(e.target.value)}
+                  placeholder="e.g. 3hrs @ $55/hr + oven clean"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <Button
+                onClick={async () => {
+                  if (priceNum <= 0) { toast.error('Please enter a price'); return; }
+                  setSavingPrice(true);
+                  // Update job: set price and status to scheduled
+                  const { error } = await supabase.from('jobs').update({
+                    price_ex_gst: priceNum,
+                    price_inc_gst: priceNum * 1.1,
+                    price_notes: priceNotes || null,
+                    status: 'scheduled',
+                  }).eq('id', jobId!);
+                  if (error) { toast.error(error.message); setSavingPrice(false); return; }
+
+                  // Send client booking SMS
+                  try {
+                    await supabase.functions.invoke('send-client-booking-sms', { body: { job_id: jobId } });
+                  } catch (err: any) {
+                    toast.error(`⚠️ Client SMS failed: ${err.message}`);
+                  }
+
+                  // Send cleaner SMS if cleaner assigned
+                  if (job.cleaner_1_id) {
+                    try {
+                      await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+                    } catch (err: any) {
+                      toast.error(`⚠️ Cleaner SMS failed: ${err.message}`);
+                    }
+                  }
+
+                  // Push Xero invoice
+                  try {
+                    const xeroProperty = job.properties as any;
+                    const description = `${job.notes?.split(' — ')[0] || 'Clean'} — ${xeroProperty?.property_name || 'Property'} — ${xeroProperty?.suburb || ''} — ${job.scheduled_date}`;
+                    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-create-invoice`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        job_id: jobId,
+                        contact_name: xeroProperty?.client_name || xeroProperty?.property_name || 'Client',
+                        description,
+                        amount: priceNum,
+                        account_code: xeroMap['account_code_turnover'] || '200',
+                        invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
+                        due_days: xeroMap['due_days'] || '7',
+                      }),
+                    });
+                  } catch { /* Xero optional */ }
+
+                  toast.success('Job scheduled, client notified, Xero invoice created ✓');
+                  queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                  queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                  queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+                  setSavingPrice(false);
+                }}
+                disabled={savingPrice || priceNum <= 0}
+                className="w-full h-12 gap-2 font-bold text-base"
+              >
+                {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+                Save Price & Schedule Job
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pricing — Admin read-only (for non-awaiting_quote jobs) */}
+      {role === 'admin' && job.status !== 'awaiting_quote' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -517,7 +620,7 @@ export default function JobDetailPage() {
           <CardContent className="space-y-3">
             {(job.price_ex_gst && job.price_ex_gst > 0) ? (
               <div className="space-y-2">
-                <p className="text-lg font-extrabold text-primary">
+                <p className="text-lg    font-extrabold text-primary">
                   ${Number(job.price_ex_gst).toFixed(2)} ex GST
                   <span className="text-sm font-semibold text-muted-foreground ml-2">
                     (${(Number(job.price_ex_gst) * 1.1).toFixed(2)} inc GST)
@@ -526,39 +629,17 @@ export default function JobDetailPage() {
                 {job.price_notes && (
                   <p className="text-sm text-muted-foreground">{job.price_notes}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Set on property ·{' '}
-                  <button
-                    onClick={() => navigate(`/properties/${job.property_id}/edit`)}
-                    className="text-primary hover:underline font-semibold"
-                  >
-                    Edit property pricing
-                  </button>
-                </p>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">No price set</p>
                 <div>
                   <Label className="text-sm font-semibold">Override Price (ex GST)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={priceInput}
-                    onChange={(e) => setPriceInput(e.target.value)}
-                    placeholder="0.00"
-                    className="h-10 rounded-xl"
-                  />
+                  <Input type="number" step="0.01" min="0" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} placeholder="0.00" className="h-10 rounded-xl" />
                 </div>
                 <div>
                   <Label className="text-sm font-semibold">Notes</Label>
-                  <Input
-                    value={priceNotes}
-                    onChange={(e) => setPriceNotes(e.target.value)}
-                    placeholder="e.g. One-off rate"
-                    className="h-10 rounded-xl"
-                  />
+                  <Input value={priceNotes} onChange={(e) => setPriceNotes(e.target.value)} placeholder="e.g. One-off rate" className="h-10 rounded-xl" />
                 </div>
                 <Button onClick={handleSavePrice} disabled={savingPrice} size="sm" className="gap-2 rounded-xl">
                   {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}

@@ -222,10 +222,10 @@ export function useDashboardData() {
   const unpaidCount = unpaidInvoices.length;
   const unpaidTotal = unpaidInvoices.reduce((sum: number, j: any) => sum + Number(j.price_ex_gst || 0), 0);
   const paidThisMonth = monthJobs
-    .filter((j: any) => j.invoice_status === 'paid' && j.price_ex_gst)
+    .filter((j: any) => j.invoice_status === 'paid' && j.price_ex_gst && j.price_ex_gst > 0)
     .reduce((sum: number, j: any) => sum + Number(j.price_ex_gst), 0);
   const outstandingThisMonth = monthJobs
-    .filter((j: any) => j.status === 'complete' && j.price_ex_gst && j.invoice_status !== 'paid' && j.invoice_status !== 'voided')
+    .filter((j: any) => j.status === 'complete' && j.price_ex_gst && j.price_ex_gst > 0 && j.invoice_status !== 'paid' && j.invoice_status !== 'voided')
     .reduce((sum: number, j: any) => sum + Number(j.price_ex_gst), 0);
 
   // Alerts — cleaners with no jobs this week
