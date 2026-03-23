@@ -290,8 +290,21 @@ export default function JobChecklistPage() {
     return `${h}h ${m}m`;
   }, [form.time_in, form.time_out]);
 
+  // Count total uploaded photos across all rooms
+  const totalPhotos = useMemo(() => {
+    return Object.values(form.room_photos).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  }, [form.room_photos]);
+
+  const isOneOffJob = !job?.series_id;
+  const needsMinPhotos = isOneOffJob && totalPhotos < 3;
+
   // Submit
   const handleSubmit = async () => {
+    // Block one-off jobs without enough photos
+    if (isOneOffJob && totalPhotos < 3) {
+      toast.error('Please upload at least 3 completion photos before finishing this job.');
+      return;
+    }
     setSubmitting(true);
 
     // Auto clock-out if still clocked in
@@ -673,6 +686,21 @@ export default function JobChecklistPage() {
         >
           <AlertTriangle className="w-5 h-5" /> Report Issue
         </Button>
+      )}
+
+      {/* Photo warning for one-off jobs */}
+      {!isSubmitted && needsMinPhotos && (
+        <div className="bg-accent/20 rounded-2xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-foreground">
+              ⚠️ Please upload at least 3 completion photos before finishing this job.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You've uploaded {totalPhotos}/3 photos. One-off jobs require completion photos.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Submit */}

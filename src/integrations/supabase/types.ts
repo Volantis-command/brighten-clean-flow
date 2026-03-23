@@ -943,6 +943,7 @@ export type Database = {
           is_occupied: boolean | null
           last_name: string | null
           phone: string | null
+          photos: Json | null
           preferred_date: string | null
           preferred_time: string | null
           property_size: string | null
@@ -950,6 +951,9 @@ export type Database = {
           quote_sent_at: string | null
           referral_source: string | null
           status: string
+          tcs_accepted: boolean | null
+          tcs_accepted_at: string | null
+          tcs_version: string | null
           toilets: number | null
           token: string
           total_ex_gst: number | null
@@ -975,6 +979,7 @@ export type Database = {
           is_occupied?: boolean | null
           last_name?: string | null
           phone?: string | null
+          photos?: Json | null
           preferred_date?: string | null
           preferred_time?: string | null
           property_size?: string | null
@@ -982,6 +987,9 @@ export type Database = {
           quote_sent_at?: string | null
           referral_source?: string | null
           status?: string
+          tcs_accepted?: boolean | null
+          tcs_accepted_at?: string | null
+          tcs_version?: string | null
           toilets?: number | null
           token?: string
           total_ex_gst?: number | null
@@ -1007,6 +1015,7 @@ export type Database = {
           is_occupied?: boolean | null
           last_name?: string | null
           phone?: string | null
+          photos?: Json | null
           preferred_date?: string | null
           preferred_time?: string | null
           property_size?: string | null
@@ -1014,6 +1023,9 @@ export type Database = {
           quote_sent_at?: string | null
           referral_source?: string | null
           status?: string
+          tcs_accepted?: boolean | null
+          tcs_accepted_at?: string | null
+          tcs_version?: string | null
           toilets?: number | null
           token?: string
           total_ex_gst?: number | null

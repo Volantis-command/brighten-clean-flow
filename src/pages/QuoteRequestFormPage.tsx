@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { QuotePhotoUpload } from '@/components/quote/QuotePhotoUpload';
 import { toast } from 'sonner';
 
 const PROPERTY_TYPES = ['House', 'Apartment', 'Townhouse', 'Other'];
@@ -45,6 +46,7 @@ export default function QuoteRequestFormPage() {
   const [extraNotes, setExtraNotes] = useState('');
   const [referralSource, setReferralSource] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
+  const [photos, setPhotos] = useState<{ url: string; label: string }[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -102,6 +104,7 @@ export default function QuoteRequestFormPage() {
           is_occupied: isOccupied,
           extra_notes: extraNotes || null,
           referral_source: referralSource || null,
+          photos: photos.length > 0 ? photos : [],
           status: 'form_submitted',
           form_submitted_at: new Date().toISOString(),
         })
@@ -284,6 +287,13 @@ export default function QuoteRequestFormPage() {
             </Select>
           </div>
         </div>
+
+        {/* Property Photos */}
+        <QuotePhotoUpload
+          token={token || ''}
+          photos={photos}
+          onChange={setPhotos}
+        />
 
         {/* Note */}
         <div className="bg-[#FEDB00]/20 rounded-2xl p-4 text-center">

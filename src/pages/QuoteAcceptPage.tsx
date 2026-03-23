@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { TermsModal } from '@/components/quote/TermsModal';
 
 export default function QuoteAcceptPage() {
   const { token } = useParams<{ token: string }>();
@@ -12,6 +14,9 @@ export default function QuoteAcceptPage() {
   const [notFound, setNotFound] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [tcsAccepted, setTcsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [tcsVersion, setTcsVersion] = useState('v1.0');
 
   useEffect(() => {
     async function load() {
@@ -23,6 +28,15 @@ export default function QuoteAcceptPage() {
       if (error || !data) { setNotFound(true); setLoading(false); return; }
       if (data.status === 'accepted') setAccepted(true);
       setQuote(data);
+
+      // Get T&C version
+      const { data: versionData } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'tcs_version')
+        .maybeSingle();
+      if (versionData?.value) setTcsVersion(versionData.value);
+
       setLoading(false);
     }
     load();
@@ -32,13 +46,14 @@ export default function QuoteAcceptPage() {
     if (!quote) return;
     setConfirming(true);
     try {
-      // Update quote_requests status
       await supabase.from('quote_requests').update({
         status: 'accepted',
         accepted_at: new Date().toISOString(),
+        tcs_accepted: true,
+        tcs_accepted_at: new Date().toISOString(),
+        tcs_version: tcsVersion,
       }).eq('token', token);
 
-      // Create a job
       await supabase.from('jobs').insert({
         scheduled_date: quote.preferred_date || new Date().toISOString().split('T')[0],
         scheduled_time: quote.preferred_time?.includes('Morning') ? '08:00' : quote.preferred_time?.includes('Afternoon') ? '13:00' : null,
@@ -48,7 +63,6 @@ export default function QuoteAcceptPage() {
         notes: `Residential quote from ${quote.first_name} ${quote.last_name || ''}\n${quote.clean_type}\n${quote.address}\n${quote.extra_notes || ''}`.trim(),
       });
 
-      // Notify admin
       try {
         await supabase.functions.invoke('send-quote-notification', {
           body: { type: 'accepted', token, first_name: quote.first_name, preferred_date: quote.preferred_date },
@@ -154,13 +168,47 @@ export default function QuoteAcceptPage() {
           </div>
         </div>
 
-        <Button onClick={handleConfirm} disabled={confirming} className="w-full h-14 rounded-2xl text-lg font-bold bg-[#0C463D] hover:bg-[#0C463D]/90 text-white">
+        {/* Terms & Conditions Checkbox */}
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="tcs"
+              checked={tcsAccepted}
+              onCheckedChange={(v) => setTcsAccepted(v === true)}
+              className="mt-0.5"
+            />
+            <label htmlFor="tcs" className="text-sm text-gray-700 cursor-pointer">
+              I have read and agree to the{' '}
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); setTermsOpen(true); }}
+                className="text-[#0C463D] font-bold underline"
+              >
+                Terms & Conditions
+              </button>
+            </label>
+          </div>
+        </div>
+
+        <Button
+          onClick={handleConfirm}
+          disabled={confirming || !tcsAccepted}
+          className="w-full h-14 rounded-2xl text-lg font-bold bg-[#0C463D] hover:bg-[#0C463D]/90 text-white disabled:opacity-50"
+        >
           {confirming ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
           Confirm Booking
         </Button>
 
+        {!tcsAccepted && (
+          <p className="text-center text-xs text-gray-400">
+            Please accept the Terms & Conditions to confirm your booking
+          </p>
+        )}
+
         <p className="text-center text-xs text-gray-400 pb-4">Powered by Brightly</p>
       </div>
+
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
     </div>
   );
 }
