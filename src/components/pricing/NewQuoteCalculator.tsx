@@ -253,8 +253,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         wet_areas: form.wetAreas || null,
         property_type_build: form.propertyTypeBuild || null,
         special_requirements: form.specialRequirements || null,
-        price: result.sellPriceIncGst,
+        price: isResidential ? residentialIncGst : result.sellPriceIncGst,
         service_type: form.cleanType,
+        extras: isResidential ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+        sell_price_ex_gst: isResidential ? residentialExGst : result.sellPriceExGst,
+        gst: isResidential ? residentialGst : result.gst,
+        sell_price_inc_gst: isResidential ? residentialIncGst : result.sellPriceIncGst,
       };
 
       if (editQuote) {
