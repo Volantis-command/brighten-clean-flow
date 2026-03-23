@@ -17,12 +17,14 @@ export default function PriceLivePanel({
   discountGp,
   onGpOverrideChange,
   onDiscountGpChange,
+  hideConsumables,
 }: {
   result: CalcResult;
   gpOverride: string;
   discountGp: string;
   onGpOverrideChange: (v: string) => void;
   onDiscountGpChange: (v: string) => void;
+  hideConsumables?: boolean;
 }) {
   return (
     <div className="rounded-2xl border-2 border-primary/30 bg-card p-5 space-y-4">
