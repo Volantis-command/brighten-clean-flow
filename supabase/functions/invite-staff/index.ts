@@ -57,7 +57,6 @@ Deno.serve(async (req) => {
     const { action, email, role, full_name, phone, user_id, password } = await req.json();
 
     if (action === "create_user") {
-      // Create user directly with a password
       const { data: createData, error: createError } =
         await adminClient.auth.admin.createUser({
           email,
@@ -65,21 +64,40 @@ Deno.serve(async (req) => {
           email_confirm: true,
           user_metadata: { full_name: full_name || "" },
         });
+
+      let newUserId: string;
+
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        if (createError.message.includes("already been registered")) {
+          const { data: existingUsers, error: listErr } =
+            await adminClient.auth.admin.listUsers();
+          if (listErr) {
+            return new Response(JSON.stringify({ error: listErr.message }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          const existing = existingUsers.users.find((u) => u.email === email);
+          if (!existing) {
+            return new Response(JSON.stringify({ error: "User not found" }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          newUserId = existing.id;
+        } else {
+          return new Response(JSON.stringify({ error: createError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        newUserId = createData.user.id;
       }
 
-      const newUserId = createData.user.id;
+      await adminClient.from("user_roles").delete().eq("user_id", newUserId);
+      await adminClient.from("user_roles").insert({ user_id: newUserId, role });
 
-      // Assign role
-      await adminClient
-        .from("user_roles")
-        .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
-
-      // Update profile with phone if provided
       if (phone || full_name) {
         const updates: Record<string, string> = {};
         if (phone) updates.phone = phone;
