@@ -104,6 +104,7 @@ export default function QuoteRequestFormPage() {
           is_occupied: isOccupied,
           extra_notes: extraNotes || null,
           referral_source: referralSource || null,
+          photos: photos.length > 0 ? photos : [],
           status: 'form_submitted',
           form_submitted_at: new Date().toISOString(),
         })
