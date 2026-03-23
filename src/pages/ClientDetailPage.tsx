@@ -17,6 +17,7 @@ import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
 import OnboardingStatusSection from '@/components/client-detail/OnboardingStatusSection';
 import AssignedPropertiesSection from '@/components/client-detail/AssignedPropertiesSection';
 import EditClientDialog from '@/components/client-detail/EditClientDialog';
+import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 
 function useClientDetail(clientId: string) {
   return useQuery({
