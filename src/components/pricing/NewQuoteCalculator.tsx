@@ -287,7 +287,15 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const isPostBuild = form.cleanType === 'Post-Build';
   const isEndOfLease = form.cleanType === 'End of Lease';
   const isDeepClean = form.cleanType === 'Deep Clean';
-  const hasLinen = !isPostBuild && !isEndOfLease;
+  const isResidential = form.cleanType === 'Residential One-Off';
+  const hasLinen = !isPostBuild && !isEndOfLease && !isResidential;
+
+  // Residential pricing
+  const residentialHourlyRate = rates['residential_hourly_rate'] || 55;
+  const residentialAddonsTotal = form.residentialAddons.filter(a => a.enabled).reduce((s, a) => s + a.price, 0);
+  const residentialExGst = (residentialHourlyRate * form.hours) + residentialAddonsTotal;
+  const residentialGst = form.includeGst ? residentialExGst * 0.1 : 0;
+  const residentialIncGst = residentialExGst + residentialGst;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
