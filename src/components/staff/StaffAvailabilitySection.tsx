@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Trash2, Plus } from 'lucide-react';
+import { Calendar, Trash2, Plus, Check } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ interface Props {
 function WeeklyAvailability({ staffId }: { staffId: string }) {
   const [days, setDays] = useState<string[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
   const [loaded, setLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     supabase
@@ -32,40 +33,63 @@ function WeeklyAvailability({ staffId }: { staffId: string }) {
       .select('weekly_availability')
       .eq('id', staffId)
       .single()
-      .then(({ data }) => {
-        const saved = (data as any)?.weekly_availability;
-        if (Array.isArray(saved)) setDays(saved);
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Failed to load availability:', error);
+        }
+        const saved = data?.weekly_availability;
+        if (Array.isArray(saved)) setDays(saved as string[]);
         setLoaded(true);
       });
   }, [staffId]);
 
-  const toggleDay = (day: string) => {
-    const updated = days.includes(day)
-      ? days.filter(d => d !== day)
-      : [...days, day];
-    setDays(updated);
-
-    supabase
+  const saveAvailability = useCallback(async (updated: string[]) => {
+    setSaveStatus('saving');
+    const { error } = await supabase
       .from('profiles')
-      .update({ weekly_availability: updated } as any)
-      .eq('id', staffId)
-      .then(({ error }) => {
-        if (error) {
-          toast.error('Failed to save');
-          console.error('Availability save error:', error);
-        } else {
-          toast.success('Saved ✓', { duration: 1500 });
-        }
-      });
-  };
+      .update({ weekly_availability: updated })
+      .eq('id', staffId);
+
+    if (error) {
+      setSaveStatus('error');
+      toast.error('Failed to save availability: ' + error.message);
+      console.error('Availability save error:', error);
+    } else {
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  }, [staffId]);
+
+  const toggleDay = useCallback((day: string) => {
+    setDays(prev => {
+      const updated = prev.includes(day)
+        ? prev.filter(d => d !== day)
+        : [...prev, day];
+      saveAvailability(updated);
+      return updated;
+    });
+  }, [saveAvailability]);
 
   if (!loaded) return <div className="h-12 animate-pulse bg-muted rounded-xl" />;
 
   return (
     <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-      <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-        <Calendar className="h-5 w-5" /> Weekly Availability
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-primary flex items-center gap-2">
+          <Calendar className="h-5 w-5" /> Weekly Availability
+        </h3>
+        {saveStatus === 'saved' && (
+          <span className="text-xs text-emerald-600 flex items-center gap-1 font-medium">
+            <Check className="h-3 w-3" /> Saved ✓
+          </span>
+        )}
+        {saveStatus === 'saving' && (
+          <span className="text-xs text-muted-foreground">Saving…</span>
+        )}
+        {saveStatus === 'error' && (
+          <span className="text-xs text-destructive">Save failed</span>
+        )}
+      </div>
       <div className="flex gap-2 flex-wrap">
         {DAYS.map(day => (
           <button
@@ -75,7 +99,7 @@ function WeeklyAvailability({ staffId }: { staffId: string }) {
             className={cn(
               'h-12 w-14 rounded-xl font-bold text-sm transition-colors cursor-pointer select-none',
               days.includes(day)
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-[#0C463D] text-white'
                 : 'bg-muted text-muted-foreground'
             )}
           >
@@ -116,7 +140,7 @@ function LeaveSection({ staffId, staffName }: Props) {
       end_date: leaveEnd,
       reason: leaveReason,
       notes: leaveNotes || null,
-    } as any);
+    });
     if (error) { toast.error(error.message); return; }
     toast.success('Leave added');
     queryClient.invalidateQueries({ queryKey: ['staff-leave', staffId] });
