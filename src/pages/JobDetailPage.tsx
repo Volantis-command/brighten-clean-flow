@@ -75,6 +75,36 @@ export default function JobDetailPage() {
 
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
 
+  // Completion photos (after photos)
+  const { data: completionPhotos = [] } = useQuery({
+    queryKey: ['job-completion-photos', jobId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('photos')
+        .select('*')
+        .eq('job_id', jobId!)
+        .order('created_at');
+      return data || [];
+    },
+    enabled: !!jobId,
+  });
+
+  // Before photos (from linked quote_request)
+  const { data: beforePhotos = [] } = useQuery({
+    queryKey: ['job-before-photos', job?.linked_quote_id],
+    queryFn: async () => {
+      if (!job?.linked_quote_id) return [];
+      const { data } = await supabase
+        .from('quote_requests')
+        .select('photos')
+        .eq('id', job.linked_quote_id)
+        .maybeSingle();
+      const photos = data?.photos;
+      return Array.isArray(photos) ? photos : [];
+    },
+    enabled: !!job?.linked_quote_id,
+  });
+
   const { data: xeroSettings = [] } = useQuery({
     queryKey: ['xero-settings'],
     queryFn: async () => {
