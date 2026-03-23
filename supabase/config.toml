@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.send-onboarding-sms]
 verify_jwt = false
+
+[functions.send-client-booking-sms]
+verify_jwt = false

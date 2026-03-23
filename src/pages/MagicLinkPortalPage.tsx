@@ -2,14 +2,32 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday, isFuture, isPast } from 'date-fns';
 
 function getPropertyStatus(jobs: any[], timeEntries: any[]) {
-  if (!jobs.length) return { status: 'awaiting', label: 'Awaiting Clean', color: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' };
-  const latestJob = jobs[0];
-  const activeEntry = timeEntries.find(te => te.job_id === latestJob.id && te.clock_in_time && !te.clock_out_time);
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+
+  // Check for active clock-in
+  const activeEntry = timeEntries.find(te => te.clock_in_time && !te.clock_out_time);
   if (activeEntry) return { status: 'in_progress', label: 'Clean in Progress', color: 'bg-accent/20 text-accent-foreground', dot: 'bg-accent' };
-  if (latestJob.status === 'complete') return { status: 'guest_ready', label: 'Guest Ready', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
+
+  // Check for job scheduled today
+  const todayJob = jobs.find((j: any) => j.scheduled_date === todayStr && ['scheduled', 'confirmed', 'in_progress'].includes(j.status));
+  if (todayJob) return { status: 'clean_today', label: 'Clean Today', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
+
+  // Check if last completed job was recent (within 2 days)
+  const lastComplete = jobs.find((j: any) => j.status === 'complete');
+  if (lastComplete) {
+    const completedDate = new Date(lastComplete.scheduled_date + 'T00:00:00');
+    const daysDiff = Math.floor((today.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff <= 2) return { status: 'recently_cleaned', label: 'Recently Cleaned', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
+  }
+
+  // Check for upcoming scheduled job
+  const nextScheduled = jobs.find((j: any) => ['scheduled', 'confirmed'].includes(j.status) && j.scheduled_date >= todayStr);
+  if (nextScheduled) return { status: 'scheduled', label: 'Scheduled', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' };
+
   return { status: 'awaiting', label: 'Awaiting Clean', color: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' };
 }
 
@@ -58,7 +76,7 @@ export default function MagicLinkPortalPage() {
     enabled: !!clientId,
   });
 
-  // Fetch jobs
+  // Fetch jobs — all statuses for history + upcoming
   const { data: jobs = [] } = useQuery({
     queryKey: ['magic-jobs', propertyIds],
     queryFn: async () => {
@@ -81,6 +99,18 @@ export default function MagicLinkPortalPage() {
     enabled: jobs.length > 0,
   });
 
+  // Cleaner profiles for display
+  const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
+  const { data: cleanerProfiles = [] } = useQuery({
+    queryKey: ['magic-cleaners', cleanerIds],
+    queryFn: async () => {
+      if (!cleanerIds.length) return [];
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
+      return data || [];
+    },
+    enabled: cleanerIds.length > 0,
+  });
+
   // QC audits
   const { data: audits = [] } = useQuery({
     queryKey: ['magic-audits', propertyIds],
@@ -96,6 +126,7 @@ export default function MagicLinkPortalPage() {
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   if (isLoading) {
     return (
@@ -114,6 +145,11 @@ export default function MagicLinkPortalPage() {
       </div>
     );
   }
+
+  const getCleanerName = (id: string) => {
+    const p = cleanerProfiles.find((c: any) => c.id === id);
+    return p?.full_name?.split(' ')[0] || null;
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFDFC]">
@@ -139,8 +175,11 @@ export default function MagicLinkPortalPage() {
             const propJobs = jobs.filter((j: any) => j.property_id === prop.id);
             const statusInfo = getPropertyStatus(propJobs, timeEntries);
             const lastCompleteJob = propJobs.find((j: any) => j.status === 'complete');
-            const nextScheduledJob = propJobs.find((j: any) => j.status === 'scheduled' || j.status === 'pending');
+            const nextScheduledJob = propJobs.find((j: any) =>
+              ['scheduled', 'confirmed', 'in_progress'].includes(j.status) && j.scheduled_date >= todayStr
+            );
             const latestAudit = audits.find((a: any) => a.property_id === prop.id);
+            const nextCleanerName = nextScheduledJob?.cleaner_1_id ? getCleanerName(nextScheduledJob.cleaner_1_id) : null;
 
             return (
               <button
@@ -160,15 +199,21 @@ export default function MagicLinkPortalPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
+                    <span className="text-muted-foreground">Next clean</span>
+                    <p className="font-semibold text-foreground">
+                      {nextScheduledJob
+                        ? format(new Date(nextScheduledJob.scheduled_date + 'T00:00:00'), 'EEE, d MMM') +
+                          (nextScheduledJob.scheduled_time ? ' at ' + nextScheduledJob.scheduled_time.slice(0, 5) : '')
+                        : '—'}
+                    </p>
+                    {nextCleanerName && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Your cleaner: {nextCleanerName}</p>
+                    )}
+                  </div>
+                  <div>
                     <span className="text-muted-foreground">Last cleaned</span>
                     <p className="font-semibold text-foreground">
                       {lastCompleteJob ? format(new Date(lastCompleteJob.scheduled_date + 'T00:00:00'), 'dd MMM yyyy') : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Next clean</span>
-                    <p className="font-semibold text-foreground">
-                      {nextScheduledJob ? format(new Date(nextScheduledJob.scheduled_date + 'T00:00:00'), 'dd MMM yyyy') : '—'}
                     </p>
                   </div>
                   {latestAudit && (

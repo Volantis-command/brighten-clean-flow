@@ -388,6 +388,7 @@ export type Database = {
         Row: {
           cleaner_1_id: string | null
           cleaner_2_id: string | null
+          client_booking_sms_sent_at: string | null
           created_at: string
           deposit_amount: number | null
           deposit_paid: boolean | null
@@ -424,6 +425,7 @@ export type Database = {
         Insert: {
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
+          client_booking_sms_sent_at?: string | null
           created_at?: string
           deposit_amount?: number | null
           deposit_paid?: boolean | null
@@ -460,6 +462,7 @@ export type Database = {
         Update: {
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
+          client_booking_sms_sent_at?: string | null
           created_at?: string
           deposit_amount?: number | null
           deposit_paid?: boolean | null
