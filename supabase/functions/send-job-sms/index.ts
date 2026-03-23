@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
 
       const message = `Hi ${firstName}, you have a new Brightly job:\n\n📅 ${formattedDate} at ${timeStr}\n📍 ${propName}, ${suburb}\n\nReply YES to accept or NO to decline.\n\n- Brightly`;
 
-      const smsResult = await sendTwilioSms(profile.phone, message);
+      const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
 
       // Upsert acceptance record
       await supabase.from('job_acceptances').upsert({
