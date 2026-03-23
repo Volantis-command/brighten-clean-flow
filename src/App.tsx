@@ -78,14 +78,39 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function SpaRedirectHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const redirect = sessionStorage.getItem('spa-redirect');
+    if (redirect) {
+      sessionStorage.removeItem('spa-redirect');
+      navigate(redirect, { replace: true });
+    }
+  }, [navigate]);
+  return null;
+}
+
 function AppRoutes() {
   const { user, role, loading } = useAuth();
+  const location = useLocation();
+
+  // Handle ?redirect= query param from old 404.html fallback
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    if (redirect && location.pathname === '/') {
+      window.location.replace(redirect);
+    }
+  }, [location]);
 
   if (loading || (user && role === undefined)) {
     return <RouteLoading />;
   }
 
   const getHomeRedirect = () => {
+    // Check for pending SPA redirect before sending to login
+    const pendingRedirect = sessionStorage.getItem('spa-redirect');
+    if (pendingRedirect) return <RouteLoading />;
     if (!user) return <Navigate to="/login" replace />;
     if (role === 'client') return <Navigate to="/portal" replace />;
     return <Navigate to="/dashboard" replace />;
