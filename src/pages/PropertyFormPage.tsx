@@ -224,7 +224,7 @@ export default function PropertyFormPage() {
     };
 
     if (isEdit) {
-      const { error } = await supabase.from('properties').update(payload).eq('id', id!);
+      const { error } = await supabase.from('properties').update(payload as any).eq('id', id!);
       if (error) {
         toast.error(error.message);
       } else {
@@ -234,7 +234,7 @@ export default function PropertyFormPage() {
         navigate(`/properties/${id}`);
       }
     } else {
-      const { data, error } = await supabase.from('properties').insert(payload).select().single();
+      const { data, error } = await supabase.from('properties').insert(payload as any).select().single();
       if (error) {
         toast.error(error.message);
       } else {
