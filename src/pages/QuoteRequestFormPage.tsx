@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { QuotePhotoUpload } from '@/components/quote/QuotePhotoUpload';
 import { toast } from 'sonner';
 
 const PROPERTY_TYPES = ['House', 'Apartment', 'Townhouse', 'Other'];
