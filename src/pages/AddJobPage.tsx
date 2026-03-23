@@ -238,6 +238,21 @@ export default function AddJobPage() {
       }
     }
 
+    // Send client booking confirmation SMS
+    if (jobData?.id) {
+      try {
+        const clientRes = await supabase.functions.invoke('send-client-booking-sms', {
+          body: { job_id: jobData.id },
+        });
+        const clientData = clientRes.data as any;
+        if (clientData?.error) {
+          toast.error(`⚠️ Client SMS failed: ${clientData.error}`);
+        }
+      } catch (err: any) {
+        toast.error(`⚠️ Client booking SMS failed: ${err.message}`);
+      }
+    }
+
     const jobCount = recurring.enabled ? generateRecurringDates(date, recurring).length + 1 : 1;
     toast.success(recurring.enabled ? `${jobCount} recurring jobs scheduled!` : 'Job scheduled!');
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
