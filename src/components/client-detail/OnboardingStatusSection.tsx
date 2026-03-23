@@ -7,8 +7,6 @@ import { Send, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-const BASE_URL = window.location.origin;
-
 interface Props {
   clientId: string;
   onboardToken: string | null;
@@ -27,29 +25,32 @@ export default function OnboardingStatusSection({
   const [sending, setSending] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
 
-  const onboardLink = onboardToken ? `${BASE_URL}/onboard/${onboardToken}` : null;
-
   const status = onboardUsed ? 'submitted' : onboardingSentAt ? 'sent' : 'pending';
 
   const sendOnboarding = async () => {
-    if (!onboardLink) return;
+    if (!phone) {
+      toast.error('No phone number on file. Please edit the client and add a mobile number first.');
+      return;
+    }
+
     setSending(true);
     try {
-      if (phone) {
-        await supabase.functions.invoke('send-job-sms', {
-          body: {
-            to: phone,
-            message: `Hi ${clientName}, welcome to Brightly! Complete your property setup here: ${onboardLink}`,
-          },
-        });
+      const { data, error } = await supabase.functions.invoke('send-onboarding-sms', {
+        body: { client_id: clientId },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to send onboarding SMS');
       }
-      await supabase.from('client_properties')
-        .update({ onboarding_sent_at: new Date().toISOString() })
-        .eq('client_id', clientId);
-      toast.success(phone ? 'Onboarding form sent via SMS' : 'Onboarding recorded');
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success(`Onboarding form sent to ${data?.name || clientName} ✓`);
       onRefresh();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || 'Failed to send onboarding SMS');
     } finally {
       setSending(false);
     }
