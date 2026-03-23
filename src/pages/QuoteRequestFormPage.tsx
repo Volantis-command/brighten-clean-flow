@@ -12,7 +12,7 @@ import { QuotePhotoUpload } from '@/components/quote/QuotePhotoUpload';
 import { toast } from 'sonner';
 
 const PROPERTY_TYPES = ['House', 'Apartment', 'Townhouse', 'Other'];
-const CLEAN_TYPES = ['Standard Clean', 'Deep Clean', 'End of Lease', 'Post-Build Clean'];
+const CLEAN_TYPES = ['House Clean', 'Deep Clean', 'End of Lease Clean', 'Other'];
 const SIZES = [
   { value: 'small', label: 'Small (<100m²)' },
   { value: 'medium', label: 'Medium (100–200m²)' },
