@@ -5,6 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function formatAuPhone(phone: string): string {
+  let cleaned = phone.replace(/[\s\-()]/g, '');
+  if (cleaned.startsWith('+61')) return cleaned;
+  if (cleaned.startsWith('61') && cleaned.length >= 11) return '+' + cleaned;
+  if (cleaned.startsWith('0')) return '+61' + cleaned.slice(1);
+  return '+61' + cleaned;
+}
+
 async function sendTwilioSms(to: string, body: string): Promise<{ success: boolean; sid?: string; error?: string }> {
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
