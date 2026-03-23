@@ -168,6 +168,24 @@ export default function EditJobPage() {
     } else {
       const { error } = await supabase.from('jobs').update(updatePayload).eq('id', jobId!);
       if (error) { toast.error(error.message); setSaving(false); return; }
+
+      // Send update SMS to client if date/time changed
+      const dateChanged = format(date, 'yyyy-MM-dd') !== job.scheduled_date;
+      const timeChanged = time !== (job.scheduled_time?.slice(0, 5) || '');
+      if (dateChanged || timeChanged) {
+        try {
+          const res = await supabase.functions.invoke('send-client-booking-sms', {
+            body: { job_id: jobId, is_update: true },
+          });
+          const data = res.data as any;
+          if (data?.error) {
+            toast.error(`⚠️ Client update SMS failed: ${data.error}`);
+          }
+        } catch (err: any) {
+          toast.error(`⚠️ Client update SMS failed: ${err.message}`);
+        }
+      }
+
       toast.success('Job updated!');
     }
 
