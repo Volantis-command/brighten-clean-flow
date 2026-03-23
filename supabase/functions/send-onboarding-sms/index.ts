@@ -92,11 +92,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update onboarding_sent_at
+    // Update onboarding_sent_at on any existing client_properties row
     await supabase
       .from('client_properties')
       .update({ onboarding_sent_at: new Date().toISOString() })
-      .eq('id', link.id);
+      .eq('client_id', client_id);
 
     return new Response(JSON.stringify({ 
       success: true, 
