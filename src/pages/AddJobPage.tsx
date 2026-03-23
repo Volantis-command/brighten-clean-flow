@@ -75,7 +75,8 @@ export default function AddJobPage() {
 
   const filteredProperties = properties.filter((p) =>
     p.property_name.toLowerCase().includes(propertySearch.toLowerCase()) ||
-    (p.address || '').toLowerCase().includes(propertySearch.toLowerCase())
+    (p.address || '').toLowerCase().includes(propertySearch.toLowerCase()) ||
+    ((p as any).client_name || '').toLowerCase().includes(propertySearch.toLowerCase())
   );
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
