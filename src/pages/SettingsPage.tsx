@@ -7,7 +7,8 @@ import NotificationsSection from '@/components/settings/NotificationsSection';
 import XeroSection from '@/components/settings/XeroSection';
 import LegalSection from '@/components/settings/LegalSection';
 import PaymentsSection from '@/components/settings/PaymentsSection';
-import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, CreditCard } from 'lucide-react';
+import GuestySection from '@/components/settings/GuestySection';
+import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, CreditCard, Link2 } from 'lucide-react';
 
 export default function SettingsPage() {
   return (
@@ -15,36 +16,40 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-extrabold text-primary">Settings</h1>
 
       <Tabs defaultValue="team" className="w-full">
-        <TabsList className="w-full grid grid-cols-8 bg-muted rounded-xl">
-          <TabsTrigger value="team" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+        <TabsList className="w-full flex flex-wrap gap-1 bg-muted rounded-xl p-1 h-auto">
+          <TabsTrigger value="team" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">Team</span>
           </TabsTrigger>
-          <TabsTrigger value="clients" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="clients" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <UserCircle className="w-4 h-4" />
             <span className="hidden sm:inline">Clients</span>
           </TabsTrigger>
-          <TabsTrigger value="properties" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="properties" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Building2 className="w-4 h-4" />
             <span className="hidden sm:inline">Properties</span>
           </TabsTrigger>
-          <TabsTrigger value="app" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="app" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">App</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="notifications" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Bell className="w-4 h-4" />
             <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="payments" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <CreditCard className="w-4 h-4" />
             <span className="hidden sm:inline">Payments</span>
           </TabsTrigger>
-          <TabsTrigger value="legal" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="legal" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Scale className="w-4 h-4" />
             <span className="hidden sm:inline">Legal</span>
           </TabsTrigger>
-          <TabsTrigger value="xero" className="gap-1.5 text-xs sm:text-sm rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="guesty" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Link2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Guesty</span>
+          </TabsTrigger>
+          <TabsTrigger value="xero" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Receipt className="w-4 h-4" />
             <span className="hidden sm:inline">Xero</span>
           </TabsTrigger>
@@ -57,6 +62,7 @@ export default function SettingsPage() {
         <TabsContent value="notifications"><NotificationsSection /></TabsContent>
         <TabsContent value="payments"><PaymentsSection /></TabsContent>
         <TabsContent value="legal"><LegalSection /></TabsContent>
+        <TabsContent value="guesty"><GuestySection /></TabsContent>
         <TabsContent value="xero"><XeroSection /></TabsContent>
       </Tabs>
     </div>
