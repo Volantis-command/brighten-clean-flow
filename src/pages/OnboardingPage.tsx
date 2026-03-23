@@ -183,6 +183,25 @@ export default function OnboardingPage() {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#FDFDFC]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
+  // Already submitted — show friendly message
+  if (alreadyUsed) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4 text-center">
+        <CheckCircle2 className="w-16 h-16 text-primary mb-4" />
+        <h2 className="text-2xl font-extrabold text-primary mb-2">Already Submitted</h2>
+        <p className="text-muted-foreground max-w-sm mb-4">
+          You've already submitted your details. We'll be in touch shortly with your quote.
+        </p>
+        {alreadyUsed.portal_token && (
+          <a href={`${window.location.origin}/client/${alreadyUsed.portal_token}`} className="text-primary font-bold underline">
+            View your portal →
+          </a>
+        )}
+        <p className="text-sm text-muted-foreground mt-6">Questions? Call Brightly Cleaning.</p>
+      </div>
+    );
+  }
+
   if (!tokenData) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4">
