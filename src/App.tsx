@@ -186,6 +186,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <SpaRedirectHandler />
           <ActiveClockBanner />
           <AppRoutes />
         </AuthProvider>
