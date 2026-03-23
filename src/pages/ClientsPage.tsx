@@ -68,6 +68,7 @@ export default function ClientsPage() {
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
+  const [createClientType, setCreateClientType] = useState('residential');
   
   const [createPropertyIds, setCreatePropertyIds] = useState<string[]>([]);
 
