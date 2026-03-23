@@ -183,6 +183,8 @@ export default function StaffPage() {
           {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
         </div>
 
+        <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
+        <StaffPerformanceSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
       </div>
     );
