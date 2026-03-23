@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone } from 'lucide-react';
+import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import SendQuoteRequestModal from '@/components/clients/SendQuoteRequestModal';
+import LeadsTab from '@/components/clients/LeadsTab';
 
 interface ClientMember {
   id: string;
@@ -60,6 +62,7 @@ export default function ClientsPage() {
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
+  const [quoteRequestOpen, setQuoteRequestOpen] = useState(false);
 
   // Create form state
   const [createEmail, setCreateEmail] = useState('');
@@ -173,10 +176,23 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-extrabold text-primary">Clients</h1>
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
-          <UserPlus className="w-5 h-5" /> Add Client
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setQuoteRequestOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
+            <FileText className="w-5 h-5" /> Send Quote Request
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+            <UserPlus className="w-5 h-5" /> Add Client
+          </Button>
+        </div>
       </div>
+
+      <Tabs defaultValue="clients" className="w-full">
+        <TabsList className="w-full grid grid-cols-2 rounded-2xl h-12">
+          <TabsTrigger value="clients" className="rounded-xl font-bold">Clients</TabsTrigger>
+          <TabsTrigger value="leads" className="rounded-xl font-bold">Leads</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="clients" className="mt-4">
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
@@ -246,6 +262,14 @@ export default function ClientsPage() {
           </Table>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="leads" className="mt-4">
+          <LeadsTab />
+        </TabsContent>
+      </Tabs>
+
+      <SendQuoteRequestModal open={quoteRequestOpen} onOpenChange={setQuoteRequestOpen} />
 
       {/* Send Onboarding Modal */}
       <Dialog open={onboardOpen} onOpenChange={setOnboardOpen}>

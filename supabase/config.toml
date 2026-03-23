@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.xero-sync-invoice-status]
 verify_jwt = false
+
+[functions.send-quote-notification]
+verify_jwt = false

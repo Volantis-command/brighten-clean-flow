@@ -15,7 +15,7 @@ import { Save, Copy, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const CLEAN_TYPES = ['Turnover Clean', 'Deep Clean', 'Post-Build', 'End of Lease'] as const;
+const CLEAN_TYPES = ['Turnover Clean', 'Deep Clean', 'Post-Build', 'End of Lease', 'Residential One-Off'] as const;
 const BED_OPTIONS: BedType[] = ['King', 'Queen', 'King Single', 'Single'];
 
 type FormState = {
@@ -50,6 +50,9 @@ type FormState = {
   gpOverride: string;
   discountGp: string;
   notes: string;
+  // Residential One-Off
+  residentialAddons: { name: string; price: number; enabled: boolean }[];
+  includeGst: boolean;
 };
 
 const INITIAL: FormState = {
@@ -81,6 +84,14 @@ const INITIAL: FormState = {
   gpOverride: '',
   discountGp: '',
   notes: '',
+  residentialAddons: [
+    { name: 'Oven clean', price: 45, enabled: false },
+    { name: 'Fridge clean', price: 25, enabled: false },
+    { name: 'Window cleaning', price: 35, enabled: false },
+    { name: 'Garage sweep', price: 20, enabled: false },
+    { name: 'Wall spot cleaning', price: 20, enabled: false },
+  ],
+  includeGst: true,
 };
 
 export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void }) {
@@ -124,6 +135,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         gpOverride: editQuote.gp_percent != null ? String(Math.round(editQuote.gp_percent * 100)) : '',
         discountGp: editQuote.discount_gp_percent != null ? String(editQuote.discount_gp_percent) : '',
         notes: editQuote.notes || '',
+        residentialAddons: Array.isArray(editQuote.extras) && editQuote.extras.length > 0 ? editQuote.extras : INITIAL.residentialAddons,
+        includeGst: true,
       });
     }
   }, [editQuote]);
@@ -220,9 +233,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         consumables_cost: result.consumablesCost,
         total_cost: result.totalCost,
         gp_percent: result.effectiveGp,
-        sell_price_ex_gst: result.sellPriceExGst,
-        gst: result.gst,
-        sell_price_inc_gst: result.sellPriceIncGst,
+        sell_price_ex_gst: isResidential ? residentialExGst : result.sellPriceExGst,
+        gst: isResidential ? residentialGst : result.gst,
+        sell_price_inc_gst: isResidential ? residentialIncGst : result.sellPriceIncGst,
         actual_gp_dollars: result.actualGpDollars,
         actual_gp_percent: result.actualGpPercent,
         discount_gp_percent: form.discountGp ? parseFloat(form.discountGp) : null,
@@ -240,8 +253,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         wet_areas: form.wetAreas || null,
         property_type_build: form.propertyTypeBuild || null,
         special_requirements: form.specialRequirements || null,
-        price: result.sellPriceIncGst,
+        price: isResidential ? residentialIncGst : result.sellPriceIncGst,
         service_type: form.cleanType,
+        extras: isResidential ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
       };
 
       if (editQuote) {
@@ -274,7 +288,15 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const isPostBuild = form.cleanType === 'Post-Build';
   const isEndOfLease = form.cleanType === 'End of Lease';
   const isDeepClean = form.cleanType === 'Deep Clean';
-  const hasLinen = !isPostBuild && !isEndOfLease;
+  const isResidential = form.cleanType === 'Residential One-Off';
+  const hasLinen = !isPostBuild && !isEndOfLease && !isResidential;
+
+  // Residential pricing
+  const residentialHourlyRate = rates['residential_hourly_rate'] || 55;
+  const residentialAddonsTotal = form.residentialAddons.filter(a => a.enabled).reduce((s, a) => s + a.price, 0);
+  const residentialExGst = (residentialHourlyRate * form.hours) + residentialAddonsTotal;
+  const residentialGst = form.includeGst ? residentialExGst * 0.1 : 0;
+  const residentialIncGst = residentialExGst + residentialGst;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -403,6 +425,70 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             <NumField label="Deep Clean Multiplier" value={form.deepCleanMultiplier} onChange={(v) => upd('deepCleanMultiplier', v)} step={0.1} min={1} />
           )}
         </div>
+
+        {/* Residential Add-ons */}
+        {isResidential && (
+          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
+            <h3 className="font-extrabold text-foreground">Add-ons</h3>
+            <p className="text-xs text-muted-foreground">Hourly rate: ${residentialHourlyRate}/hr</p>
+            <div className="space-y-2">
+              {form.residentialAddons.map((addon, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Switch checked={addon.enabled} onCheckedChange={(v) => {
+                    const arr = [...form.residentialAddons];
+                    arr[i] = { ...arr[i], enabled: v };
+                    upd('residentialAddons', arr);
+                  }} />
+                  <span className="text-sm font-semibold flex-1">{addon.name}</span>
+                  <Input
+                    type="number"
+                    value={addon.price}
+                    onChange={(e) => {
+                      const arr = [...form.residentialAddons];
+                      arr[i] = { ...arr[i], price: parseFloat(e.target.value) || 0 };
+                      upd('residentialAddons', arr);
+                    }}
+                    className="w-20 h-10 rounded-xl text-right font-semibold"
+                    step={5}
+                  />
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => {
+                upd('residentialAddons', [...form.residentialAddons, { name: 'Custom', price: 0, enabled: true }]);
+              }}>+ Custom add-on</Button>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <Switch checked={form.includeGst} onCheckedChange={(v) => upd('includeGst', v)} />
+              <Label className="text-sm font-semibold">Include GST (10%)</Label>
+            </div>
+            <div className="bg-muted rounded-xl p-4 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Labour ({form.hours}h × ${residentialHourlyRate})</span>
+                <span className="font-semibold">${(residentialHourlyRate * form.hours).toFixed(2)}</span>
+              </div>
+              {form.residentialAddons.filter(a => a.enabled).map((a, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span>{a.name}</span>
+                  <span className="font-semibold">${a.price.toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="border-t pt-2 mt-2 flex justify-between text-sm">
+                <span>Total ex GST</span>
+                <span className="font-bold">${residentialExGst.toFixed(2)}</span>
+              </div>
+              {form.includeGst && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>GST</span>
+                  <span>${residentialGst.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-extrabold text-primary">
+                <span>Total inc GST</span>
+                <span>${residentialIncGst.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bed Types */}
         {hasLinen && form.bedrooms > 0 && (
