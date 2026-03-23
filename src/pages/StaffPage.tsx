@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
 import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
+import { StaffPaySection } from '@/components/staff/StaffPaySection';
+import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
