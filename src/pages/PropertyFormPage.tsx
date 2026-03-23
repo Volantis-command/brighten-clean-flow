@@ -45,7 +45,7 @@ const ACCESS_METHODS = [
   { value: 'Other', icon: HelpCircle },
 ];
 
-const EMPTY_FORM = {
+const EMPTY_FORM: Record<string, any> = {
   property_name: '',
   address: '',
   suburb: '',
@@ -76,6 +76,41 @@ const EMPTY_FORM = {
   price_end_of_lease: '',
   price_post_build: '',
   pricing_notes: '',
+  // Airbnb fields
+  client_type: 'residential',
+  toilets: 1,
+  has_outdoor_area: false,
+  outdoor_description: '',
+  has_pool: false,
+  has_oven: false,
+  has_glass_screens: false,
+  max_guests: 0,
+  avg_nightly_rate: '',
+  platform: '',
+  linen_supply: 'no',
+  linen_config: {},
+  linen_changeover: 'every_clean',
+  linen_storage: '',
+  spare_linen: 'we_bring',
+  consumables_config: [],
+  clean_standard: 'airbnb_standard',
+  pain_points: '',
+  skip_areas: '',
+  fragrance_preference: '',
+  pet_situation: 'no_pets',
+  alarm_code: '',
+  parking_instructions: '',
+  bin_details: '',
+  wifi_password: '',
+  neighbour_notes: '',
+  checkout_time: '10:00',
+  checkin_time: '14:00',
+  assigned_cleaner_ids: [],
+  backup_cleaner_id: '',
+  min_notice: '24h',
+  override_price: false,
+  pricing_agreement_notes: '',
+  guesty_listing_id: '',
 };
 
 export default function PropertyFormPage() {
