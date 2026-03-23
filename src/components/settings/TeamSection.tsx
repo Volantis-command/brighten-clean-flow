@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { UserPlus, Pencil, Loader2, Mail, Phone, Link2, Copy, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAppBaseUrl } from '@/lib/appUrl';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
@@ -162,7 +163,7 @@ export default function TeamSection() {
   };
 
   const copyMagicLink = (token: string) => {
-    const url = `${window.location.origin}/client/${token}`;
+    const url = `${getAppBaseUrl()}/client/${token}`;
     navigator.clipboard.writeText(url);
     toast.success('Magic link copied!');
   };

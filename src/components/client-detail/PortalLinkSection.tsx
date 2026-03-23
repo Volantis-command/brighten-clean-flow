@@ -6,8 +6,7 @@ import { Copy, Send, Link2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-const BASE_URL = window.location.origin;
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 interface PortalLinkSectionProps {
   clientId: string;
@@ -25,7 +24,7 @@ export default function PortalLinkSection({
 }: PortalLinkSectionProps) {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
-  const portalLink = portalToken ? `${BASE_URL}/client/${portalToken}` : null;
+  const portalLink = portalToken ? `${getAppBaseUrl()}/client/${portalToken}` : null;
 
   const generateToken = async () => {
     setGenerating(true);

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2, CheckCircle2, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 interface PropertyForm {
   property_name: string;
@@ -205,37 +206,13 @@ export default function OnboardingPage() {
           You've already submitted your details. We'll be in touch shortly with your quote.
         </p>
         {alreadyUsed.portal_token && (
-          <a href={`${window.location.origin}/client/${alreadyUsed.portal_token}`} className="text-primary font-bold underline">
+          <a href={`${getAppBaseUrl()}/client/${alreadyUsed.portal_token}`} className="text-primary font-bold underline">
             View your portal →
           </a>
         )}
-        <p className="text-sm text-muted-foreground mt-6">Questions? Call Brightly Cleaning.</p>
-      </div>
-    );
-  }
-
-  if (!tokenData) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4">
-        <p className="text-4xl mb-3">🔗</p>
-        <p className="font-bold text-lg text-foreground">This link is invalid or has expired.</p>
-        <p className="text-sm text-muted-foreground mt-1">Please contact Brightly Cleaning for a new link.</p>
-      </div>
-    );
-  }
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4 text-center">
-        <CheckCircle2 className="w-16 h-16 text-primary mb-4" />
-        <h2 className="text-2xl font-extrabold text-primary mb-2">Thanks! We've got your details.</h2>
-        <p className="text-muted-foreground max-w-sm mb-4">
-          {requestDate
-            ? "We've received your property info and clean request. We'll confirm your booking shortly."
-            : "We've received your property information. Your portal is ready!"}
-        </p>
+...
         {tokenData.portal_token && (
-          <a href={`${window.location.origin}/client/${tokenData.portal_token}`} className="text-primary font-bold underline">
+          <a href={`${getAppBaseUrl()}/client/${tokenData.portal_token}`} className="text-primary font-bold underline">
             View your portal →
           </a>
         )}
