@@ -330,25 +330,40 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const [quoteSent, setQuoteSent] = useState(false);
 
+  const formatAUPhone = (phone: string): string => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('61')) return '+' + digits;
+    if (digits.startsWith('0')) return '+61' + digits.slice(1);
+    return '+61' + digits;
+  };
+
   const sendQuoteMutation = useMutation({
     mutationFn: async () => {
-      // 1. Save quote with status 'quote_sent'
+      // Validate required fields
+      const phone = form.clientPhone?.trim();
+      if (!phone) throw new Error('Client phone number is required');
+      if (result.sellPriceIncGst <= 0) throw new Error('Quote must have a price');
+
+      // STEP 1 — Save quote first and await completion
       await saveMutation.mutateAsync('quote_sent');
 
-      // 2. Format phone to +61
-      let phone = (form.clientPhone || '').replace(/\s+/g, '');
-      if (phone.startsWith('0')) phone = '+61' + phone.slice(1);
-      if (!phone.startsWith('+')) phone = '+61' + phone;
+      // STEP 2 — Send SMS (direct mode — no job_id needed)
+      const formattedPhone = formatAUPhone(phone);
+      const smsMessage = buildSmsMessage();
 
-      // 3. Send SMS via edge function
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
+      const smsRes = await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: phone, message: buildSmsMessage() }),
+        body: JSON.stringify({ to: formattedPhone, message: smsMessage }),
       });
 
-      // 4. Create action alert for admins
+      if (!smsRes.ok) {
+        const err = await smsRes.json().catch(() => ({}));
+        throw new Error(err.error || 'SMS sending failed');
+      }
+
+      // STEP 3 — Create admin notification
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
         await supabase.from('notifications').insert(
