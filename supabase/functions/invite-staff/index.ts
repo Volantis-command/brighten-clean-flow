@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify caller is admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -24,16 +23,11 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller with anon client
     const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
-    const anonClient = createClient(
-      supabaseUrl,
-      anonKey,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const {
-      data: { user: caller },
-    } = await anonClient.auth.getUser();
+    const anonClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: caller } } = await anonClient.auth.getUser();
     if (!caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -41,7 +35,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin role
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: isAdmin } = await adminClient.rpc("has_role", {
       _user_id: caller.id,
@@ -55,6 +48,23 @@ Deno.serve(async (req) => {
     }
 
     const { action, email, role, full_name, phone, user_id, password } = await req.json();
+
+    // Helper to ensure onboarding record exists for a user
+    async function ensureOnboarding(userId: string, name?: string, userEmail?: string) {
+      const { data: existing } = await adminClient
+        .from("staff_onboarding")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!existing) {
+        await adminClient.from("staff_onboarding").insert({
+          user_id: userId,
+          full_name: name || null,
+          email: userEmail || null,
+          status: "pending",
+        });
+      }
+    }
 
     if (action === "create_user") {
       const { data: createData, error: createError } =
@@ -105,17 +115,16 @@ Deno.serve(async (req) => {
         await adminClient.from("profiles").update(updates).eq("id", newUserId);
       }
 
+      // Create onboarding record
+      await ensureOnboarding(newUserId, full_name, email);
+
       return new Response(
         JSON.stringify({ success: true, user_id: newUserId }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "invite") {
-      // Invite user by email
       const { data: inviteData, error: inviteError } =
         await adminClient.auth.admin.inviteUserByEmail(email, {
           data: { full_name: full_name || "" },
@@ -129,12 +138,10 @@ Deno.serve(async (req) => {
 
       const newUserId = inviteData.user.id;
 
-      // Assign role
       await adminClient
         .from("user_roles")
         .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
 
-      // Update profile with phone if provided
       if (phone) {
         await adminClient
           .from("profiles")
@@ -142,23 +149,19 @@ Deno.serve(async (req) => {
           .eq("id", newUserId);
       }
 
+      // Create onboarding record
+      await ensureOnboarding(newUserId, full_name, email);
+
       return new Response(
         JSON.stringify({ success: true, user_id: newUserId }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "update_role") {
-      // Delete existing roles then insert new one
       await adminClient.from("user_roles").delete().eq("user_id", user_id);
-      await adminClient
-        .from("user_roles")
-        .insert({ user_id, role });
+      await adminClient.from("user_roles").insert({ user_id, role });
 
-      // Update profile fields
       const updates: Record<string, string> = {};
       if (full_name !== undefined) updates.full_name = full_name;
       if (phone !== undefined) updates.phone = phone;
@@ -173,7 +176,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "remove") {
-      // Remove role and delete user
       await adminClient.from("user_roles").delete().eq("user_id", user_id);
       await adminClient.auth.admin.deleteUser(user_id);
 
@@ -181,6 +183,71 @@ Deno.serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (action === "reset_password") {
+      // Send password reset email
+      const { error: resetErr } = await adminClient.auth.admin.generateLink({
+        type: "recovery",
+        email,
+      });
+      if (resetErr) {
+        return new Response(JSON.stringify({ error: resetErr.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "set_password") {
+      // Admin sets a new temporary password
+      const { error: pwErr } = await adminClient.auth.admin.updateUserById(user_id, {
+        password,
+      });
+      if (pwErr) {
+        return new Response(JSON.stringify({ error: pwErr.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "mark_reviewed") {
+      await adminClient
+        .from("staff_onboarding")
+        .update({
+          admin_reviewed_at: new Date().toISOString(),
+          admin_reviewed_by: caller.id,
+          status: "reviewed",
+        })
+        .eq("user_id", user_id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "ensure_onboarding") {
+      await ensureOnboarding(user_id, full_name, email);
+      // Return the token
+      const { data: record } = await adminClient
+        .from("staff_onboarding")
+        .select("onboarding_token")
+        .eq("user_id", user_id)
+        .single();
+      return new Response(
+        JSON.stringify({ success: true, token: record?.onboarding_token }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(JSON.stringify({ error: "Invalid action" }), {
