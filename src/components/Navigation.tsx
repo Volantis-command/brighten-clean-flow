@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { useActionsData } from '@/hooks/useActionsData';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -9,9 +10,11 @@ interface NavItem {
   path: string;
   icon: React.ElementType;
   roles: AppRole[];
+  badge?: number;
 }
 
 const navItems: NavItem[] = [
+  { label: 'Actions', path: '/actions', icon: Inbox, roles: ['admin', 'head_cleaner'] },
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'head_cleaner'] },
@@ -33,6 +36,7 @@ const cleanerMobileItems: NavItem[] = [
 
 export function MobileNav() {
   const { role } = useAuth();
+  const { totalCount } = useActionsData();
 
   // Cleaners get a simplified 3-item nav with bigger tap targets
   if (role === 'cleaner') {
@@ -64,16 +68,20 @@ export function MobileNav() {
   }
 
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
+  // Inject badge count for Actions
+  const filteredWithBadge = filtered.map(item =>
+    item.path === '/actions' ? { ...item, badge: totalCount } : item
+  );
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
       <div className="flex justify-around items-center py-2 px-1">
-        {filtered.slice(0, 5).map((item) => (
+        {filteredWithBadge.slice(0, 5).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors min-w-0 ${
+              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors min-w-0 relative ${
                 isActive
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -82,7 +90,14 @@ export function MobileNav() {
           >
             {({ isActive }) => (
               <>
-                <item.icon className="h-5 w-5" />
+                <div className="relative">
+                  <item.icon className="h-5 w-5" />
+                  {item.badge && item.badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-semibold truncate">{item.label}</span>
                 {isActive && <div className="w-5 h-0.5 bg-accent rounded-full" />}
               </>
@@ -96,9 +111,13 @@ export function MobileNav() {
 
 export function DesktopSidebar() {
   const { role, profile, signOut } = useAuth();
+  const { totalCount } = useActionsData();
   
   // Don't show sidebar for cleaners on desktop either — they use a simpler layout
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
+  const filteredWithBadge = filtered.map(item =>
+    item.path === '/actions' ? { ...item, badge: totalCount } : item
+  );
 
   const roleBadgeLabel = role === 'head_cleaner' ? 'Head Cleaner' : role === 'admin' ? 'Admin' : 'Cleaner';
 
@@ -111,7 +130,7 @@ export function DesktopSidebar() {
       </div>
 
       <nav className="flex-1 px-3 space-y-1">
-        {filtered.map((item) => (
+        {filteredWithBadge.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -124,7 +143,12 @@ export function DesktopSidebar() {
             }
           >
             <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
+            <span className="flex-1">{item.label}</span>
+            {item.badge && item.badge > 0 && (
+              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                {item.badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

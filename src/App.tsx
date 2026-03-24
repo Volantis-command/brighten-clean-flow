@@ -11,6 +11,7 @@ import AppLayout from "./components/AppLayout";
 import ClientPortalLayout from "./components/portal/ClientPortalLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
 import DashboardPage from "./pages/DashboardPage";
+import ActionsPage from "./pages/ActionsPage";
 import SchedulePage from "./pages/SchedulePage";
 import AddJobPage from "./pages/AddJobPage";
 import JobChecklistPage from "./pages/JobChecklistPage";
@@ -153,6 +154,7 @@ function AppRoutes() {
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/actions" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><ActionsPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/schedule/new" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><AddJobPage /></ProtectedRoute>} />
