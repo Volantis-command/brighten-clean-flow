@@ -6,6 +6,7 @@ import AdminTimeView from '@/components/timeclock/AdminTimeView';
 import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
 import { StaffPaySection } from '@/components/staff/StaffPaySection';
 import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
+import { StaffOnboardingSection, useStaffOnboardingStatuses } from '@/components/staff/StaffOnboardingSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
 
@@ -71,11 +73,15 @@ export default function StaffPage() {
   const { data: staff = [], isLoading } = useStaffList();
   const staffIds = staff.map(s => s.id);
   const { data: perfBadges = {} } = useStaffPerformanceBadges(staffIds);
+  const { data: onboardingStatuses = {} } = useStaffOnboardingStatuses(staffIds);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [passwordMember, setPasswordMember] = useState<StaffMember | null>(null);
+  const [tempPassword, setTempPassword] = useState('');
+  const [onboardingLinkCopied, setOnboardingLinkCopied] = useState('');
 
   // Create form
   const [createEmail, setCreateEmail] = useState('');
@@ -157,10 +163,71 @@ export default function StaffPage() {
     setEditRole(m.role);
   };
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: (email: string) =>
+      invokeFn({ action: 'reset_password', email }),
+    onSuccess: () => toast.success('Password reset email sent!'),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const setPasswordMutation = useMutation({
+    mutationFn: ({ userId, pw }: { userId: string; pw: string }) =>
+      invokeFn({ action: 'set_password', user_id: userId, password: pw }),
+    onSuccess: () => {
+      toast.success('Password updated!');
+      setPasswordMember(null);
+      setTempPassword('');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const markReviewedMutation = useMutation({
+    mutationFn: (userId: string) =>
+      invokeFn({ action: 'mark_reviewed', user_id: userId }),
+    onSuccess: () => {
+      toast.success('Marked as reviewed');
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const ensureOnboardingMutation = useMutation({
+    mutationFn: (m: StaffMember) =>
+      invokeFn({ action: 'ensure_onboarding', user_id: m.id, full_name: m.full_name, email: m.email }),
+    onSuccess: (data: any) => {
+      if (data?.token) {
+        const link = `${getAppBaseUrl()}/staff-onboarding/${data.token}`;
+        navigator.clipboard.writeText(link);
+        setOnboardingLinkCopied(data.token);
+        toast.success('Onboarding link copied to clipboard!');
+        queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const getOnboardingLink = (staffId: string) => {
+    const status = onboardingStatuses[staffId];
+    if (status?.token) return `${getAppBaseUrl()}/staff-onboarding/${status.token}`;
+    return null;
+  };
+
+  const copyOnboardingLink = (staffId: string) => {
+    const link = getOnboardingLink(staffId);
+    if (link) {
+      navigator.clipboard.writeText(link);
+      setOnboardingLinkCopied(staffId);
+      toast.success('Onboarding link copied!');
+      setTimeout(() => setOnboardingLinkCopied(''), 2000);
+    }
+  };
+
   const isAdmin = currentRole === 'admin';
 
   // Selected staff detail view
   if (selectedStaff) {
+    const obStatus = onboardingStatuses[selectedStaff.id];
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -179,11 +246,61 @@ export default function StaffPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
+        <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
           {selectedStaff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {selectedStaff.email}</p>}
           {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
+
+          {/* Login & Password Management */}
+          {isAdmin && (
+            <div className="border-t pt-3 mt-3 space-y-2">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Key className="w-4 h-4" /> Login Management</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                  onClick={() => setPasswordMember(selectedStaff)}>
+                  <Key className="w-3.5 h-3.5" /> Set Temp Password
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                  disabled={resetPasswordMutation.isPending}
+                  onClick={() => selectedStaff.email && resetPasswordMutation.mutate(selectedStaff.email)}>
+                  {resetPasswordMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                  Send Reset Email
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Onboarding Link */}
+          {isAdmin && (
+            <div className="border-t pt-3 mt-3 space-y-2">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Link2 className="w-4 h-4" /> Onboarding Link</h3>
+              {obStatus?.token ? (
+                <div className="flex items-center gap-2">
+                  <Input readOnly value={getOnboardingLink(selectedStaff.id) || ''} className="text-xs h-8 font-mono" />
+                  <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(selectedStaff.id)} className="shrink-0 gap-1">
+                    {onboardingLinkCopied === selectedStaff.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                  disabled={ensureOnboardingMutation.isPending}
+                  onClick={() => ensureOnboardingMutation.mutate(selectedStaff)}>
+                  {ensureOnboardingMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                  Generate Onboarding Link
+                </Button>
+              )}
+              {obStatus?.submitted && !obStatus.reviewed && (
+                <Button size="sm" className="gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
+                  disabled={markReviewedMutation.isPending}
+                  onClick={() => markReviewedMutation.mutate(selectedStaff.id)}>
+                  {markReviewedMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Mark as Reviewed
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
+        <StaffOnboardingSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPerformanceSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
@@ -224,6 +341,15 @@ export default function StaffPage() {
                    <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
                    {perfBadges[m.id] && perfBadges[m.id].badge !== '—' && (
                      <Badge className={`mt-1 text-[10px] ${perfBadges[m.id].badgeColor}`}>{perfBadges[m.id].badge}</Badge>
+                   )}
+                   {onboardingStatuses[m.id]?.submitted && !onboardingStatuses[m.id]?.reviewed && (
+                     <Badge className="mt-1 text-[10px] bg-amber-100 text-amber-800">⚠ Action Needed</Badge>
+                   )}
+                   {!onboardingStatuses[m.id] && (
+                     <Badge className="mt-1 text-[10px] bg-muted text-muted-foreground">No onboarding</Badge>
+                   )}
+                   {onboardingStatuses[m.id]?.status === 'pending' && (
+                     <Badge className="mt-1 text-[10px] bg-blue-100 text-blue-800">Pending form</Badge>
                    )}
                 </div>
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-lg">
@@ -403,6 +529,33 @@ export default function StaffPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Set Temp Password Dialog */}
+      <Dialog open={!!passwordMember} onOpenChange={(o) => { if (!o) { setPasswordMember(null); setTempPassword(''); } }}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Set Temporary Password</DialogTitle>
+            <DialogDescription>Set a new temporary password for {passwordMember?.full_name}. Share it with them securely.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>New Password *</Label>
+              <Input type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPasswordMember(null); setTempPassword(''); }}>Cancel</Button>
+            <Button
+              onClick={() => passwordMember && setPasswordMutation.mutate({ userId: passwordMember.id, pw: tempPassword })}
+              disabled={tempPassword.length < 6 || setPasswordMutation.isPending}
+              className="bg-primary text-primary-foreground font-bold gap-2"
+            >
+              {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Set Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

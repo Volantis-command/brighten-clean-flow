@@ -1,7 +1,7 @@
-import { Bot, AlertTriangle } from 'lucide-react';
+import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentPosition } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,21 @@ export default function DashboardPage() {
   } = useDashboardData();
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
+
+  // Pending staff onboarding alerts
+  const { data: pendingOnboarding = [] } = useQuery({
+    queryKey: ['pending-staff-onboarding'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('staff_onboarding')
+        .select('user_id, full_name, status, submitted_at, admin_reviewed_at')
+        .eq('status', 'submitted')
+        .is('admin_reviewed_at', null);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
 
   const handleStartJob = async (jobId: string) => {
     if (!user) return;
@@ -184,6 +199,30 @@ export default function DashboardPage() {
       )}
 
       <AlertsSection alerts={alerts} />
+
+      {/* Pending staff onboarding */}
+      {pendingOnboarding.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
+            <ClipboardList className="w-5 h-5" /> Staff Onboarding
+          </h2>
+          <div className="space-y-2">
+            {pendingOnboarding.map((s: any) => (
+              <div key={s.user_id}
+                className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors"
+                onClick={() => navigate('/staff')}>
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="h-5 w-5 text-amber-600 shrink-0" />
+                  <p className="text-sm font-semibold text-foreground">
+                    {s.full_name || 'Staff member'} has submitted their onboarding form — review HR details
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-amber-700 bg-amber-200 px-2 py-0.5 rounded-full">Action Needed</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <QuickActions />
       <RecentQCScores scores={qcDisplayScores} />
       <TeamPerformance />
