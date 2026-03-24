@@ -44,6 +44,7 @@ import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
 import StaffOnboardingPage from "./pages/StaffOnboardingPage";
 import ClientSchedulePage from "./pages/ClientSchedulePage";
+import ClientRebookPage from "./pages/ClientRebookPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -154,6 +155,7 @@ function AppRoutes() {
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
       <Route path="/client/:token/schedule" element={<ClientSchedulePage />} />
+      <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/actions" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><ActionsPage /></ProtectedRoute>} />
