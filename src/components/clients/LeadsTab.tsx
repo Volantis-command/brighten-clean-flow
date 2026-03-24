@@ -45,6 +45,20 @@ export default function LeadsTab() {
 
   const filtered = statusFilter === 'all' ? leads : leads.filter(l => l.status === statusFilter);
 
+  const getNavTarget = (lead: any) => {
+    const s = lead.status;
+    if (['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response'].includes(s)) {
+      return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
+    }
+    if (['client_accepted', 'awaiting_schedule_approval'].includes(s)) {
+      return { pathname: '/actions' };
+    }
+    if (['scheduled', 'in_progress', 'completed'].includes(s)) {
+      return { pathname: '/schedule' };
+    }
+    return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
+  };
+
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   if (leads.length === 0) return (
