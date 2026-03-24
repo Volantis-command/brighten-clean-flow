@@ -158,10 +158,10 @@ export default function OnboardingPage() {
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            title: `New enquiry — ${name}`,
-            message: `${name} submitted onboarding for ${property.property_name}${requestDate ? ` — ${cleanType} on ${requestDate}` : ''}. Review and send quote.`,
+            title: `New Enquiry — ${name}`,
+            message: `${property.address || property.property_name} · ${cleanType}`,
             type: 'new_lead',
-            link: `/quoting`,
+            link: `/quoting?lead=${propertyId}`,
           }))
         );
       }
