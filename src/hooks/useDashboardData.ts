@@ -319,6 +319,7 @@ export function useDashboardData() {
       outstandingThisMonth,
       // Row 4 — Alerts
       pendingRequestsCount,
+      newEnquiriesCount,
       awaitingQuoteCount,
       onboardingNotSentCount,
       idleCleanersCount,
