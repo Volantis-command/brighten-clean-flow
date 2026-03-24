@@ -154,7 +154,28 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
-  // GROUP 3: Awaiting Approval
+  // GROUP 4: Awaiting Client Response (quote sent, waiting for YES/NO)
+  const { data: awaitingResponse = [] } = useQuery({
+    queryKey: ['actions-awaiting-response'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('quotes')
+        .select('id, client_name, client_phone, property_address, property_name, clean_type, quote_sent_at, created_at')
+        .eq('status', 'quote_sent')
+        .order('quote_sent_at', { ascending: true });
+      return (data || []).map((q: any) => ({
+        id: `ar-${q.id}`,
+        group: 'awaiting_response',
+        title: `Quote sent — awaiting response · ${q.client_name || 'Client'}`,
+        subtitle: `${q.property_address || q.property_name || ''} · ${q.clean_type || ''}`.trim(),
+        timestamp: q.quote_sent_at || q.created_at,
+        path: '/quoting',
+      }));
+    },
+    enabled: isAdmin,
+  });
+
+  // GROUP 5: Awaiting Approval
   const { data: awaitingApproval = [] } = useQuery({
     queryKey: ['actions-awaiting-approval'],
     queryFn: async () => {
@@ -264,6 +285,7 @@ export function useActionsData() {
     urgentJobs.length +
     newEnquiries.length +
     awaitingQuote.length +
+    awaitingResponse.length +
     awaitingApproval.length +
     bookingRequests.length +
     unreadMessages.length +
@@ -274,6 +296,7 @@ export function useActionsData() {
     urgentJobs,
     newEnquiries,
     awaitingQuote,
+    awaitingResponse,
     awaitingApproval,
     bookingRequests,
     unreadMessages,

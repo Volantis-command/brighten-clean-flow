@@ -60,7 +60,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Send quote SMS (new professional quote link) ───
+    // ─── Send detailed quote SMS with line items ───
+    if (type === 'send_quote_detail_sms') {
+      const { to, first_name, property_address, clean_type, bedrooms, bathrooms, total_inc_gst } = body;
+      const totalFormatted = Number(total_inc_gst || 0).toFixed(2);
+      const message = `Hi ${first_name}, here's your quote from Brightly Cleaning ✨\n\n📍 ${property_address || 'Property'}\n🧹 ${clean_type || 'Clean'}\n🛏 ${bedrooms || 0} bed · ${bathrooms || 0} bath\n💰 Estimated total: $${totalFormatted}\n\nReply YES to accept or NO to decline.\n\nQuestions? Call us on 0418 878 707.`;
+      const result = await sendTwilioSms(formatAuPhone(to), message);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── Send quote SMS (professional quote link) ───
     if (type === 'send_quote_sms') {
       const { to, first_name, quote_url } = body;
       const message = `Hi ${first_name}, your Brightly Cleaning quote is ready.\n\nView and accept here: ${quote_url}\n\nValid for 48 hours. Questions? 0418 878 707\n\n— Brightly Cleaning 🌿`;

@@ -3,7 +3,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useActionsData, type ActionItem } from '@/hooks/useActionsData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, FileText, CalendarPlus, MessageSquare, Mail, Star, CheckCircle2, ChevronRight } from 'lucide-react';
+import { AlertTriangle, FileText, CalendarPlus, MessageSquare, Mail, Star, CheckCircle2, ChevronRight, Clock } from 'lucide-react';
 
 interface GroupConfig {
   key: string;
@@ -18,6 +18,7 @@ const GROUPS: GroupConfig[] = [
   { key: 'urgent', label: '🔴 Urgent', icon: AlertTriangle, color: 'text-destructive', bgColor: 'bg-destructive/10', borderColor: 'border-destructive/30' },
   { key: 'new_enquiries', label: '🟢 New Enquiries', icon: FileText, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
   { key: 'awaiting_quote', label: '🟡 Awaiting Quote', icon: FileText, color: 'text-[hsl(45,100%,40%)]', bgColor: 'bg-[hsl(45,100%,51%)]/10', borderColor: 'border-[hsl(45,100%,51%)]/30' },
+  { key: 'awaiting_response', label: '📩 Awaiting Client Response', icon: Clock, color: 'text-[hsl(200,80%,50%)]', bgColor: 'bg-[hsl(200,80%,50%)]/10', borderColor: 'border-[hsl(200,80%,50%)]/30' },
   { key: 'awaiting_approval', label: '🟠 Awaiting Approval', icon: CheckCircle2, color: 'text-[hsl(30,100%,50%)]', bgColor: 'bg-[hsl(30,100%,50%)]/10', borderColor: 'border-[hsl(30,100%,50%)]/30' },
   { key: 'booking_requests', label: '📋 Pending Booking Requests', icon: CalendarPlus, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
   { key: 'unread_messages', label: '💬 Unread Messages', icon: MessageSquare, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
@@ -58,6 +59,7 @@ export default function ActionsPage() {
     urgentJobs,
     newEnquiries,
     awaitingQuote,
+    awaitingResponse,
     awaitingApproval,
     bookingRequests,
     unreadMessages,
@@ -70,6 +72,7 @@ export default function ActionsPage() {
     urgent: urgentJobs,
     new_enquiries: newEnquiries,
     awaiting_quote: awaitingQuote,
+    awaiting_response: awaitingResponse,
     awaiting_approval: awaitingApproval,
     booking_requests: bookingRequests,
     unread_messages: unreadMessages,
@@ -81,6 +84,7 @@ export default function ActionsPage() {
     urgent: 'View',
     new_enquiries: 'Send Quote',
     awaiting_quote: 'Set Price',
+    awaiting_response: 'View',
     awaiting_approval: 'Confirm',
     booking_requests: 'Review',
     unread_messages: 'Reply',
