@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, CheckCircle, Clock, CalendarDays, DollarSign, Receipt,
-  AlertTriangle, CalendarPlus, FileText, UserX, Users
+  AlertTriangle, CalendarPlus, FileText, UserX, Users, UserPlus
 } from 'lucide-react';
 
 interface KPI {
