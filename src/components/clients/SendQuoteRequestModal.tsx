@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
-const BASE_URL = window.location.origin;
+const BASE_URL = getAppBaseUrl();
 
 export default function SendQuoteRequestModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const queryClient = useQueryClient();
