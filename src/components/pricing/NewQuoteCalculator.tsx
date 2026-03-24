@@ -317,16 +317,60 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     onError: (e: any) => toast.error(e.message),
   });
 
+  const buildSmsMessage = () => {
+    const firstName = (form.clientName || 'there').split(' ')[0];
+    return `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath\n💰 Total: $${result.sellPriceIncGst.toFixed(2)}\n\nReply YES to accept or NO to decline.`;
+  };
+
   const copyForWhatsApp = () => {
-    const ref = editQuote?.reference || 'BQ-NEW';
-    const price = result.sellPriceIncGst;
-    const discLine = result.discountedPrice
-      ? `\nDiscounted price available: $${result.discountedPrice.toFixed(2)} — ask us for details`
-      : '';
-    const text = `Hi ${form.clientName || 'there'}, here's your Brightly quote:\n\n📍 ${form.propertyName || form.propertyAddress || 'Property'}\n🧹 ${form.cleanType}${hasLinen ? '\n🛏️ Linen included' : ''}${showConsumables ? '\n🧴 Consumables included' : ''}\n\n💰 Total: $${price.toFixed(2)} AUD (incl. GST)${discLine}\n\nQuote ref: ${ref}\nValid for 30 days. Reply to confirm or ask any questions. 😊\n\n— Brightly Cleaning\n📞 0418 878 707`;
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(buildSmsMessage());
     toast.success('Copied for WhatsApp!');
   };
+
+  const [quoteSent, setQuoteSent] = useState(false);
+
+  const sendQuoteMutation = useMutation({
+    mutationFn: async () => {
+      // 1. Save quote with status 'quote_sent'
+      await saveMutation.mutateAsync('quote_sent');
+
+      // 2. Format phone to +61
+      let phone = (form.clientPhone || '').replace(/\s+/g, '');
+      if (phone.startsWith('0')) phone = '+61' + phone.slice(1);
+      if (!phone.startsWith('+')) phone = '+61' + phone;
+
+      // 3. Send SMS via edge function
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phone, message: buildSmsMessage() }),
+      });
+
+      // 4. Create action alert for admins
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+      if (admins?.length) {
+        await supabase.from('notifications').insert(
+          admins.map((a: any) => ({
+            user_id: a.user_id,
+            title: `Quote sent — awaiting response · ${form.clientName || 'Client'}`,
+            message: `${form.propertyAddress || form.propertyName || 'Property'} · ${form.cleanType}`,
+            type: 'quote_sent',
+            link: '/actions?filter=awaiting_response',
+          }))
+        );
+      }
+    },
+    onSuccess: () => {
+      setQuoteSent(true);
+      toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-awaiting-response'] });
+    },
+    onError: (e: any) => toast.error(`Failed to send: ${e.message}`),
+  });
+
+  const canSendQuote = !!form.clientPhone.trim() && result.sellPriceIncGst > 0;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
