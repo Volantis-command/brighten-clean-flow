@@ -1,7 +1,7 @@
-import { Bot, AlertTriangle } from 'lucide-react';
+import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentPosition } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
