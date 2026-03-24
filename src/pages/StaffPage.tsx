@@ -342,6 +342,15 @@ export default function StaffPage() {
                    {perfBadges[m.id] && perfBadges[m.id].badge !== '—' && (
                      <Badge className={`mt-1 text-[10px] ${perfBadges[m.id].badgeColor}`}>{perfBadges[m.id].badge}</Badge>
                    )}
+                   {onboardingStatuses[m.id]?.submitted && !onboardingStatuses[m.id]?.reviewed && (
+                     <Badge className="mt-1 text-[10px] bg-amber-100 text-amber-800">⚠ Action Needed</Badge>
+                   )}
+                   {!onboardingStatuses[m.id] && (
+                     <Badge className="mt-1 text-[10px] bg-muted text-muted-foreground">No onboarding</Badge>
+                   )}
+                   {onboardingStatuses[m.id]?.status === 'pending' && (
+                     <Badge className="mt-1 text-[10px] bg-blue-100 text-blue-800">Pending form</Badge>
+                   )}
                 </div>
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-lg">
                   {(m.full_name || '?')[0].toUpperCase()}
