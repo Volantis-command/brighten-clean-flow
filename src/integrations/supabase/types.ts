@@ -1398,6 +1398,93 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_onboarding: {
+        Row: {
+          abn: string | null
+          address: string | null
+          admin_reviewed_at: string | null
+          admin_reviewed_by: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_bsb: string | null
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          full_name: string | null
+          id: string
+          is_contractor: boolean | null
+          onboarding_token: string
+          phone: string | null
+          preferred_name: string | null
+          status: string
+          submitted_at: string | null
+          super_fund_name: string | null
+          super_member_number: string | null
+          tfn: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          abn?: string | null
+          address?: string | null
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_bsb?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          full_name?: string | null
+          id?: string
+          is_contractor?: boolean | null
+          onboarding_token?: string
+          phone?: string | null
+          preferred_name?: string | null
+          status?: string
+          submitted_at?: string | null
+          super_fund_name?: string | null
+          super_member_number?: string | null
+          tfn?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          abn?: string | null
+          address?: string | null
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_bsb?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          full_name?: string | null
+          id?: string
+          is_contractor?: boolean | null
+          onboarding_token?: string
+          phone?: string | null
+          preferred_name?: string | null
+          status?: string
+          submitted_at?: string | null
+          super_fund_name?: string | null
+          super_member_number?: string | null
+          tfn?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       time_entries: {
         Row: {
           approved: boolean | null
