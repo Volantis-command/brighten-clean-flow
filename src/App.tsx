@@ -160,7 +160,7 @@ function AppRoutes() {
       <Route path="/client-login" element={<AuthenticatedArea><ClientLoginPage /></AuthenticatedArea>} />
 
       {/* Root — always redirect to login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<RootRedirect />} />
 
       {/* Client portal */}
       <Route element={<AuthenticatedArea><ClientRoute><ClientPortalLayout /></ClientRoute></AuthenticatedArea>}>
