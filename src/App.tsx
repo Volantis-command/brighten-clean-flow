@@ -127,6 +127,23 @@ function SpaRedirectHandler() {
   return null;
 }
 
+function RootRedirect() {
+  const navigate = useNavigate();
+  const redirect = sessionStorage.getItem('spa-redirect');
+
+  useEffect(() => {
+    if (redirect) {
+      sessionStorage.removeItem('spa-redirect');
+      navigate(redirect, { replace: true });
+    }
+  }, [redirect, navigate]);
+
+  if (redirect) {
+    return <BrandedLoading />;
+  }
+  return <Navigate to="/login" replace />;
+}
+
 function AuthenticatedArea({ children }: { children: React.ReactNode }) {
   return (
     <AppErrorBoundary>
@@ -143,7 +160,7 @@ function AppRoutes() {
       <Route path="/client-login" element={<AuthenticatedArea><ClientLoginPage /></AuthenticatedArea>} />
 
       {/* Root — always redirect to login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<RootRedirect />} />
 
       {/* Client portal */}
       <Route element={<AuthenticatedArea><ClientRoute><ClientPortalLayout /></ClientRoute></AuthenticatedArea>}>
