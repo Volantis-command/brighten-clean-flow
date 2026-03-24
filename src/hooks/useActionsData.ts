@@ -88,7 +88,51 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
-  // GROUP 2: Awaiting Quote
+  // GROUP 2: New Enquiries — onboarded properties with no jobs yet (need quote)
+  const { data: newEnquiries = [] } = useQuery({
+    queryKey: ['actions-new-enquiries'],
+    queryFn: async () => {
+      // Get all onboarded client_properties
+      const { data: onboarded } = await supabase
+        .from('client_properties')
+        .select('id, client_id, property_id, created_at, properties(property_name, address, client_name, bedrooms, bathrooms)')
+        .eq('onboard_used', true);
+
+      if (!onboarded?.length) return [];
+
+      // Get property IDs that already have jobs
+      const propertyIds = onboarded.map((cp: any) => cp.property_id);
+      const { data: existingJobs } = await supabase
+        .from('jobs')
+        .select('property_id')
+        .in('property_id', propertyIds);
+
+      // Also check if a quote has been sent for these properties
+      const { data: existingQuotes } = await supabase
+        .from('quotes')
+        .select('property_id')
+        .in('property_id', propertyIds)
+        .not('quote_sent_at', 'is', null);
+
+      const propsWithJobs = new Set((existingJobs || []).map((j: any) => j.property_id));
+      const propsWithQuotes = new Set((existingQuotes || []).map((q: any) => q.property_id));
+
+      return onboarded
+        .filter((cp: any) => !propsWithJobs.has(cp.property_id) && !propsWithQuotes.has(cp.property_id))
+        .map((cp: any) => ({
+          id: `enquiry-${cp.id}`,
+          group: 'new_enquiries',
+          title: `New enquiry — ${(cp.properties as any)?.client_name || 'Client'}`,
+          subtitle: `${(cp.properties as any)?.property_name || ''} · ${(cp.properties as any)?.address || ''}`.trim(),
+          timestamp: cp.created_at,
+          path: `/quoting`,
+          meta: { propertyId: cp.property_id, clientPropertyId: cp.id },
+        }));
+    },
+    enabled: isAdmin,
+  });
+
+  // GROUP 3: Awaiting Quote (jobs)
   const { data: awaitingQuote = [] } = useQuery({
     queryKey: ['actions-awaiting-quote'],
     queryFn: async () => {
