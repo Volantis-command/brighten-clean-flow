@@ -42,7 +42,7 @@ export const CLIENT_SERVICE_TYPES: string[] = [
 
 // Default estimated hours per service type for quoting
 export const DEFAULT_HOURS: Record<string, number> = {
-  [SERVICE_TYPES.STANDARD_CLEAN]: 2.5,
+  [SERVICE_TYPES.STANDARD_CLEAN]: 2,
   [SERVICE_TYPES.DEEP_CLEAN]: 6,
   [SERVICE_TYPES.BOND_END_OF_LEASE]: 8,
   [SERVICE_TYPES.AIRBNB_TURNOVER]: 3,
