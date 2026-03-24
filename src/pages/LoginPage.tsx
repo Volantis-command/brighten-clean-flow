@@ -106,7 +106,7 @@ export default function LoginPage() {
               <p className="text-destructive text-sm font-semibold text-center">{error}</p>
             )}
             {success && (
-              <p className="text-green-600 text-sm font-semibold text-center">{success}</p>
+              <p className="text-primary text-sm font-semibold text-center">{success}</p>
             )}
 
             <Button
