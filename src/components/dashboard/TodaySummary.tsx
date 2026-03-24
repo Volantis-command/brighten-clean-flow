@@ -63,6 +63,7 @@ export function TodaySummary({ kpi }: Props) {
     {
       title: 'Alerts',
       items: [
+        ...(kpi.newEnquiriesCount > 0 ? [{ label: 'New Enquiries', value: kpi.newEnquiriesCount, icon: UserPlus, bg: 'bg-primary', text: 'text-primary-foreground', path: '/actions?filter=new_enquiries' }] : []),
         ...(kpi.awaitingQuoteCount > 0 ? [{ label: 'Awaiting Quote', value: kpi.awaitingQuoteCount, icon: AlertTriangle, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=awaiting_quote' }] : []),
         ...(kpi.pendingRequestsCount > 0 ? [{ label: 'Booking Requests', value: kpi.pendingRequestsCount, icon: CalendarPlus, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=booking_requests' }] : []),
         ...(kpi.onboardingNotSentCount > 0 ? [{ label: 'Onboarding Unsent', value: kpi.onboardingNotSentCount, icon: FileText, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=onboarding_unsent' }] : []),
