@@ -109,14 +109,10 @@ function AppRoutes() {
     }
   }, [location]);
 
-  if (loading || (user && role === undefined)) {
-    return <RouteLoading />;
-  }
-
   const getHomeRedirect = () => {
-    // Check for pending SPA redirect before sending to login
     const pendingRedirect = sessionStorage.getItem('spa-redirect');
     if (pendingRedirect) return <RouteLoading />;
+    if (loading || (user && role === undefined)) return <RouteLoading />;
     if (!user) return <Navigate to="/login" replace />;
     if (role === 'client') return <Navigate to="/portal" replace />;
     return <Navigate to="/dashboard" replace />;
@@ -124,12 +120,14 @@ function AppRoutes() {
 
   const getLoginRedirect = () => {
     if (!user) return <LoginPage />;
+    if (loading || role === undefined) return <RouteLoading />;
     if (role === 'client') return <Navigate to="/portal" replace />;
     return <Navigate to="/dashboard" replace />;
   };
 
   const getClientLoginRedirect = () => {
     if (!user) return <ClientLoginPage />;
+    if (loading || role === undefined) return <RouteLoading />;
     if (role === 'client') return <Navigate to="/portal" replace />;
     return <Navigate to="/dashboard" replace />;
   };

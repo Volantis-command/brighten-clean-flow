@@ -26,22 +26,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfileAndRole = async (userId: string) => {
     setLoading(true);
 
-    try {
-      const [profileRes, roleRes] = await Promise.all([
-        supabase.from('profiles').select('full_name, email, avatar_url').eq('id', userId).maybeSingle(),
-        supabase.rpc('get_user_role', { _user_id: userId }),
+    const withTimeout = <T,>(promise: Promise<T>, ms: number) =>
+      Promise.race<T>([
+        promise,
+        new Promise<T>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Auth lookup timed out')), ms);
+        }),
       ]);
 
+    try {
+      const [profileRes, roleRes] = await withTimeout(
+        Promise.all([
+          supabase.from('profiles').select('full_name, email, avatar_url').eq('id', userId).maybeSingle(),
+          supabase.rpc('get_user_role', { _user_id: userId }),
+        ]),
+        8000,
+      );
+
       const resolvedRole = (roleRes.data as AppRole | null) ?? null;
-
-      console.log(`User role detected: ${resolvedRole}, redirecting based on role`);
-
       setProfile(profileRes.data ?? null);
       setRole(resolvedRole);
 
       return resolvedRole;
     } catch (err) {
       console.error('Failed to fetch profile/role:', err);
+      setProfile(null);
       setRole(null);
       return null;
     } finally {
