@@ -311,7 +311,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       }
     },
     onSuccess: (_, status) => {
-      toast.success(status === 'sent' ? 'Quote saved & marked as Sent!' : 'Quote saved!');
+      if (status !== 'quote_sent') toast.success(status === 'sent' ? 'Quote saved & marked as Sent!' : 'Quote saved!');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       onSaved?.();
     },
