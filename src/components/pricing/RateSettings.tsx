@@ -21,18 +21,29 @@ type RowDef = {
 
 const SECTIONS: { id: string; title: string; rows: RowDef[] }[] = [
   {
-    id: 'labour',
-    title: 'Labour',
+    id: 'rates',
+    title: 'Hourly Rates (Sell Price inc GST)',
     rows: [
-      { key: 'cleaner_hourly_rate', label: 'Standard Hourly Rate', prefix: '$', step: '0.50' },
-      { key: 'photo_reporting_fee', label: 'Photo Reporting Fee', prefix: '$', step: '1' },
-      { key: 'residential_hourly_rate', label: 'Residential Hourly Rate', prefix: '$', step: '0.50' },
+      { key: 'rate_standard_clean', label: 'Standard Clean', prefix: '$', step: '1', suffix: '/hr inc GST' },
+      { key: 'rate_deep_clean', label: 'Deep Clean', prefix: '$', step: '1', suffix: '/hr inc GST' },
+      { key: 'rate_bond_clean', label: 'Bond / End of Lease', prefix: '$', step: '1', suffix: '/hr inc GST' },
+      { key: 'rate_airbnb_turnover', label: 'Airbnb / Turnover', prefix: '$', step: '1', suffix: '/hr inc GST' },
+      { key: 'rate_post_renovation', label: 'Post-Renovation', prefix: '$', step: '1', suffix: '/hr inc GST' },
+      { key: 'rate_office_commercial', label: 'Office / Commercial', prefix: '$', step: '1', suffix: '/hr inc GST' },
+    ],
+  },
+  {
+    id: 'legacy',
+    title: 'Legacy / Fallback',
+    rows: [
+      { key: 'cleaner_hourly_rate', label: 'Default Hourly Rate (fallback)', prefix: '$', step: '0.50', suffix: 'inc GST' },
+      { key: 'photo_reporting_fee', label: 'Photo Reporting Fee', prefix: '$', step: '1', suffix: 'ex GST' },
       { key: 'deep_clean_multiplier', label: 'Deep Clean Multiplier', suffix: '×', step: '0.1' },
     ],
   },
   {
     id: 'linen',
-    title: 'Linen Rates (per item)',
+    title: 'Linen Rates (per item, cost)',
     rows: [
       { key: 'linen_king_flat_sheet', label: 'King Flat Sheet', prefix: '$' },
       { key: 'linen_queen_flat_sheet', label: 'Queen/Double Flat Sheet', prefix: '$' },
@@ -52,12 +63,22 @@ const SECTIONS: { id: string; title: string; rows: RowDef[] }[] = [
     rows: [
       { key: 'default_gp_percent', label: 'Default GP %', suffix: '(decimal, e.g. 0.40 = 40%)', step: '0.01' },
       { key: 'gst_rate', label: 'GST Rate', suffix: '(10%)', readOnly: true },
-      { key: 'consumable_amenities_kit', label: 'Amenities Kit', prefix: '$', step: '0.50' },
-      { key: 'consumable_wash_kit', label: 'Wash Kit', prefix: '$', step: '0.50' },
-      { key: 'consumable_tea_coffee_kit', label: 'Tea/Coffee Kit', prefix: '$', step: '0.50' },
+      { key: 'consumable_amenities_kit', label: 'Amenities Kit (inc GST)', prefix: '$', step: '0.50' },
+      { key: 'consumable_wash_kit', label: 'Wash Kit (inc GST)', prefix: '$', step: '0.50' },
+      { key: 'consumable_tea_coffee_kit', label: 'Tea/Coffee Kit (inc GST)', prefix: '$', step: '0.50' },
     ],
   },
 ];
+
+// Default values for new rate keys
+const DEFAULTS: Record<string, number> = {
+  rate_standard_clean: 70,
+  rate_deep_clean: 85,
+  rate_bond_clean: 95,
+  rate_airbnb_turnover: 70,
+  rate_post_renovation: 95,
+  rate_office_commercial: 70,
+};
 
 export default function RateSettings() {
   const { data, isLoading } = usePricingSettings();
@@ -70,7 +91,9 @@ export default function RateSettings() {
   const getVal = (key: string): string => {
     if (edits[key] !== undefined) return edits[key];
     if (key === 'gst_rate') return '0.10';
-    return data.map[key] !== undefined ? String(data.map[key]) : '';
+    if (data.map[key] !== undefined) return String(data.map[key]);
+    if (DEFAULTS[key] !== undefined) return String(DEFAULTS[key]);
+    return '';
   };
 
   const getRowId = (key: string): string | null => {
@@ -88,8 +111,15 @@ export default function RateSettings() {
         const num = parseFloat(val);
         if (isNaN(num)) { toast.error(`Invalid number for ${key}`); setSaving(false); return; }
         const id = getRowId(key);
-        if (!id) continue;
-        await updateMut.mutateAsync({ id, value: num });
+        if (id) {
+          await updateMut.mutateAsync({ id, value: num });
+        } else {
+          // Create new pricing setting row
+          const { error } = await (await import('@/integrations/supabase/client')).supabase
+            .from('pricing_settings')
+            .upsert({ key, value: num, label: key, category: 'rates' }, { onConflict: 'key' });
+          if (error) throw error;
+        }
       }
       setEdits({});
       toast.success('Rate settings saved');
@@ -101,14 +131,19 @@ export default function RateSettings() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-yellow-50 border border-yellow-300 p-4 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-        <p className="text-sm font-semibold text-yellow-800">
-          Changing rates here affects all new quotes. Existing saved quotes are not updated.
-        </p>
+      <div className="rounded-2xl bg-accent/10 border border-accent/30 p-4 flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-accent-foreground shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            Rates are SELL PRICES inc GST — what the client pays per hour.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Changing rates affects all new quotes. Existing saved quotes are not updated.
+          </p>
+        </div>
       </div>
 
-      <Accordion type="multiple" defaultValue={['labour', 'linen', 'other']}>
+      <Accordion type="multiple" defaultValue={['rates', 'linen', 'other']}>
         {SECTIONS.map((section) => (
           <AccordionItem key={section.id} value={section.id} className="bg-card rounded-2xl shadow-md mb-3 border-none">
             <AccordionTrigger className="px-5 py-4 hover:no-underline">

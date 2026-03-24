@@ -18,6 +18,7 @@ export default function PriceLivePanel({
   onGpOverrideChange,
   onDiscountGpChange,
   hideConsumables,
+  hourlyRateLabel,
 }: {
   result: CalcResult;
   gpOverride: string;
@@ -25,30 +26,48 @@ export default function PriceLivePanel({
   onGpOverrideChange: (v: string) => void;
   onDiscountGpChange: (v: string) => void;
   hideConsumables?: boolean;
+  hourlyRateLabel?: string;
 }) {
   return (
     <div className="rounded-2xl border-2 border-primary/30 bg-card p-5 space-y-4">
       <div className="text-center">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sell Price (inc GST)</p>
         <p className="text-4xl font-extrabold text-primary">${fmt(result.sellPriceIncGst)}</p>
+        <p className="text-xs text-muted-foreground mt-1">This is what the client pays</p>
       </div>
 
       <div className="space-y-1 text-sm">
-        <Row label="Labour" value={result.labourCost} />
-        {result.linenCost > 0 && <Row label="Linen" value={result.linenCost} />}
-        {!hideConsumables && <Row label="Consumables" value={result.consumablesCost} />}
-        {result.photoReportFee > 0 && <Row label="Photo Report" value={result.photoReportFee} />}
+        <Row label="Ex-GST" value={result.sellPriceExGst} />
+        <Row label="GST (10%)" value={result.gst} />
+
         <div className="border-t border-border my-2" />
-        <Row label="Total Cost" value={result.totalCost} bold />
+
+        <Row label="Labour cost" value={result.labourCost} />
+        {result.linenCost > 0 && <Row label="Linen cost" value={result.linenCost} />}
+        {!hideConsumables && result.consumablesCostIncGst > 0 && (
+          <>
+            <Row label="Consumables (inc GST)" value={result.consumablesCostIncGst} />
+            <div className="pl-3 text-xs text-muted-foreground">
+              Ex-GST: ${fmt(result.consumablesCostExGst)} · GST: ${fmt(result.consumablesGst)}
+            </div>
+          </>
+        )}
+        {result.photoReportFeeIncGst > 0 && <Row label="Photo Report (inc GST)" value={result.photoReportFeeIncGst} />}
+
+        <div className="border-t border-border my-2" />
+
         <div className="flex justify-between">
           <span className="font-semibold text-muted-foreground">GP%</span>
-          <span className={cn('font-extrabold', gpColor(result.actualGpPercent))}>
-            {(result.actualGpPercent * 100).toFixed(1)}%
+          <span className={cn('font-extrabold', gpColor(result.gpPercent))}>
+            {(result.gpPercent * 100).toFixed(1)}%
           </span>
         </div>
-        <Row label="GP$" value={result.actualGpDollars} />
-        <Row label="GST" value={result.gst} />
+        <Row label="GP$" value={result.gpDollars} />
       </div>
+
+      {hourlyRateLabel && (
+        <p className="text-xs text-muted-foreground text-center">{hourlyRateLabel}</p>
+      )}
 
       <div className="space-y-3 pt-2">
         <div>
@@ -72,12 +91,12 @@ export default function PriceLivePanel({
           />
         </div>
         {result.discountedPrice != null && (
-          <div className="rounded-xl bg-yellow-50 border border-yellow-200 p-3 text-sm space-y-1">
+          <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-sm space-y-1">
             <p className="font-bold text-foreground">
               Discounted Price: <span className="text-primary">${fmt(result.discountedPrice)}</span> incl GST
             </p>
             <p className="text-muted-foreground">
-              GP$ lost: <span className="text-destructive font-semibold">${fmt(result.gpLost || 0)}</span>
+              Saving: <span className="text-destructive font-semibold">${fmt(result.gpLost || 0)}</span>
             </p>
           </div>
         )}
