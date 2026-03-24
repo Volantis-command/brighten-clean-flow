@@ -583,10 +583,10 @@ function StepPricing({ form, updateField }: { form: any; updateField: (f: string
   return (
     <>
       <p className="text-sm text-muted-foreground">Set default pricing for each clean type. These prices auto-fill when jobs are created for this property.</p>
-      <PriceField label="Turnover Clean (ex GST)" value={form.price_turnover} onChange={(v) => updateField('price_turnover', v)} />
+      <PriceField label="Airbnb / Short-Stay Turnover (ex GST)" value={form.price_turnover} onChange={(v) => updateField('price_turnover', v)} />
       <PriceField label="Deep Clean (ex GST)" value={form.price_deep_clean} onChange={(v) => updateField('price_deep_clean', v)} />
-      <PriceField label="End of Lease (ex GST)" value={form.price_end_of_lease} onChange={(v) => updateField('price_end_of_lease', v)} />
-      <PriceField label="Post-Build (ex GST)" value={form.price_post_build} onChange={(v) => updateField('price_post_build', v)} />
+      <PriceField label="Bond / End of Lease Clean (ex GST)" value={form.price_end_of_lease} onChange={(v) => updateField('price_end_of_lease', v)} />
+      <PriceField label="Post-Renovation Clean (ex GST)" value={form.price_post_build} onChange={(v) => updateField('price_post_build', v)} />
       <Field label="Pricing Notes">
         <Textarea value={form.pricing_notes} onChange={(e) => updateField('pricing_notes', e.target.value)} className="rounded-2xl min-h-[80px]" placeholder="e.g. 3 bed, 2 bath, standard rate" />
       </Field>

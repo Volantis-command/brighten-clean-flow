@@ -78,7 +78,15 @@ export default function AppSettingsSection() {
         </div>
         <div>
           <Label>Company Email</Label>
-          <Input type="email" value={form.company_email || ''} onChange={(e) => update('company_email', e.target.value)} placeholder="hello@brightly.com" />
+          <Input type="email" value={form.company_email || ''} onChange={(e) => update('company_email', e.target.value)} placeholder="brendan@brightly.cleaning" />
+        </div>
+        <div>
+          <Label>Secondary Contact Email</Label>
+          <Input type="email" value={form.secondary_contact_email || ''} onChange={(e) => update('secondary_contact_email', e.target.value)} placeholder="soki@brightly.cleaning" />
+        </div>
+        <div>
+          <Label>Secondary Contact Phone</Label>
+          <Input value={form.secondary_contact_phone || ''} onChange={(e) => update('secondary_contact_phone', e.target.value)} placeholder="0426 702 883" />
         </div>
         <div>
           <Label>Default Job Duration (hours)</Label>

@@ -175,9 +175,15 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
           <div>
             <Label>Type of Clean</Label>
             <div className="grid grid-cols-2 gap-2 mt-1">
-              {['house_clean', 'deep_clean', 'end_of_lease', 'other'].map(ct => (
-                <button key={ct} onClick={() => setCleanType(ct)} className={`p-3 rounded-xl border text-sm font-semibold ${cleanType === ct ? 'border-primary bg-primary/5' : 'border-border'}`}>
-                  {ct === 'house_clean' ? 'House Clean' : ct === 'deep_clean' ? 'Deep Clean' : ct === 'end_of_lease' ? 'End of Lease' : 'Other'}
+              {[
+                { value: 'standard_clean', label: 'Standard Clean' },
+                { value: 'deep_clean', label: 'Deep Clean' },
+                { value: 'end_of_lease', label: 'Bond / End of Lease Clean' },
+                { value: 'office_commercial', label: 'Office / Commercial Clean' },
+                { value: 'other', label: 'Other' },
+              ].map(ct => (
+                <button key={ct.value} onClick={() => setCleanType(ct.value)} className={`p-3 rounded-xl border text-sm font-semibold ${cleanType === ct.value ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                  {ct.label}
                 </button>
               ))}
             </div>

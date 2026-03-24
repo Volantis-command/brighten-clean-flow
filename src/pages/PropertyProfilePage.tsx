@@ -197,10 +197,10 @@ export default function PropertyProfilePage() {
       {role === 'admin' && (
         <CollapsibleSection title="Pricing">
           {[
-            { label: 'Turnover Clean', value: property.price_turnover },
+            { label: 'Airbnb / Short-Stay Turnover', value: property.price_turnover },
             { label: 'Deep Clean', value: property.price_deep_clean },
-            { label: 'End of Lease', value: property.price_end_of_lease },
-            { label: 'Post-Build', value: property.price_post_build },
+            { label: 'Bond / End of Lease Clean', value: property.price_end_of_lease },
+            { label: 'Post-Renovation Clean', value: property.price_post_build },
           ].map(({ label, value }) => (
             <div key={label} className="py-2 border-b border-border last:border-b-0">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>

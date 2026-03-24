@@ -12,7 +12,7 @@ import { QuotePhotoUpload } from '@/components/quote/QuotePhotoUpload';
 import { toast } from 'sonner';
 
 const PROPERTY_TYPES = ['House', 'Apartment', 'Townhouse', 'Other'];
-const CLEAN_TYPES = ['House Clean', 'Deep Clean', 'End of Lease Clean', 'Other'];
+const CLEAN_TYPES = ['Standard Clean', 'Deep Clean', 'Bond / End of Lease Clean', 'Office / Commercial Clean', 'Other'];
 const SIZES = [
   { value: 'small', label: 'Small (<100m²)' },
   { value: 'medium', label: 'Medium (100–200m²)' },
@@ -39,7 +39,7 @@ export default function QuoteRequestFormPage() {
   const [toilets, setToilets] = useState(1);
   const [hasGarage, setHasGarage] = useState(false);
   const [propertySize, setPropertySize] = useState('medium');
-  const [cleanType, setCleanType] = useState('House Clean');
+  const [cleanType, setCleanType] = useState('Standard Clean');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('Flexible');
   const [isOccupied, setIsOccupied] = useState(true);
