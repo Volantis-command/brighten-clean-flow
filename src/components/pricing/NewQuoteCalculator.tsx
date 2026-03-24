@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useAuth } from '@/contexts/AuthContext';
-import { calculate, type BedType, type CalcInput } from '@/lib/pricingCalculator';
+import { calculate, type BedType, type CalcInput, type ConsumableSelection } from '@/lib/pricingCalculator';
+import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, normaliseLegacyServiceType } from '@/lib/serviceTypes';
 import PriceLivePanel from './PriceLivePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,6 @@ import { Save, Copy, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const CLEAN_TYPES = ['Turnover Clean', 'Deep Clean', 'Post-Build', 'End of Lease', 'Residential One-Off'] as const;
 const BED_OPTIONS: BedType[] = ['King', 'Queen', 'King Single', 'Single'];
 
 type FormState = {
@@ -35,7 +35,7 @@ type FormState = {
   hours: number;
   bedTypes: BedType[];
   deepCleanMultiplier: number;
-  // Post-build
+  // Post-renovation
   projectName: string;
   builderName: string;
   sqm: number;
@@ -44,19 +44,22 @@ type FormState = {
   propertyTypeBuild: string;
   specialistChemicals: number;
   specialRequirements: string;
-  // End of lease
+  // Bond / End of Lease
   bondCertificate: boolean;
   // Pricing
   gpOverride: string;
   discountGp: string;
   notes: string;
-  // Residential One-Off
+  // Standard Clean (formerly Residential One-Off)
   residentialAddons: { name: string; price: number; enabled: boolean }[];
   includeGst: boolean;
+  // Consumable kits
+  consumables: ConsumableSelection;
+  includePhotoReport: boolean;
 };
 
 const INITIAL: FormState = {
-  cleanType: 'Turnover Clean',
+  cleanType: SERVICE_TYPES.AIRBNB_TURNOVER,
   clientName: '',
   clientPhone: '',
   propertyId: '',
@@ -69,7 +72,7 @@ const INITIAL: FormState = {
   balconies: 0,
   sofaBeds: 0,
   outdoorAreas: false,
-  hours: 3,
+  hours: DEFAULT_HOURS[SERVICE_TYPES.AIRBNB_TURNOVER],
   bedTypes: ['Queen'],
   deepCleanMultiplier: 1.5,
   projectName: '',
@@ -92,6 +95,8 @@ const INITIAL: FormState = {
     { name: 'Wall spot cleaning', price: 20, enabled: false },
   ],
   includeGst: true,
+  consumables: { amenities_kit: true, wash_kit: true, tea_coffee_kit: true },
+  includePhotoReport: false,
 };
 
 export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void }) {
@@ -106,8 +111,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   useEffect(() => {
     if (editQuote) {
       const bt = Array.isArray(editQuote.bed_types) ? editQuote.bed_types : [];
+      const ct = normaliseLegacyServiceType(editQuote.clean_type || editQuote.service_type || SERVICE_TYPES.AIRBNB_TURNOVER);
       setForm({
-        cleanType: editQuote.clean_type || editQuote.service_type || 'Turnover Clean',
+        cleanType: ct,
         clientName: editQuote.client_name || '',
         clientPhone: editQuote.client_phone || '',
         propertyId: editQuote.property_id || '',
@@ -120,7 +126,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         balconies: editQuote.balconies || 0,
         sofaBeds: editQuote.sofa_beds || 0,
         outdoorAreas: editQuote.outdoor_areas || false,
-        hours: editQuote.hours || 3,
+        hours: editQuote.hours || DEFAULT_HOURS[ct] || 3,
         bedTypes: bt.length > 0 ? bt : ['Queen'],
         deepCleanMultiplier: editQuote.deep_clean_multiplier || 1.5,
         projectName: editQuote.project_name || '',
@@ -137,6 +143,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         notes: editQuote.notes || '',
         residentialAddons: Array.isArray(editQuote.extras) && editQuote.extras.length > 0 ? editQuote.extras : INITIAL.residentialAddons,
         includeGst: true,
+        consumables: INITIAL.consumables,
+        includePhotoReport: false,
       });
     }
   }, [editQuote]);
@@ -154,6 +162,14 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   });
 
   const upd = (f: keyof FormState, v: any) => setForm((p) => ({ ...p, [f]: v }));
+
+  // Auto-set default hours when clean type changes
+  useEffect(() => {
+    const defaultHrs = DEFAULT_HOURS[form.cleanType];
+    if (defaultHrs) {
+      setForm((p) => ({ ...p, hours: defaultHrs }));
+    }
+  }, [form.cleanType]);
 
   // Sync bed types array length with bedrooms
   useEffect(() => {
@@ -197,9 +213,26 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     specialistChemicals: form.specialistChemicals,
     gpOverride: form.gpOverride ? parseFloat(form.gpOverride) : null,
     discountGp: form.discountGp ? parseFloat(form.discountGp) : null,
+    consumables: form.consumables,
+    includePhotoReport: form.includePhotoReport,
   };
 
   const result = useMemo(() => calculate(calcInput, rates), [calcInput, rates]);
+
+  const isPostRenovation = form.cleanType === SERVICE_TYPES.POST_RENOVATION;
+  const isBondClean = form.cleanType === SERVICE_TYPES.BOND_END_OF_LEASE;
+  const isDeepClean = form.cleanType === SERVICE_TYPES.DEEP_CLEAN;
+  const isStandard = form.cleanType === SERVICE_TYPES.STANDARD_CLEAN;
+  const isOffice = form.cleanType === SERVICE_TYPES.OFFICE_COMMERCIAL;
+  const hasLinen = !isPostRenovation && !isBondClean && !isStandard && !isOffice;
+  const showConsumables = !isStandard;
+
+  // Standard Clean (residential) pricing
+  const residentialHourlyRate = rates['residential_hourly_rate'] || rates['cleaner_hourly_rate'] || 70;
+  const residentialAddonsTotal = form.residentialAddons.filter(a => a.enabled).reduce((s, a) => s + a.price, 0);
+  const residentialExGst = (residentialHourlyRate * form.hours) + residentialAddonsTotal + (form.includePhotoReport ? 20 : 0);
+  const residentialGst = form.includeGst ? residentialExGst * 0.1 : 0;
+  const residentialIncGst = residentialExGst + residentialGst;
 
   const saveMutation = useMutation({
     mutationFn: async (status: string) => {
@@ -227,15 +260,15 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         outdoor_areas: form.outdoorAreas,
         hours: form.hours,
         bed_types: form.bedTypes,
-        deep_clean_multiplier: form.cleanType === 'Deep Clean' ? form.deepCleanMultiplier : null,
+        deep_clean_multiplier: isDeepClean ? form.deepCleanMultiplier : null,
         labour_cost: result.labourCost,
         linen_cost: result.linenCost,
         consumables_cost: result.consumablesCost,
         total_cost: result.totalCost,
         gp_percent: result.effectiveGp,
-        sell_price_ex_gst: isResidential ? residentialExGst : result.sellPriceExGst,
-        gst: isResidential ? residentialGst : result.gst,
-        sell_price_inc_gst: isResidential ? residentialIncGst : result.sellPriceIncGst,
+        sell_price_ex_gst: isStandard ? residentialExGst : result.sellPriceExGst,
+        gst: isStandard ? residentialGst : result.gst,
+        sell_price_inc_gst: isStandard ? residentialIncGst : result.sellPriceIncGst,
         actual_gp_dollars: result.actualGpDollars,
         actual_gp_percent: result.actualGpPercent,
         discount_gp_percent: form.discountGp ? parseFloat(form.discountGp) : null,
@@ -253,9 +286,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         wet_areas: form.wetAreas || null,
         property_type_build: form.propertyTypeBuild || null,
         special_requirements: form.specialRequirements || null,
-        price: isResidential ? residentialIncGst : result.sellPriceIncGst,
+        price: isStandard ? residentialIncGst : result.sellPriceIncGst,
         service_type: form.cleanType,
-        extras: isResidential ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+        extras: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
       };
 
       if (editQuote) {
@@ -275,28 +308,15 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   });
 
   const copyForWhatsApp = () => {
-    const hasLinen = form.cleanType === 'Turnover Clean' || form.cleanType === 'Deep Clean';
     const ref = editQuote?.reference || 'BQ-NEW';
     const discLine = result.discountedPrice
       ? `\nDiscounted price available: $${result.discountedPrice.toFixed(2)} — ask us for details`
       : '';
-    const text = `Hi ${form.clientName || 'there'}, here's your Brightly quote:\n\n📍 ${form.propertyName || form.propertyAddress || 'Property'}\n🧹 ${form.cleanType}${hasLinen ? '\n🛏️ Linen included' : ''}\n🧴 Consumables included\n\n💰 Total: $${result.sellPriceIncGst.toFixed(2)} AUD (incl. GST)${discLine}\n\nQuote ref: ${ref}\nValid for 30 days. Reply to confirm or ask any questions. 😊\n\n— Brightly Cleaning`;
+    const price = isStandard ? residentialIncGst : result.sellPriceIncGst;
+    const text = `Hi ${form.clientName || 'there'}, here's your Brightly quote:\n\n📍 ${form.propertyName || form.propertyAddress || 'Property'}\n🧹 ${form.cleanType}${hasLinen ? '\n🛏️ Linen included' : ''}${showConsumables ? '\n🧴 Consumables included' : ''}\n\n💰 Total: $${price.toFixed(2)} AUD (incl. GST)${discLine}\n\nQuote ref: ${ref}\nValid for 30 days. Reply to confirm or ask any questions. 😊\n\n— Brightly Cleaning\n📞 0418 878 707`;
     navigator.clipboard.writeText(text);
     toast.success('Copied for WhatsApp!');
   };
-
-  const isPostBuild = form.cleanType === 'Post-Build';
-  const isEndOfLease = form.cleanType === 'End of Lease';
-  const isDeepClean = form.cleanType === 'Deep Clean';
-  const isResidential = form.cleanType === 'Residential One-Off';
-  const hasLinen = !isPostBuild && !isEndOfLease && !isResidential;
-
-  // Residential pricing
-  const residentialHourlyRate = rates['residential_hourly_rate'] || 55;
-  const residentialAddonsTotal = form.residentialAddons.filter(a => a.enabled).reduce((s, a) => s + a.price, 0);
-  const residentialExGst = (residentialHourlyRate * form.hours) + residentialAddonsTotal;
-  const residentialGst = form.includeGst ? residentialExGst * 0.1 : 0;
-  const residentialIncGst = residentialExGst + residentialGst;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -304,7 +324,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       <div className="flex-1 space-y-5">
         {/* Clean Type Pills */}
         <div className="flex flex-wrap gap-2">
-          {CLEAN_TYPES.map((ct) => (
+          {QUOTE_SERVICE_TYPES.map((ct) => (
             <button
               key={ct}
               onClick={() => upd('cleanType', ct)}
@@ -336,7 +356,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             </Select>
           </div>
 
-          {isPostBuild ? (
+          {isPostRenovation ? (
             <>
               <Field label="Project Name">
                 <Input value={form.projectName} onChange={(e) => upd('projectName', e.target.value)} className="h-12 rounded-xl" />
@@ -368,7 +388,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
           <h3 className="font-extrabold text-foreground">Details</h3>
 
-          {isPostBuild ? (
+          {isPostRenovation ? (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <NumField label="Approx m²" value={form.sqm} onChange={(v) => upd('sqm', v)} />
@@ -397,20 +417,20 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 <NumField label="Bathrooms" value={form.bathrooms} onChange={(v) => upd('bathrooms', v)} />
                 <NumField label="Living Areas" value={form.livingAreas} onChange={(v) => upd('livingAreas', v)} />
                 <NumField label="Kitchens" value={form.kitchens} onChange={(v) => upd('kitchens', v)} />
-                {!isEndOfLease && (
+                {!isBondClean && (
                   <>
                     <NumField label="Balconies" value={form.balconies} onChange={(v) => upd('balconies', v)} />
                     <NumField label="Sofa Beds" value={form.sofaBeds} onChange={(v) => upd('sofaBeds', v)} />
                   </>
                 )}
               </div>
-              {!isEndOfLease && (
+              {!isBondClean && (
                 <div className="flex items-center gap-3">
                   <Switch checked={form.outdoorAreas} onCheckedChange={(v) => upd('outdoorAreas', v)} />
                   <Label className="text-sm font-semibold">Outdoor areas to clean</Label>
                 </div>
               )}
-              {isEndOfLease && (
+              {isBondClean && (
                 <div className="flex items-center gap-3">
                   <Switch checked={form.bondCertificate} onCheckedChange={(v) => upd('bondCertificate', v)} />
                   <Label className="text-sm font-semibold">Bond Clean Certificate Required</Label>
@@ -426,11 +446,44 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           )}
         </div>
 
-        {/* Residential Add-ons */}
-        {isResidential && (
+        {/* Consumable Kits */}
+        {showConsumables && (
+          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
+            <h3 className="font-extrabold text-foreground">Consumable Kits</h3>
+            <p className="text-xs text-muted-foreground">Toggle kits included in this clean. Prices are ex GST.</p>
+            <div className="space-y-3">
+              {CONSUMABLE_KITS.map((kit) => (
+                <div key={kit.key} className="flex items-start gap-3">
+                  <Switch
+                    checked={form.consumables[kit.key as keyof ConsumableSelection]}
+                    onCheckedChange={(v) => upd('consumables', { ...form.consumables, [kit.key]: v })}
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{kit.name} — ${kit.price.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">{kit.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Photo Reporting Fee */}
+        <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <Switch checked={form.includePhotoReport} onCheckedChange={(v) => upd('includePhotoReport', v)} />
+            <div>
+              <p className="text-sm font-semibold">Photo Reporting Fee — $20.00 + GST</p>
+              <p className="text-xs text-muted-foreground">Optional per-clean photo documentation</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Standard Clean Add-ons */}
+        {isStandard && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
             <h3 className="font-extrabold text-foreground">Add-ons</h3>
-            <p className="text-xs text-muted-foreground">Hourly rate: ${residentialHourlyRate}/hr</p>
+            <p className="text-xs text-muted-foreground">Hourly rate: ${residentialHourlyRate}/hr + GST</p>
             <div className="space-y-2">
               {form.residentialAddons.map((addon, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -472,6 +525,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                   <span className="font-semibold">${a.price.toFixed(2)}</span>
                 </div>
               ))}
+              {form.includePhotoReport && (
+                <div className="flex justify-between text-sm">
+                  <span>Photo Report</span>
+                  <span className="font-semibold">$20.00</span>
+                </div>
+              )}
               <div className="border-t pt-2 mt-2 flex justify-between text-sm">
                 <span>Total ex GST</span>
                 <span className="font-bold">${residentialExGst.toFixed(2)}</span>
@@ -529,7 +588,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             discountGp={form.discountGp}
             onGpOverrideChange={(v) => upd('gpOverride', v)}
             onDiscountGpChange={(v) => upd('discountGp', v)}
-            hideConsumables={isResidential}
+            hideConsumables={isStandard}
           />
           <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} />
         </div>
@@ -544,7 +603,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             discountGp={form.discountGp}
             onGpOverrideChange={(v) => upd('gpOverride', v)}
             onDiscountGpChange={(v) => upd('discountGp', v)}
-            hideConsumables={isResidential}
+            hideConsumables={isStandard}
           />
           <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} />
         </div>
