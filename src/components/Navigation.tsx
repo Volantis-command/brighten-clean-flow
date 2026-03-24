@@ -36,6 +36,7 @@ const cleanerMobileItems: NavItem[] = [
 
 export function MobileNav() {
   const { role } = useAuth();
+  const { totalCount } = useActionsData();
 
   // Cleaners get a simplified 3-item nav with bigger tap targets
   if (role === 'cleaner') {
