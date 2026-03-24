@@ -137,6 +137,23 @@ export function useDashboardData() {
     enabled: isAdmin,
   });
 
+  // ── New enquiries (onboarded but no job/quote yet) ──
+  const { data: newEnquiriesCount = 0 } = useQuery({
+    queryKey: ['new-enquiries-count'],
+    queryFn: async () => {
+      const { data: onboarded } = await supabase
+        .from('client_properties')
+        .select('property_id')
+        .eq('onboard_used', true);
+      if (!onboarded?.length) return 0;
+      const propIds = onboarded.map((cp: any) => cp.property_id);
+      const { data: withJobs } = await supabase.from('jobs').select('property_id').in('property_id', propIds);
+      const jobPropIds = new Set((withJobs || []).map((j: any) => j.property_id));
+      return propIds.filter(id => !jobPropIds.has(id)).length;
+    },
+    enabled: isAdmin,
+  });
+
   // ── Awaiting quote jobs ──
   const { data: awaitingQuoteCount = 0 } = useQuery({
     queryKey: ['awaiting-quote-count'],
