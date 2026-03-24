@@ -9,22 +9,20 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending_form: 'bg-blue-100 text-blue-800',
-  form_submitted: 'bg-yellow-100 text-yellow-800',
-  quote_sent: 'bg-purple-100 text-purple-800',
-  accepted: 'bg-green-100 text-green-800',
-  declined: 'bg-red-100 text-red-800',
-  expired: 'bg-gray-100 text-gray-600',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending_form: 'Form Sent',
-  form_submitted: 'Form Submitted',
-  quote_sent: 'Quoted',
-  accepted: 'Accepted',
-  declined: 'Declined',
-  expired: 'Expired',
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pending_form: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
+  form_submitted: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
+  awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
+  quote_sent: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
+  awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
+  client_accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
+  awaiting_schedule_approval: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
+  scheduled: { label: '📅 Scheduled', className: 'bg-primary/10 text-primary' },
+  in_progress: { label: '🔄 In Progress', className: 'bg-sky-100 text-sky-800' },
+  completed: { label: '✅ Completed', className: 'bg-primary/20 text-primary' },
+  quote_declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
+  declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
+  expired: { label: '⏳ Expired', className: 'bg-muted text-muted-foreground' },
 };
 
 export default function LeadsTab() {
