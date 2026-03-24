@@ -13,6 +13,7 @@ import SendQuoteModal from './SendQuoteModal';
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   sent: 'bg-[#FEDB00]/20 text-[#FEDB00] border border-[#FEDB00]',
+  quote_sent: 'bg-[hsl(200,80%,50%)]/20 text-[hsl(200,80%,50%)] border border-[hsl(200,80%,50%)]',
   accepted: 'bg-primary/10 text-primary',
   declined: 'bg-destructive/10 text-destructive',
 };
