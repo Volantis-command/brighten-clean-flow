@@ -287,17 +287,35 @@ export function useActionsData() {
     queryFn: async () => {
       const { data } = await supabase
         .from('jobs')
-        .select('id, scheduled_date, created_at, status, notes, properties(property_name, address, client_name)')
+        .select('id, scheduled_date, scheduled_time, created_at, status, notes, price_inc_gst, linked_quote_id, properties(property_name, address, client_name)')
         .eq('status', 'awaiting_schedule_approval')
         .order('created_at', { ascending: true });
-      return (data || []).map((j: any) => ({
-        id: `as-${j.id}`,
-        group: 'awaiting_schedule',
-        title: `Client selected date — ${(j.properties as any)?.client_name || (j.properties as any)?.property_name || 'Client'}`,
-        subtitle: `${(j.properties as any)?.address || ''} · ${j.scheduled_date || ''}`.trim(),
-        timestamp: j.created_at,
-        path: `/jobs/${j.id}`,
-      }));
+      return (data || []).map((j: any) => {
+        // Parse notes for time preference and frequency
+        const notesStr = j.notes || '';
+        const timePrefMatch = notesStr.match(/Client preferred time: (\w+)/);
+        const freqMatch = notesStr.match(/Frequency: (\w+)/);
+        return {
+          id: `as-${j.id}`,
+          group: 'awaiting_schedule',
+          title: `Client selected date — ${(j.properties as any)?.client_name || (j.properties as any)?.property_name || 'Client'}`,
+          subtitle: `${(j.properties as any)?.address || ''} · ${j.scheduled_date || ''}`.trim(),
+          timestamp: j.created_at,
+          path: undefined, // handled by modal instead
+          meta: {
+            jobId: j.id,
+            scheduledDate: j.scheduled_date,
+            scheduledTime: j.scheduled_time,
+            propertyName: (j.properties as any)?.property_name,
+            propertyAddress: (j.properties as any)?.address,
+            clientName: (j.properties as any)?.client_name,
+            timePreference: timePrefMatch?.[1] || '',
+            frequency: freqMatch?.[1] || 'one_off',
+            priceIncGst: j.price_inc_gst,
+            linkedQuoteId: j.linked_quote_id,
+          },
+        };
+      });
     },
     enabled: isAdmin,
   });
