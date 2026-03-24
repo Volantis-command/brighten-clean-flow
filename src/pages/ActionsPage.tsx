@@ -56,6 +56,7 @@ export default function ActionsPage() {
   const filterGroup = searchParams.get('filter');
   const {
     urgentJobs,
+    newEnquiries,
     awaitingQuote,
     awaitingApproval,
     bookingRequests,
@@ -67,6 +68,7 @@ export default function ActionsPage() {
 
   const dataMap: Record<string, ActionItem[]> = {
     urgent: urgentJobs,
+    new_enquiries: newEnquiries,
     awaiting_quote: awaitingQuote,
     awaiting_approval: awaitingApproval,
     booking_requests: bookingRequests,
@@ -77,6 +79,7 @@ export default function ActionsPage() {
 
   const actionLabels: Record<string, string> = {
     urgent: 'View',
+    new_enquiries: 'Send Quote',
     awaiting_quote: 'Set Price',
     awaiting_approval: 'Confirm',
     booking_requests: 'Review',

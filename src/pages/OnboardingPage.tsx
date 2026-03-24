@@ -144,48 +144,24 @@ export default function OnboardingPage() {
         ].filter(Boolean).join('\n'),
       }).eq('id', propertyId);
 
-      // Create job with status 'awaiting_quote' if date provided — but only if no job exists yet
-      let jobId: string | null = null;
-      if (requestDate) {
-        // Check for existing job from this property to prevent duplicates
-        const { data: existingJob } = await supabase
-          .from('jobs')
-          .select('id')
-          .eq('property_id', propertyId)
-          .eq('source', 'client_portal')
-          .maybeSingle();
-
-        if (!existingJob) {
-          const { data: jobData } = await supabase.from('jobs').insert({
-            property_id: propertyId,
-            scheduled_date: requestDate,
-            scheduled_time: preferredTime === 'Morning (8am-12pm)' ? '08:00' : preferredTime === 'Afternoon (12pm-4pm)' ? '12:00' : null,
-            status: 'awaiting_quote',
-            notes: [cleanType, cleanNotes].filter(Boolean).join(' — ') || null,
-            source: 'client_portal',
-          } as any).select('id').single();
-          jobId = jobData?.id || null;
-        } else {
-          jobId = existingJob.id;
-        }
-      }
+      // Do NOT create a job yet — only create once admin sends a quote
+      // Just mark as onboarded and notify admins
 
       // Mark onboard token as used
       await supabase.from('client_properties').update({ onboard_used: true } as any).eq('id', tokenData.id);
 
-      // Notify admins
+      // Notify admins — link to quoting page with property context
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
         const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', clientId).single();
         const name = profile?.full_name || 'A client';
-        const notifLink = jobId ? `/jobs/${jobId}` : `/clients/${clientId}`;
         await supabase.from('notifications').insert(
           admins.map((a: any) => ({
             user_id: a.user_id,
-            title: 'Onboarding Submitted — Awaiting Quote',
-            message: `${name} submitted onboarding for ${property.property_name}${requestDate ? ` — ${cleanType} on ${requestDate}. Set price to schedule.` : ''}`,
-            type: 'onboarding',
-            link: notifLink,
+            title: `New enquiry — ${name}`,
+            message: `${name} submitted onboarding for ${property.property_name}${requestDate ? ` — ${cleanType} on ${requestDate}` : ''}. Review and send quote.`,
+            type: 'new_lead',
+            link: `/quoting`,
           }))
         );
       }

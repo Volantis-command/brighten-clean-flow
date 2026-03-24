@@ -262,6 +262,7 @@ export function useActionsData() {
 
   const totalCount =
     urgentJobs.length +
+    newEnquiries.length +
     awaitingQuote.length +
     awaitingApproval.length +
     bookingRequests.length +
@@ -271,6 +272,7 @@ export function useActionsData() {
 
   return {
     urgentJobs,
+    newEnquiries,
     awaitingQuote,
     awaitingApproval,
     bookingRequests,
