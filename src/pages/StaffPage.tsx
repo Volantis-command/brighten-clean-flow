@@ -529,6 +529,33 @@ export default function StaffPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Set Temp Password Dialog */}
+      <Dialog open={!!passwordMember} onOpenChange={(o) => { if (!o) { setPasswordMember(null); setTempPassword(''); } }}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Set Temporary Password</DialogTitle>
+            <DialogDescription>Set a new temporary password for {passwordMember?.full_name}. Share it with them securely.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>New Password *</Label>
+              <Input type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPasswordMember(null); setTempPassword(''); }}>Cancel</Button>
+            <Button
+              onClick={() => passwordMember && setPasswordMutation.mutate({ userId: passwordMember.id, pw: tempPassword })}
+              disabled={tempPassword.length < 6 || setPasswordMutation.isPending}
+              className="bg-primary text-primary-foreground font-bold gap-2"
+            >
+              {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Set Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
