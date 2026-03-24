@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewQuoteCalculator from '@/components/pricing/NewQuoteCalculator';
 import SavedQuotesList from '@/components/pricing/SavedQuotesList';
@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function QuotingPage() {
   const location = useLocation();
-  const quoteRequestId = (location.state as any)?.quoteRequestId;
+  const [searchParams] = useSearchParams();
+  const quoteRequestId = (location.state as any)?.quoteRequestId || searchParams.get('lead');
   const [tab, setTab] = useState('new');
   const [editQuote, setEditQuote] = useState<any>(null);
 

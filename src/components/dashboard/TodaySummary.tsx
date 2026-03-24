@@ -63,12 +63,12 @@ export function TodaySummary({ kpi }: Props) {
     {
       title: 'Alerts',
       items: [
-        ...(kpi.newEnquiriesCount > 0 ? [{ label: 'New Enquiries', value: kpi.newEnquiriesCount, icon: UserPlus, bg: 'bg-primary', text: 'text-primary-foreground', path: '/actions?filter=new_enquiries' }] : []),
-        ...(kpi.awaitingQuoteCount > 0 ? [{ label: 'Awaiting Quote', value: kpi.awaitingQuoteCount, icon: AlertTriangle, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=awaiting_quote' }] : []),
-        ...(kpi.pendingRequestsCount > 0 ? [{ label: 'Booking Requests', value: kpi.pendingRequestsCount, icon: CalendarPlus, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=booking_requests' }] : []),
-        ...(kpi.onboardingNotSentCount > 0 ? [{ label: 'Onboarding Unsent', value: kpi.onboardingNotSentCount, icon: FileText, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=onboarding_unsent' }] : []),
-        ...(kpi.idleCleanersCount > 0 ? [{ label: 'Idle Cleaners', value: kpi.idleCleanersCount, icon: Users, bg: 'bg-[hsl(50,100%,50%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=urgent' }] : []),
-        ...(kpi.unassignedJobsCount > 0 ? [{ label: 'Unassigned Jobs', value: kpi.unassignedJobsCount, icon: UserX, bg: 'bg-destructive', text: 'text-destructive-foreground', path: '/actions?filter=urgent' }] : []),
+        ...(kpi.newEnquiriesCount > 0 ? [{ label: 'Quotes Needed', value: kpi.newEnquiriesCount, icon: UserPlus, bg: 'bg-primary', text: 'text-primary-foreground', path: '/actions?filter=quotes_needed' }] : []),
+        ...(kpi.awaitingQuoteCount > 0 ? [{ label: 'Awaiting Quote', value: kpi.awaitingQuoteCount, icon: AlertTriangle, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=quotes_needed' }] : []),
+        ...(kpi.pendingRequestsCount > 0 ? [{ label: 'Booking Requests', value: kpi.pendingRequestsCount, icon: CalendarPlus, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions?filter=awaiting_schedule' }] : []),
+        ...(kpi.onboardingNotSentCount > 0 ? [{ label: 'Onboarding Unsent', value: kpi.onboardingNotSentCount, icon: FileText, bg: 'bg-[hsl(45,100%,51%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions' }] : []),
+        ...(kpi.idleCleanersCount > 0 ? [{ label: 'Idle Cleaners', value: kpi.idleCleanersCount, icon: Users, bg: 'bg-[hsl(50,100%,50%)]', text: 'text-[hsl(162,72%,16%)]', path: '/actions' }] : []),
+        ...(kpi.unassignedJobsCount > 0 ? [{ label: 'Unassigned Jobs', value: kpi.unassignedJobsCount, icon: UserX, bg: 'bg-destructive', text: 'text-destructive-foreground', path: '/actions' }] : []),
       ],
     },
   ];
