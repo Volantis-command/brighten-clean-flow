@@ -18,18 +18,7 @@ interface ScheduleApprovalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: {
-    meta?: {
-      jobId: string;
-      scheduledDate: string;
-      scheduledTime: string | null;
-      propertyName: string;
-      propertyAddress: string;
-      clientName: string;
-      timePreference: string;
-      frequency: string;
-      priceIncGst: number | null;
-      linkedQuoteId: string | null;
-    };
+    meta?: Record<string, any>;
   } | null;
 }
 
