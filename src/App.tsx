@@ -148,6 +148,7 @@ function AppRoutes() {
       <Route path="/onboard/:token" element={<OnboardingPage />} />
       <Route path="/quote/:token" element={<QuoteRequestFormPage />} />
       <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
+      <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
