@@ -3,7 +3,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useActionsData, type ActionItem } from '@/hooks/useActionsData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, FileText, CalendarPlus, MessageSquare, Mail, Star, CheckCircle2, ChevronRight } from 'lucide-react';
+import { AlertTriangle, FileText, CalendarPlus, MessageSquare, Mail, Star, CheckCircle2, ChevronRight, Clock } from 'lucide-react';
 
 interface GroupConfig {
   key: string;
