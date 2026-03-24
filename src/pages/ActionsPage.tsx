@@ -4,30 +4,22 @@ import { formatDistanceToNow } from 'date-fns';
 import { useActionsData, type ActionItem } from '@/hooks/useActionsData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, FileText, CalendarPlus, MessageSquare, Mail, Star, CheckCircle2, ChevronRight, Clock } from 'lucide-react';
+import { FileText, CalendarPlus, MessageSquare, Clock, PlayCircle, CheckCircle2, ChevronRight } from 'lucide-react';
 import { ScheduleApprovalModal } from '@/components/schedule/ScheduleApprovalModal';
 
 interface GroupConfig {
   key: string;
   label: string;
   icon: React.ElementType;
-  color: string;
-  bgColor: string;
-  borderColor: string;
 }
 
 const GROUPS: GroupConfig[] = [
-  { key: 'urgent', label: '🔴 Urgent', icon: AlertTriangle, color: 'text-destructive', bgColor: 'bg-destructive/10', borderColor: 'border-destructive/30' },
-  { key: 'new_enquiries', label: '🟢 New Enquiries', icon: FileText, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
-  { key: 'awaiting_quote', label: '🟡 Awaiting Quote', icon: FileText, color: 'text-[hsl(45,100%,40%)]', bgColor: 'bg-[hsl(45,100%,51%)]/10', borderColor: 'border-[hsl(45,100%,51%)]/30' },
-  { key: 'awaiting_response', label: '📩 Awaiting Client Response', icon: Clock, color: 'text-[hsl(200,80%,50%)]', bgColor: 'bg-[hsl(200,80%,50%)]/10', borderColor: 'border-[hsl(200,80%,50%)]/30' },
-  { key: 'client_accepted', label: '🎉 Client Accepted — Awaiting Date', icon: CheckCircle2, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
-  { key: 'awaiting_schedule', label: '📅 Pending Schedule Approval', icon: CalendarPlus, color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-300' },
-  { key: 'awaiting_approval', label: '🟠 Awaiting Approval', icon: CheckCircle2, color: 'text-[hsl(30,100%,50%)]', bgColor: 'bg-[hsl(30,100%,50%)]/10', borderColor: 'border-[hsl(30,100%,50%)]/30' },
-  { key: 'booking_requests', label: '📋 Pending Booking Requests', icon: CalendarPlus, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
-  { key: 'unread_messages', label: '💬 Unread Messages', icon: MessageSquare, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
-  { key: 'onboarding_unsent', label: '📝 Onboarding Forms Not Sent', icon: Mail, color: 'text-[hsl(45,100%,40%)]', bgColor: 'bg-[hsl(45,100%,51%)]/10', borderColor: 'border-[hsl(45,100%,51%)]/30' },
-  { key: 'new_feedback', label: '⭐ New Feedback', icon: Star, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
+  { key: 'quotes_needed', label: '📝 Quotes Needed', icon: FileText },
+  { key: 'awaiting_response', label: '📩 Awaiting Client Response', icon: Clock },
+  { key: 'awaiting_schedule', label: '📅 Pending Schedule Approval', icon: CalendarPlus },
+  { key: 'unread_messages', label: '💬 Unread Messages', icon: MessageSquare },
+  { key: 'jobs_in_progress', label: '🔄 Jobs In Progress', icon: PlayCircle },
+  { key: 'completed_today', label: '✅ Completed Today', icon: CheckCircle2 },
 ];
 
 function ActionCard({ item, actionLabel, onClick }: { item: ActionItem; actionLabel: string; onClick?: () => void }) {
@@ -68,46 +60,31 @@ export default function ActionsPage() {
   const [approvalItem, setApprovalItem] = useState<ActionItem | null>(null);
 
   const {
-    urgentJobs,
-    newEnquiries,
-    awaitingQuote,
+    quotesNeeded,
     awaitingResponse,
-    clientAccepted,
     awaitingSchedule,
-    awaitingApproval,
-    bookingRequests,
     unreadMessages,
-    onboardingNotSent,
-    newFeedback,
+    jobsInProgress,
+    completedToday,
     totalCount,
   } = useActionsData();
 
   const dataMap: Record<string, ActionItem[]> = {
-    urgent: urgentJobs,
-    new_enquiries: newEnquiries,
-    awaiting_quote: awaitingQuote,
+    quotes_needed: quotesNeeded,
     awaiting_response: awaitingResponse,
-    client_accepted: clientAccepted,
     awaiting_schedule: awaitingSchedule,
-    awaiting_approval: awaitingApproval,
-    booking_requests: bookingRequests,
     unread_messages: unreadMessages,
-    onboarding_unsent: onboardingNotSent,
-    new_feedback: newFeedback,
+    jobs_in_progress: jobsInProgress,
+    completed_today: completedToday,
   };
 
   const actionLabels: Record<string, string> = {
-    urgent: 'View',
-    new_enquiries: 'Send Quote',
-    awaiting_quote: 'Set Price',
+    quotes_needed: 'Send Quote',
     awaiting_response: 'View',
-    client_accepted: 'View',
     awaiting_schedule: 'Approve',
-    awaiting_approval: 'Confirm',
-    booking_requests: 'Review',
     unread_messages: 'Reply',
-    onboarding_unsent: 'Send Now',
-    new_feedback: 'View',
+    jobs_in_progress: 'View',
+    completed_today: 'Review',
   };
 
   const visibleGroups = filterGroup
@@ -137,32 +114,24 @@ export default function ActionsPage() {
 
       {visibleGroups.map(group => {
         const items = dataMap[group.key] || [];
-        if (items.length === 0 && !filterGroup) return null;
+        if (items.length === 0) return null;
 
         return (
           <div key={group.key}>
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-extrabold text-foreground">{group.label}</h2>
-              {items.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{items.length}</Badge>
-              )}
+              <Badge variant="secondary" className="text-xs">{items.length}</Badge>
             </div>
-            {items.length === 0 ? (
-              <div className="bg-card rounded-2xl border border-border p-6 text-center">
-                <p className="text-muted-foreground text-sm">No items in this group.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {items.map(item => (
-                  <ActionCard
-                    key={item.id}
-                    item={item}
-                    actionLabel={actionLabels[group.key]}
-                    onClick={group.key === 'awaiting_schedule' ? () => setApprovalItem(item) : undefined}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="space-y-2">
+              {items.map(item => (
+                <ActionCard
+                  key={item.id}
+                  item={item}
+                  actionLabel={actionLabels[group.key]}
+                  onClick={group.key === 'awaiting_schedule' ? () => setApprovalItem(item) : undefined}
+                />
+              ))}
+            </div>
           </div>
         );
       })}
