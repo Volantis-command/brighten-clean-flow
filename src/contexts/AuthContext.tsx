@@ -24,29 +24,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfileAndRole = async (userId: string) => {
-    setLoading(true);
+    try {
+      const timeoutMs = 5000;
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs);
 
-    const withTimeout = <T,>(promise: Promise<T>, ms: number) =>
-      Promise.race<T>([
-        promise,
-        new Promise<T>((_, reject) => {
-          window.setTimeout(() => reject(new Error('Auth lookup timed out')), ms);
-        }),
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from('profiles').select('full_name, email, avatar_url').eq('id', userId).maybeSingle(),
+        supabase.rpc('get_user_role', { _user_id: userId }),
       ]);
 
-    try {
-      const [profileRes, roleRes] = await withTimeout(
-        Promise.all([
-          supabase.from('profiles').select('full_name, email, avatar_url').eq('id', userId).maybeSingle(),
-          supabase.rpc('get_user_role', { _user_id: userId }),
-        ]),
-        8000,
-      );
+      window.clearTimeout(timer);
 
       const resolvedRole = (roleRes.data as AppRole | null) ?? null;
       setProfile(profileRes.data ?? null);
       setRole(resolvedRole);
-
       return resolvedRole;
     } catch (err) {
       console.error('Failed to fetch profile/role:', err);
@@ -59,12 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // 1. Set up listener FIRST (before getSession)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
+        // role will be fetched by the user effect below
         setRole(undefined);
-        setLoading(true);
       } else {
         setProfile(null);
         setRole(null);
@@ -72,29 +65,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const bootstrapSession = async () => {
+    // 2. Bootstrap: race getSession against a 3-second timeout
+    const bootstrap = async () => {
       try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          window.setTimeout(() => reject(new Error('Initial session lookup timed out')), 5000);
-        });
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          window.setTimeout(() => resolve({ data: { session: null } }), 3000)
+        );
 
-        const { data: { session } } = await Promise.race([
-          supabase.auth.getSession(),
-          timeoutPromise,
-        ]);
+        const { data: { session: s } } = await Promise.race([sessionPromise, timeoutPromise]);
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setRole(undefined);
-          setLoading(true);
-        } else {
+        setSession(s);
+        setUser(s?.user ?? null);
+
+        if (!s?.user) {
+          // No session — immediately mark as not loading so /login renders
           setProfile(null);
           setRole(null);
           setLoading(false);
         }
+        // If there IS a user, the useEffect[user] below will fetch profile/role
       } catch (err) {
-        console.error('Failed to bootstrap auth session:', err);
+        console.error('Auth bootstrap failed:', err);
         setSession(null);
         setUser(null);
         setProfile(null);
@@ -103,14 +95,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    bootstrapSession();
+    bootstrap();
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch profile & role whenever user changes
   useEffect(() => {
     if (!user) return;
-
+    setLoading(true);
     fetchProfileAndRole(user.id);
   }, [user]);
 
@@ -121,8 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error, role: null };
     }
 
+    setLoading(true);
     const resolvedRole = await fetchProfileAndRole(data.user.id);
-
     return { error: null, role: resolvedRole };
   };
 
