@@ -159,10 +159,55 @@ export default function SchedulePage() {
     invalidate();
   }, [nameMap, invalidate]);
 
+  // Awaiting quote/approval jobs (not on calendar but need visibility)
+  const { data: preScheduleJobs = [] } = useQuery({
+    queryKey: ['pre-schedule-jobs'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, status, scheduled_date, created_at, notes, properties(property_name, address, client_name)')
+        .in('status', ['awaiting_quote', 'awaiting_approval'])
+        .order('created_at', { ascending: true });
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
   // Admin calendar view
   if (isAdmin) {
     return (
       <div className="space-y-4">
+        {/* Pre-schedule strip */}
+        {preScheduleJobs.length > 0 && (
+          <div className="bg-[hsl(45,100%,51%)]/10 border border-[hsl(45,100%,51%)]/30 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-5 w-5 text-[hsl(45,100%,40%)]" />
+              <p className="font-bold text-foreground text-sm">
+                ⚠️ {preScheduleJobs.length} job{preScheduleJobs.length !== 1 ? 's' : ''} need{preScheduleJobs.length === 1 ? 's' : ''} attention before scheduling
+              </p>
+            </div>
+            <div className="space-y-2">
+              {preScheduleJobs.map((j: any) => (
+                <div
+                  key={j.id}
+                  onClick={() => navigate(`/jobs/${j.id}`)}
+                  className="bg-card rounded-xl p-3 flex items-center justify-between cursor-pointer hover:shadow-sm transition-shadow border border-border"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-foreground text-sm truncate">
+                      {(j.properties as any)?.client_name || (j.properties as any)?.property_name || 'Unknown'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{(j.properties as any)?.property_name}</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0 text-xs font-bold gap-1">
+                    {j.status === 'awaiting_quote' ? 'Set Price →' : 'Confirm →'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Top bar */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
