@@ -99,7 +99,7 @@ const INITIAL: FormState = {
   includePhotoReport: false,
 };
 
-export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void }) {
+export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void; }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: pricing } = usePricingSettings();

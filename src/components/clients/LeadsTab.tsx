@@ -85,7 +85,8 @@ export default function LeadsTab() {
           </TableHeader>
           <TableBody>
             {filtered.map(lead => (
-              <TableRow key={lead.id}>
+              <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/60"
+                onClick={() => navigate('/quoting', { state: { quoteRequestId: lead.id } })}>
                 <TableCell className="font-semibold text-primary">
                   {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—'}
                 </TableCell>
@@ -100,16 +101,9 @@ export default function LeadsTab() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-1">
-                    {lead.status === 'form_submitted' && (
-                      <Button variant="ghost" size="sm" title="Open in Quoting"
-                        onClick={() => {
-                          navigate('/quoting', { state: { quoteRequestId: lead.id } });
-                        }}>
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" title="View Details"
-                      onClick={() => {
+                    <Button variant="ghost" size="sm" title="Copy form link"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const url = `${window.location.origin}/quote/${lead.token}`;
                         navigator.clipboard.writeText(url);
                         toast.success('Quote form link copied');

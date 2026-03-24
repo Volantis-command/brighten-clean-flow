@@ -1,14 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewQuoteCalculator from '@/components/pricing/NewQuoteCalculator';
 import SavedQuotesList from '@/components/pricing/SavedQuotesList';
 import RateSettings from '@/components/pricing/RateSettings';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function QuotingPage() {
+  const location = useLocation();
+  const quoteRequestId = (location.state as any)?.quoteRequestId;
   const [tab, setTab] = useState('new');
   const [editQuote, setEditQuote] = useState<any>(null);
+
+  // Pre-populate from quote_request (lead) data
+  useEffect(() => {
+    if (!quoteRequestId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('quote_requests')
+        .select('*')
+        .eq('id', quoteRequestId)
+        .single();
+      if (data) {
+        setEditQuote({
+          client_name: [data.first_name, data.last_name].filter(Boolean).join(' '),
+          client_phone: data.phone || '',
+          property_address: data.address || '',
+          bedrooms: data.bedrooms || 1,
+          bathrooms: data.bathrooms || 1,
+          clean_type: data.clean_type || '',
+          notes: data.extra_notes || '',
+          // pass extra fields the calculator can use
+          _toilets: data.toilets,
+          _preferred_date: data.preferred_date,
+          _quote_request_id: data.id,
+        });
+        setTab('new');
+      }
+    })();
+  }, [quoteRequestId]);
 
   const handleEditFromList = (q: any) => {
     setEditQuote(q);
