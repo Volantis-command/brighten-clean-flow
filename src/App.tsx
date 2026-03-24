@@ -1,6 +1,6 @@
-import { Component, useEffect } from "react";
+import { Component } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -127,40 +127,26 @@ function SpaRedirectHandler() {
   return null;
 }
 
+function AuthenticatedArea({ children }: { children: React.ReactNode }) {
+  return (
+    <AppErrorBoundary>
+      <AuthProvider>{children}</AuthProvider>
+    </AppErrorBoundary>
+  );
+}
+
 function AppRoutes() {
-  const { user, role, loading } = useAuth();
-  const location = useLocation();
-
-  // Handle ?redirect= query param from old 404.html fallback
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const redirect = params.get('redirect');
-    if (redirect && location.pathname === '/') {
-      window.location.replace(redirect);
-    }
-  }, [location]);
-
-  // "/" root route — show branded loader while auth resolves, then redirect
-  const getHomeRedirect = () => {
-    const pendingRedirect = sessionStorage.getItem('spa-redirect');
-    if (pendingRedirect) return <BrandedLoading />;
-    if (loading || (user && role === undefined)) return <BrandedLoading />;
-    if (!user) return <Navigate to="/login" replace />;
-    if (role === 'client') return <Navigate to="/portal" replace />;
-    return <Navigate to="/dashboard" replace />;
-  };
-
   return (
     <Routes>
       {/* === FULLY PUBLIC — no auth check at all === */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/client-login" element={<ClientLoginPage />} />
+      <Route path="/client-login" element={<AuthenticatedArea><ClientLoginPage /></AuthenticatedArea>} />
 
-      {/* Root — resolve auth then redirect */}
-      <Route path="/" element={<div style={{background:'#0C463D',color:'white',padding:'40px',fontSize:'24px'}}>APP IS LOADING</div>} />
+      {/* Root — always redirect to login */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/* Client portal */}
-      <Route element={<ClientRoute><ClientPortalLayout /></ClientRoute>}>
+      <Route element={<AuthenticatedArea><ClientRoute><ClientPortalLayout /></ClientRoute></AuthenticatedArea>}>
         <Route path="/portal" element={<ClientPortalPage />} />
         <Route path="/portal/property/:id" element={<ClientPropertyDetailPage />} />
       </Route>
@@ -179,7 +165,7 @@ function AppRoutes() {
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
 
       {/* Protected staff routes */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      <Route element={<AuthenticatedArea><><ActiveClockBanner /><ProtectedRoute><AppLayout /></ProtectedRoute></></AuthenticatedArea>}>
         <Route path="/actions" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><ActionsPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
@@ -218,11 +204,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AuthProvider>
-            <SpaRedirectHandler />
-            <ActiveClockBanner />
-            <AppRoutes />
-          </AuthProvider>
+          <SpaRedirectHandler />
+          <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

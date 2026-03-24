@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,6 @@ import { Label } from '@/components/ui/label';
 
 
 export default function LoginPage() {
-  const { signIn } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,13 +35,12 @@ export default function LoginPage() {
         setIsSignUp(false);
       }
     } else {
-      const { error, role } = await signIn(email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
       if (error) {
         setError(error.message);
       } else {
-        const redirectPath = role === 'client' ? '/portal' : '/dashboard';
-        console.log(`User role detected: ${role ?? 'none'}, redirecting to: ${redirectPath}`);
-        navigate(redirectPath, { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     }
     setLoading(false);
