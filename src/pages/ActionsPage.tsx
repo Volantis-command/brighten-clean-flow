@@ -91,6 +91,8 @@ export default function ActionsPage() {
     new_enquiries: 'Send Quote',
     awaiting_quote: 'Set Price',
     awaiting_response: 'View',
+    client_accepted: 'View',
+    awaiting_schedule: 'Approve',
     awaiting_approval: 'Confirm',
     booking_requests: 'Review',
     unread_messages: 'Reply',

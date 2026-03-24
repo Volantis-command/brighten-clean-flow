@@ -281,11 +281,55 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
+  // GROUP: Awaiting Schedule (client accepted quote, selected date — needs admin approval)
+  const { data: awaitingSchedule = [] } = useQuery({
+    queryKey: ['actions-awaiting-schedule'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, created_at, status, notes, properties(property_name, address, client_name)')
+        .eq('status', 'awaiting_schedule_approval')
+        .order('created_at', { ascending: true });
+      return (data || []).map((j: any) => ({
+        id: `as-${j.id}`,
+        group: 'awaiting_schedule',
+        title: `Client selected date — ${(j.properties as any)?.client_name || (j.properties as any)?.property_name || 'Client'}`,
+        subtitle: `${(j.properties as any)?.address || ''} · ${j.scheduled_date || ''}`.trim(),
+        timestamp: j.created_at,
+        path: `/jobs/${j.id}`,
+      }));
+    },
+    enabled: isAdmin,
+  });
+
+  // GROUP: Client Accepted Quote — awaiting date selection
+  const { data: clientAccepted = [] } = useQuery({
+    queryKey: ['actions-client-accepted'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('quotes')
+        .select('id, client_name, client_phone, property_address, property_name, clean_type, quote_accepted_at, created_at')
+        .eq('status', 'client_accepted')
+        .order('quote_accepted_at', { ascending: true });
+      return (data || []).map((q: any) => ({
+        id: `ca-${q.id}`,
+        group: 'client_accepted',
+        title: `Client accepted quote · ${q.client_name || 'Client'} — awaiting date selection`,
+        subtitle: `${q.property_address || q.property_name || ''} · ${q.clean_type || ''}`.trim(),
+        timestamp: q.quote_accepted_at || q.created_at,
+        path: '/quoting',
+      }));
+    },
+    enabled: isAdmin,
+  });
+
   const totalCount =
     urgentJobs.length +
     newEnquiries.length +
     awaitingQuote.length +
     awaitingResponse.length +
+    clientAccepted.length +
+    awaitingSchedule.length +
     awaitingApproval.length +
     bookingRequests.length +
     unreadMessages.length +
@@ -297,6 +341,8 @@ export function useActionsData() {
     newEnquiries,
     awaitingQuote,
     awaitingResponse,
+    clientAccepted,
+    awaitingSchedule,
     awaitingApproval,
     bookingRequests,
     unreadMessages,
