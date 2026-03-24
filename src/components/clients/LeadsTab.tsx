@@ -3,28 +3,44 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Send, UserPlus } from 'lucide-react';
+import { Loader2, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending_form: 'bg-blue-100 text-blue-800',
-  form_submitted: 'bg-yellow-100 text-yellow-800',
-  quote_sent: 'bg-purple-100 text-purple-800',
-  accepted: 'bg-green-100 text-green-800',
-  declined: 'bg-red-100 text-red-800',
-  expired: 'bg-gray-100 text-gray-600',
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pending_form: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
+  form_submitted: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
+  awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
+  quote_sent: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
+  awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
+  client_accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
+  awaiting_schedule_approval: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
+  scheduled: { label: '📅 Scheduled', className: 'bg-primary/10 text-primary' },
+  in_progress: { label: '🔄 In Progress', className: 'bg-sky-100 text-sky-800' },
+  completed: { label: '✅ Completed', className: 'bg-primary/20 text-primary' },
+  quote_declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
+  declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
+  expired: { label: '⏳ Expired', className: 'bg-muted text-muted-foreground' },
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending_form: 'Form Sent',
-  form_submitted: 'Form Submitted',
-  quote_sent: 'Quoted',
-  accepted: 'Accepted',
-  declined: 'Declined',
-  expired: 'Expired',
+const FILTER_OPTIONS = [
+  { value: 'pending_form', label: '🟡 New Enquiry' },
+  { value: 'quote_sent', label: '📤 Quote Sent' },
+  { value: 'client_accepted', label: '✅ Accepted' },
+  { value: 'scheduled', label: '📅 Scheduled' },
+  { value: 'in_progress', label: '🔄 In Progress' },
+  { value: 'completed', label: '✅ Completed' },
+  { value: 'quote_declined', label: '❌ Declined' },
+  { value: 'expired', label: '⏳ Expired' },
+];
+
+const FILTER_GROUP: Record<string, string[]> = {
+  pending_form: ['pending_form', 'form_submitted', 'awaiting_quote'],
+  quote_sent: ['quote_sent', 'awaiting_client_response'],
+  client_accepted: ['client_accepted', 'awaiting_schedule_approval'],
+  quote_declined: ['quote_declined', 'declined'],
 };
 
 export default function LeadsTab() {
@@ -43,7 +59,26 @@ export default function LeadsTab() {
     },
   });
 
-  const filtered = statusFilter === 'all' ? leads : leads.filter(l => l.status === statusFilter);
+  const filtered = statusFilter === 'all'
+    ? leads
+    : leads.filter(l => {
+        const group = FILTER_GROUP[statusFilter];
+        return group ? group.includes(l.status) : l.status === statusFilter;
+      });
+
+  const getNavTarget = (lead: any) => {
+    const s = lead.status;
+    if (['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response'].includes(s)) {
+      return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
+    }
+    if (['client_accepted', 'awaiting_schedule_approval'].includes(s)) {
+      return { pathname: '/actions' };
+    }
+    if (['scheduled', 'in_progress', 'completed'].includes(s)) {
+      return { pathname: '/schedule' };
+    }
+    return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
+  };
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -62,8 +97,8 @@ export default function LeadsTab() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
+            {FILTER_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -84,36 +119,40 @@ export default function LeadsTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map(lead => (
-              <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/60"
-                onClick={() => navigate('/quoting', { state: { quoteRequestId: lead.id } })}>
-                <TableCell className="font-semibold text-primary">
-                  {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—'}
-                </TableCell>
-                <TableCell className="text-muted-foreground">{lead.phone || '—'}</TableCell>
-                <TableCell className="text-muted-foreground max-w-[200px] truncate">{lead.address || '—'}</TableCell>
-                <TableCell>{lead.clean_type || '—'}</TableCell>
-                <TableCell>{lead.preferred_date ? new Date(lead.preferred_date + 'T00:00:00').toLocaleDateString('en-AU') : '—'}</TableCell>
-                <TableCell>
-                  <Badge className={`${STATUS_COLORS[lead.status] || 'bg-gray-100 text-gray-600'} text-xs font-semibold`}>
-                    {STATUS_LABELS[lead.status] || lead.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" title="Copy form link"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const url = `${window.location.origin}/quote/${lead.token}`;
-                        navigator.clipboard.writeText(url);
-                        toast.success('Quote form link copied');
-                      }}>
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {filtered.map(lead => {
+              const cfg = STATUS_CONFIG[lead.status] || { label: lead.status, className: 'bg-muted text-muted-foreground' };
+              const nav = getNavTarget(lead);
+              return (
+                <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/60"
+                  onClick={() => navigate(nav.pathname, nav.state ? { state: nav.state } : undefined)}>
+                  <TableCell className="font-semibold text-primary">
+                    {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{lead.phone || '—'}</TableCell>
+                  <TableCell className="text-muted-foreground max-w-[200px] truncate">{lead.address || '—'}</TableCell>
+                  <TableCell>{lead.clean_type || '—'}</TableCell>
+                  <TableCell>{lead.preferred_date ? new Date(lead.preferred_date + 'T00:00:00').toLocaleDateString('en-AU') : '—'}</TableCell>
+                  <TableCell>
+                    <Badge className={`${cfg.className} text-xs font-semibold`}>
+                      {cfg.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" title="Copy form link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const url = `${window.location.origin}/quote/${lead.token}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success('Quote form link copied');
+                        }}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
