@@ -41,6 +41,20 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
     border: 'border-l-gray-400',
     label: 'Declined',
   },
+  awaiting_schedule_approval: {
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    dot: 'bg-amber-500',
+    border: 'border-l-amber-500',
+    label: 'Pending Approval',
+  },
+  awaiting_approval: {
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    dot: 'bg-amber-500',
+    border: 'border-l-amber-500',
+    label: 'Awaiting Approval',
+  },
 };
 
 export function getStatusColor(status: string) {
