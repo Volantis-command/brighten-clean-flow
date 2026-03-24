@@ -17,6 +17,7 @@ interface KPI {
   paidThisMonth: number;
   outstandingThisMonth: number;
   pendingRequestsCount: number;
+  newEnquiriesCount: number;
   awaitingQuoteCount: number;
   onboardingNotSentCount: number;
   idleCleanersCount: number;
