@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Component, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -48,6 +48,30 @@ import ClientRebookPage from "./pages/ClientRebookPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+class AppErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background px-10 py-12 text-destructive">
+          <h2 className="text-2xl font-bold">App crashed</h2>
+          <pre className="mt-4 whitespace-pre-wrap text-sm">{String(this.state.error)}</pre>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 /** Branded loading screen — shown while auth resolves. Never a blank div. */
 function BrandedLoading() {
@@ -133,7 +157,7 @@ function AppRoutes() {
       <Route path="/client-login" element={<ClientLoginPage />} />
 
       {/* Root — resolve auth then redirect */}
-      <Route path="/" element={getHomeRedirect()} />
+      <Route path="/" element={<div style={{background:'#0C463D',color:'white',padding:'40px',fontSize:'24px'}}>APP IS LOADING</div>} />
 
       {/* Client portal */}
       <Route element={<ClientRoute><ClientPortalLayout /></ClientRoute>}>
@@ -188,19 +212,21 @@ function AppRoutes() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <SpaRedirectHandler />
-          <ActiveClockBanner />
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <AppErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <SpaRedirectHandler />
+            <ActiveClockBanner />
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;
