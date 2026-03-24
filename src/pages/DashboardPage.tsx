@@ -35,6 +35,21 @@ export default function DashboardPage() {
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
 
+  // Pending staff onboarding alerts
+  const { data: pendingOnboarding = [] } = useQuery({
+    queryKey: ['pending-staff-onboarding'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('staff_onboarding')
+        .select('user_id, full_name, status, submitted_at, admin_reviewed_at')
+        .eq('status', 'submitted')
+        .is('admin_reviewed_at', null);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
   const handleStartJob = async (jobId: string) => {
     if (!user) return;
     let lat: number | null = null;
