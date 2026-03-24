@@ -73,11 +73,15 @@ export default function StaffPage() {
   const { data: staff = [], isLoading } = useStaffList();
   const staffIds = staff.map(s => s.id);
   const { data: perfBadges = {} } = useStaffPerformanceBadges(staffIds);
+  const { data: onboardingStatuses = {} } = useStaffOnboardingStatuses(staffIds);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [passwordMember, setPasswordMember] = useState<StaffMember | null>(null);
+  const [tempPassword, setTempPassword] = useState('');
+  const [onboardingLinkCopied, setOnboardingLinkCopied] = useState('');
 
   // Create form
   const [createEmail, setCreateEmail] = useState('');
