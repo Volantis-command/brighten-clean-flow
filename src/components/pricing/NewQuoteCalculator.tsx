@@ -302,7 +302,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
       };
 
-      if (editQuote) {
+      if (editQuote?.id) {
         const { error } = await supabase.from('quotes').update(payload).eq('id', editQuote.id);
         if (error) throw error;
       } else {
