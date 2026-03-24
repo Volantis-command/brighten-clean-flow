@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { FileText } from 'lucide-react';
+import { FileText, Send, Copy, Link2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { getAppBaseUrl } from '@/lib/appUrl';
+import SendQuoteModal from './SendQuoteModal';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -17,6 +21,8 @@ const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Declined'];
 
 export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void }) {
   const [filter, setFilter] = useState('All');
+  const [sendQuote, setSendQuote] = useState<any>(null);
+  const queryClient = useQueryClient();
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ['quotes'],
@@ -33,6 +39,15 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
   const filtered = filter === 'All'
     ? quotes
     : quotes.filter((q: any) => (q.status || 'draft').toLowerCase() === filter.toLowerCase());
+
+  const handleCopyLink = (e: React.MouseEvent, q: any) => {
+    e.stopPropagation();
+    const token = (q as any).quote_token;
+    if (!token) { toast.error('No quote token available'); return; }
+    const url = `${getAppBaseUrl()}/quote-view/${token}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Quote link copied!');
+  };
 
   return (
     <div className="space-y-4">
@@ -64,32 +79,68 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
       ) : (
         <div className="space-y-3">
           {filtered.map((q: any) => (
-            <button
+            <div
               key={q.id}
-              onClick={() => onEdit?.(q)}
-              className="w-full text-left bg-card rounded-2xl shadow-md p-4 flex items-center justify-between hover:shadow-lg transition-shadow"
+              className="bg-card rounded-2xl shadow-md p-4 hover:shadow-lg transition-shadow"
             >
-              <div className="space-y-1 min-w-0">
-                <p className="font-bold text-foreground truncate">{q.client_name || 'No client'}</p>
-                <p className="text-sm text-muted-foreground truncate">
-                  {q.property_name || '—'} · {q.clean_type || q.service_type || '—'}
-                </p>
-                {q.reference && <p className="text-xs font-mono text-muted-foreground">{q.reference}</p>}
-                <p className="text-xs text-muted-foreground">{format(new Date(q.created_at), 'dd MMM yyyy')}</p>
+              <button
+                onClick={() => onEdit?.(q)}
+                className="w-full text-left flex items-center justify-between"
+              >
+                <div className="space-y-1 min-w-0">
+                  <p className="font-bold text-foreground truncate">{q.client_name || 'No client'}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {q.property_name || '—'} · {q.clean_type || q.service_type || '—'}
+                  </p>
+                  {q.reference && <p className="text-xs font-mono text-muted-foreground">{q.reference}</p>}
+                  <p className="text-xs text-muted-foreground">{format(new Date(q.created_at), 'dd MMM yyyy')}</p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="font-extrabold text-foreground text-lg">
+                    {q.sell_price_inc_gst != null
+                      ? `$${Number(q.sell_price_inc_gst).toFixed(0)}`
+                      : q.price != null ? `$${Number(q.price).toFixed(0)}` : '—'}
+                  </span>
+                  <Badge className={cn('capitalize', STATUS_COLORS[(q.status || 'draft').toLowerCase()])}>
+                    {q.status || 'draft'}
+                  </Badge>
+                </div>
+              </button>
+
+              {/* Action buttons */}
+              <div className="flex gap-2 mt-3 pt-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSendQuote(q);
+                  }}
+                >
+                  <Send className="w-3 h-3" /> Send Quote
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs flex-1"
+                  onClick={(e) => handleCopyLink(e, q)}
+                >
+                  <Link2 className="w-3 h-3" /> Copy Link
+                </Button>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="font-extrabold text-foreground text-lg">
-                  {q.sell_price_inc_gst != null
-                    ? `$${Number(q.sell_price_inc_gst).toFixed(0)}`
-                    : q.price != null ? `$${Number(q.price).toFixed(0)}` : '—'}
-                </span>
-                <Badge className={cn('capitalize', STATUS_COLORS[(q.status || 'draft').toLowerCase()])}>
-                  {q.status || 'draft'}
-                </Badge>
-              </div>
-            </button>
+            </div>
           ))}
         </div>
+      )}
+
+      {sendQuote && (
+        <SendQuoteModal
+          open={!!sendQuote}
+          onClose={() => setSendQuote(null)}
+          quote={sendQuote}
+          onSent={() => queryClient.invalidateQueries({ queryKey: ['quotes'] })}
+        />
       )}
     </div>
   );

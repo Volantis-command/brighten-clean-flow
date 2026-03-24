@@ -1209,6 +1209,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          acceptance_method: string | null
           actual_gp_dollars: number | null
           actual_gp_percent: number | null
           balconies: number | null
@@ -1245,6 +1246,10 @@ export type Database = {
           property_id: string | null
           property_name: string | null
           property_type_build: string | null
+          quote_accepted_at: string | null
+          quote_declined_at: string | null
+          quote_sent_at: string | null
+          quote_token: string | null
           reference: string | null
           sell_price_ex_gst: number | null
           sell_price_inc_gst: number | null
@@ -1254,11 +1259,15 @@ export type Database = {
           specialist_chemicals: number | null
           sqm: number | null
           status: string | null
+          tcs_accepted: boolean | null
+          tcs_accepted_at: string | null
+          tcs_version: string | null
           total_cost: number | null
           wet_areas: number | null
           xero_invoice_id: string | null
         }
         Insert: {
+          acceptance_method?: string | null
           actual_gp_dollars?: number | null
           actual_gp_percent?: number | null
           balconies?: number | null
@@ -1295,6 +1304,10 @@ export type Database = {
           property_id?: string | null
           property_name?: string | null
           property_type_build?: string | null
+          quote_accepted_at?: string | null
+          quote_declined_at?: string | null
+          quote_sent_at?: string | null
+          quote_token?: string | null
           reference?: string | null
           sell_price_ex_gst?: number | null
           sell_price_inc_gst?: number | null
@@ -1304,11 +1317,15 @@ export type Database = {
           specialist_chemicals?: number | null
           sqm?: number | null
           status?: string | null
+          tcs_accepted?: boolean | null
+          tcs_accepted_at?: string | null
+          tcs_version?: string | null
           total_cost?: number | null
           wet_areas?: number | null
           xero_invoice_id?: string | null
         }
         Update: {
+          acceptance_method?: string | null
           actual_gp_dollars?: number | null
           actual_gp_percent?: number | null
           balconies?: number | null
@@ -1345,6 +1362,10 @@ export type Database = {
           property_id?: string | null
           property_name?: string | null
           property_type_build?: string | null
+          quote_accepted_at?: string | null
+          quote_declined_at?: string | null
+          quote_sent_at?: string | null
+          quote_token?: string | null
           reference?: string | null
           sell_price_ex_gst?: number | null
           sell_price_inc_gst?: number | null
@@ -1354,6 +1375,9 @@ export type Database = {
           specialist_chemicals?: number | null
           sqm?: number | null
           status?: string | null
+          tcs_accepted?: boolean | null
+          tcs_accepted_at?: string | null
+          tcs_version?: string | null
           total_cost?: number | null
           wet_areas?: number | null
           xero_invoice_id?: string | null
