@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Save, Copy, Send } from 'lucide-react';
+import { Save, Copy, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -299,6 +299,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         price: result.sellPriceIncGst,
         service_type: form.cleanType,
         extras: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+        ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
       };
 
       if (editQuote) {
@@ -310,23 +311,67 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       }
     },
     onSuccess: (_, status) => {
-      toast.success(status === 'sent' ? 'Quote saved & marked as Sent!' : 'Quote saved!');
+      if (status !== 'quote_sent') toast.success(status === 'sent' ? 'Quote saved & marked as Sent!' : 'Quote saved!');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       onSaved?.();
     },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const buildSmsMessage = () => {
+    const firstName = (form.clientName || 'there').split(' ')[0];
+    return `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath\n💰 Total: $${result.sellPriceIncGst.toFixed(2)}\n\nReply YES to accept or NO to decline.`;
+  };
+
   const copyForWhatsApp = () => {
-    const ref = editQuote?.reference || 'BQ-NEW';
-    const price = result.sellPriceIncGst;
-    const discLine = result.discountedPrice
-      ? `\nDiscounted price available: $${result.discountedPrice.toFixed(2)} — ask us for details`
-      : '';
-    const text = `Hi ${form.clientName || 'there'}, here's your Brightly quote:\n\n📍 ${form.propertyName || form.propertyAddress || 'Property'}\n🧹 ${form.cleanType}${hasLinen ? '\n🛏️ Linen included' : ''}${showConsumables ? '\n🧴 Consumables included' : ''}\n\n💰 Total: $${price.toFixed(2)} AUD (incl. GST)${discLine}\n\nQuote ref: ${ref}\nValid for 30 days. Reply to confirm or ask any questions. 😊\n\n— Brightly Cleaning\n📞 0418 878 707`;
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(buildSmsMessage());
     toast.success('Copied for WhatsApp!');
   };
+
+  const [quoteSent, setQuoteSent] = useState(false);
+
+  const sendQuoteMutation = useMutation({
+    mutationFn: async () => {
+      // 1. Save quote with status 'quote_sent'
+      await saveMutation.mutateAsync('quote_sent');
+
+      // 2. Format phone to +61
+      let phone = (form.clientPhone || '').replace(/\s+/g, '');
+      if (phone.startsWith('0')) phone = '+61' + phone.slice(1);
+      if (!phone.startsWith('+')) phone = '+61' + phone;
+
+      // 3. Send SMS via edge function
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phone, message: buildSmsMessage() }),
+      });
+
+      // 4. Create action alert for admins
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+      if (admins?.length) {
+        await supabase.from('notifications').insert(
+          admins.map((a: any) => ({
+            user_id: a.user_id,
+            title: `Quote sent — awaiting response · ${form.clientName || 'Client'}`,
+            message: `${form.propertyAddress || form.propertyName || 'Property'} · ${form.cleanType}`,
+            type: 'quote_sent',
+            link: '/actions?filter=awaiting_response',
+          }))
+        );
+      }
+    },
+    onSuccess: () => {
+      setQuoteSent(true);
+      toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-awaiting-response'] });
+    },
+    onError: (e: any) => toast.error(`Failed to send: ${e.message}`),
+  });
+
+  const canSendQuote = !!form.clientPhone.trim() && result.sellPriceIncGst > 0;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -589,7 +634,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} />
         </div>
       </div>
 
@@ -605,24 +650,41 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} />
         </div>
       </div>
     </div>
   );
 }
 
-function ActionButtons({ saveMutation, copyForWhatsApp, editQuote }: { saveMutation: any; copyForWhatsApp: () => void; editQuote?: any }) {
+function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent }: {
+  saveMutation: any; copyForWhatsApp: () => void; editQuote?: any;
+  sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean;
+}) {
   return (
     <div className="space-y-2">
       <Button className="w-full gap-2" size="lg" onClick={() => saveMutation.mutate('draft')} disabled={saveMutation.isPending}>
         <Save className="h-4 w-4" /> {editQuote ? 'Update Quote' : 'Save Quote'}
       </Button>
+
+      {quoteSent ? (
+        <Button className="w-full gap-2 bg-muted text-muted-foreground cursor-default" size="lg" disabled>
+          <CheckCircle2 className="h-4 w-4" /> Quote Sent ✓
+        </Button>
+      ) : (
+        <Button
+          className="w-full gap-2 bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-primary-foreground font-bold"
+          size="lg"
+          onClick={() => sendQuoteMutation.mutate()}
+          disabled={!canSendQuote || sendQuoteMutation.isPending}
+        >
+          {sendQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          Send Quote to Client
+        </Button>
+      )}
+
       <Button variant="outline" className="w-full gap-2" onClick={copyForWhatsApp}>
-        <Copy className="h-4 w-4" /> Copy for WhatsApp
-      </Button>
-      <Button variant="outline" className="w-full gap-2" onClick={() => saveMutation.mutate('sent')} disabled={saveMutation.isPending}>
-        <Send className="h-4 w-4" /> Save & Mark Sent
+        <Copy className="h-4 w-4" /> Copy Quote for WhatsApp
       </Button>
     </div>
   );
