@@ -285,6 +285,7 @@ export function useActionsData() {
     urgentJobs.length +
     newEnquiries.length +
     awaitingQuote.length +
+    awaitingResponse.length +
     awaitingApproval.length +
     bookingRequests.length +
     unreadMessages.length +
@@ -295,6 +296,7 @@ export function useActionsData() {
     urgentJobs,
     newEnquiries,
     awaitingQuote,
+    awaitingResponse,
     awaitingApproval,
     bookingRequests,
     unreadMessages,
