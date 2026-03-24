@@ -130,7 +130,7 @@ export function DesktopSidebar() {
       </div>
 
       <nav className="flex-1 px-3 space-y-1">
-        {filtered.map((item) => (
+        {filteredWithBadge.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -143,7 +143,12 @@ export function DesktopSidebar() {
             }
           >
             <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
+            <span className="flex-1">{item.label}</span>
+            {item.badge && item.badge > 0 && (
+              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                {item.badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
