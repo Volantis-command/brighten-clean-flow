@@ -163,10 +163,71 @@ export default function StaffPage() {
     setEditRole(m.role);
   };
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: (email: string) =>
+      invokeFn({ action: 'reset_password', email }),
+    onSuccess: () => toast.success('Password reset email sent!'),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const setPasswordMutation = useMutation({
+    mutationFn: ({ userId, pw }: { userId: string; pw: string }) =>
+      invokeFn({ action: 'set_password', user_id: userId, password: pw }),
+    onSuccess: () => {
+      toast.success('Password updated!');
+      setPasswordMember(null);
+      setTempPassword('');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const markReviewedMutation = useMutation({
+    mutationFn: (userId: string) =>
+      invokeFn({ action: 'mark_reviewed', user_id: userId }),
+    onSuccess: () => {
+      toast.success('Marked as reviewed');
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const ensureOnboardingMutation = useMutation({
+    mutationFn: (m: StaffMember) =>
+      invokeFn({ action: 'ensure_onboarding', user_id: m.id, full_name: m.full_name, email: m.email }),
+    onSuccess: (data: any) => {
+      if (data?.token) {
+        const link = `${getAppBaseUrl()}/staff-onboarding/${data.token}`;
+        navigator.clipboard.writeText(link);
+        setOnboardingLinkCopied(data.token);
+        toast.success('Onboarding link copied to clipboard!');
+        queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const getOnboardingLink = (staffId: string) => {
+    const status = onboardingStatuses[staffId];
+    if (status?.token) return `${getAppBaseUrl()}/staff-onboarding/${status.token}`;
+    return null;
+  };
+
+  const copyOnboardingLink = (staffId: string) => {
+    const link = getOnboardingLink(staffId);
+    if (link) {
+      navigator.clipboard.writeText(link);
+      setOnboardingLinkCopied(staffId);
+      toast.success('Onboarding link copied!');
+      setTimeout(() => setOnboardingLinkCopied(''), 2000);
+    }
+  };
+
   const isAdmin = currentRole === 'admin';
 
   // Selected staff detail view
   if (selectedStaff) {
+    const obStatus = onboardingStatuses[selectedStaff.id];
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -185,11 +246,61 @@ export default function StaffPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
+        <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
           {selectedStaff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {selectedStaff.email}</p>}
           {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
+
+          {/* Login & Password Management */}
+          {isAdmin && (
+            <div className="border-t pt-3 mt-3 space-y-2">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Key className="w-4 h-4" /> Login Management</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                  onClick={() => setPasswordMember(selectedStaff)}>
+                  <Key className="w-3.5 h-3.5" /> Set Temp Password
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                  disabled={resetPasswordMutation.isPending}
+                  onClick={() => selectedStaff.email && resetPasswordMutation.mutate(selectedStaff.email)}>
+                  {resetPasswordMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                  Send Reset Email
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Onboarding Link */}
+          {isAdmin && (
+            <div className="border-t pt-3 mt-3 space-y-2">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Link2 className="w-4 h-4" /> Onboarding Link</h3>
+              {obStatus?.token ? (
+                <div className="flex items-center gap-2">
+                  <Input readOnly value={getOnboardingLink(selectedStaff.id) || ''} className="text-xs h-8 font-mono" />
+                  <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(selectedStaff.id)} className="shrink-0 gap-1">
+                    {onboardingLinkCopied === selectedStaff.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                  disabled={ensureOnboardingMutation.isPending}
+                  onClick={() => ensureOnboardingMutation.mutate(selectedStaff)}>
+                  {ensureOnboardingMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                  Generate Onboarding Link
+                </Button>
+              )}
+              {obStatus?.submitted && !obStatus.reviewed && (
+                <Button size="sm" className="gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
+                  disabled={markReviewedMutation.isPending}
+                  onClick={() => markReviewedMutation.mutate(selectedStaff.id)}>
+                  {markReviewedMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Mark as Reviewed
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
+        <StaffOnboardingSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPerformanceSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
