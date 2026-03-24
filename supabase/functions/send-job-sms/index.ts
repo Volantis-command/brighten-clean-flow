@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const message = `Hi ${firstName}, you have a new Brightly job:\n\n📅 ${formattedDate} at ${timeStr}\n📍 ${propName}, ${suburb}\n\nReply YES to accept or NO to decline.\n\n- Brightly`;
+      const message = `Hi ${firstName}, you have a new Brightly job:\n\n📅 ${formattedDate} at ${timeStr}\n📍 ${propName}, ${suburb}\n\nReply YES to accept or NO to decline.\n\n— Brightly Cleaning\n📞 0418 878 707`;
 
       const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
 
