@@ -611,8 +611,115 @@ export default function JobDetailPage() {
         </Card>
       )}
 
+      {/* Awaiting Approval Banner — Client accepted quote, admin confirms */}
+      {role === 'admin' && job.status === 'awaiting_approval' && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="py-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <p className="text-sm font-bold text-foreground">✅ Client accepted quote — confirm date & cleaner</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-semibold">Confirmed Date</Label>
+                <Input
+                  type="date"
+                  value={priceInput ? undefined : job.scheduled_date}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  className="h-12 rounded-xl"
+                  defaultValue={job.scheduled_date}
+                  id="confirm-date"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-semibold">Confirmed Start Time</Label>
+                <Input
+                  type="time"
+                  defaultValue={job.scheduled_time?.slice(0, 5) || '08:00'}
+                  className="h-12 rounded-xl"
+                  id="confirm-time"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-semibold">Internal Notes</Label>
+                <Input
+                  value={priceNotes}
+                  onChange={(e) => setPriceNotes(e.target.value)}
+                  placeholder="Notes for this booking"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <Button
+                onClick={async () => {
+                  setSavingPrice(true);
+                  const confirmDate = (document.getElementById('confirm-date') as HTMLInputElement)?.value || job.scheduled_date;
+                  const confirmTime = (document.getElementById('confirm-time') as HTMLInputElement)?.value || '08:00';
+
+                  const { error } = await supabase.from('jobs').update({
+                    scheduled_date: confirmDate,
+                    scheduled_time: confirmTime,
+                    notes: priceNotes || job.notes || null,
+                    status: 'scheduled',
+                  }).eq('id', jobId!);
+                  if (error) { toast.error(error.message); setSavingPrice(false); return; }
+
+                  // Send client confirmation SMS
+                  try {
+                    await supabase.functions.invoke('send-client-booking-sms', { body: { job_id: jobId } });
+                  } catch (err: any) {
+                    toast.error(`⚠️ Client SMS failed: ${err.message}`);
+                  }
+
+                  // Send cleaner SMS
+                  if (job.cleaner_1_id) {
+                    try {
+                      await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+                    } catch (err: any) {
+                      toast.error(`⚠️ Cleaner SMS failed: ${err.message}`);
+                    }
+                  }
+
+                  // Push Xero invoice
+                  try {
+                    const xeroProperty = job.properties as any;
+                    const description = `${job.notes?.split('\n')[0] || 'Clean'} — ${xeroProperty?.property_name || 'Property'} — ${xeroProperty?.suburb || ''} — ${confirmDate}`;
+                    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-create-invoice`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        job_id: jobId,
+                        contact_name: xeroProperty?.client_name || xeroProperty?.property_name || 'Client',
+                        description,
+                        amount: job.price_ex_gst || 0,
+                        account_code: xeroMap['account_code_turnover'] || '200',
+                        invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
+                        due_days: xeroMap['due_days'] || '7',
+                      }),
+                    });
+                  } catch { /* Xero optional */ }
+
+                  toast.success('Booking confirmed! Client & cleaner notified, Xero invoice created ✓');
+                  queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                  queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                  queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+                  setSavingPrice(false);
+                }}
+                disabled={savingPrice}
+                className="w-full h-12 gap-2 font-bold text-base"
+              >
+                {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Confirm Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Pricing — Admin read-only (for non-awaiting_quote jobs) */}
-      {role === 'admin' && job.status !== 'awaiting_quote' && (
+      {role === 'admin' && job.status !== 'awaiting_quote' && job.status !== 'awaiting_approval' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
