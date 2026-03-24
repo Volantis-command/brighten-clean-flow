@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useActionsData, type ActionItem } from '@/hooks/useActionsData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, FileText, CalendarPlus, MessageSquare, Mail, Star, CheckCircle2, ChevronRight, Clock } from 'lucide-react';
+import { ScheduleApprovalModal } from '@/components/schedule/ScheduleApprovalModal';
 
 interface GroupConfig {
   key: string;
@@ -20,7 +22,7 @@ const GROUPS: GroupConfig[] = [
   { key: 'awaiting_quote', label: '🟡 Awaiting Quote', icon: FileText, color: 'text-[hsl(45,100%,40%)]', bgColor: 'bg-[hsl(45,100%,51%)]/10', borderColor: 'border-[hsl(45,100%,51%)]/30' },
   { key: 'awaiting_response', label: '📩 Awaiting Client Response', icon: Clock, color: 'text-[hsl(200,80%,50%)]', bgColor: 'bg-[hsl(200,80%,50%)]/10', borderColor: 'border-[hsl(200,80%,50%)]/30' },
   { key: 'client_accepted', label: '🎉 Client Accepted — Awaiting Date', icon: CheckCircle2, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
-  { key: 'awaiting_schedule', label: '📅 Awaiting Schedule Approval', icon: CalendarPlus, color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-300' },
+  { key: 'awaiting_schedule', label: '📅 Pending Schedule Approval', icon: CalendarPlus, color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-300' },
   { key: 'awaiting_approval', label: '🟠 Awaiting Approval', icon: CheckCircle2, color: 'text-[hsl(30,100%,50%)]', bgColor: 'bg-[hsl(30,100%,50%)]/10', borderColor: 'border-[hsl(30,100%,50%)]/30' },
   { key: 'booking_requests', label: '📋 Pending Booking Requests', icon: CalendarPlus, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
   { key: 'unread_messages', label: '💬 Unread Messages', icon: MessageSquare, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
@@ -28,12 +30,20 @@ const GROUPS: GroupConfig[] = [
   { key: 'new_feedback', label: '⭐ New Feedback', icon: Star, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
 ];
 
-function ActionCard({ item, actionLabel }: { item: ActionItem; actionLabel: string }) {
+function ActionCard({ item, actionLabel, onClick }: { item: ActionItem; actionLabel: string; onClick?: () => void }) {
   const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (item.path) {
+      navigate(item.path);
+    }
+  };
 
   return (
     <div
-      onClick={() => item.path && navigate(item.path)}
+      onClick={handleClick}
       className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all active:scale-[0.98]"
     >
       <div className="flex-1 min-w-0">
@@ -45,11 +55,9 @@ function ActionCard({ item, actionLabel }: { item: ActionItem; actionLabel: stri
           </p>
         )}
       </div>
-      {item.path && (
-        <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold">
-          {actionLabel} <ChevronRight className="h-3 w-3" />
-        </Button>
-      )}
+      <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold">
+        {actionLabel} <ChevronRight className="h-3 w-3" />
+      </Button>
     </div>
   );
 }
@@ -57,6 +65,8 @@ function ActionCard({ item, actionLabel }: { item: ActionItem; actionLabel: stri
 export default function ActionsPage() {
   const [searchParams] = useSearchParams();
   const filterGroup = searchParams.get('filter');
+  const [approvalItem, setApprovalItem] = useState<ActionItem | null>(null);
+
   const {
     urgentJobs,
     newEnquiries,
@@ -144,13 +154,24 @@ export default function ActionsPage() {
             ) : (
               <div className="space-y-2">
                 {items.map(item => (
-                  <ActionCard key={item.id} item={item} actionLabel={actionLabels[group.key]} />
+                  <ActionCard
+                    key={item.id}
+                    item={item}
+                    actionLabel={actionLabels[group.key]}
+                    onClick={group.key === 'awaiting_schedule' ? () => setApprovalItem(item) : undefined}
+                  />
                 ))}
               </div>
             )}
           </div>
         );
       })}
+
+      <ScheduleApprovalModal
+        open={!!approvalItem}
+        onOpenChange={(open) => { if (!open) setApprovalItem(null); }}
+        item={approvalItem}
+      />
     </div>
   );
 }
