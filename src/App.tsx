@@ -39,6 +39,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
 import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
+import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
 import StaffOnboardingPage from "./pages/StaffOnboardingPage";
 import NotFound from "./pages/NotFound";
