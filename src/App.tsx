@@ -49,10 +49,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function RouteLoading() {
+/** Branded loading screen — shown while auth resolves. Never a blank div. */
+function BrandedLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-primary font-bold text-lg">Loading...</div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-primary">
+      <h1
+        className="text-5xl font-extrabold text-primary-foreground tracking-tight"
+        style={{ fontFamily: 'Nunito, sans-serif' }}
+      >
+        Brightly<span className="text-accent">.</span>
+      </h1>
+      <p className="text-primary-foreground/60 text-sm mt-3 animate-pulse">Loading…</p>
     </div>
   );
 }
@@ -61,7 +68,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   const { user, role, loading } = useAuth();
 
   if (loading || (user && role === undefined)) {
-    return <RouteLoading />;
+    return <BrandedLoading />;
   }
 
   if (!user) return <Navigate to="/login" replace />;
@@ -75,7 +82,7 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
 
   if (loading || (user && role === undefined)) {
-    return <RouteLoading />;
+    return <BrandedLoading />;
   }
 
   if (!user) return <Navigate to="/client-login" replace />;
@@ -109,41 +116,32 @@ function AppRoutes() {
     }
   }, [location]);
 
+  // "/" root route — show branded loader while auth resolves, then redirect
   const getHomeRedirect = () => {
     const pendingRedirect = sessionStorage.getItem('spa-redirect');
-    if (pendingRedirect) return <RouteLoading />;
-    if (loading || (user && role === undefined)) return <RouteLoading />;
+    if (pendingRedirect) return <BrandedLoading />;
+    if (loading || (user && role === undefined)) return <BrandedLoading />;
     if (!user) return <Navigate to="/login" replace />;
-    if (role === 'client') return <Navigate to="/portal" replace />;
-    return <Navigate to="/dashboard" replace />;
-  };
-
-  const getLoginRedirect = () => {
-    if (!user) return <LoginPage />;
-    if (loading || role === undefined) return <RouteLoading />;
-    if (role === 'client') return <Navigate to="/portal" replace />;
-    return <Navigate to="/dashboard" replace />;
-  };
-
-  const getClientLoginRedirect = () => {
-    if (!user) return <ClientLoginPage />;
-    if (loading || role === undefined) return <RouteLoading />;
     if (role === 'client') return <Navigate to="/portal" replace />;
     return <Navigate to="/dashboard" replace />;
   };
 
   return (
     <Routes>
-      <Route path="/login" element={getLoginRedirect()} />
-      <Route path="/client-login" element={getClientLoginRedirect()} />
+      {/* === FULLY PUBLIC — no auth check at all === */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/client-login" element={<ClientLoginPage />} />
+
+      {/* Root — resolve auth then redirect */}
       <Route path="/" element={getHomeRedirect()} />
 
+      {/* Client portal */}
       <Route element={<ClientRoute><ClientPortalLayout /></ClientRoute>}>
         <Route path="/portal" element={<ClientPortalPage />} />
         <Route path="/portal/property/:id" element={<ClientPropertyDetailPage />} />
       </Route>
 
-      {/* Public routes — no auth required */}
+      {/* Public token routes */}
       <Route path="/client/:token" element={<MagicLinkPortalPage />} />
       <Route path="/client/:token/property/:id" element={<MagicLinkPropertyPage />} />
       <Route path="/feedback/:token" element={<FeedbackPage />} />
@@ -156,6 +154,7 @@ function AppRoutes() {
       <Route path="/client/:token/schedule" element={<ClientSchedulePage />} />
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
 
+      {/* Protected staff routes */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/actions" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><ActionsPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<DashboardPage />} />
