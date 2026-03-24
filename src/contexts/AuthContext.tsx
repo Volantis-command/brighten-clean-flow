@@ -72,18 +72,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setRole(undefined);
-        setLoading(true);
-      } else {
+    const bootstrapSession = async () => {
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Initial session lookup timed out')), 5000);
+        });
+
+        const { data: { session } } = await Promise.race([
+          supabase.auth.getSession(),
+          timeoutPromise,
+        ]);
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          setRole(undefined);
+          setLoading(true);
+        } else {
+          setProfile(null);
+          setRole(null);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to bootstrap auth session:', err);
+        setSession(null);
+        setUser(null);
         setProfile(null);
         setRole(null);
         setLoading(false);
       }
-    });
+    };
+
+    bootstrapSession();
 
     return () => subscription.unsubscribe();
   }, []);
