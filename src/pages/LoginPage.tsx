@@ -133,7 +133,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-primary-foreground/70 text-sm mt-6">
-          Brightly — Turnover Cleaning Operations
+          Brightly — Cleaning Operations
         </p>
       </div>
     </div>

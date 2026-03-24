@@ -39,7 +39,7 @@ export default function QuoteRequestFormPage() {
   const [toilets, setToilets] = useState(1);
   const [hasGarage, setHasGarage] = useState(false);
   const [propertySize, setPropertySize] = useState('medium');
-  const [cleanType, setCleanType] = useState('House Clean');
+  const [cleanType, setCleanType] = useState('Standard Clean');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('Flexible');
   const [isOccupied, setIsOccupied] = useState(true);
