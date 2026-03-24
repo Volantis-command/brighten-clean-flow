@@ -68,16 +68,20 @@ export function MobileNav() {
   }
 
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
+  // Inject badge count for Actions
+  const filteredWithBadge = filtered.map(item =>
+    item.path === '/actions' ? { ...item, badge: totalCount } : item
+  );
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
       <div className="flex justify-around items-center py-2 px-1">
-        {filtered.slice(0, 5).map((item) => (
+        {filteredWithBadge.slice(0, 5).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors min-w-0 ${
+              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors min-w-0 relative ${
                 isActive
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -86,7 +90,14 @@ export function MobileNav() {
           >
             {({ isActive }) => (
               <>
-                <item.icon className="h-5 w-5" />
+                <div className="relative">
+                  <item.icon className="h-5 w-5" />
+                  {item.badge && item.badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-semibold truncate">{item.label}</span>
                 {isActive && <div className="w-5 h-0.5 bg-accent rounded-full" />}
               </>
