@@ -1425,9 +1425,12 @@ export type Database = {
       staff_onboarding: {
         Row: {
           abn: string | null
+          abn_status: string | null
           address: string | null
           admin_reviewed_at: string | null
           admin_reviewed_by: string | null
+          availability_notes: string | null
+          available_days: Json | null
           bank_account_name: string | null
           bank_account_number: string | null
           bank_bsb: string | null
@@ -1438,11 +1441,20 @@ export type Database = {
           emergency_contact_phone: string | null
           emergency_contact_relationship: string | null
           full_name: string | null
+          has_connecteam: boolean | null
+          has_whatsapp: boolean | null
           id: string
+          id_confirmed: boolean | null
+          id_document_url: string | null
           is_contractor: boolean | null
+          max_jobs_per_day: string | null
           onboarding_token: string
           phone: string | null
+          police_check_status: string | null
+          police_check_url: string | null
+          policy_acknowledgements: Json | null
           preferred_name: string | null
+          preferred_start_time: string | null
           status: string
           submitted_at: string | null
           super_fund_name: string | null
@@ -1453,9 +1465,12 @@ export type Database = {
         }
         Insert: {
           abn?: string | null
+          abn_status?: string | null
           address?: string | null
           admin_reviewed_at?: string | null
           admin_reviewed_by?: string | null
+          availability_notes?: string | null
+          available_days?: Json | null
           bank_account_name?: string | null
           bank_account_number?: string | null
           bank_bsb?: string | null
@@ -1466,11 +1481,20 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
           full_name?: string | null
+          has_connecteam?: boolean | null
+          has_whatsapp?: boolean | null
           id?: string
+          id_confirmed?: boolean | null
+          id_document_url?: string | null
           is_contractor?: boolean | null
+          max_jobs_per_day?: string | null
           onboarding_token?: string
           phone?: string | null
+          police_check_status?: string | null
+          police_check_url?: string | null
+          policy_acknowledgements?: Json | null
           preferred_name?: string | null
+          preferred_start_time?: string | null
           status?: string
           submitted_at?: string | null
           super_fund_name?: string | null
@@ -1481,9 +1505,12 @@ export type Database = {
         }
         Update: {
           abn?: string | null
+          abn_status?: string | null
           address?: string | null
           admin_reviewed_at?: string | null
           admin_reviewed_by?: string | null
+          availability_notes?: string | null
+          available_days?: Json | null
           bank_account_name?: string | null
           bank_account_number?: string | null
           bank_bsb?: string | null
@@ -1494,11 +1521,20 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
           full_name?: string | null
+          has_connecteam?: boolean | null
+          has_whatsapp?: boolean | null
           id?: string
+          id_confirmed?: boolean | null
+          id_document_url?: string | null
           is_contractor?: boolean | null
+          max_jobs_per_day?: string | null
           onboarding_token?: string
           phone?: string | null
+          police_check_status?: string | null
+          police_check_url?: string | null
+          policy_acknowledgements?: Json | null
           preferred_name?: string | null
+          preferred_start_time?: string | null
           status?: string
           submitted_at?: string | null
           super_fund_name?: string | null
