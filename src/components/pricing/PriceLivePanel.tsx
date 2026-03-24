@@ -37,6 +37,7 @@ export default function PriceLivePanel({
         <Row label="Labour" value={result.labourCost} />
         {result.linenCost > 0 && <Row label="Linen" value={result.linenCost} />}
         {!hideConsumables && <Row label="Consumables" value={result.consumablesCost} />}
+        {result.photoReportFee > 0 && <Row label="Photo Report" value={result.photoReportFee} />}
         <div className="border-t border-border my-2" />
         <Row label="Total Cost" value={result.totalCost} bold />
         <div className="flex justify-between">
