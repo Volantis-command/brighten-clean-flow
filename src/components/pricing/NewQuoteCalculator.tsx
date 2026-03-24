@@ -656,17 +656,34 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   );
 }
 
-function ActionButtons({ saveMutation, copyForWhatsApp, editQuote }: { saveMutation: any; copyForWhatsApp: () => void; editQuote?: any }) {
+function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent }: {
+  saveMutation: any; copyForWhatsApp: () => void; editQuote?: any;
+  sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean;
+}) {
   return (
     <div className="space-y-2">
       <Button className="w-full gap-2" size="lg" onClick={() => saveMutation.mutate('draft')} disabled={saveMutation.isPending}>
         <Save className="h-4 w-4" /> {editQuote ? 'Update Quote' : 'Save Quote'}
       </Button>
+
+      {quoteSent ? (
+        <Button className="w-full gap-2 bg-muted text-muted-foreground cursor-default" size="lg" disabled>
+          <CheckCircle2 className="h-4 w-4" /> Quote Sent ✓
+        </Button>
+      ) : (
+        <Button
+          className="w-full gap-2 bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-primary-foreground font-bold"
+          size="lg"
+          onClick={() => sendQuoteMutation.mutate()}
+          disabled={!canSendQuote || sendQuoteMutation.isPending}
+        >
+          {sendQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          Send Quote to Client
+        </Button>
+      )}
+
       <Button variant="outline" className="w-full gap-2" onClick={copyForWhatsApp}>
-        <Copy className="h-4 w-4" /> Copy for WhatsApp
-      </Button>
-      <Button variant="outline" className="w-full gap-2" onClick={() => saveMutation.mutate('sent')} disabled={saveMutation.isPending}>
-        <Send className="h-4 w-4" /> Save & Mark Sent
+        <Copy className="h-4 w-4" /> Copy Quote for WhatsApp
       </Button>
     </div>
   );
