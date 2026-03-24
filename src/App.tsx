@@ -127,6 +127,21 @@ function SpaRedirectHandler() {
   return null;
 }
 
+/** Check for SPA redirect before defaulting to /login */
+function RootRedirect() {
+  const navigate = useNavigate();
+  const redirect = sessionStorage.getItem('spa-redirect');
+  if (redirect) {
+    sessionStorage.removeItem('spa-redirect');
+    // Use useEffect to navigate after render
+    useEffect(() => {
+      navigate(redirect, { replace: true });
+    }, []);
+    return <BrandedLoading />;
+  }
+  return <Navigate to="/login" replace />;
+}
+
 function AuthenticatedArea({ children }: { children: React.ReactNode }) {
   return (
     <AppErrorBoundary>
