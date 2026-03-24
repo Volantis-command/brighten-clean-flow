@@ -11,6 +11,7 @@ import AppLayout from "./components/AppLayout";
 import ClientPortalLayout from "./components/portal/ClientPortalLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
 import DashboardPage from "./pages/DashboardPage";
+import ActionsPage from "./pages/ActionsPage";
 import SchedulePage from "./pages/SchedulePage";
 import AddJobPage from "./pages/AddJobPage";
 import JobChecklistPage from "./pages/JobChecklistPage";
