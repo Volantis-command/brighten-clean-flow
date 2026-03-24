@@ -40,6 +40,7 @@ import CleanerProfilePage from "./pages/CleanerProfilePage";
 import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
+import StaffOnboardingPage from "./pages/StaffOnboardingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
