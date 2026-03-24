@@ -62,6 +62,8 @@ export default function ActionsPage() {
     newEnquiries,
     awaitingQuote,
     awaitingResponse,
+    clientAccepted,
+    awaitingSchedule,
     awaitingApproval,
     bookingRequests,
     unreadMessages,
