@@ -155,6 +155,7 @@ function AppRoutes() {
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
       <Route path="/client/:token/schedule" element={<ClientSchedulePage />} />
+      <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/actions" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><ActionsPage /></ProtectedRoute>} />

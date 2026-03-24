@@ -378,6 +378,18 @@ export default function JobChecklistPage() {
     } catch (smsErr) {
       console.error('Guest Ready SMS error:', smsErr);
     }
+
+    // Send completion SMS (conditional recurring/one-off)
+    try {
+      supabase.functions.invoke('job-completed-sms', {
+        body: { job_id: jobId },
+      }).then(({ error }) => {
+        if (error) console.error('Completion SMS failed:', error);
+        else console.log('Completion SMS sent');
+      });
+    } catch (completionErr) {
+      console.error('Completion SMS error:', completionErr);
+    }
     // Auto-create Xero invoice if enabled
     try {
       const { data: autoCreateSetting } = await supabase
