@@ -299,6 +299,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         price: result.sellPriceIncGst,
         service_type: form.cleanType,
         extras: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+        ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
       };
 
       if (editQuote) {
