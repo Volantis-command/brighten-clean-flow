@@ -77,6 +77,8 @@ export default function ActionsPage() {
     new_enquiries: newEnquiries,
     awaiting_quote: awaitingQuote,
     awaiting_response: awaitingResponse,
+    client_accepted: clientAccepted,
+    awaiting_schedule: awaitingSchedule,
     awaiting_approval: awaitingApproval,
     booking_requests: bookingRequests,
     unread_messages: unreadMessages,
