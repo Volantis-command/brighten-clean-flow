@@ -16,6 +16,7 @@ interface GroupConfig {
 
 const GROUPS: GroupConfig[] = [
   { key: 'urgent', label: '🔴 Urgent', icon: AlertTriangle, color: 'text-destructive', bgColor: 'bg-destructive/10', borderColor: 'border-destructive/30' },
+  { key: 'new_enquiries', label: '🟢 New Enquiries', icon: FileText, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
   { key: 'awaiting_quote', label: '🟡 Awaiting Quote', icon: FileText, color: 'text-[hsl(45,100%,40%)]', bgColor: 'bg-[hsl(45,100%,51%)]/10', borderColor: 'border-[hsl(45,100%,51%)]/30' },
   { key: 'awaiting_approval', label: '🟠 Awaiting Approval', icon: CheckCircle2, color: 'text-[hsl(30,100%,50%)]', bgColor: 'bg-[hsl(30,100%,50%)]/10', borderColor: 'border-[hsl(30,100%,50%)]/30' },
   { key: 'booking_requests', label: '📋 Pending Booking Requests', icon: CalendarPlus, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/30' },
