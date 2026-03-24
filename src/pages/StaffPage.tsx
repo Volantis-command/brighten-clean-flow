@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { appUrl } from '@/lib/appUrl';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
 
