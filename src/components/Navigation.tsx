@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { useActionsData } from '@/hooks/useActionsData';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -9,9 +10,11 @@ interface NavItem {
   path: string;
   icon: React.ElementType;
   roles: AppRole[];
+  badge?: number;
 }
 
 const navItems: NavItem[] = [
+  { label: 'Actions', path: '/actions', icon: Inbox, roles: ['admin', 'head_cleaner'] },
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'head_cleaner'] },
