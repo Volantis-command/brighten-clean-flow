@@ -607,6 +607,7 @@ function Step5({ form, updateField, cleaners }: { form: any; updateField: (f: st
     ['Rooms', `${form.bedrooms} bed · ${form.bathrooms} bath`],
     ['Access', form.access_method],
     ['Client', form.client_name],
+    ['Client Phone', form.client_phone],
     ['Billing Email', form.billing_email],
     ['Payment Terms', form.payment_terms],
     ['Clean Frequency', form.clean_frequency],
