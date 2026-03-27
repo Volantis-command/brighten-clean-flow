@@ -54,11 +54,26 @@ export default function PropertyProfilePage() {
     );
   }
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    const { error } = await supabase.from('properties').delete().eq('id', property.id);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${property.property_name} deleted`);
+    navigate('/properties');
+  };
+
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate('/properties')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5">
+          <Trash2 className="h-4 w-4" /> Delete
         </Button>
       </div>
       <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
