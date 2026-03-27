@@ -81,6 +81,20 @@ export default function JobDetailPage() {
 
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
 
+  // Cleaner job tokens for this job
+  const { data: jobTokens = [], refetch: refetchJobTokens } = useQuery({
+    queryKey: ['cleaner-job-tokens', jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cleaner_job_tokens')
+        .select('*')
+        .eq('job_id', jobId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!jobId && role === 'admin',
+  });
+
   // Completion photos (after photos)
   const { data: completionPhotos = [] } = useQuery({
     queryKey: ['job-completion-photos', jobId],
