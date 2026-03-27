@@ -439,30 +439,35 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
       {/* Restocking (Airbnb only) */}
       {isAirbnb && restockItems.length > 0 && (
         <div>
-          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">
-            Restocking
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
+              Restocking Checklist
+            </h3>
+            <span className="text-xs font-bold text-muted-foreground">
+              {restockItems.filter(r => r.completed).length} of {restockItems.length} restocked
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
             {restockItems.map((item, idx) => (
-              <Card
+              <button
                 key={item.id}
-                className={`cursor-pointer transition-colors ${
-                  item.completed ? "bg-green-50 border-green-300" : "border-border"
-                }`}
                 onClick={() => toggleRestockItem(idx)}
+                className={`relative rounded-xl border-2 p-3 text-center transition-all min-h-[88px] flex flex-col items-center justify-center gap-1 ${
+                  item.completed
+                    ? "bg-primary/10 border-primary"
+                    : "bg-card border-border"
+                }`}
               >
-                <CardContent className="p-3 flex items-center gap-2 min-h-[56px]">
-                  <span className="text-2xl">{item.emoji || "📦"}</span>
-                  <span
-                    className={`text-sm font-medium flex-1 ${
-                      item.completed ? "line-through text-muted-foreground" : "text-foreground"
-                    }`}
-                  >
-                    {item.item_name}
-                  </span>
-                  {item.completed && <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />}
-                </CardContent>
-              </Card>
+                <span className="text-[32px] leading-none">{item.emoji || "📦"}</span>
+                <span className={`text-[11px] font-semibold leading-tight ${item.completed ? "text-primary" : "text-foreground"}`}>
+                  {item.item_name}
+                </span>
+                {item.completed && (
+                  <div className="absolute top-1.5 right-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+              </button>
             ))}
           </div>
         </div>
