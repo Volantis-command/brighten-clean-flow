@@ -12,9 +12,23 @@ import { toast } from 'sonner';
 
 export default function PropertiesPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = useAuth();
   const [search, setSearch] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { data: cleaners = [] } = useCleanersList();
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from('properties').delete().eq('id', deleteTarget.id);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${deleteTarget.name} deleted`);
+    setDeleteTarget(null);
+    queryClient.invalidateQueries({ queryKey: ['properties'] });
+  };
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
