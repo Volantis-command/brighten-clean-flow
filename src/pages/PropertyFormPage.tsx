@@ -49,6 +49,7 @@ const EMPTY_FORM: Record<string, any> = {
   access_code: '',
   access_notes: '',
   client_name: '',
+  client_phone: '',
   billing_email: '',
   payment_terms: '7 days from invoice date',
   clean_frequency: '',
@@ -141,6 +142,7 @@ export default function PropertyFormPage() {
         access_code: existing.access_code || '',
         access_notes: existing.access_notes || '',
         client_name: existing.client_name || '',
+        client_phone: (existing as any).client_phone || '',
         billing_email: existing.billing_email || '',
         payment_terms: existing.payment_terms || '7 days from invoice date',
         clean_frequency: existing.clean_frequency || '',
@@ -483,6 +485,9 @@ function Step3({ form, updateField }: { form: any; updateField: (f: string, v: a
       <Field label="Client / Operator Name">
         <Input value={form.client_name} onChange={(e) => updateField('client_name', e.target.value)} className="h-14 rounded-2xl" />
       </Field>
+      <Field label="Client Phone *">
+        <Input value={form.client_phone} onChange={(e) => updateField('client_phone', e.target.value)} className="h-14 rounded-2xl" placeholder="0412 345 678" type="tel" />
+      </Field>
       <Field label="Billing Contact Email">
         <Input value={form.billing_email} onChange={(e) => updateField('billing_email', e.target.value)} className="h-14 rounded-2xl" type="email" />
       </Field>
@@ -602,6 +607,7 @@ function Step5({ form, updateField, cleaners }: { form: any; updateField: (f: st
     ['Rooms', `${form.bedrooms} bed · ${form.bathrooms} bath`],
     ['Access', form.access_method],
     ['Client', form.client_name],
+    ['Client Phone', form.client_phone],
     ['Billing Email', form.billing_email],
     ['Payment Terms', form.payment_terms],
     ['Clean Frequency', form.clean_frequency],

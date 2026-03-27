@@ -158,7 +158,7 @@ export default function ClientsSection() {
             <div><Label>Full Name *</Label><Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" /></div>
             <div><Label>Email *</Label><Input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} placeholder="client@example.com" /></div>
             <div><Label>Temporary Password *</Label><Input type="text" value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Min 6 characters" /></div>
-            <div><Label>Phone</Label><Input value={createPhone} onChange={e => setCreatePhone(e.target.value)} placeholder="0412 345 678" /></div>
+            <div><Label>Phone *</Label><Input value={createPhone} onChange={e => setCreatePhone(e.target.value)} placeholder="0412 345 678" type="tel" /></div>
             <div>
               <Label>Link Properties</Label>
               <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border border-border rounded-xl p-2">
@@ -175,7 +175,7 @@ export default function ClientsSection() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              disabled={!createEmail || !createName || !createPhone.trim() || !createPassword || createPassword.length < 6 || createMutation.isPending}
               className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
