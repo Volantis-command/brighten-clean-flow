@@ -204,6 +204,47 @@ export default function PropertyFormPage() {
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
+  const linkClientToProperty = async (propertyId: string) => {
+    const clientName = form.client_name?.trim();
+    const clientEmail = form.billing_email?.trim();
+    const clientPhone = form.client_phone?.trim();
+    if (!clientName && !clientEmail && !clientPhone) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-staff', {
+        body: {
+          action: 'find_or_create_client',
+          full_name: clientName || null,
+          email: clientEmail || null,
+          phone: clientPhone || null,
+        },
+      });
+      if (error || data?.error) {
+        console.error('Client link error:', error || data?.error);
+        return;
+      }
+      const clientId = data?.user_id;
+      if (!clientId) return;
+
+      // Check if link already exists
+      const { data: existingLink } = await supabase
+        .from('client_properties')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('property_id', propertyId)
+        .maybeSingle();
+
+      if (!existingLink) {
+        await supabase.from('client_properties').insert({
+          client_id: clientId,
+          property_id: propertyId,
+        } as any);
+      }
+    } catch (err) {
+      console.error('Failed to link client:', err);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.property_name.trim()) {
       toast.error('Property name is required.');
@@ -230,6 +271,7 @@ export default function PropertyFormPage() {
       if (error) {
         toast.error(error.message);
       } else {
+        await linkClientToProperty(id!);
         toast.success('Property updated!');
         queryClient.invalidateQueries({ queryKey: ['properties'] });
         queryClient.invalidateQueries({ queryKey: ['property', id] });
@@ -240,6 +282,7 @@ export default function PropertyFormPage() {
       if (error) {
         toast.error(error.message);
       } else {
+        await linkClientToProperty(data.id);
         toast.success('Property created!');
         queryClient.invalidateQueries({ queryKey: ['properties'] });
 

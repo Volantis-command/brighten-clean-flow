@@ -250,6 +250,86 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === "find_or_create_client") {
+      // Find existing client by email or phone
+      let existingId: string | null = null;
+
+      if (email) {
+        const { data: byEmail } = await adminClient
+          .from("profiles")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle();
+        if (byEmail) existingId = byEmail.id;
+      }
+
+      if (!existingId && phone) {
+        const { data: byPhone } = await adminClient
+          .from("profiles")
+          .select("id")
+          .eq("phone", phone)
+          .maybeSingle();
+        if (byPhone) existingId = byPhone.id;
+      }
+
+      if (existingId) {
+        // Ensure they have the client role
+        const { data: hasClientRole } = await adminClient
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", existingId)
+          .eq("role", "client")
+          .maybeSingle();
+        if (!hasClientRole) {
+          await adminClient.from("user_roles").insert({ user_id: existingId, role: "client" });
+        }
+        // Update profile fields if provided
+        const updates: Record<string, string> = {};
+        if (full_name) updates.full_name = full_name;
+        if (phone) updates.phone = phone;
+        if (Object.keys(updates).length > 0) {
+          await adminClient.from("profiles").update(updates).eq("id", existingId);
+        }
+        return new Response(
+          JSON.stringify({ success: true, user_id: existingId, existing: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Create new auth user with random password
+      const randomPwd = crypto.randomUUID().slice(0, 16) + "Aa1!";
+      const { data: newUser, error: createErr } =
+        await adminClient.auth.admin.createUser({
+          email: email || `client_${crypto.randomUUID().slice(0, 8)}@placeholder.local`,
+          password: randomPwd,
+          email_confirm: true,
+          user_metadata: { full_name: full_name || "" },
+        });
+
+      if (createErr) {
+        return new Response(JSON.stringify({ error: createErr.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newId = newUser.user.id;
+      await adminClient.from("user_roles").insert({ user_id: newId, role: "client" });
+
+      const profileUpdates: Record<string, string> = {};
+      if (full_name) profileUpdates.full_name = full_name;
+      if (phone) profileUpdates.phone = phone;
+      if (email) profileUpdates.email = email;
+      if (Object.keys(profileUpdates).length > 0) {
+        await adminClient.from("profiles").update(profileUpdates).eq("id", newId);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, user_id: newId, existing: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
