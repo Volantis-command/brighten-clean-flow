@@ -485,6 +485,9 @@ function Step3({ form, updateField }: { form: any; updateField: (f: string, v: a
       <Field label="Client / Operator Name">
         <Input value={form.client_name} onChange={(e) => updateField('client_name', e.target.value)} className="h-14 rounded-2xl" />
       </Field>
+      <Field label="Client Phone *">
+        <Input value={form.client_phone} onChange={(e) => updateField('client_phone', e.target.value)} className="h-14 rounded-2xl" placeholder="0412 345 678" type="tel" />
+      </Field>
       <Field label="Billing Contact Email">
         <Input value={form.billing_email} onChange={(e) => updateField('billing_email', e.target.value)} className="h-14 rounded-2xl" type="email" />
       </Field>
