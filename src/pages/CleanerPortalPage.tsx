@@ -295,6 +295,19 @@ export default function CleanerPortalPage() {
           </Button>
         )}
 
+        {/* Lockbox code — only shown after check-in */}
+        {(job.status === "in_progress" || job.status === "completed") && state.lockboxCode && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <KeyRound className="h-6 w-6 text-primary shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Access Code</p>
+                <p className="text-xl font-bold text-foreground tracking-widest">{state.lockboxCode}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {job.status === "in_progress" && (
           <Card className="border-amber-200 bg-amber-50">
             <CardContent className="p-5 text-center space-y-2">
