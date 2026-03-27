@@ -45,6 +45,7 @@ import TimesheetsPage from "./pages/TimesheetsPage";
 import StaffOnboardingPage from "./pages/StaffOnboardingPage";
 import ClientSchedulePage from "./pages/ClientSchedulePage";
 import ClientRebookPage from "./pages/ClientRebookPage";
+import CleanerPortalPage from "./pages/CleanerPortalPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -180,6 +181,7 @@ function AppRoutes() {
       <Route path="/staff-onboard/:token" element={<StaffOnboardingPage />} />
       <Route path="/client/:token/schedule" element={<ClientSchedulePage />} />
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
+      <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
 
       {/* Protected staff routes */}
       <Route element={<AuthenticatedArea><><ActiveClockBanner /><ProtectedRoute><AppLayout /></ProtectedRoute></></AuthenticatedArea>}>
