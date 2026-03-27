@@ -4,14 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Bed, Bath, Clock, User, CheckCircle2, Loader2 } from "lucide-react";
+import { MapPin, Bed, Bath, Clock, User, CheckCircle2, Loader2, KeyRound } from "lucide-react";
 import { format, isToday, isTomorrow, differenceInHours } from "date-fns";
+import { toast } from "sonner";
 
 type TokenState =
   | { status: "loading" }
   | { status: "expired" }
   | { status: "error"; message: string }
-  | { status: "valid"; job: any; staff: any; property: any };
+  | { status: "valid"; job: any; staff: any; property: any; lockboxCode: string | null };
 
 export default function CleanerPortalPage() {
   const { token } = useParams<{ token: string }>();
@@ -72,21 +73,93 @@ export default function CleanerPortalPage() {
       job: jobRes.data,
       staff: staffRes.data,
       property: jobRes.data.properties,
+      lockboxCode: jobRes.data.status === "in_progress" || jobRes.data.status === "completed"
+        ? (jobRes.data.properties as any)?.lockbox_code ?? null
+        : null,
     });
+  }
+
+  function formatAuPhone(phone: string): string {
+    let cleaned = phone.replace(/[\s\-()]/g, "");
+    if (cleaned.startsWith("+61")) return cleaned;
+    if (cleaned.startsWith("61") && cleaned.length >= 11) return "+" + cleaned;
+    if (cleaned.startsWith("0")) return "+61" + cleaned.slice(1);
+    return "+61" + cleaned;
   }
 
   async function handleCheckIn() {
     if (state.status !== "valid") return;
+    const { job, staff, property } = state;
     setCheckingIn(true);
-    await supabase
+
+    const now = new Date();
+    const checkInIso = now.toISOString();
+    const timeStr = format(now, "h:mma").toLowerCase();
+
+    // 1. Update job status
+    const { error: updateErr } = await supabase
       .from("jobs")
-      .update({ status: "in_progress", check_in_time: new Date().toISOString() })
-      .eq("id", state.job.id);
+      .update({ status: "in_progress", check_in_time: checkInIso })
+      .eq("id", job.id);
+
+    if (updateErr) {
+      toast.error("Check-in failed. Please try again.");
+      setCheckingIn(false);
+      return;
+    }
+
+    // 2. Reveal lockbox code
+    const lockbox = property?.lockbox_code ?? null;
+
+    // 3. Send SMS to client (fire-and-forget, don't block check-in)
+    const clientPhone = property?.client_name ? null : null; // We need billing_email or a phone
+    // Use the property's billing_email field or client_name to find phone — 
+    // For now, get client contact from client_properties
+    sendCheckInSms(job, staff, property, timeStr).catch((err) =>
+      console.error("SMS send failed (non-blocking):", err)
+    );
+
+    // 4. Update local state
     setState({
       ...state,
-      job: { ...state.job, status: "in_progress", check_in_time: new Date().toISOString() },
+      job: { ...job, status: "in_progress", check_in_time: checkInIso },
+      lockboxCode: lockbox,
     });
     setCheckingIn(false);
+    toast.success("Checked in successfully!");
+  }
+
+  async function sendCheckInSms(job: any, staff: any, property: any, timeStr: string) {
+    // Find client phone — check client_properties for this property to get client profile
+    const { data: cpRows } = await supabase
+      .from("client_properties")
+      .select("client_id")
+      .eq("property_id", property?.id)
+      .limit(1);
+
+    const clientId = cpRows?.[0]?.client_id;
+    if (!clientId) return;
+
+    const { data: clientProfile } = await supabase
+      .from("profiles")
+      .select("full_name, phone")
+      .eq("id", clientId)
+      .maybeSingle();
+
+    if (!clientProfile?.phone) return;
+
+    const clientFirst = (clientProfile.full_name ?? "").split(" ")[0] || "there";
+    const cleanerFirst = (staff?.full_name ?? "").split(" ")[0] || "Your cleaner";
+    const propName = property?.property_name ?? "your property";
+    const isAirbnb = property?.client_type === "airbnb";
+
+    const message = isAirbnb
+      ? `Hi ${clientFirst}, your Brightly cleaner ${cleanerFirst} has checked in to ${propName}. ${timeStr}. Property will be guest-ready well before checkin. ✓`
+      : `Hi ${clientFirst}, your Brightly cleaner ${cleanerFirst} has just arrived at your property. Check-in verified ${timeStr}. 🧹`;
+
+    await supabase.functions.invoke("send-job-sms", {
+      body: { to: formatAuPhone(clientProfile.phone), message },
+    });
   }
 
   // --- RENDER ---
@@ -220,6 +293,19 @@ export default function CleanerPortalPage() {
             ) : null}
             CHECK IN
           </Button>
+        )}
+
+        {/* Lockbox code — only shown after check-in */}
+        {(job.status === "in_progress" || job.status === "completed") && state.lockboxCode && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <KeyRound className="h-6 w-6 text-primary shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Access Code</p>
+                <p className="text-xl font-bold text-foreground tracking-widest">{state.lockboxCode}</p>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {job.status === "in_progress" && (
