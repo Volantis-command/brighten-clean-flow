@@ -49,6 +49,7 @@ const EMPTY_FORM: Record<string, any> = {
   access_code: '',
   access_notes: '',
   client_name: '',
+  client_phone: '',
   billing_email: '',
   payment_terms: '7 days from invoice date',
   clean_frequency: '',
