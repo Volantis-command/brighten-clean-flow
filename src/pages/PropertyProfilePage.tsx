@@ -30,6 +30,8 @@ export default function PropertyProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -40,6 +42,16 @@ export default function PropertyProfilePage() {
     },
     enabled: !!id,
   });
+
+  const handleDelete = async () => {
+    if (!property) return;
+    setDeleting(true);
+    const { error } = await supabase.from('properties').delete().eq('id', property.id);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${property.property_name} deleted`);
+    navigate('/properties');
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading…</p></div>;
@@ -53,18 +65,6 @@ export default function PropertyProfilePage() {
       </div>
     );
   }
-
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    setDeleting(true);
-    const { error } = await supabase.from('properties').delete().eq('id', property.id);
-    setDeleting(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${property.property_name} deleted`);
-    navigate('/properties');
-  };
 
   return (
     <div className="max-w-3xl space-y-4">
