@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,46 +24,58 @@ interface ClientMember {
   linked_properties: { property_id: string; property_name: string; portal_token: string | null }[];
 }
 
-function useClientsList() {
+function useClientsList(currentUserId?: string) {
   return useQuery({
-    queryKey: ['clients-list'],
+    queryKey: ['clients-list', currentUserId],
     queryFn: async () => {
-      // Get all client_properties links to find every client linked to a property
-      const { data: allLinks } = await supabase
-        .from('client_properties')
-        .select('client_id, property_id, portal_token, portal_active, onboard_token');
+      const { data: propertyRows, error: propertiesError } = await supabase
+        .from('properties')
+        .select('id, property_name, client_id')
+        .not('client_id', 'is', null);
 
-      const cpClientIds = [...new Set((allLinks || []).map(l => l.client_id))];
+      if (propertiesError) throw propertiesError;
 
-      // Also get user_roles clients to merge both sources
-      const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'client');
-      const roleClientIds = (roles || []).map(r => r.user_id);
+      const linkedProperties = ((propertyRows || []) as Array<{ id: string; property_name: string; client_id: string | null }>)
+        .filter((property) => property.client_id);
 
-      // Union of both sets
-      const allClientIds = [...new Set([...cpClientIds, ...roleClientIds])];
-      if (!allClientIds.length) return [];
+      const clientIds = [...new Set(linkedProperties.map((property) => property.client_id).filter(Boolean) as string[])]
+        .filter((id) => id !== currentUserId);
 
-      // Exclude admins
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-      const filteredIds = allClientIds.filter(id => !adminIds.has(id));
-      if (!filteredIds.length) return [];
+      if (!clientIds.length) return [];
 
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', filteredIds);
+      const [{ data: profiles, error: profilesError }, { data: clientLinks, error: clientLinksError }] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, email, phone').in('id', clientIds),
+        supabase.from('client_properties').select('client_id, property_id, portal_token').in('client_id', clientIds),
+      ]);
 
-      const propIds = [...new Set((allLinks || []).map(l => l.property_id))];
-      const { data: props } = propIds.length ? await supabase.from('properties').select('id, property_name').in('id', propIds) : { data: [] };
-      const propMap: Record<string, string> = {};
-      (props || []).forEach(p => { propMap[p.id] = p.property_name; });
+      if (profilesError) throw profilesError;
+      if (clientLinksError) throw clientLinksError;
 
-      return (profiles || []).map(p => ({
-        ...p,
-        linked_properties: (allLinks || []).filter(l => l.client_id === p.id).map(l => ({
-          property_id: l.property_id,
-          property_name: propMap[l.property_id] || 'Unknown',
-          portal_token: l.portal_token,
-        })),
-      })) as ClientMember[];
+      const portalTokenMap = new Map<string, string | null>();
+      (clientLinks || []).forEach((link) => {
+        const existingToken = portalTokenMap.get(link.client_id);
+        if (!existingToken) {
+          portalTokenMap.set(link.client_id, link.portal_token);
+        }
+      });
+
+      return clientIds
+        .map((clientId) => {
+          const profile = (profiles || []).find((item) => item.id === clientId);
+          if (!profile) return null;
+
+          return {
+            ...profile,
+            linked_properties: linkedProperties
+              .filter((property) => property.client_id === clientId)
+              .map((property) => ({
+                property_id: property.id,
+                property_name: property.property_name || 'Unknown',
+                portal_token: portalTokenMap.get(clientId) ?? null,
+              })),
+          };
+        })
+        .filter(Boolean) as ClientMember[];
     },
   });
 }
@@ -70,9 +83,10 @@ function useClientsList() {
 const BASE_URL = getAppBaseUrl();
 
 export default function ClientsPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: clients = [], isLoading } = useClientsList();
+  const { data: clients = [], isLoading } = useClientsList(user?.id);
   const [createOpen, setCreateOpen] = useState(false);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
@@ -185,6 +199,11 @@ export default function ClientsPage() {
     setCreatePropertyIds(prev => prev.includes(propId) ? prev.filter(id => id !== propId) : [...prev, propId]);
   };
 
+  const getClientDisplayName = (client: ClientMember) => {
+    const name = client.full_name?.trim();
+    return name ? name : (client.email || '—');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -230,7 +249,7 @@ export default function ClientsPage() {
             <TableBody>
               {clients.map(c => (
                 <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
-                  <TableCell className="font-semibold text-primary">{c.full_name || '—'}</TableCell>
+                  <TableCell className="font-semibold text-primary">{getClientDisplayName(c)}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{c.phone || '—'}</TableCell>
                   <TableCell>
