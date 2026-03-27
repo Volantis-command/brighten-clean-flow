@@ -46,6 +46,7 @@ import StaffOnboardingPage from "./pages/StaffOnboardingPage";
 import ClientSchedulePage from "./pages/ClientSchedulePage";
 import ClientRebookPage from "./pages/ClientRebookPage";
 import CleanerPortalPage from "./pages/CleanerPortalPage";
+import CleanReportPage from "./pages/CleanReportPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
