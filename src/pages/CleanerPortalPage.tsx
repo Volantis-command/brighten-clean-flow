@@ -12,7 +12,7 @@ type TokenState =
   | { status: "loading" }
   | { status: "expired" }
   | { status: "error"; message: string }
-  | { status: "valid"; job: any; staff: any; property: any };
+  | { status: "valid"; job: any; staff: any; property: any; lockboxCode: string | null };
 
 export default function CleanerPortalPage() {
   const { token } = useParams<{ token: string }>();
