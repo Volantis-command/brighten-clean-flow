@@ -310,17 +310,14 @@ export default function CleanerPortalPage() {
         )}
 
         {job.status === "in_progress" && (
-          <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="p-5 text-center space-y-2">
-              <p className="text-amber-800 font-bold text-lg">Clean in progress…</p>
-              <p className="text-amber-700 text-sm">
-                Checked in at {job.check_in_time ? format(new Date(job.check_in_time), "h:mm a") : "—"}
-              </p>
-              <p className="text-muted-foreground text-xs mt-2">
-                Checklist coming soon
-              </p>
-            </CardContent>
-          </Card>
+          <ActiveJobView
+            job={job}
+            staff={staff}
+            property={property}
+            onComplete={(updatedJob) =>
+              setState({ ...state, job: updatedJob })
+            }
+          />
         )}
 
         {job.status === "completed" && (
