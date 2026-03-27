@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CreditCard, CheckCircle2 } from 'lucide-react';
+  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CreditCard, CheckCircle2, Link as LinkIcon } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
@@ -38,6 +38,7 @@ export default function JobDetailPage() {
   const [refundingDeposit, setRefundingDeposit] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [refundReason, setRefundReason] = useState('');
+  const [sendingJobLink, setSendingJobLink] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -79,6 +80,20 @@ export default function JobDetailPage() {
   });
 
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
+
+  // Cleaner job tokens for this job
+  const { data: jobTokens = [], refetch: refetchJobTokens } = useQuery({
+    queryKey: ['cleaner-job-tokens', jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cleaner_job_tokens')
+        .select('*')
+        .eq('job_id', jobId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!jobId && role === 'admin',
+  });
 
   // Completion photos (after photos)
   const { data: completionPhotos = [] } = useQuery({
@@ -507,6 +522,96 @@ export default function JobDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Assign & Notify Cleaner */}
+      {role === 'admin' && job.status === 'scheduled' && cleanerIds.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Assign & Notify Cleaner
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {cleanerIds.map((cleanerId) => {
+              const existingToken = jobTokens.find((t) => t.staff_id === cleanerId);
+              const cleanerName = nameMap[cleanerId] || 'Cleaner';
+
+              const handleSendJobLink = async () => {
+                setSendingJobLink(true);
+                try {
+                  // 1. Create token record (or use existing for resend)
+                  let token = existingToken?.token;
+                  if (!existingToken) {
+                    const { data: newToken, error: tokenErr } = await supabase
+                      .from('cleaner_job_tokens')
+                      .insert({ job_id: jobId!, staff_id: cleanerId })
+                      .select('token')
+                      .single();
+                    if (tokenErr) throw tokenErr;
+                    token = newToken.token;
+                  }
+
+                  // 2. Get cleaner phone
+                  const { data: cleanerProfile, error: profileErr } = await supabase
+                    .from('profiles')
+                    .select('phone, full_name')
+                    .eq('id', cleanerId)
+                    .single();
+                  if (profileErr || !cleanerProfile?.phone) throw new Error('Cleaner phone not found');
+
+                  // 3. Format message
+                  const firstName = (cleanerProfile.full_name || 'there').split(' ')[0];
+                  const propAddress = address || property?.property_name || 'the property';
+                  const dateStr = job.scheduled_date ? format(new Date(job.scheduled_date + 'T00:00:00'), 'd MMM') : 'TBC';
+                  const timeStr = scheduledTime || 'TBC';
+                  const message = `Hi ${firstName}, you have a Brightly job at ${propAddress} on ${dateStr} at ${timeStr}. Tap here to check in: https://brightly.cleaning/cleaner/${token}`;
+
+                  // 4. Send SMS via edge function (direct mode)
+                  const phone = cleanerProfile.phone.replace(/\s/g, '');
+                  const formattedPhone = phone.startsWith('04') ? '+61' + phone.slice(1) : phone.startsWith('+') ? phone : '+61' + phone;
+
+                  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-job-sms`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: formattedPhone, message }),
+                  });
+                  const data = await res.json();
+                  if (data.error) throw new Error(data.error);
+
+                  toast.success(`Job link sent to ${cleanerName}`);
+                  refetchJobTokens();
+                } catch (err: any) {
+                  toast.error('Failed to send: ' + err.message);
+                }
+                setSendingJobLink(false);
+              };
+
+              return (
+                <div key={cleanerId} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">{cleanerName}</span>
+                  <Button
+                    variant={existingToken ? 'outline' : 'default'}
+                    size="sm"
+                    onClick={handleSendJobLink}
+                    disabled={sendingJobLink}
+                    className="gap-1.5 text-xs"
+                  >
+                    {sendingJobLink ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : existingToken ? (
+                      <RefreshCw className="h-3 w-3" />
+                    ) : (
+                      <Send className="h-3 w-3" />
+                    )}
+                    {existingToken ? 'Resend Link' : 'Send Job Link to Cleaner'}
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Awaiting Quote Banner + Set Price Section */}
       {role === 'admin' && job.status === 'awaiting_quote' && (
