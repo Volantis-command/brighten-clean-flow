@@ -100,12 +100,31 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
 
     if (isAirbnb) {
       // Load property SOP items
-      const { data: sopItems } = await supabase
+      let { data: sopItems } = await supabase
         .from("property_sop_items")
         .select("*")
         .eq("property_id", property.id)
         .eq("active", true)
+        .order("room")
         .order("sort_order");
+
+      // Fallback to default checklist if no SOP items configured
+      if (!sopItems || sopItems.length === 0) {
+        const toInsert = DEFAULT_CHECKLIST.flatMap((group, gi) =>
+          group.tasks.map((task, ti) => ({
+            property_id: property.id,
+            room: group.room,
+            task,
+            sort_order: gi * 100 + ti,
+            active: true,
+          }))
+        );
+        const { data: inserted } = await supabase
+          .from("property_sop_items")
+          .insert(toInsert)
+          .select();
+        sopItems = inserted ?? [];
+      }
 
       const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
         id: s.id,
