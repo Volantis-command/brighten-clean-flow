@@ -150,16 +150,43 @@ export default function PropertiesPage() {
                     Client: {property.client_name}
                   </p>
                 )}
-                {property.preferred_cleaner_id && cleanerMap[property.preferred_cleaner_id] && (
-                  <p className="text-xs text-muted-foreground">
-                    🧹 {cleanerMap[property.preferred_cleaner_id]}
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  {property.preferred_cleaner_id && cleanerMap[property.preferred_cleaner_id] && (
+                    <p className="text-xs text-muted-foreground">
+                      🧹 {cleanerMap[property.preferred_cleaner_id]}
+                    </p>
+                  )}
+                  {role === 'admin' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: property.id, name: property.property_name }); }}
+                      className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Delete property"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </button>
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+            <DialogDescription>This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
