@@ -297,9 +297,12 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
   }
 
   function handleCompleteClick() {
-    const incomplete = checklist.filter((c) => !c.completed).length;
-    if (incomplete > 0) {
-      setIncompleteCount(incomplete);
+    const incompleteChecklist = checklist.filter((c) => !c.completed).length;
+    const incompleteRestock = restockItems.filter((r) => !r.completed).length;
+    const totalIncomplete = incompleteChecklist + incompleteRestock;
+    if (totalIncomplete > 0) {
+      setIncompleteCount(incompleteChecklist);
+      setIncompleteRestockCount(incompleteRestock);
       setShowWarning(true);
     } else {
       setShowConfirm(true);
