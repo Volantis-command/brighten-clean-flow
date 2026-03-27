@@ -88,6 +88,48 @@ export type Database = {
           },
         ]
       }
+      cleaner_job_tokens: {
+        Row: {
+          created_at: string | null
+          id: string
+          job_id: string
+          staff_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          job_id: string
+          staff_id: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          staff_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_job_tokens_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaner_job_tokens_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_messages: {
         Row: {
           client_id: string
@@ -217,6 +259,45 @@ export type Database = {
           },
         ]
       }
+      job_checklist_completions: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          id: string
+          job_id: string
+          sop_item_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          id?: string
+          job_id: string
+          sop_item_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          id?: string
+          job_id?: string
+          sop_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_checklist_completions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_checklist_completions_sop_item_id_fkey"
+            columns: ["sop_item_id"]
+            isOneToOne: false
+            referencedRelation: "property_sop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_feedback: {
         Row: {
           attention_areas: Json | null
@@ -331,6 +412,80 @@ export type Database = {
           },
         ]
       }
+      job_photos: {
+        Row: {
+          id: string
+          job_id: string
+          public_url: string | null
+          room_label: string | null
+          storage_path: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          public_url?: string | null
+          room_label?: string | null
+          storage_path: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          public_url?: string | null
+          room_label?: string | null
+          storage_path?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_restocking_completions: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          id: string
+          job_id: string
+          restocking_item_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          id?: string
+          job_id: string
+          restocking_item_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          id?: string
+          job_id?: string
+          restocking_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_restocking_completions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_restocking_completions_restocking_item_id_fkey"
+            columns: ["restocking_item_id"]
+            isOneToOne: false
+            referencedRelation: "property_restocking_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_series: {
         Row: {
           clean_type: string | null
@@ -386,8 +541,11 @@ export type Database = {
       }
       jobs: {
         Row: {
+          check_in_time: string | null
+          check_out_time: string | null
           cleaner_1_id: string | null
           cleaner_2_id: string | null
+          cleaner_notes: string | null
           client_booking_sms_sent_at: string | null
           created_at: string
           deposit_amount: number | null
@@ -404,13 +562,16 @@ export type Database = {
           invoice_notes: string | null
           invoice_status: string | null
           is_urgent: boolean | null
+          late_alert_sent: boolean | null
           linked_quote_id: string | null
+          no_show_alert_sent: boolean | null
           notes: string | null
           price_ex_gst: number | null
           price_inc_gst: number | null
           price_notes: string | null
           property_id: string | null
           rebook_sms_sent_at: string | null
+          report_token: string | null
           review_sms_sent_at: string | null
           scheduled_date: string
           scheduled_time: string | null
@@ -423,8 +584,11 @@ export type Database = {
           xero_invoice_number: string | null
         }
         Insert: {
+          check_in_time?: string | null
+          check_out_time?: string | null
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
+          cleaner_notes?: string | null
           client_booking_sms_sent_at?: string | null
           created_at?: string
           deposit_amount?: number | null
@@ -441,13 +605,16 @@ export type Database = {
           invoice_notes?: string | null
           invoice_status?: string | null
           is_urgent?: boolean | null
+          late_alert_sent?: boolean | null
           linked_quote_id?: string | null
+          no_show_alert_sent?: boolean | null
           notes?: string | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
           price_notes?: string | null
           property_id?: string | null
           rebook_sms_sent_at?: string | null
+          report_token?: string | null
           review_sms_sent_at?: string | null
           scheduled_date: string
           scheduled_time?: string | null
@@ -460,8 +627,11 @@ export type Database = {
           xero_invoice_number?: string | null
         }
         Update: {
+          check_in_time?: string | null
+          check_out_time?: string | null
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
+          cleaner_notes?: string | null
           client_booking_sms_sent_at?: string | null
           created_at?: string
           deposit_amount?: number | null
@@ -478,13 +648,16 @@ export type Database = {
           invoice_notes?: string | null
           invoice_status?: string | null
           is_urgent?: boolean | null
+          late_alert_sent?: boolean | null
           linked_quote_id?: string | null
+          no_show_alert_sent?: boolean | null
           notes?: string | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
           price_notes?: string | null
           property_id?: string | null
           rebook_sms_sent_at?: string | null
+          report_token?: string | null
           review_sms_sent_at?: string | null
           scheduled_date?: string
           scheduled_time?: string | null
@@ -730,6 +903,7 @@ export type Database = {
           access_details: Json | null
           access_method: string | null
           access_notes: string | null
+          active: boolean | null
           address: string | null
           alarm_code: string | null
           amenities_notes: string | null
@@ -766,6 +940,7 @@ export type Database = {
           linen_storage: string | null
           linen_supply: string | null
           lng: number | null
+          lockbox_code: string | null
           max_guests: number | null
           min_notice: string | null
           neighbour_notes: string | null
@@ -801,6 +976,7 @@ export type Database = {
           access_details?: Json | null
           access_method?: string | null
           access_notes?: string | null
+          active?: boolean | null
           address?: string | null
           alarm_code?: string | null
           amenities_notes?: string | null
@@ -837,6 +1013,7 @@ export type Database = {
           linen_storage?: string | null
           linen_supply?: string | null
           lng?: number | null
+          lockbox_code?: string | null
           max_guests?: number | null
           min_notice?: string | null
           neighbour_notes?: string | null
@@ -872,6 +1049,7 @@ export type Database = {
           access_details?: Json | null
           access_method?: string | null
           access_notes?: string | null
+          active?: boolean | null
           address?: string | null
           alarm_code?: string | null
           amenities_notes?: string | null
@@ -908,6 +1086,7 @@ export type Database = {
           linen_storage?: string | null
           linen_supply?: string | null
           lng?: number | null
+          lockbox_code?: string | null
           max_guests?: number | null
           min_notice?: string | null
           neighbour_notes?: string | null
@@ -993,6 +1172,76 @@ export type Database = {
           },
           {
             foreignKeyName: "property_issues_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_restocking_items: {
+        Row: {
+          active: boolean | null
+          emoji: string | null
+          id: string
+          item_name: string
+          property_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          emoji?: string | null
+          id?: string
+          item_name: string
+          property_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          emoji?: string | null
+          id?: string
+          item_name?: string
+          property_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_restocking_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sop_items: {
+        Row: {
+          active: boolean | null
+          id: string
+          property_id: string
+          room: string
+          sort_order: number | null
+          task: string
+        }
+        Insert: {
+          active?: boolean | null
+          id?: string
+          property_id: string
+          room: string
+          sort_order?: number | null
+          task: string
+        }
+        Update: {
+          active?: boolean | null
+          id?: string
+          property_id?: string
+          room?: string
+          sort_order?: number | null
+          task?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sop_items_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
