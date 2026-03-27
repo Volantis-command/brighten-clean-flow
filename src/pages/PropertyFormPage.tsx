@@ -142,6 +142,7 @@ export default function PropertyFormPage() {
         access_code: existing.access_code || '',
         access_notes: existing.access_notes || '',
         client_name: existing.client_name || '',
+        client_phone: (existing as any).client_phone || '',
         billing_email: existing.billing_email || '',
         payment_terms: existing.payment_terms || '7 days from invoice date',
         clean_frequency: existing.clean_frequency || '',
