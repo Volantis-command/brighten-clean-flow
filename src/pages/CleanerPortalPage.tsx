@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Bed, Bath, Clock, User, CheckCircle2, Loader2, KeyRound } from "lucide-react";
 import { format, isToday, isTomorrow, differenceInHours } from "date-fns";
 import { toast } from "sonner";
+import ActiveJobView from "@/components/cleaner-portal/ActiveJobView";
 
 type TokenState =
   | { status: "loading" }
