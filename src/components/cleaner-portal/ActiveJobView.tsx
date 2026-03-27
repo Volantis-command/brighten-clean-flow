@@ -567,9 +567,10 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{incompleteCount} items not ticked</AlertDialogTitle>
+            <AlertDialogTitle>Items not completed</AlertDialogTitle>
             <AlertDialogDescription>
-              You have {incompleteCount} checklist item{incompleteCount > 1 ? "s" : ""} still incomplete.
+              {incompleteCount > 0 && <span>{incompleteCount} checklist item{incompleteCount > 1 ? "s" : ""} not ticked. </span>}
+              {incompleteRestockCount > 0 && <span>⚠️ {incompleteRestockCount} restocking item{incompleteRestockCount > 1 ? "s" : ""} not confirmed. </span>}
               Complete anyway?
             </AlertDialogDescription>
           </AlertDialogHeader>
