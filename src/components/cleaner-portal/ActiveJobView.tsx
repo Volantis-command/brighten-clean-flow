@@ -69,6 +69,7 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
   const [showConfirm, setShowConfirm] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [incompleteCount, setIncompleteCount] = useState(0);
+  const [incompleteRestockCount, setIncompleteRestockCount] = useState(0);
   const [uploadingRoom, setUploadingRoom] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedRoomRef = useRef<string>("");
