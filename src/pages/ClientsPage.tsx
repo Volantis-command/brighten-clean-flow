@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,46 +24,118 @@ interface ClientMember {
   linked_properties: { property_id: string; property_name: string; portal_token: string | null }[];
 }
 
-function useClientsList() {
+function useClientsList(currentUserId?: string) {
   return useQuery({
-    queryKey: ['clients-list'],
+    queryKey: ['clients-list', currentUserId],
     queryFn: async () => {
-      // Get all client_properties links to find every client linked to a property
-      const { data: allLinks } = await supabase
-        .from('client_properties')
-        .select('client_id, property_id, portal_token, portal_active, onboard_token');
+      const { data: propertyRows, error: propertiesError } = await supabase
+        .from('properties')
+        .select('id, property_name, client_name, billing_email, client_phone')
+        .or('client_name.not.is.null,billing_email.not.is.null,client_phone.not.is.null')
+        .order('property_name');
 
-      const cpClientIds = [...new Set((allLinks || []).map(l => l.client_id))];
+      if (propertiesError) throw propertiesError;
 
-      // Also get user_roles clients to merge both sources
-      const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'client');
-      const roleClientIds = (roles || []).map(r => r.user_id);
+      const properties = (propertyRows || []) as Array<{
+        id: string;
+        property_name: string;
+        client_name: string | null;
+        billing_email: string | null;
+        client_phone: string | null;
+      }>;
 
-      // Union of both sets
-      const allClientIds = [...new Set([...cpClientIds, ...roleClientIds])];
-      if (!allClientIds.length) return [];
+      if (!properties.length) return [];
 
-      // Exclude admins
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-      const filteredIds = allClientIds.filter(id => !adminIds.has(id));
-      if (!filteredIds.length) return [];
+      const propertyIds = properties.map((property) => property.id);
+      const emails = [...new Set(properties.map((property) => property.billing_email?.trim()).filter(Boolean) as string[])];
+      const phones = [...new Set(properties.map((property) => property.client_phone?.trim()).filter(Boolean) as string[])];
 
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', filteredIds);
+      const [{ data: clientLinks, error: clientLinksError }, { data: linkedProfiles, error: linkedProfilesError }] = await Promise.all([
+        supabase.from('client_properties').select('client_id, property_id, portal_token').in('property_id', propertyIds),
+        supabase.from('profiles').select('id, full_name, email, phone').in('id', [
+          ...new Set(
+            ((await supabase.from('client_properties').select('client_id, property_id').in('property_id', propertyIds)).data || [])
+              .map((link) => link.client_id)
+              .filter(Boolean)
+          ),
+        ]),
+      ]);
 
-      const propIds = [...new Set((allLinks || []).map(l => l.property_id))];
-      const { data: props } = propIds.length ? await supabase.from('properties').select('id, property_name').in('id', propIds) : { data: [] };
-      const propMap: Record<string, string> = {};
-      (props || []).forEach(p => { propMap[p.id] = p.property_name; });
+      if (clientLinksError) throw clientLinksError;
+      if (linkedProfilesError) throw linkedProfilesError;
 
-      return (profiles || []).map(p => ({
-        ...p,
-        linked_properties: (allLinks || []).filter(l => l.client_id === p.id).map(l => ({
-          property_id: l.property_id,
-          property_name: propMap[l.property_id] || 'Unknown',
-          portal_token: l.portal_token,
-        })),
-      })) as ClientMember[];
+      const profileQueries = [] as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>[];
+
+      if (emails.length) {
+        profileQueries.push(
+          supabase.from('profiles').select('id, full_name, email, phone').in('email', emails) as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>
+        );
+      }
+
+      if (phones.length) {
+        profileQueries.push(
+          supabase.from('profiles').select('id, full_name, email, phone').in('phone', phones) as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>
+        );
+      }
+
+      const matchedProfileResults = profileQueries.length ? await Promise.all(profileQueries) : [];
+      matchedProfileResults.forEach((result) => {
+        if (result.error) throw result.error;
+      });
+
+      const allProfiles = [
+        ...(linkedProfiles || []),
+        ...matchedProfileResults.flatMap((result) => result.data || []),
+      ];
+
+      const profileById = new Map(allProfiles.map((profile) => [profile.id, profile]));
+      const profileByEmail = new Map(
+        allProfiles
+          .filter((profile) => profile.email)
+          .map((profile) => [profile.email!.trim().toLowerCase(), profile])
+      );
+      const profileByPhone = new Map(
+        allProfiles
+          .filter((profile) => profile.phone)
+          .map((profile) => [profile.phone!.trim(), profile])
+      );
+
+      const linksByPropertyId = new Map((clientLinks || []).map((link) => [link.property_id, link]));
+      const clientsMap = new Map<string, ClientMember>();
+
+      properties.forEach((property) => {
+        const directLink = linksByPropertyId.get(property.id);
+        const resolvedProfile = (directLink?.client_id ? profileById.get(directLink.client_id) : undefined)
+          || (property.billing_email ? profileByEmail.get(property.billing_email.trim().toLowerCase()) : undefined)
+          || (property.client_phone ? profileByPhone.get(property.client_phone.trim()) : undefined);
+
+        if (resolvedProfile?.id === currentUserId) {
+          return;
+        }
+
+        const key = resolvedProfile?.id || `property-${property.id}`;
+        const existingClient = clientsMap.get(key);
+        const linkedProperty = {
+          property_id: property.id,
+          property_name: property.property_name || 'Unknown',
+          portal_token: directLink?.portal_token ?? null,
+        };
+
+        if (existingClient) {
+          existingClient.linked_properties.push(linkedProperty);
+          return;
+        }
+
+        clientsMap.set(key, {
+          id: resolvedProfile?.id || key,
+          full_name: resolvedProfile?.full_name || property.client_name || null,
+          email: resolvedProfile?.email || property.billing_email || null,
+          phone: resolvedProfile?.phone || property.client_phone || null,
+          linked_properties: [linkedProperty],
+        });
+      });
+
+      return Array.from(clientsMap.values());
     },
   });
 }
@@ -70,9 +143,10 @@ function useClientsList() {
 const BASE_URL = getAppBaseUrl();
 
 export default function ClientsPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: clients = [], isLoading } = useClientsList();
+  const { data: clients = [], isLoading } = useClientsList(user?.id);
   const [createOpen, setCreateOpen] = useState(false);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
@@ -185,6 +259,11 @@ export default function ClientsPage() {
     setCreatePropertyIds(prev => prev.includes(propId) ? prev.filter(id => id !== propId) : [...prev, propId]);
   };
 
+  const getClientDisplayName = (client: ClientMember) => {
+    const name = client.full_name?.trim();
+    return name ? name : (client.email || '—');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -230,7 +309,7 @@ export default function ClientsPage() {
             <TableBody>
               {clients.map(c => (
                 <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
-                  <TableCell className="font-semibold text-primary">{c.full_name || '—'}</TableCell>
+                  <TableCell className="font-semibold text-primary">{getClientDisplayName(c)}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{c.phone || '—'}</TableCell>
                   <TableCell>
