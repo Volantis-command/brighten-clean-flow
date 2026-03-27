@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CreditCard, CheckCircle2 } from 'lucide-react';
+  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CreditCard, CheckCircle2, Link as LinkIcon } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
