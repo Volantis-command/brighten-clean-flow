@@ -1,59 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCleanersList } from '@/hooks/useCleanersList';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Pencil, BedDouble, Bath, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Save } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
-function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="bg-card rounded-2xl shadow-md overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-5 text-left"
-      >
-        <h2 className="text-lg font-bold text-primary">{title}</h2>
-        {open ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-      </button>
-      {open && <div className="px-5 pb-5 pt-0">{children}</div>}
-    </div>
-  );
-}
+const ROOMS = ['Kitchen', 'Bathroom', 'Bedroom', 'Lounge', 'Balcony', 'Entry', 'Other'];
 
-function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null;
-  return (
-    <div className="py-2 border-b border-border last:border-b-0">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
-      <p className="text-sm font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function SensitiveField({ label, value }: { label: string; value: string | null | undefined }) {
-  const [revealed, setRevealed] = useState(false);
-  if (!value) return null;
-  return (
-    <div className="py-2 border-b border-border last:border-b-0">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
-      <div className="flex items-center gap-2">
-        <p className={`text-sm font-semibold text-foreground ${!revealed ? 'blur-sm select-none' : ''}`}>
-          {value}
-        </p>
-        <button onClick={() => setRevealed(!revealed)} className="text-muted-foreground hover:text-foreground">
-          {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-    </div>
-  );
-}
+const DEFAULT_RESTOCKING = [
+  { emoji: '☕', item_name: 'Coffee Pods' },
+  { emoji: '🧻', item_name: 'Toilet Paper' },
+  { emoji: '🛏', item_name: 'Fresh Linen' },
+  { emoji: '🛁', item_name: 'Towels' },
+  { emoji: '🧴', item_name: 'Soap' },
+  { emoji: '🍽', item_name: 'Dishwashing Tabs' },
+];
 
 export default function PropertyProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: cleaners = [] } = useCleanersList();
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -65,206 +40,382 @@ export default function PropertyProfilePage() {
     enabled: !!id,
   });
 
-  // Fetch default cleaner name
-  const { data: defaultCleaner } = useQuery({
-    queryKey: ['cleaner-profile', property?.default_cleaner_id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('profiles').select('full_name').eq('id', property!.default_cleaner_id!).single();
-      if (error) return null;
-      return data;
-    },
-    enabled: !!property?.default_cleaner_id,
-  });
-
-  // Job history
-  const { data: jobs = [] } = useQuery({
-    queryKey: ['property-jobs', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('id, scheduled_date, status, cleaner_1_id, cleaner_2_id')
-        .eq('property_id', id!)
-        .order('scheduled_date', { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
-
-  // Photos
-  const { data: photos = [] } = useQuery({
-    queryKey: ['property-photos', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('photos')
-        .select('id, file_url, room_label, taken_at')
-        .eq('property_id', id!)
-        .order('taken_at', { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-primary font-bold text-lg">Loading property…</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading…</p></div>;
   }
 
   if (!property) {
     return (
       <div className="text-center py-20">
         <p className="text-lg font-bold text-foreground mb-2">Property not found</p>
-        <Button variant="outline" onClick={() => navigate('/properties')}>Back to Properties</Button>
+        <Button variant="outline" onClick={() => navigate('/properties')}>Back</Button>
       </div>
     );
   }
 
-  const statusConfig: Record<string, { label: string; className: string }> = {
-    scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
-    in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
-    complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
-    flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
-  };
-
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Back & Header */}
+    <div className="max-w-3xl space-y-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate('/properties')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
       </div>
+      <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-primary">{property.property_name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {[property.address, property.suburb, property.state, property.postcode].filter(Boolean).join(', ')}
-          </p>
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
+          <TabsTrigger value="sop" className="flex-1">SOP & Restocking</TabsTrigger>
+        </TabsList>
+        <TabsContent value="details">
+          <DetailsTab property={property} cleaners={cleaners} />
+        </TabsContent>
+        <TabsContent value="sop">
+          <SOPTab property={property} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ═══════ DETAILS TAB ═══════ */
+
+function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    property_name: '',
+    address: '',
+    suburb: '',
+    client_type: 'residential',
+    bedrooms: 1,
+    bathrooms: 1,
+    client_name: '',
+    preferred_cleaner_id: '',
+    access_notes: '',
+    lockbox_code: '',
+    status: 'active',
+  });
+
+  useEffect(() => {
+    if (property) {
+      setForm({
+        property_name: property.property_name || '',
+        address: property.address || '',
+        suburb: property.suburb || '',
+        client_type: property.client_type || 'residential',
+        bedrooms: property.bedrooms || 1,
+        bathrooms: property.bathrooms || 1,
+        client_name: property.client_name || '',
+        preferred_cleaner_id: property.preferred_cleaner_id || '',
+        access_notes: property.access_notes || '',
+        lockbox_code: property.lockbox_code || '',
+        status: property.status || 'active',
+      });
+    }
+  }, [property]);
+
+  const u = (field: string, value: any) => setForm((f) => ({ ...f, [field]: value }));
+
+  const handleSave = async () => {
+    if (!form.property_name.trim()) { toast.error('Property name is required'); return; }
+    setSaving(true);
+    const { error } = await supabase.from('properties').update({
+      property_name: form.property_name,
+      address: form.address || null,
+      suburb: form.suburb || null,
+      client_type: form.client_type,
+      bedrooms: form.bedrooms,
+      bathrooms: form.bathrooms,
+      client_name: form.client_name || null,
+      preferred_cleaner_id: form.preferred_cleaner_id || null,
+      access_notes: form.access_notes || null,
+      lockbox_code: form.lockbox_code || null,
+      status: form.status,
+    } as any).eq('id', property.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Property saved');
+    queryClient.invalidateQueries({ queryKey: ['property', property.id] });
+    queryClient.invalidateQueries({ queryKey: ['properties'] });
+  };
+
+  return (
+    <div className="bg-card rounded-2xl shadow-md p-5 space-y-5 mt-4">
+      <Field label="Property Name">
+        <Input value={form.property_name} onChange={(e) => u('property_name', e.target.value)} className="h-12 rounded-xl" />
+      </Field>
+      <Field label="Address">
+        <Input value={form.address} onChange={(e) => u('address', e.target.value)} className="h-12 rounded-xl" />
+      </Field>
+      <Field label="Suburb">
+        <Input value={form.suburb} onChange={(e) => u('suburb', e.target.value)} className="h-12 rounded-xl" />
+      </Field>
+      <Field label="Type">
+        <div className="flex gap-2">
+          {[{ v: 'residential', l: 'House Clean' }, { v: 'airbnb', l: 'Airbnb' }].map(({ v, l }) => (
+            <button key={v} type="button" onClick={() => u('client_type', v)}
+              className={cn('flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all',
+                form.client_type === v ? 'border-primary bg-secondary text-primary' : 'border-border text-muted-foreground'
+              )}
+            >{l}</button>
+          ))}
         </div>
-        {role === 'admin' && (
-          <Button variant="outline" onClick={() => navigate(`/properties/${id}/edit`)} className="gap-2 shrink-0">
-            <Pencil className="h-4 w-4" /> Edit
-          </Button>
-        )}
+      </Field>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Bedrooms">
+          <Input type="number" min={0} value={form.bedrooms} onChange={(e) => u('bedrooms', Number(e.target.value))} className="h-12 rounded-xl" />
+        </Field>
+        <Field label="Bathrooms">
+          <Input type="number" min={0} value={form.bathrooms} onChange={(e) => u('bathrooms', Number(e.target.value))} className="h-12 rounded-xl" />
+        </Field>
       </div>
+      <Field label="Client / Host Name">
+        <Input value={form.client_name} onChange={(e) => u('client_name', e.target.value)} className="h-12 rounded-xl" />
+      </Field>
+      <Field label="Preferred Cleaner">
+        <select value={form.preferred_cleaner_id} onChange={(e) => u('preferred_cleaner_id', e.target.value)}
+          className="w-full h-12 rounded-xl border border-border bg-background px-3 text-sm"
+        >
+          <option value="">— None —</option>
+          {cleaners.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+        </select>
+      </Field>
+      <Field label="Access Notes (visible to cleaner before check-in)">
+        <Textarea value={form.access_notes} onChange={(e) => u('access_notes', e.target.value)} rows={3} className="rounded-xl" />
+      </Field>
+      <Field label="🔑 Lockbox Code (only shown to cleaner after check-in)">
+        <Input value={form.lockbox_code} onChange={(e) => u('lockbox_code', e.target.value)} className="h-12 rounded-xl" />
+      </Field>
+      <div className="flex items-center justify-between py-2">
+        <Label className="font-semibold">Active</Label>
+        <Switch checked={form.status === 'active'} onCheckedChange={(v) => u('status', v ? 'active' : 'inactive')} />
+      </div>
+      <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="lg">
+        <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
+      </Button>
+    </div>
+  );
+}
 
-      {/* Property Details */}
-      <CollapsibleSection title="Property Details">
-        <DetailRow label="Property Type" value={property.property_type} />
-        <DetailRow label="Address" value={[property.address, property.suburb, property.state, property.postcode].filter(Boolean).join(', ')} />
-        <div className="flex gap-6 py-2">
-          <div className="flex items-center gap-2">
-            <BedDouble className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-bold text-foreground">{property.bedrooms || 0} beds</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Bath className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-bold text-foreground">{property.bathrooms || 0} baths</span>
-          </div>
+/* ═══════ SOP & RESTOCKING TAB ═══════ */
+
+function SOPTab({ property }: { property: any }) {
+  const queryClient = useQueryClient();
+  const isAirbnb = property.client_type === 'airbnb' || property.client_type === 'short_term_rental';
+
+  // SOP items
+  const { data: sopItems = [], isLoading: sopLoading } = useQuery({
+    queryKey: ['sop-items', property.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('property_sop_items')
+        .select('*')
+        .eq('property_id', property.id)
+        .eq('active', true)
+        .order('room').order('sort_order');
+      return data || [];
+    },
+  });
+
+  // Restocking items
+  const { data: restockItems = [], isLoading: restockLoading } = useQuery({
+    queryKey: ['restock-items', property.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('property_restocking_items')
+        .select('*')
+        .eq('property_id', property.id)
+        .eq('active', true)
+        .order('sort_order');
+      return data || [];
+    },
+  });
+
+  return (
+    <div className="space-y-6 mt-4">
+      {!isAirbnb && (
+        <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground font-medium">
+          ℹ️ House Clean properties use the standard default checklist. You can still add custom SOP items below if needed.
         </div>
-      </CollapsibleSection>
+      )}
+      <SOPSection propertyId={property.id} items={sopItems} loading={sopLoading} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['sop-items', property.id] })} />
+      <RestockingSection propertyId={property.id} items={restockItems} loading={restockLoading} isAirbnb={isAirbnb} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['restock-items', property.id] })} />
+    </div>
+  );
+}
 
-      {/* Access */}
-      <CollapsibleSection title="Access">
-        <DetailRow label="Access Method" value={property.access_method} />
-        <SensitiveField label="Access Code" value={property.access_code} />
-        <SensitiveField label="Access Notes" value={property.access_notes} />
-      </CollapsibleSection>
+function SOPSection({ propertyId, items, loading, onRefresh }: { propertyId: string; items: any[]; loading: boolean; onRefresh: () => void }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [newTask, setNewTask] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
-      {/* Client Info */}
-      <CollapsibleSection title="Client Info">
-        <DetailRow label="Client Name" value={property.client_name} />
-        <DetailRow label="Billing Email" value={property.billing_email} />
-        <DetailRow label="Payment Terms" value={property.payment_terms} />
-      </CollapsibleSection>
+  const grouped: Record<string, any[]> = {};
+  ROOMS.forEach(r => { grouped[r] = []; });
+  items.forEach(i => {
+    const room = ROOMS.includes(i.room) ? i.room : 'Other';
+    grouped[room].push(i);
+  });
 
-      {/* Operations */}
-      <CollapsibleSection title="Operations">
-        <DetailRow label="Clean Frequency" value={property.clean_frequency} />
-        <DetailRow label="Turnaround Window" value={property.turnaround_window} />
-        <DetailRow label="Default Cleaner" value={defaultCleaner?.full_name || (property.default_cleaner_id ? 'Assigned' : 'None')} />
-        <DetailRow label="Status" value={property.status === 'active' ? 'Active' : 'Inactive'} />
-      </CollapsibleSection>
+  const toggle = (room: string) => setExpanded(e => ({ ...e, [room]: !e[room] }));
 
-      {/* Pricing — Admin only */}
-      {role === 'admin' && (
-        <CollapsibleSection title="Pricing">
-          {[
-            { label: 'Airbnb / Short-Stay Turnover', value: property.price_turnover },
-            { label: 'Deep Clean', value: property.price_deep_clean },
-            { label: 'Bond / End of Lease Clean', value: property.price_end_of_lease },
-            { label: 'Post-Renovation Clean', value: property.price_post_build },
-          ].map(({ label, value }) => (
-            <div key={label} className="py-2 border-b border-border last:border-b-0">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
-              {value ? (
-                <p className="text-sm font-semibold text-foreground">
-                  ${Number(value).toFixed(2)} ex GST · ${(Number(value) * 1.1).toFixed(2)} inc GST
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">Not set</p>
+  const addTask = async (room: string) => {
+    const task = (newTask[room] || '').trim();
+    if (!task) return;
+    setSaving(true);
+    const maxOrder = Math.max(0, ...grouped[room].map(i => i.sort_order || 0));
+    await supabase.from('property_sop_items').insert({
+      property_id: propertyId, room, task, sort_order: maxOrder + 1,
+    } as any);
+    setNewTask(n => ({ ...n, [room]: '' }));
+    setSaving(false);
+    onRefresh();
+  };
+
+  const deleteTask = async (id: string) => {
+    await supabase.from('property_sop_items').update({ active: false } as any).eq('id', id);
+    onRefresh();
+  };
+
+  const moveTask = async (item: any, dir: -1 | 1) => {
+    const roomItems = grouped[item.room].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+    const idx = roomItems.findIndex((i: any) => i.id === item.id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= roomItems.length) return;
+    const other = roomItems[swapIdx];
+    await Promise.all([
+      supabase.from('property_sop_items').update({ sort_order: other.sort_order } as any).eq('id', item.id),
+      supabase.from('property_sop_items').update({ sort_order: item.sort_order } as any).eq('id', other.id),
+    ]);
+    onRefresh();
+  };
+
+  if (loading) return <p className="text-muted-foreground text-sm">Loading SOP…</p>;
+
+  return (
+    <section>
+      <h3 className="text-base font-bold text-foreground mb-3">SOP Items</h3>
+      <div className="space-y-2">
+        {ROOMS.map(room => {
+          const roomItems = grouped[room].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+          const isOpen = expanded[room] ?? false;
+          return (
+            <div key={room} className="bg-card rounded-xl border border-border overflow-hidden">
+              <button onClick={() => toggle(room)} className="w-full flex items-center justify-between p-4 text-left">
+                <span className="font-semibold text-sm text-foreground">{room} <span className="text-muted-foreground text-xs">({roomItems.length})</span></span>
+                {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4 space-y-2">
+                  {roomItems.map((item: any, idx: number) => (
+                    <div key={item.id} className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
+                      <span className="flex-1 text-sm text-foreground">{item.task}</span>
+                      <button onClick={() => moveTask(item, -1)} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronUp className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => moveTask(item, 1)} disabled={idx === roomItems.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronDown className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => deleteTask(item.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input placeholder="New task…" value={newTask[room] || ''} onChange={(e) => setNewTask(n => ({ ...n, [room]: e.target.value }))}
+                      className="h-10 rounded-lg text-sm flex-1"
+                      onKeyDown={(e) => { if (e.key === 'Enter') addTask(room); }}
+                    />
+                    <Button size="sm" variant="outline" onClick={() => addTask(room)} disabled={saving} className="gap-1">
+                      <Plus className="h-3.5 w-3.5" /> Add
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
-          ))}
-          <DetailRow label="Notes" value={property.pricing_notes} />
-          <Button variant="outline" size="sm" onClick={() => navigate(`/properties/${id}/edit`)} className="mt-2 gap-1.5">
-            <Pencil className="h-3.5 w-3.5" /> Edit Pricing
-          </Button>
-        </CollapsibleSection>
-      )}
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
-      {/* Host Preferences */}
-      <CollapsibleSection title="Host Preferences">
-        <DetailRow label="Host Preferences" value={property.host_preferences} />
-        <DetailRow label="Product Restrictions" value={property.product_restrictions} />
-        <DetailRow label="Linen Fold Style" value={property.linen_fold_style} />
-        <DetailRow label="Amenities Notes" value={property.amenities_notes} />
-      </CollapsibleSection>
+function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: { propertyId: string; items: any[]; loading: boolean; isAirbnb: boolean; onRefresh: () => void }) {
+  const [newEmoji, setNewEmoji] = useState('📦');
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-      {/* Job History */}
-      <CollapsibleSection title="Job History" defaultOpen={false}>
-        {jobs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No jobs recorded yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {jobs.map((job) => {
-              const s = statusConfig[job.status] || statusConfig.scheduled;
-              return (
-                <div key={job.id} className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
-                  <span className="text-sm font-semibold text-foreground">{job.scheduled_date}</span>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${s.className}`}>{s.label}</span>
-                </div>
-              );
-            })}
+  // Auto-seed defaults for new airbnb properties with no restocking items
+  useEffect(() => {
+    if (!loading && isAirbnb && items.length === 0 && !initialized) {
+      setInitialized(true);
+      (async () => {
+        const rows = DEFAULT_RESTOCKING.map((d, i) => ({
+          property_id: propertyId,
+          emoji: d.emoji,
+          item_name: d.item_name,
+          sort_order: i,
+        }));
+        await supabase.from('property_restocking_items').insert(rows as any);
+        onRefresh();
+      })();
+    }
+  }, [loading, isAirbnb, items.length, initialized, propertyId, onRefresh]);
+
+  const addItem = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setSaving(true);
+    const maxOrder = Math.max(0, ...items.map(i => i.sort_order || 0));
+    await supabase.from('property_restocking_items').insert({
+      property_id: propertyId, emoji: newEmoji, item_name: name, sort_order: maxOrder + 1,
+    } as any);
+    setNewName('');
+    setNewEmoji('📦');
+    setSaving(false);
+    onRefresh();
+  };
+
+  const deleteItem = async (id: string) => {
+    await supabase.from('property_restocking_items').update({ active: false } as any).eq('id', id);
+    onRefresh();
+  };
+
+  if (loading) return <p className="text-muted-foreground text-sm">Loading restocking…</p>;
+
+  return (
+    <section>
+      <h3 className="text-base font-bold text-foreground mb-3">Restocking Checklist</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+        {items.map((item: any) => (
+          <div key={item.id} className="relative bg-card border border-border rounded-xl p-3 text-center">
+            <span className="text-2xl">{item.emoji || '📦'}</span>
+            <p className="text-xs font-semibold mt-1 text-foreground">{item.item_name}</p>
+            <button onClick={() => deleteItem(item.id)} className="absolute top-1 right-1 text-destructive hover:text-destructive/80">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           </div>
-        )}
-      </CollapsibleSection>
+        ))}
+      </div>
+      <div className="flex gap-2 items-end">
+        <div className="w-16">
+          <Label className="text-xs">Emoji</Label>
+          <Input value={newEmoji} onChange={(e) => setNewEmoji(e.target.value)} className="h-10 rounded-lg text-center text-lg" maxLength={2} />
+        </div>
+        <div className="flex-1">
+          <Label className="text-xs">Item name</Label>
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Shampoo" className="h-10 rounded-lg text-sm"
+            onKeyDown={(e) => { if (e.key === 'Enter') addItem(); }}
+          />
+        </div>
+        <Button size="sm" variant="outline" onClick={addItem} disabled={saving} className="gap-1 h-10">
+          <Plus className="h-3.5 w-3.5" /> Add
+        </Button>
+      </div>
+    </section>
+  );
+}
 
-      {/* Photo Library */}
-      <CollapsibleSection title="Photo Library" defaultOpen={false}>
-        {photos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
-        ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {photos.map((photo) => (
-              <div key={photo.id} className="aspect-square rounded-xl overflow-hidden bg-muted">
-                {photo.file_url ? (
-                  <img src={photo.file_url} alt={photo.room_label || 'Property photo'} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">No image</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </CollapsibleSection>
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-semibold text-foreground">{label}</Label>
+      {children}
     </div>
   );
 }
