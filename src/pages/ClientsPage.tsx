@@ -27,23 +27,37 @@ function useClientsList() {
   return useQuery({
     queryKey: ['clients-list'],
     queryFn: async () => {
-      const { data: roles, error: rolesErr } = await supabase.from('user_roles').select('user_id, role').eq('role', 'client');
-      if (rolesErr) throw rolesErr;
-      if (!roles?.length) return [];
+      // Get all client_properties links to find every client linked to a property
+      const { data: allLinks } = await supabase
+        .from('client_properties')
+        .select('client_id, property_id, portal_token, portal_active, onboard_token');
 
-      const userIds = roles.map(r => r.user_id);
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', userIds);
+      const cpClientIds = [...new Set((allLinks || []).map(l => l.client_id))];
 
-      const { data: links } = await supabase.from('client_properties').select('client_id, property_id, portal_token, portal_active, onboard_token').in('client_id', userIds);
+      // Also get user_roles clients to merge both sources
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'client');
+      const roleClientIds = (roles || []).map(r => r.user_id);
 
-      const propIds = [...new Set((links || []).map(l => l.property_id))];
+      // Union of both sets
+      const allClientIds = [...new Set([...cpClientIds, ...roleClientIds])];
+      if (!allClientIds.length) return [];
+
+      // Exclude admins
+      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+      const adminIds = new Set((adminRoles || []).map(r => r.user_id));
+      const filteredIds = allClientIds.filter(id => !adminIds.has(id));
+      if (!filteredIds.length) return [];
+
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', filteredIds);
+
+      const propIds = [...new Set((allLinks || []).map(l => l.property_id))];
       const { data: props } = propIds.length ? await supabase.from('properties').select('id, property_name').in('id', propIds) : { data: [] };
       const propMap: Record<string, string> = {};
       (props || []).forEach(p => { propMap[p.id] = p.property_name; });
 
       return (profiles || []).map(p => ({
         ...p,
-        linked_properties: (links || []).filter(l => l.client_id === p.id).map(l => ({
+        linked_properties: (allLinks || []).filter(l => l.client_id === p.id).map(l => ({
           property_id: l.property_id,
           property_name: propMap[l.property_id] || 'Unknown',
           portal_token: l.portal_token,

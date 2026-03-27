@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,8 @@ export default function PropertyProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -39,6 +42,16 @@ export default function PropertyProfilePage() {
     },
     enabled: !!id,
   });
+
+  const handleDelete = async () => {
+    if (!property) return;
+    setDeleting(true);
+    const { error } = await supabase.from('properties').delete().eq('id', property.id);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${property.property_name} deleted`);
+    navigate('/properties');
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading…</p></div>;
@@ -55,9 +68,12 @@ export default function PropertyProfilePage() {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate('/properties')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5">
+          <Trash2 className="h-4 w-4" /> Delete
         </Button>
       </div>
       <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
@@ -74,6 +90,22 @@ export default function PropertyProfilePage() {
           <SOPTab property={property} />
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete {property.property_name}?</DialogTitle>
+            <DialogDescription>This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

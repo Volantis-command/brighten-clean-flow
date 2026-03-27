@@ -1,18 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, BedDouble, Bath } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Search, Plus, BedDouble, Bath, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function PropertiesPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = useAuth();
   const [search, setSearch] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { data: cleaners = [] } = useCleanersList();
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from('properties').delete().eq('id', deleteTarget.id);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${deleteTarget.name} deleted`);
+    setDeleteTarget(null);
+    queryClient.invalidateQueries({ queryKey: ['properties'] });
+  };
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
@@ -134,16 +150,43 @@ export default function PropertiesPage() {
                     Client: {property.client_name}
                   </p>
                 )}
-                {property.preferred_cleaner_id && cleanerMap[property.preferred_cleaner_id] && (
-                  <p className="text-xs text-muted-foreground">
-                    🧹 {cleanerMap[property.preferred_cleaner_id]}
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  {property.preferred_cleaner_id && cleanerMap[property.preferred_cleaner_id] && (
+                    <p className="text-xs text-muted-foreground">
+                      🧹 {cleanerMap[property.preferred_cleaner_id]}
+                    </p>
+                  )}
+                  {role === 'admin' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: property.id, name: property.property_name }); }}
+                      className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Delete property"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </button>
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+            <DialogDescription>This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
