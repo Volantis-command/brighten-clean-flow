@@ -920,6 +920,7 @@ export type Database = {
           clean_frequency: string | null
           clean_standard: string | null
           client_name: string | null
+          client_phone: string | null
           client_type: string | null
           consumables_config: Json | null
           created_at: string
@@ -993,6 +994,7 @@ export type Database = {
           clean_frequency?: string | null
           clean_standard?: string | null
           client_name?: string | null
+          client_phone?: string | null
           client_type?: string | null
           consumables_config?: Json | null
           created_at?: string
@@ -1066,6 +1068,7 @@ export type Database = {
           clean_frequency?: string | null
           clean_standard?: string | null
           client_name?: string | null
+          client_phone?: string | null
           client_type?: string | null
           consumables_config?: Json | null
           created_at?: string
