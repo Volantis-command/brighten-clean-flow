@@ -30,52 +30,112 @@ function useClientsList(currentUserId?: string) {
     queryFn: async () => {
       const { data: propertyRows, error: propertiesError } = await supabase
         .from('properties')
-        .select('id, property_name, client_id')
-        .not('client_id', 'is', null);
+        .select('id, property_name, client_name, billing_email, client_phone')
+        .or('client_name.not.is.null,billing_email.not.is.null,client_phone.not.is.null')
+        .order('property_name');
 
       if (propertiesError) throw propertiesError;
 
-      const linkedProperties = ((propertyRows || []) as Array<{ id: string; property_name: string; client_id: string | null }>)
-        .filter((property) => property.client_id);
+      const properties = (propertyRows || []) as Array<{
+        id: string;
+        property_name: string;
+        client_name: string | null;
+        billing_email: string | null;
+        client_phone: string | null;
+      }>;
 
-      const clientIds = [...new Set(linkedProperties.map((property) => property.client_id).filter(Boolean) as string[])]
-        .filter((id) => id !== currentUserId);
+      if (!properties.length) return [];
 
-      if (!clientIds.length) return [];
+      const propertyIds = properties.map((property) => property.id);
+      const emails = [...new Set(properties.map((property) => property.billing_email?.trim()).filter(Boolean) as string[])];
+      const phones = [...new Set(properties.map((property) => property.client_phone?.trim()).filter(Boolean) as string[])];
 
-      const [{ data: profiles, error: profilesError }, { data: clientLinks, error: clientLinksError }] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, email, phone').in('id', clientIds),
-        supabase.from('client_properties').select('client_id, property_id, portal_token').in('client_id', clientIds),
+      const [{ data: clientLinks, error: clientLinksError }, { data: linkedProfiles, error: linkedProfilesError }] = await Promise.all([
+        supabase.from('client_properties').select('client_id, property_id, portal_token').in('property_id', propertyIds),
+        supabase.from('profiles').select('id, full_name, email, phone').in('id', [
+          ...new Set(
+            ((await supabase.from('client_properties').select('client_id, property_id').in('property_id', propertyIds)).data || [])
+              .map((link) => link.client_id)
+              .filter(Boolean)
+          ),
+        ]),
       ]);
 
-      if (profilesError) throw profilesError;
       if (clientLinksError) throw clientLinksError;
+      if (linkedProfilesError) throw linkedProfilesError;
 
-      const portalTokenMap = new Map<string, string | null>();
-      (clientLinks || []).forEach((link) => {
-        const existingToken = portalTokenMap.get(link.client_id);
-        if (!existingToken) {
-          portalTokenMap.set(link.client_id, link.portal_token);
-        }
+      const profileQueries = [] as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>[];
+
+      if (emails.length) {
+        profileQueries.push(
+          supabase.from('profiles').select('id, full_name, email, phone').in('email', emails) as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>
+        );
+      }
+
+      if (phones.length) {
+        profileQueries.push(
+          supabase.from('profiles').select('id, full_name, email, phone').in('phone', phones) as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>
+        );
+      }
+
+      const matchedProfileResults = profileQueries.length ? await Promise.all(profileQueries) : [];
+      matchedProfileResults.forEach((result) => {
+        if (result.error) throw result.error;
       });
 
-      return clientIds
-        .map((clientId) => {
-          const profile = (profiles || []).find((item) => item.id === clientId);
-          if (!profile) return null;
+      const allProfiles = [
+        ...(linkedProfiles || []),
+        ...matchedProfileResults.flatMap((result) => result.data || []),
+      ];
 
-          return {
-            ...profile,
-            linked_properties: linkedProperties
-              .filter((property) => property.client_id === clientId)
-              .map((property) => ({
-                property_id: property.id,
-                property_name: property.property_name || 'Unknown',
-                portal_token: portalTokenMap.get(clientId) ?? null,
-              })),
-          };
-        })
-        .filter(Boolean) as ClientMember[];
+      const profileById = new Map(allProfiles.map((profile) => [profile.id, profile]));
+      const profileByEmail = new Map(
+        allProfiles
+          .filter((profile) => profile.email)
+          .map((profile) => [profile.email!.trim().toLowerCase(), profile])
+      );
+      const profileByPhone = new Map(
+        allProfiles
+          .filter((profile) => profile.phone)
+          .map((profile) => [profile.phone!.trim(), profile])
+      );
+
+      const linksByPropertyId = new Map((clientLinks || []).map((link) => [link.property_id, link]));
+      const clientsMap = new Map<string, ClientMember>();
+
+      properties.forEach((property) => {
+        const directLink = linksByPropertyId.get(property.id);
+        const resolvedProfile = (directLink?.client_id ? profileById.get(directLink.client_id) : undefined)
+          || (property.billing_email ? profileByEmail.get(property.billing_email.trim().toLowerCase()) : undefined)
+          || (property.client_phone ? profileByPhone.get(property.client_phone.trim()) : undefined);
+
+        if (resolvedProfile?.id === currentUserId) {
+          return;
+        }
+
+        const key = resolvedProfile?.id || `property-${property.id}`;
+        const existingClient = clientsMap.get(key);
+        const linkedProperty = {
+          property_id: property.id,
+          property_name: property.property_name || 'Unknown',
+          portal_token: directLink?.portal_token ?? null,
+        };
+
+        if (existingClient) {
+          existingClient.linked_properties.push(linkedProperty);
+          return;
+        }
+
+        clientsMap.set(key, {
+          id: resolvedProfile?.id || key,
+          full_name: resolvedProfile?.full_name || property.client_name || null,
+          email: resolvedProfile?.email || property.billing_email || null,
+          phone: resolvedProfile?.phone || property.client_phone || null,
+          linked_properties: [linkedProperty],
+        });
+      });
+
+      return Array.from(clientsMap.values());
     },
   });
 }
