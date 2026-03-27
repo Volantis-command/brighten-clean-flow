@@ -73,6 +73,9 @@ export default function CleanerPortalPage() {
       job: jobRes.data,
       staff: staffRes.data,
       property: jobRes.data.properties,
+      lockboxCode: jobRes.data.status === "in_progress" || jobRes.data.status === "completed"
+        ? (jobRes.data.properties as any)?.lockbox_code ?? null
+        : null,
     });
   }
 
