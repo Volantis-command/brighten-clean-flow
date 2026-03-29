@@ -63,6 +63,11 @@ export default function FormsPage() {
     if (!forms) return [];
     const ids = new Set<string>();
     forms.forEach((f: any) => {
+      const job = f.jobs as any;
+      // Use jobs table cleaner IDs as authoritative source
+      if (job?.cleaner_1_id) ids.add(job.cleaner_1_id);
+      if (job?.cleaner_2_id) ids.add(job.cleaner_2_id);
+      // Fallback to job_forms cleaner IDs
       if (f.cleaner_id) ids.add(f.cleaner_id);
       if (f.second_cleaner_id) ids.add(f.second_cleaner_id);
     });
