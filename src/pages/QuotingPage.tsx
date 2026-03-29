@@ -15,28 +15,60 @@ export default function QuotingPage() {
   const [tab, setTab] = useState('new');
   const [editQuote, setEditQuote] = useState<any>(null);
 
-  // Pre-populate from quote_request (lead) data
+  // Pre-populate from quote_request or lead data
   useEffect(() => {
     if (!quoteRequestId) return;
     (async () => {
-      const { data } = await supabase
+      // Try quote_requests first
+      const { data: qrData } = await supabase
         .from('quote_requests')
         .select('*')
         .eq('id', quoteRequestId)
         .single();
-      if (data) {
+      if (qrData) {
         setEditQuote({
-          client_name: [data.first_name, data.last_name].filter(Boolean).join(' '),
-          client_phone: data.phone || '',
-          property_address: data.address || '',
-          bedrooms: data.bedrooms || 1,
-          bathrooms: data.bathrooms || 1,
-          clean_type: data.clean_type || '',
-          notes: data.extra_notes || '',
-          // pass extra fields the calculator can use
-          _toilets: data.toilets,
-          _preferred_date: data.preferred_date,
-          _quote_request_id: data.id,
+          client_name: [qrData.first_name, qrData.last_name].filter(Boolean).join(' '),
+          client_phone: qrData.phone || '',
+          property_address: qrData.address || '',
+          bedrooms: qrData.bedrooms || 1,
+          bathrooms: qrData.bathrooms || 1,
+          clean_type: qrData.clean_type || '',
+          notes: qrData.extra_notes || '',
+          _toilets: qrData.toilets,
+          _preferred_date: qrData.preferred_date,
+          _quote_request_id: qrData.id,
+        });
+        setTab('new');
+        return;
+      }
+
+      // Fallback: try leads table
+      const { data: leadData } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', quoteRequestId)
+        .single();
+      if (leadData) {
+        // Map service_type from lead form values to official service type names
+        const serviceMap: Record<string, string> = {
+          'house_clean': 'Standard Clean',
+          'standard_clean': 'Standard Clean',
+          'deep_clean': 'Deep Clean',
+          'end_of_lease': 'Bond / End of Lease Clean',
+          'airbnb': 'Airbnb / Short-Stay Turnover',
+          'office_commercial': 'Office / Commercial Clean',
+          'post_renovation': 'Post-Renovation Clean',
+        };
+        const mappedType = serviceMap[leadData.service_type] || leadData.service_type || '';
+        setEditQuote({
+          client_name: [leadData.first_name, leadData.last_name].filter(Boolean).join(' '),
+          client_phone: leadData.phone || '',
+          property_address: [leadData.address, leadData.suburb].filter(Boolean).join(', '),
+          bedrooms: parseInt(leadData.bedrooms, 10) || 1,
+          bathrooms: parseInt(leadData.bathrooms, 10) || 1,
+          clean_type: mappedType,
+          notes: leadData.notes || '',
+          _lead_id: leadData.id,
         });
         setTab('new');
       }
