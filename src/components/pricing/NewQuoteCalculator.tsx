@@ -102,7 +102,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const { data: pricing } = usePricingSettings();
   const rates = pricing?.map || {};
 
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState>({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false } });
 
   useEffect(() => {
     if (editQuote) {
