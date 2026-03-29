@@ -90,7 +90,7 @@ const INITIAL: FormState = {
     { name: 'Garage sweep', price: 20, enabled: false },
     { name: 'Wall spot cleaning', price: 20, enabled: false },
   ],
-  consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false },
+  consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false } as ConsumableSelection,
   includePhotoReport: false,
   manualPriceOverride: false,
   manualPriceIncGst: '',
