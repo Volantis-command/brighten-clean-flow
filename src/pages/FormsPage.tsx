@@ -244,7 +244,7 @@ export default function FormsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-extrabold text-primary">Forms</h1>
+        <h1 className="text-2xl font-extrabold text-primary">Job Records</h1>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24 rounded-2xl" />
