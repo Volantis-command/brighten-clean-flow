@@ -63,6 +63,11 @@ export default function FormsPage() {
     if (!forms) return [];
     const ids = new Set<string>();
     forms.forEach((f: any) => {
+      const job = f.jobs as any;
+      // Use jobs table cleaner IDs as authoritative source
+      if (job?.cleaner_1_id) ids.add(job.cleaner_1_id);
+      if (job?.cleaner_2_id) ids.add(job.cleaner_2_id);
+      // Fallback to job_forms cleaner IDs
       if (f.cleaner_id) ids.add(f.cleaner_id);
       if (f.second_cleaner_id) ids.add(f.second_cleaner_id);
     });
@@ -112,17 +117,21 @@ export default function FormsPage() {
       const formData = (f.form_data || {}) as any;
       const qc = f.job_id ? qcMap.get(f.job_id) : null;
 
+      // Prefer jobs table cleaner IDs over job_forms cleaner IDs
+      const cleanerId1 = job?.cleaner_1_id || f.cleaner_id;
+      const cleanerId2 = job?.cleaner_2_id || f.second_cleaner_id;
+
       return {
         id: f.id,
         job_id: f.job_id,
         property_id: f.property_id,
-        cleaner_id: f.cleaner_id,
-        second_cleaner_id: f.second_cleaner_id,
+        cleaner_id: cleanerId1,
+        second_cleaner_id: cleanerId2,
         submitted_at: f.submitted_at,
         form_data: formData,
         propertyName: job?.properties?.property_name || 'Unknown Property',
-        cleaner1Name: f.cleaner_id ? (profileMap.get(f.cleaner_id) || 'Unknown') : '',
-        cleaner2Name: f.second_cleaner_id ? (profileMap.get(f.second_cleaner_id) || '') : '',
+        cleaner1Name: cleanerId1 ? (profileMap.get(cleanerId1) || 'Unknown') : '',
+        cleaner2Name: cleanerId2 ? (profileMap.get(cleanerId2) || '') : '',
         timeIn: formData.time_in || '',
         timeOut: formData.time_out || '',
         qcResult: qc?.result || null,
