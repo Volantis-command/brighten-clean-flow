@@ -33,44 +33,41 @@ export default function EnquiryPage() {
     }
     setSubmitting(true);
     try {
-      // 1. Insert lead
-      const { error: leadError } = await supabase.from('leads' as any).insert({
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        email,
-        address,
-        suburb,
-        service_type: serviceType,
-        bedrooms: bedrooms || null,
-        bathrooms: bathrooms || null,
-        preferred_time: preferredTime || null,
-        referral_source: referralSource || null,
-        notes: notes || null,
-      } as any);
-      if (leadError) throw leadError;
+      // Insert lead and return the id
+      const { data: leadData, error: leadError } = await supabase
+        .from('leads')
+        .insert({
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          email,
+          address,
+          suburb,
+          service_type: serviceType,
+          bedrooms: bedrooms || null,
+          bathrooms: bathrooms || null,
+          preferred_time: preferredTime || null,
+          referral_source: referralSource || null,
+          notes: notes || null,
+        })
+        .select('id')
+        .single();
 
-      // 2. Create admin notification
-      const { data: admins } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-
-      if (admins?.length) {
-        const rows = admins.map((a: any) => ({
-          user_id: a.user_id,
-          type: 'new_lead',
-          title: 'New Lead Enquiry',
-          message: `New enquiry: ${firstName} ${lastName}, ${suburb}, ${serviceType}`,
-          link: '/quoting',
-          read: false,
-        }));
-        await supabase.from('notifications').insert(rows);
+      if (leadError) {
+        console.error('Lead insert error:', leadError);
+        throw leadError;
       }
 
+      console.log('Lead created successfully:', leadData?.id);
+
+      // Note: Admin notifications are handled by the Actions Inbox
+      // which polls the leads table directly. No need for anon to
+      // insert into notifications (would fail due to RLS).
+
       setSubmitted(true);
+      toast.success(`Thanks ${firstName}! We'll be in touch within 24 hours.`);
     } catch (err: any) {
-      console.error(err);
+      console.error('Enquiry submission failed:', err);
       toast.error('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
