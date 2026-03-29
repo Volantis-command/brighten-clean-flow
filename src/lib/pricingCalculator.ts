@@ -83,7 +83,7 @@ export function calculateConsumablesCostIncGst(consumables?: ConsumableSelection
   if (!consumables) return 0;
   let cost = 0;
   for (const kit of CONSUMABLE_KITS) {
-    if (consumables[kit.key as keyof ConsumableSelection]) {
+    if (consumables[kit.key as keyof ConsumableSelection] === true) {
       cost += kit.price;
     }
   }
