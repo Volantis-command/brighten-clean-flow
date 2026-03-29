@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,44 +19,48 @@ interface ClientMember {
   linked_properties: { property_id: string; property_name: string; guest_ready_sms: boolean; show_invoices: boolean; portal_active: boolean }[];
 }
 
-function useClientsList() {
+function useClientsList(currentUserId: string | undefined) {
   return useQuery({
-    queryKey: ['clients-list'],
+    queryKey: ['clients-list', currentUserId],
     queryFn: async () => {
-      // Get all users with client role
-      const { data: roles, error: rolesErr } = await supabase.from('user_roles').select('user_id, role').eq('role', 'client');
-      if (rolesErr) throw rolesErr;
-      if (!roles?.length) return [];
+      // Get ALL client_properties rows — this is the source of truth
+      const { data: links, error: linksErr } = await supabase.from('client_properties').select('client_id, property_id, guest_ready_sms, show_invoices, portal_active');
+      if (linksErr) throw linksErr;
+      if (!links?.length) return [];
 
-      const userIds = roles.map(r => r.user_id);
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', userIds);
+      // Unique client IDs, excluding current logged-in user
+      const uniqueClientIds = [...new Set(links.map(l => l.client_id))].filter(id => id !== currentUserId);
+      if (!uniqueClientIds.length) return [];
 
-      // Get client_properties
-      const { data: links } = await supabase.from('client_properties' as any).select('client_id, property_id, guest_ready_sms, show_invoices, portal_active').in('client_id', userIds);
+      // Fetch profiles for those client IDs
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email, phone').in('id', uniqueClientIds);
 
       // Get property names
-      const propIds = [...new Set((links || []).map((l: any) => l.property_id))];
+      const propIds = [...new Set(links.map(l => l.property_id))];
       const { data: props } = propIds.length ? await supabase.from('properties').select('id, property_name').in('id', propIds) : { data: [] };
       const propMap: Record<string, string> = {};
       (props || []).forEach((p: any) => { propMap[p.id] = p.property_name; });
 
       return (profiles || []).map(p => ({
         ...p,
-        linked_properties: (links || []).filter((l: any) => l.client_id === p.id).map((l: any) => ({
+        full_name: p.full_name || p.email || 'No name',
+        linked_properties: links.filter(l => l.client_id === p.id).map(l => ({
           property_id: l.property_id,
           property_name: propMap[l.property_id] || 'Unknown',
-          guest_ready_sms: l.guest_ready_sms,
-          show_invoices: l.show_invoices,
-          portal_active: l.portal_active,
+          guest_ready_sms: l.guest_ready_sms ?? true,
+          show_invoices: l.show_invoices ?? false,
+          portal_active: l.portal_active ?? true,
         })),
       })) as ClientMember[];
     },
+    enabled: !!currentUserId,
   });
 }
 
 export default function ClientsSection() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: clients = [], isLoading } = useClientsList();
+  const { data: clients = [], isLoading } = useClientsList(user?.id);
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientMember | null>(null);
 
