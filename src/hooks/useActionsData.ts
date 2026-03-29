@@ -18,9 +18,9 @@ export function useActionsData() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  // GROUP 1: Quotes Needed — leads from quote_requests that need a quote
-  const { data: quotesNeeded = [] } = useQuery({
-    queryKey: ['actions-quotes-needed'],
+  // GROUP 1a: Quotes Needed — from quote_requests
+  const { data: quoteRequestItems = [] } = useQuery({
+    queryKey: ['actions-quotes-needed-qr'],
     queryFn: async () => {
       const { data } = await supabase
         .from('quote_requests')
@@ -39,6 +39,33 @@ export function useActionsData() {
     },
     enabled: isAdmin,
   });
+
+  // GROUP 1b: Quotes Needed — from leads table (enquiry form submissions)
+  const { data: leadItems = [] } = useQuery({
+    queryKey: ['actions-quotes-needed-leads'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('id, first_name, last_name, phone, address, suburb, service_type, bedrooms, bathrooms, status, created_at')
+        .eq('status', 'new')
+        .order('created_at', { ascending: true });
+      return (data || []).map((r: any) => ({
+        id: `lead-${r.id}`,
+        group: 'quotes_needed',
+        title: `New enquiry — ${[r.first_name, r.last_name].filter(Boolean).join(' ') || 'Unknown'}`,
+        subtitle: `${r.address || 'No address'} · ${r.suburb || ''} · ${r.service_type || 'Service TBC'}`,
+        timestamp: r.created_at,
+        path: `/quoting?lead=${r.id}`,
+        meta: { leadId: r.id },
+      }));
+    },
+    enabled: isAdmin,
+  });
+
+  // Merge both sources into quotesNeeded
+  const quotesNeeded = [...quoteRequestItems, ...leadItems].sort(
+    (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+  );
 
   // GROUP 2: Awaiting Client Response (quote sent, waiting for YES/NO)
   const { data: awaitingResponse = [] } = useQuery({
