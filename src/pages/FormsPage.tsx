@@ -153,6 +153,43 @@ export default function FormsPage() {
     return Object.entries(groups).sort(([, a], [, b]) => a.name.localeCompare(b.name));
   }, [enrichedForms]);
 
+  // Group by cleaner
+  const groupedByCleaner = useMemo(() => {
+    const groups: Record<string, { name: string; forms: FormEntry[]; totalMinutes: number }> = {};
+    enrichedForms.forEach((f) => {
+      // Add to cleaner 1
+      if (f.cleaner_id) {
+        const key = f.cleaner_id;
+        if (!groups[key]) groups[key] = { name: f.cleaner1Name || 'Unknown', forms: [], totalMinutes: 0 };
+        groups[key].forms.push(f);
+        // Calculate duration from time_in/time_out
+        if (f.timeIn && f.timeOut) {
+          try {
+            const start = new Date(f.timeIn).getTime();
+            const end = new Date(f.timeOut).getTime();
+            if (end > start) groups[key].totalMinutes += (end - start) / 60000;
+          } catch {}
+        }
+      }
+      // Add to cleaner 2
+      if (f.second_cleaner_id) {
+        const key = f.second_cleaner_id;
+        if (!groups[key]) groups[key] = { name: f.cleaner2Name || 'Unknown', forms: [], totalMinutes: 0 };
+        groups[key].forms.push(f);
+        if (f.timeIn && f.timeOut) {
+          try {
+            const start = new Date(f.timeIn).getTime();
+            const end = new Date(f.timeOut).getTime();
+            if (end > start) groups[key].totalMinutes += (end - start) / 60000;
+          } catch {}
+        }
+      }
+    });
+    return Object.entries(groups).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  }, [enrichedForms]);
+
+  const [selectedCleaner, setSelectedCleaner] = useState<string | null>(null);
+
   const formatDateHeader = (dateStr: string) => {
     if (dateStr === 'Unknown') return 'Unknown Date';
     return format(parseISO(dateStr), 'EEEE d MMMM yyyy');
