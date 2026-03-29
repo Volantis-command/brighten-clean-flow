@@ -301,9 +301,15 @@ export default function FormsPage() {
     );
   }
 
+  const formatHours = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `${h}h ${m}m`;
+  };
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold text-primary">Forms</h1>
+      <h1 className="text-2xl font-extrabold text-primary">Job Records</h1>
 
       <ToggleGroup
         type="single"
@@ -317,11 +323,14 @@ export default function FormsPage() {
         <ToggleGroupItem value="property" className="flex-1 rounded-lg data-[state=on]:bg-card data-[state=on]:shadow-sm font-semibold text-sm">
           <Building2 className="h-4 w-4 mr-1.5" /> By Property
         </ToggleGroupItem>
+        <ToggleGroupItem value="cleaner" className="flex-1 rounded-lg data-[state=on]:bg-card data-[state=on]:shadow-sm font-semibold text-sm">
+          <Users className="h-4 w-4 mr-1.5" /> By Cleaner
+        </ToggleGroupItem>
       </ToggleGroup>
 
       {enrichedForms.length === 0 ? (
         <div className="bg-card rounded-2xl shadow-md p-6 text-center">
-          <p className="text-muted-foreground">No submitted forms yet.</p>
+          <p className="text-muted-foreground">No submitted records yet.</p>
         </div>
       ) : viewMode === 'date' ? (
         <div className="space-y-6">
@@ -336,7 +345,7 @@ export default function FormsPage() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : viewMode === 'property' ? (
         <div className="space-y-2">
           {groupedByProperty.map(([key, group]) => (
             <div
@@ -346,7 +355,23 @@ export default function FormsPage() {
             >
               <div>
                 <p className="font-bold text-foreground">{group.name}</p>
-                <p className="text-sm text-muted-foreground">{group.forms.length} form{group.forms.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-muted-foreground">{group.forms.length} record{group.forms.length !== 1 ? 's' : ''}</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {groupedByCleaner.map(([key, group]) => (
+            <div
+              key={key}
+              onClick={() => setSelectedCleaner(key)}
+              className="bg-card rounded-2xl shadow-md p-4 flex items-center justify-between cursor-pointer hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+            >
+              <div>
+                <p className="font-bold text-foreground">{group.name}</p>
+                <p className="text-sm text-muted-foreground">{group.forms.length} job{group.forms.length !== 1 ? 's' : ''} · {formatHours(group.totalMinutes)}</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
