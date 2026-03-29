@@ -138,7 +138,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         discountGp: editQuote.discount_gp_percent != null ? String(editQuote.discount_gp_percent) : '',
         notes: editQuote.notes || '',
         residentialAddons: Array.isArray(editQuote.extras) && editQuote.extras.length > 0 ? editQuote.extras : INITIAL.residentialAddons,
-        consumables: INITIAL.consumables,
+        consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false },
         includePhotoReport: false,
         manualPriceOverride: false,
         manualPriceIncGst: '',
