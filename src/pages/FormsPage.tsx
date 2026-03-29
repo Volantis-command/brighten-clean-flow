@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Building2, Clock, User, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
-type ViewMode = 'date' | 'property';
+type ViewMode = 'date' | 'property' | 'cleaner';
 
 interface FormEntry {
   id: string;
