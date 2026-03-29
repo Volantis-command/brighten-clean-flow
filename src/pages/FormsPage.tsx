@@ -7,10 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, Building2, Clock, User, ChevronRight } from 'lucide-react';
+import { Calendar, Building2, Clock, User, ChevronRight, Users } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
-type ViewMode = 'date' | 'property';
+type ViewMode = 'date' | 'property' | 'cleaner';
 
 interface FormEntry {
   id: string;
@@ -153,6 +153,43 @@ export default function FormsPage() {
     return Object.entries(groups).sort(([, a], [, b]) => a.name.localeCompare(b.name));
   }, [enrichedForms]);
 
+  // Group by cleaner
+  const groupedByCleaner = useMemo(() => {
+    const groups: Record<string, { name: string; forms: FormEntry[]; totalMinutes: number }> = {};
+    enrichedForms.forEach((f) => {
+      // Add to cleaner 1
+      if (f.cleaner_id) {
+        const key = f.cleaner_id;
+        if (!groups[key]) groups[key] = { name: f.cleaner1Name || 'Unknown', forms: [], totalMinutes: 0 };
+        groups[key].forms.push(f);
+        // Calculate duration from time_in/time_out
+        if (f.timeIn && f.timeOut) {
+          try {
+            const start = new Date(f.timeIn).getTime();
+            const end = new Date(f.timeOut).getTime();
+            if (end > start) groups[key].totalMinutes += (end - start) / 60000;
+          } catch {}
+        }
+      }
+      // Add to cleaner 2
+      if (f.second_cleaner_id) {
+        const key = f.second_cleaner_id;
+        if (!groups[key]) groups[key] = { name: f.cleaner2Name || 'Unknown', forms: [], totalMinutes: 0 };
+        groups[key].forms.push(f);
+        if (f.timeIn && f.timeOut) {
+          try {
+            const start = new Date(f.timeIn).getTime();
+            const end = new Date(f.timeOut).getTime();
+            if (end > start) groups[key].totalMinutes += (end - start) / 60000;
+          } catch {}
+        }
+      }
+    });
+    return Object.entries(groups).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  }, [enrichedForms]);
+
+  const [selectedCleaner, setSelectedCleaner] = useState<string | null>(null);
+
   const formatDateHeader = (dateStr: string) => {
     if (dateStr === 'Unknown') return 'Unknown Date';
     return format(parseISO(dateStr), 'EEEE d MMMM yyyy');
@@ -207,11 +244,38 @@ export default function FormsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-extrabold text-primary">Forms</h1>
+        <h1 className="text-2xl font-extrabold text-primary">Job Records</h1>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Cleaner detail view
+  if (viewMode === 'cleaner' && selectedCleaner) {
+    const group = groupedByCleaner.find(([key]) => key === selectedCleaner);
+    const hours = Math.floor((group?.[1].totalMinutes || 0) / 60);
+    const mins = Math.round((group?.[1].totalMinutes || 0) % 60);
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedCleaner(null)} className="text-primary font-bold text-sm">← Back</button>
+          <h1 className="text-xl font-extrabold text-primary">{group?.[1].name || 'Cleaner'}</h1>
+        </div>
+        <div className="bg-card rounded-2xl shadow-md p-4">
+          <p className="text-sm text-muted-foreground">Total logged hours</p>
+          <p className="text-2xl font-extrabold text-foreground">{hours}h {mins}m</p>
+          <p className="text-xs text-muted-foreground">{group?.[1].forms.length} job{(group?.[1].forms.length || 0) !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="space-y-3">
+          {group?.[1].forms.length === 0 ? (
+            <p className="text-muted-foreground text-sm p-4">No records for this cleaner.</p>
+          ) : (
+            group?.[1].forms.map(renderFormCard)
+          )}
         </div>
       </div>
     );
@@ -237,9 +301,15 @@ export default function FormsPage() {
     );
   }
 
+  const formatHours = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `${h}h ${m}m`;
+  };
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold text-primary">Forms</h1>
+      <h1 className="text-2xl font-extrabold text-primary">Job Records</h1>
 
       <ToggleGroup
         type="single"
@@ -253,11 +323,14 @@ export default function FormsPage() {
         <ToggleGroupItem value="property" className="flex-1 rounded-lg data-[state=on]:bg-card data-[state=on]:shadow-sm font-semibold text-sm">
           <Building2 className="h-4 w-4 mr-1.5" /> By Property
         </ToggleGroupItem>
+        <ToggleGroupItem value="cleaner" className="flex-1 rounded-lg data-[state=on]:bg-card data-[state=on]:shadow-sm font-semibold text-sm">
+          <Users className="h-4 w-4 mr-1.5" /> By Cleaner
+        </ToggleGroupItem>
       </ToggleGroup>
 
       {enrichedForms.length === 0 ? (
         <div className="bg-card rounded-2xl shadow-md p-6 text-center">
-          <p className="text-muted-foreground">No submitted forms yet.</p>
+          <p className="text-muted-foreground">No submitted records yet.</p>
         </div>
       ) : viewMode === 'date' ? (
         <div className="space-y-6">
@@ -272,7 +345,7 @@ export default function FormsPage() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : viewMode === 'property' ? (
         <div className="space-y-2">
           {groupedByProperty.map(([key, group]) => (
             <div
@@ -282,7 +355,23 @@ export default function FormsPage() {
             >
               <div>
                 <p className="font-bold text-foreground">{group.name}</p>
-                <p className="text-sm text-muted-foreground">{group.forms.length} form{group.forms.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-muted-foreground">{group.forms.length} record{group.forms.length !== 1 ? 's' : ''}</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {groupedByCleaner.map(([key, group]) => (
+            <div
+              key={key}
+              onClick={() => setSelectedCleaner(key)}
+              className="bg-card rounded-2xl shadow-md p-4 flex items-center justify-between cursor-pointer hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+            >
+              <div>
+                <p className="font-bold text-foreground">{group.name}</p>
+                <p className="text-sm text-muted-foreground">{group.forms.length} job{group.forms.length !== 1 ? 's' : ''} · {formatHours(group.totalMinutes)}</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>

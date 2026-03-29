@@ -18,7 +18,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'head_cleaner'] },
-  { label: 'Forms', path: '/forms', icon: FileText, roles: ['admin', 'head_cleaner'] },
+  { label: 'Job Records', path: '/forms', icon: FileText, roles: ['admin', 'head_cleaner'] },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner'] },
   { label: 'Quoting', path: '/quoting', icon: Calculator, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
