@@ -254,6 +254,33 @@ export default function FormsPage() {
     );
   }
 
+  // Cleaner detail view
+  if (viewMode === 'cleaner' && selectedCleaner) {
+    const group = groupedByCleaner.find(([key]) => key === selectedCleaner);
+    const hours = Math.floor((group?.[1].totalMinutes || 0) / 60);
+    const mins = Math.round((group?.[1].totalMinutes || 0) % 60);
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedCleaner(null)} className="text-primary font-bold text-sm">← Back</button>
+          <h1 className="text-xl font-extrabold text-primary">{group?.[1].name || 'Cleaner'}</h1>
+        </div>
+        <div className="bg-card rounded-2xl shadow-md p-4">
+          <p className="text-sm text-muted-foreground">Total logged hours</p>
+          <p className="text-2xl font-extrabold text-foreground">{hours}h {mins}m</p>
+          <p className="text-xs text-muted-foreground">{group?.[1].forms.length} job{(group?.[1].forms.length || 0) !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="space-y-3">
+          {group?.[1].forms.length === 0 ? (
+            <p className="text-muted-foreground text-sm p-4">No records for this cleaner.</p>
+          ) : (
+            group?.[1].forms.map(renderFormCard)
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Property detail view
   if (viewMode === 'property' && selectedProperty) {
     const group = groupedByProperty.find(([key]) => key === selectedProperty);
