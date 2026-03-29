@@ -58,8 +58,9 @@ function useClientsList(currentUserId: string | undefined) {
 }
 
 export default function ClientsSection() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: clients = [], isLoading } = useClientsList();
+  const { data: clients = [], isLoading } = useClientsList(user?.id);
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientMember | null>(null);
 
