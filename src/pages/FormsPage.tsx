@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, Building2, Clock, User, ChevronRight } from 'lucide-react';
+import { Calendar, Building2, Clock, User, ChevronRight, Users } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 type ViewMode = 'date' | 'property' | 'cleaner';
