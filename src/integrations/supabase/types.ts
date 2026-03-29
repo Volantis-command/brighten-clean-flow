@@ -720,6 +720,60 @@ export type Database = {
         }
         Relationships: []
       }
+      leads: {
+        Row: {
+          address: string
+          bathrooms: string | null
+          bedrooms: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string
+          preferred_time: string | null
+          referral_source: string | null
+          service_type: string
+          status: string
+          suburb: string
+        }
+        Insert: {
+          address: string
+          bathrooms?: string | null
+          bedrooms?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone: string
+          preferred_time?: string | null
+          referral_source?: string | null
+          service_type: string
+          status?: string
+          suburb: string
+        }
+        Update: {
+          address?: string
+          bathrooms?: string | null
+          bedrooms?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string
+          preferred_time?: string | null
+          referral_source?: string | null
+          service_type?: string
+          status?: string
+          suburb?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           enabled: boolean
