@@ -380,24 +380,33 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           }))
         );
       }
-      // STEP 4 — Update originating lead/quote_request status so it leaves Actions Inbox
-      const leadId = searchParams.get('lead') || editQuote?._lead_id;
+    },
+    onSuccess: async () => {
+      setQuoteSent(true);
+      toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
+
+      // Update originating lead/quote_request status so it leaves Actions Inbox
+      // Use window.location.search as fallback since useSearchParams can be stale
+      const urlLeadId = searchParams.get('lead') || new URLSearchParams(window.location.search).get('lead');
+      const leadId = urlLeadId || editQuote?._lead_id;
       const quoteRequestId = editQuote?._quote_request_id;
 
+      console.log('[QuoteSend] leadId:', leadId, 'quoteRequestId:', quoteRequestId, 'URL:', window.location.search);
+
       if (leadId) {
-        // Update leads table
+        // Update leads table (status 'new' → 'quote_sent')
         const { error: leadErr } = await supabase
           .from('leads')
           .update({ status: 'quote_sent' })
           .eq('id', leadId);
-        console.log('[QuoteSend] leads update for', leadId, leadErr ? `ERROR: ${leadErr.message}` : 'OK');
+        console.log('[QuoteSend] leads update:', leadId, leadErr ? `ERROR: ${leadErr.message}` : 'OK');
 
-        // Also try quote_requests table (the lead param could reference either table)
+        // Also try quote_requests table
         const { error: qrErr } = await supabase
           .from('quote_requests')
           .update({ status: 'quote_sent' })
           .eq('id', leadId);
-        console.log('[QuoteSend] quote_requests update for', leadId, qrErr ? `ERROR: ${qrErr.message}` : 'OK');
+        console.log('[QuoteSend] quote_requests update:', leadId, qrErr ? `ERROR: ${qrErr.message}` : 'OK');
       }
 
       if (quoteRequestId && quoteRequestId !== leadId) {
@@ -405,12 +414,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           .from('quote_requests')
           .update({ status: 'quote_sent' })
           .eq('id', quoteRequestId);
-        console.log('[QuoteSend] quote_requests update for', quoteRequestId, 'OK');
       }
-    },
-    onSuccess: () => {
-      setQuoteSent(true);
-      toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
+
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['actions-awaiting-response'] });
       queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-qr'] });
