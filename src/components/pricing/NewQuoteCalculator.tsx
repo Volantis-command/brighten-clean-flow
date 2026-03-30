@@ -103,7 +103,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const queryClient = useQueryClient();
   const { data: pricing } = usePricingSettings();
   const [searchParams] = useSearchParams();
-  const [showSendConfirm, setShowSendConfirm] = useState(false);
+  const leadId = searchParams.get('lead');
+  const [showConfirm, setShowConfirm] = useState(false);
   const rates = pricing?.map || {};
 
   const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
@@ -367,7 +368,17 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         throw new Error(err.error || 'SMS sending failed');
       }
 
-      // STEP 3 — Create admin notification
+      // STEP 3 — If opened from /quoting?lead=<id>, move lead out of Quotes Needed
+      const leadIdFromUrl = new URLSearchParams(window.location.search).get('lead') || leadId;
+      if (leadIdFromUrl) {
+        const { error: leadError } = await supabase
+          .from('leads')
+          .update({ status: 'quote_sent' })
+          .eq('id', leadIdFromUrl);
+        if (leadError) throw leadError;
+      }
+
+      // STEP 4 — Create admin notification
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
         await supabase.from('notifications').insert(
@@ -385,40 +396,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       setQuoteSent(true);
       toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
 
-      // Update originating lead/quote_request status so it leaves Actions Inbox
-      // Use window.location.search as fallback since useSearchParams can be stale
-      const urlLeadId = searchParams.get('lead') || new URLSearchParams(window.location.search).get('lead');
-      const leadId = urlLeadId || editQuote?._lead_id;
-      const quoteRequestId = editQuote?._quote_request_id;
-
-      console.log('[QuoteSend] leadId:', leadId, 'quoteRequestId:', quoteRequestId, 'URL:', window.location.search);
-
-      if (leadId) {
-        // Update leads table (status 'new' → 'quote_sent')
-        const { error: leadErr } = await supabase
-          .from('leads')
-          .update({ status: 'quote_sent' })
-          .eq('id', leadId);
-        console.log('[QuoteSend] leads update:', leadId, leadErr ? `ERROR: ${leadErr.message}` : 'OK');
-
-        // Also try quote_requests table
-        const { error: qrErr } = await supabase
-          .from('quote_requests')
-          .update({ status: 'quote_sent' })
-          .eq('id', leadId);
-        console.log('[QuoteSend] quote_requests update:', leadId, qrErr ? `ERROR: ${qrErr.message}` : 'OK');
-      }
-
-      if (quoteRequestId && quoteRequestId !== leadId) {
-        await supabase
-          .from('quote_requests')
-          .update({ status: 'quote_sent' })
-          .eq('id', quoteRequestId);
-      }
-
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['actions-awaiting-response'] });
-      queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-qr'] });
       queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-leads'] });
     },
     onError: (e: any) => toast.error(`Failed to send: ${e.message}`),
@@ -687,7 +666,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowSendConfirm(true)} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowConfirm(true)} />
         </div>
       </div>
 
@@ -703,12 +682,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowSendConfirm(true)} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowConfirm(true)} />
         </div>
       </div>
 
       {/* Send Confirmation Dialog */}
-      <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-extrabold text-primary">Confirm & Send Quote</AlertDialogTitle>
