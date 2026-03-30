@@ -12,10 +12,20 @@ import SendQuoteModal from './SendQuoteModal';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
-  sent: 'bg-[#FEDB00]/20 text-[#FEDB00] border border-[#FEDB00]',
   quote_sent: 'bg-[hsl(200,80%,50%)]/20 text-[hsl(200,80%,50%)] border border-[hsl(200,80%,50%)]',
   accepted: 'bg-primary/10 text-primary',
+  client_accepted: 'bg-primary/10 text-primary',
   declined: 'bg-destructive/10 text-destructive',
+  quote_declined: 'bg-destructive/10 text-destructive',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  quote_sent: 'Sent',
+  accepted: 'Accepted',
+  client_accepted: 'Accepted',
+  declined: 'Declined',
+  quote_declined: 'Declined',
 };
 
 const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Declined'];
@@ -37,9 +47,16 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
     },
   });
 
+  const filterMap: Record<string, string[]> = {
+    Draft: ['draft'],
+    Sent: ['sent', 'quote_sent'],
+    Accepted: ['accepted', 'client_accepted'],
+    Declined: ['declined', 'quote_declined'],
+  };
+
   const filtered = filter === 'All'
     ? quotes
-    : quotes.filter((q: any) => (q.status || 'draft').toLowerCase() === filter.toLowerCase());
+    : quotes.filter((q: any) => filterMap[filter]?.includes((q.status || 'draft').toLowerCase()));
 
   const handleCopyLink = (e: React.MouseEvent, q: any) => {
     e.stopPropagation();
@@ -103,7 +120,7 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
                       : q.price != null ? `$${Number(q.price).toFixed(0)}` : '—'}
                   </span>
                   <Badge className={cn('capitalize', STATUS_COLORS[(q.status || 'draft').toLowerCase()])}>
-                    {q.status || 'draft'}
+                    {STATUS_LABELS[(q.status || 'draft').toLowerCase()] || q.status || 'draft'}
                   </Badge>
                 </div>
               </button>

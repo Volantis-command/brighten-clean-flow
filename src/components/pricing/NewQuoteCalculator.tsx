@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Save, Copy, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -100,6 +102,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: pricing } = usePricingSettings();
+  const [searchParams] = useSearchParams();
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
   const rates = pricing?.map || {};
 
   const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
@@ -311,7 +315,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       }
     },
     onSuccess: (_, status) => {
-      if (status !== 'quote_sent') toast.success(status === 'sent' ? 'Quote saved & marked as Sent!' : 'Quote saved!');
+      if (status !== 'quote_sent') toast.success('Quote saved!');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       onSaved?.();
     },
@@ -376,12 +380,26 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           }))
         );
       }
+      // STEP 4 — Update originating lead/quote_request status
+      const leadId = searchParams.get('lead') || editQuote?._lead_id;
+      const quoteRequestId = editQuote?._quote_request_id;
+      if (leadId) {
+        // Try updating leads table
+        await supabase.from('leads').update({ status: 'quote_sent' } as any).eq('id', leadId);
+        // Also try quote_requests table (leadId might reference either)
+        await supabase.from('quote_requests').update({ status: 'quote_sent' }).eq('id', leadId);
+      }
+      if (quoteRequestId && quoteRequestId !== leadId) {
+        await supabase.from('quote_requests').update({ status: 'quote_sent' }).eq('id', quoteRequestId);
+      }
     },
     onSuccess: () => {
       setQuoteSent(true);
       toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['actions-awaiting-response'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-qr'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-leads'] });
     },
     onError: (e: any) => toast.error(`Failed to send: ${e.message}`),
   });
@@ -649,7 +667,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowSendConfirm(true)} />
         </div>
       </div>
 
@@ -665,16 +683,46 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowSendConfirm(true)} />
         </div>
       </div>
+
+      {/* Send Confirmation Dialog */}
+      <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-extrabold text-primary">Confirm & Send Quote</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p className="text-muted-foreground">You're about to send this quote via SMS:</p>
+                <div className="bg-muted rounded-xl p-4 space-y-2 text-foreground">
+                  <p><span className="font-semibold">Client:</span> {form.clientName || '—'}</p>
+                  <p><span className="font-semibold">Phone:</span> {form.clientPhone || '—'}</p>
+                  <p><span className="font-semibold">Quote #:</span> {editQuote?.reference || 'New'}</p>
+                  <p><span className="font-semibold">Service:</span> {form.cleanType}</p>
+                  <p><span className="font-semibold">Total:</span> <span className="font-extrabold text-primary">${result.sellPriceIncGst.toFixed(2)} inc GST</span></p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => sendQuoteMutation.mutate()}
+              className="bg-primary hover:bg-primary/90 font-bold gap-2"
+            >
+              <Send className="h-4 w-4" /> Confirm & Send
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent }: {
+function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent, onSendClick }: {
   saveMutation: any; copyForWhatsApp: () => void; editQuote?: any;
-  sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean;
+  sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean; onSendClick: () => void;
 }) {
   return (
     <div className="space-y-2">
@@ -690,7 +738,7 @@ function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMuta
         <Button
           className="w-full gap-2 bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-primary-foreground font-bold"
           size="lg"
-          onClick={() => sendQuoteMutation.mutate()}
+          onClick={onSendClick}
           disabled={!canSendQuote || sendQuoteMutation.isPending}
         >
           {sendQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
