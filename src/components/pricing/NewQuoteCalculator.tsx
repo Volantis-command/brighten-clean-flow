@@ -395,12 +395,11 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       if (leadId) {
         // Update leads table (status 'new' → 'quote_sent')
-        const { error: leadErr, count: leadCount } = await supabase
+        const { error: leadErr } = await supabase
           .from('leads')
           .update({ status: 'quote_sent' })
-          .eq('id', leadId)
-          .select('id', { count: 'exact', head: true });
-        console.log('[QuoteSend] leads update:', leadId, leadErr ? `ERROR: ${leadErr.message}` : `OK (matched: ${leadCount})`);
+          .eq('id', leadId);
+        console.log('[QuoteSend] leads update:', leadId, leadErr ? `ERROR: ${leadErr.message}` : 'OK');
 
         // Also try quote_requests table
         const { error: qrErr } = await supabase
