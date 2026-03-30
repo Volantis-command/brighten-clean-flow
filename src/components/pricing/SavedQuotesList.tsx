@@ -47,9 +47,16 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
     },
   });
 
+  const filterMap: Record<string, string[]> = {
+    Draft: ['draft'],
+    Sent: ['sent', 'quote_sent'],
+    Accepted: ['accepted', 'client_accepted'],
+    Declined: ['declined', 'quote_declined'],
+  };
+
   const filtered = filter === 'All'
     ? quotes
-    : quotes.filter((q: any) => (q.status || 'draft').toLowerCase() === filter.toLowerCase());
+    : quotes.filter((q: any) => filterMap[filter]?.includes((q.status || 'draft').toLowerCase()));
 
   const handleCopyLink = (e: React.MouseEvent, q: any) => {
     e.stopPropagation();
