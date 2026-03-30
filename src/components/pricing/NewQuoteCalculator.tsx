@@ -720,9 +720,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   );
 }
 
-function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent }: {
+function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent, onSendClick }: {
   saveMutation: any; copyForWhatsApp: () => void; editQuote?: any;
-  sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean;
+  sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean; onSendClick: () => void;
 }) {
   return (
     <div className="space-y-2">
@@ -738,7 +738,7 @@ function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMuta
         <Button
           className="w-full gap-2 bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-primary-foreground font-bold"
           size="lg"
-          onClick={() => sendQuoteMutation.mutate()}
+          onClick={onSendClick}
           disabled={!canSendQuote || sendQuoteMutation.isPending}
         >
           {sendQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
