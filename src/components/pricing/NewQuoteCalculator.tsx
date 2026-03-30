@@ -102,6 +102,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: pricing } = usePricingSettings();
+  const [searchParams] = useSearchParams();
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
   const rates = pricing?.map || {};
 
   const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
