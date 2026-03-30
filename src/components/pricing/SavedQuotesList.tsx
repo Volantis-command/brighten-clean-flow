@@ -120,7 +120,7 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
                       : q.price != null ? `$${Number(q.price).toFixed(0)}` : '—'}
                   </span>
                   <Badge className={cn('capitalize', STATUS_COLORS[(q.status || 'draft').toLowerCase()])}>
-                    {q.status || 'draft'}
+                    {STATUS_LABELS[(q.status || 'draft').toLowerCase()] || q.status || 'draft'}
                   </Badge>
                 </div>
               </button>
