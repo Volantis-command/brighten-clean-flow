@@ -380,12 +380,26 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           }))
         );
       }
+      // STEP 4 — Update originating lead/quote_request status
+      const leadId = searchParams.get('lead') || editQuote?._lead_id;
+      const quoteRequestId = editQuote?._quote_request_id;
+      if (leadId) {
+        // Try updating leads table
+        await supabase.from('leads').update({ status: 'quote_sent' } as any).eq('id', leadId);
+        // Also try quote_requests table (leadId might reference either)
+        await supabase.from('quote_requests').update({ status: 'quote_sent' }).eq('id', leadId);
+      }
+      if (quoteRequestId && quoteRequestId !== leadId) {
+        await supabase.from('quote_requests').update({ status: 'quote_sent' }).eq('id', quoteRequestId);
+      }
     },
     onSuccess: () => {
       setQuoteSent(true);
       toast.success(`Quote sent to ${form.clientName || 'client'} via SMS`);
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['actions-awaiting-response'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-qr'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-leads'] });
     },
     onError: (e: any) => toast.error(`Failed to send: ${e.message}`),
   });
