@@ -683,9 +683,39 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowSendConfirm(true)} />
         </div>
       </div>
+
+      {/* Send Confirmation Dialog */}
+      <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-extrabold text-primary">Confirm & Send Quote</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p className="text-muted-foreground">You're about to send this quote via SMS:</p>
+                <div className="bg-muted rounded-xl p-4 space-y-2 text-foreground">
+                  <p><span className="font-semibold">Client:</span> {form.clientName || '—'}</p>
+                  <p><span className="font-semibold">Phone:</span> {form.clientPhone || '—'}</p>
+                  <p><span className="font-semibold">Quote #:</span> {editQuote?.reference || 'New'}</p>
+                  <p><span className="font-semibold">Service:</span> {form.cleanType}</p>
+                  <p><span className="font-semibold">Total:</span> <span className="font-extrabold text-primary">${result.sellPriceIncGst.toFixed(2)} inc GST</span></p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => sendQuoteMutation.mutate()}
+              className="bg-primary hover:bg-primary/90 font-bold gap-2"
+            >
+              <Send className="h-4 w-4" /> Confirm & Send
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
