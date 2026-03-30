@@ -380,17 +380,32 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           }))
         );
       }
-      // STEP 4 — Update originating lead/quote_request status
+      // STEP 4 — Update originating lead/quote_request status so it leaves Actions Inbox
       const leadId = searchParams.get('lead') || editQuote?._lead_id;
       const quoteRequestId = editQuote?._quote_request_id;
+
       if (leadId) {
-        // Try updating leads table
-        await supabase.from('leads').update({ status: 'quote_sent' } as any).eq('id', leadId);
-        // Also try quote_requests table (leadId might reference either)
-        await supabase.from('quote_requests').update({ status: 'quote_sent' }).eq('id', leadId);
+        // Update leads table
+        const { error: leadErr } = await supabase
+          .from('leads')
+          .update({ status: 'quote_sent' })
+          .eq('id', leadId);
+        console.log('[QuoteSend] leads update for', leadId, leadErr ? `ERROR: ${leadErr.message}` : 'OK');
+
+        // Also try quote_requests table (the lead param could reference either table)
+        const { error: qrErr } = await supabase
+          .from('quote_requests')
+          .update({ status: 'quote_sent' })
+          .eq('id', leadId);
+        console.log('[QuoteSend] quote_requests update for', leadId, qrErr ? `ERROR: ${qrErr.message}` : 'OK');
       }
+
       if (quoteRequestId && quoteRequestId !== leadId) {
-        await supabase.from('quote_requests').update({ status: 'quote_sent' }).eq('id', quoteRequestId);
+        await supabase
+          .from('quote_requests')
+          .update({ status: 'quote_sent' })
+          .eq('id', quoteRequestId);
+        console.log('[QuoteSend] quote_requests update for', quoteRequestId, 'OK');
       }
     },
     onSuccess: () => {
