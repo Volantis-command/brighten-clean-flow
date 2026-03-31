@@ -187,6 +187,7 @@ function AppRoutes() {
       <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
       <Route path="/report/:token" element={<CleanReportPage />} />
       <Route path="/enquire" element={<EnquiryPage />} />
+      <Route path="/book" element={<BookingPage />} />
 
       {/* Protected staff routes */}
       <Route element={<AuthenticatedArea><><ActiveClockBanner /><ProtectedRoute><AppLayout /></ProtectedRoute></></AuthenticatedArea>}>
