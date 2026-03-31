@@ -69,15 +69,7 @@ export default function BookingPage() {
 
       if (qrError) throw qrError;
 
-      // 2. Create a notification for admin
-      await supabase.from('notifications').insert({
-        user_id: '00000000-0000-0000-0000-000000000000', // placeholder — picked up by admin query
-        type: 'booking_confirmed',
-        title: 'New booking received',
-        message: `${displayName || 'Client'} booked ${displayService || 'a clean'} on ${format(date, 'EEEE d MMMM yyyy')}`,
-        link: '/actions?filter=awaiting_schedule',
-        read: false,
-      });
+      // Notification will be picked up by admin via Actions inbox (quote_requests status = 'accepted')
 
       setConfirmedDate(format(date, 'EEEE d MMMM yyyy'));
       setSubmitted(true);
