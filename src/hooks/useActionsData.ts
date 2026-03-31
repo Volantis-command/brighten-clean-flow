@@ -88,8 +88,8 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
-  // GROUP 3: Pending Schedule Approval
-  const { data: awaitingSchedule = [] } = useQuery({
+  // GROUP 3a: Pending Schedule Approval (from jobs)
+  const { data: awaitingScheduleJobs = [] } = useQuery({
     queryKey: ['actions-awaiting-schedule'],
     queryFn: async () => {
       const { data } = await supabase
@@ -125,6 +125,32 @@ export function useActionsData() {
     },
     enabled: isAdmin,
   });
+
+  // GROUP 3b: Accepted quote_requests (client booked via /book page)
+  const { data: awaitingScheduleQR = [] } = useQuery({
+    queryKey: ['actions-awaiting-schedule-qr'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('quote_requests')
+        .select('id, first_name, last_name, phone, address, clean_type, preferred_date, preferred_time, accepted_at')
+        .eq('status', 'accepted')
+        .order('accepted_at', { ascending: true });
+      return (data || []).map((r: any) => ({
+        id: `as-qr-${r.id}`,
+        group: 'awaiting_schedule',
+        title: `Booking received — ${[r.first_name, r.last_name].filter(Boolean).join(' ') || 'Client'}`,
+        subtitle: `${r.address || 'No address'} · ${r.clean_type || ''} · ${r.preferred_date || ''}`.trim(),
+        timestamp: r.accepted_at,
+        path: `/quoting?lead=${r.id}`,
+        meta: { quoteRequestId: r.id, preferredDate: r.preferred_date, preferredTime: r.preferred_time },
+      }));
+    },
+    enabled: isAdmin,
+  });
+
+  const awaitingSchedule = [...awaitingScheduleJobs, ...awaitingScheduleQR].sort(
+    (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+  );
 
   // GROUP 4: Unread Messages
   const { data: unreadMessages = [] } = useQuery({
