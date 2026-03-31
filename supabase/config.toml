@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.send-client-booking-sms]
 verify_jwt = false
+
+[functions.public-book-lead]
+verify_jwt = false
