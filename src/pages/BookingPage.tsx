@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,24 +39,16 @@ export default function BookingPage() {
     setError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-book-lead`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({
-          leadId,
-          preferredDate: format(date, 'yyyy-MM-dd'),
-          preferredTime: time,
-        }),
-      });
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update({
+          preferred_date: format(date, 'yyyy-MM-dd'),
+          preferred_time: time,
+          status: 'booking_requested',
+        })
+        .eq('id', leadId);
 
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || 'Unable to submit booking');
-      }
-
+      if (updateError) throw updateError;
       setSubmitted(true);
     } catch (e: any) {
       console.error('Booking submit error:', e);
@@ -90,7 +83,7 @@ export default function BookingPage() {
             Brightly<span className="text-accent">.</span>
           </h1>
           <h2 className="text-xl font-bold text-foreground">Book Your Clean</h2>
-          {clientName ? <p className="text-muted-foreground">Hi {clientName.split(' ')[0]}, choose your preferred date & time.</p> : null}
+          {clientName ? <p className="text-muted-foreground">Hi {clientName.split(' ')[0]}, choose your preferred clean date and time.</p> : null}
           {serviceType ? (
             <p className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{serviceType}</p>
           ) : null}
@@ -149,4 +142,5 @@ export default function BookingPage() {
     </div>
   );
 }
+
 
