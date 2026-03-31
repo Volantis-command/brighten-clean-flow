@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,20 +38,28 @@ export default function BookingPage() {
     setError('');
 
     try {
-      const { error: updateError } = await supabase
-        .from('leads')
-        .update({
-          preferred_time: time,
-          status: 'booking_requested',
-          notes: `Preferred date: ${format(date, 'yyyy-MM-dd')}. Time: ${time}. Submitted via booking link.`,
-        })
-        .eq('id', leadId);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-book-lead`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
+          leadId,
+          preferredDate: format(date, 'yyyy-MM-dd'),
+          preferredTime: time,
+        }),
+      });
 
-      if (updateError) throw updateError;
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Unable to submit booking');
+      }
+
       setSubmitted(true);
     } catch (e: any) {
       console.error('Booking submit error:', e);
-      setError('Something went wrong. Please try again or call us on 0418 878 707.');
+      setError(e.message || 'Something went wrong. Please try again or call us on 0418 878 707.');
     } finally {
       setSubmitting(false);
     }
@@ -62,15 +69,13 @@ export default function BookingPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
         <div className="bg-card rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold text-foreground">Booking Confirmed!</h1>
-          <p className="text-muted-foreground">
-            Thanks{clientName ? ` ${clientName.split(' ')[0]}` : ''}! We've received your preferred date and will confirm shortly.
-          </p>
+          <h1 className="text-2xl font-extrabold text-foreground">Booking request received</h1>
+          <p className="text-muted-foreground">Thanks, we’ll confirm your booking shortly.</p>
           <p className="text-sm text-muted-foreground">
-            Questions? Call us on <a href="tel:0418878707" className="text-primary font-semibold">0418 878 707</a>
+            Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
           </p>
         </div>
       </div>
@@ -80,34 +85,24 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
       <div className="bg-card rounded-3xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-6">
-        {/* Header */}
         <div className="text-center space-y-2">
-          <h1
-            className="text-3xl font-extrabold text-primary tracking-tight"
-            style={{ fontFamily: 'Nunito, sans-serif' }}
-          >
+          <h1 className="text-3xl font-extrabold text-primary tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
             Brightly<span className="text-accent">.</span>
           </h1>
           <h2 className="text-xl font-bold text-foreground">Book Your Clean</h2>
-          {clientName && (
-            <p className="text-muted-foreground">Hi {clientName.split(' ')[0]}, choose your preferred date & time</p>
-          )}
-          {serviceType && (
-            <p className="text-sm font-semibold text-primary bg-primary/10 rounded-full px-3 py-1 inline-block">{serviceType}</p>
-          )}
+          {clientName ? <p className="text-muted-foreground">Hi {clientName.split(' ')[0]}, choose your preferred date & time.</p> : null}
+          {serviceType ? (
+            <p className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{serviceType}</p>
+          ) : null}
         </div>
 
-        {/* Date picker */}
         <div className="space-y-2">
           <Label className="text-sm font-bold">Preferred Date</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className={cn(
-                  'w-full h-12 rounded-xl justify-start text-left font-normal',
-                  !date && 'text-muted-foreground'
-                )}
+                className={cn('h-12 w-full justify-start rounded-xl text-left font-normal', !date && 'text-muted-foreground')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date ? format(date, 'EEEE, d MMMM yyyy') : 'Select a date'}
@@ -120,13 +115,12 @@ export default function BookingPage() {
                 onSelect={setDate}
                 disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                 initialFocus
-                className={cn('p-3 pointer-events-auto')}
+                className={cn('pointer-events-auto p-3')}
               />
             </PopoverContent>
           </Popover>
         </div>
 
-        {/* Time window */}
         <div className="space-y-2">
           <Label className="text-sm font-bold">Preferred Time</Label>
           <Select value={time} onValueChange={setTime}>
@@ -141,24 +135,18 @@ export default function BookingPage() {
           </Select>
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive text-center">{error}</p>
-        )}
+        {error ? <p className="text-center text-sm text-destructive">{error}</p> : null}
 
-        {/* Submit */}
-        <Button
-          className="w-full h-14 rounded-xl text-lg font-bold"
-          disabled={!date || !time || submitting}
-          onClick={handleSubmit}
-        >
-          {submitting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
+        <Button className="h-14 w-full rounded-xl text-lg font-bold" disabled={!date || !time || submitting} onClick={handleSubmit}>
+          {submitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
           {submitting ? 'Submitting…' : 'Confirm Booking'}
         </Button>
 
-        <p className="text-xs text-muted-foreground text-center">
-          We'll confirm your booking shortly. Call <a href="tel:0418878707" className="text-primary font-semibold">0418 878 707</a> for urgent requests.
+        <p className="text-center text-xs text-muted-foreground">
+          No login required. We’ll confirm your booking shortly.
         </p>
       </div>
     </div>
   );
 }
+
