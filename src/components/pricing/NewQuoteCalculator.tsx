@@ -340,32 +340,6 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const [quoteSent, setQuoteSent] = useState(false);
 
-  const markEnquiryAsQuoteSent = async (enquiryId: string) => {
-    const quoteSentAt = new Date().toISOString();
-
-    const { data: updatedQuoteRequest, error: qrError } = await supabase
-      .from('quote_requests')
-      .update({ status: 'quote_sent', quote_sent_at: quoteSentAt })
-      .eq('id', enquiryId)
-      .select('id')
-      .maybeSingle();
-
-    if (updatedQuoteRequest) return;
-
-    const { data: updatedLead, error: leadError } = await supabase
-      .from('leads')
-      .update({ status: 'quote_sent' })
-      .eq('id', enquiryId)
-      .select('id')
-      .maybeSingle();
-
-    if (leadError) throw leadError;
-    if (updatedLead) return;
-    if (qrError) throw qrError;
-
-    throw new Error('Unable to update enquiry status after sending quote');
-  };
-
   const formatAUPhone = (phone: string): string => {
     const digits = phone.replace(/\D/g, '');
     if (digits.startsWith('61')) return '+' + digits;
@@ -401,7 +375,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       // STEP 3 — If opened from /quoting?lead=<id>, move lead out of Quotes Needed
       if (leadId) {
-        await markEnquiryAsQuoteSent(leadId);
+        const { error: quoteRequestError } = await supabase
+          .from('quote_requests')
+          .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
+          .eq('id', leadId);
+
+        if (quoteRequestError) throw quoteRequestError;
       }
 
       // STEP 4 — Create admin notification
