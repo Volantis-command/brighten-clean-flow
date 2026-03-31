@@ -732,6 +732,7 @@ export type Database = {
           last_name: string
           notes: string | null
           phone: string
+          preferred_date: string | null
           preferred_time: string | null
           referral_source: string | null
           service_type: string
@@ -749,6 +750,7 @@ export type Database = {
           last_name: string
           notes?: string | null
           phone: string
+          preferred_date?: string | null
           preferred_time?: string | null
           referral_source?: string | null
           service_type: string
@@ -766,6 +768,7 @@ export type Database = {
           last_name?: string
           notes?: string | null
           phone?: string
+          preferred_date?: string | null
           preferred_time?: string | null
           referral_source?: string | null
           service_type?: string
