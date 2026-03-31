@@ -325,7 +325,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const buildSmsMessage = () => {
     const firstName = (form.clientName || 'there').split(' ')[0];
-    return `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath\n💰 Total: $${result.sellPriceIncGst.toFixed(2)}\n\nReply YES to accept or NO to decline.`;
+    const leadIdFromUrl = new URLSearchParams(window.location.search).get('lead') || leadId;
+    const bookingUrl = leadIdFromUrl
+      ? `${window.location.origin}/book?lead=${leadIdFromUrl}&name=${encodeURIComponent(form.clientName || '')}&service=${encodeURIComponent(form.cleanType || '')}`
+      : '';
+    const bookLine = bookingUrl ? `\n\n📅 Book your preferred date here:\n${bookingUrl}` : '\n\nReply YES to accept or NO to decline.';
+    return `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath\n💰 Total: $${result.sellPriceIncGst.toFixed(2)}${bookLine}`;
   };
 
   const copyForWhatsApp = () => {
