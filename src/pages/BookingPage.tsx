@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,23 @@ export default function BookingPage() {
   const [time, setTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [confirmedDate, setConfirmedDate] = useState('');
   const [error, setError] = useState('');
+
+  // Fetch quote_request details for context if name/service not in URL
+  const [qrData, setQrData] = useState<any>(null);
+  useEffect(() => {
+    if (!leadId) return;
+    supabase
+      .from('quote_requests')
+      .select('first_name, last_name, phone, address, clean_type')
+      .eq('id', leadId)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setQrData(data); });
+  }, [leadId]);
+
+  const displayName = clientName || [qrData?.first_name, qrData?.last_name].filter(Boolean).join(' ');
+  const displayService = serviceType || qrData?.clean_type || '';
 
   const handleSubmit = async () => {
     if (!date || !time) return;
@@ -37,18 +53,33 @@ export default function BookingPage() {
 
     setSubmitting(true);
     setError('');
+    const formattedDate = format(date, 'yyyy-MM-dd');
 
     try {
-      const { error: updateError } = await supabase
-        .from('leads')
+      // 1. Update quote_requests status to accepted
+      const { error: qrError } = await supabase
+        .from('quote_requests')
         .update({
-          preferred_date: format(date, 'yyyy-MM-dd'),
+          status: 'accepted',
+          accepted_at: new Date().toISOString(),
+          preferred_date: formattedDate,
           preferred_time: time,
-          status: 'booking_requested',
         })
         .eq('id', leadId);
 
-      if (updateError) throw updateError;
+      if (qrError) throw qrError;
+
+      // 2. Create a notification for admin
+      await supabase.from('notifications').insert({
+        user_id: '00000000-0000-0000-0000-000000000000', // placeholder — picked up by admin query
+        type: 'booking_confirmed',
+        title: 'New booking received',
+        message: `${displayName || 'Client'} booked ${displayService || 'a clean'} on ${format(date, 'EEEE d MMMM yyyy')}`,
+        link: '/actions?filter=awaiting_schedule',
+        read: false,
+      });
+
+      setConfirmedDate(format(date, 'EEEE d MMMM yyyy'));
       setSubmitted(true);
     } catch (e: any) {
       console.error('Booking submit error:', e);
@@ -65,8 +96,10 @@ export default function BookingPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold text-foreground">Booking request received</h1>
-          <p className="text-muted-foreground">Thanks, we’ll confirm your booking shortly.</p>
+          <h1 className="text-2xl font-extrabold text-foreground">Booking confirmed!</h1>
+          <p className="text-muted-foreground">
+            We'll see you on <span className="font-bold text-foreground">{confirmedDate}</span>.
+          </p>
           <p className="text-sm text-muted-foreground">
             Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
           </p>
@@ -83,9 +116,9 @@ export default function BookingPage() {
             Brightly<span className="text-accent">.</span>
           </h1>
           <h2 className="text-xl font-bold text-foreground">Book Your Clean</h2>
-          {clientName ? <p className="text-muted-foreground">Hi {clientName.split(' ')[0]}, choose your preferred clean date and time.</p> : null}
-          {serviceType ? (
-            <p className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{serviceType}</p>
+          {displayName ? <p className="text-muted-foreground">Hi {displayName.split(' ')[0]}, choose your preferred clean date and time.</p> : null}
+          {displayService ? (
+            <p className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{displayService}</p>
           ) : null}
         </div>
 
@@ -136,11 +169,9 @@ export default function BookingPage() {
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          No login required. We’ll confirm your booking shortly.
+          No login required. We'll confirm your booking shortly.
         </p>
       </div>
     </div>
   );
 }
-
-

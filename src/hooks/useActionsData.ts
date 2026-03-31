@@ -82,7 +82,7 @@ export function useActionsData() {
         title: `Quote sent — awaiting response · ${q.client_name || 'Client'}`,
         subtitle: `${q.property_address || q.property_name || ''} · ${q.clean_type || ''}`.trim(),
         timestamp: q.quote_sent_at || q.created_at,
-        path: '/quoting',
+        path: `/quoting?lead=${q.id}`,
       }));
     },
     enabled: isAdmin,
