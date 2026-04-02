@@ -78,8 +78,10 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ');
+      const bedroomCount = parseInt(bedrooms) || 1;
+      const bedConfigStr = Array.from({ length: bedroomCount }, (_, i) => `Bedroom ${i + 1}: ${bedTypes[i] || 'Not specified'}`).join(', ');
       const formData = {
-        bed_config: bedConfig, towel_sets: towelSets, linen_change: linenChange,
+        bed_config: bedConfigStr, bed_types: bedTypes, linen_change: linenChange,
         consumables_restock: consumablesRestock, toiletries_included: toiletriesIncluded,
         checkout_time: checkoutTime, checkin_time: checkinTime,
         access_method: accessMethod, access_instructions: accessInstructions,
