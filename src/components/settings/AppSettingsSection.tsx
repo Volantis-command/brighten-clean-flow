@@ -82,7 +82,16 @@ export default function AppSettingsSection() {
         </div>
         <div>
           <Label>Secondary Contact Email</Label>
-          <Input type="email" value={form.secondary_contact_email || ''} onChange={(e) => update('secondary_contact_email', e.target.value)} placeholder="soki@brightly.cleaning" />
+          <Input
+            type="email"
+            value={form.secondary_contact_email || ''}
+            onChange={(e) => update('secondary_contact_email', e.target.value)}
+            placeholder="soki@brightly.cleaning"
+            pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+          />
+          {form.secondary_contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.secondary_contact_email) && (
+            <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+          )}
         </div>
         <div>
           <Label>Secondary Contact Phone</Label>
