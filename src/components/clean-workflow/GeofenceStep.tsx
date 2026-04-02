@@ -123,6 +123,17 @@ export default function GeofenceStep({ job, property, userId, onNext, onBack }: 
           </Card>
         )}
 
+        {error && (
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full h-14 text-base font-bold rounded-2xl"
+            onClick={handleStartJob}
+          >
+            Retry Location Check
+          </Button>
+        )}
+
         <Button
           size="lg"
           className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"

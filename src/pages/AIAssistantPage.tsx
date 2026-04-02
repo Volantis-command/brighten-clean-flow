@@ -143,8 +143,8 @@ export default function AIAssistantPage() {
             <div className="flex flex-col items-center justify-center py-12 gap-6">
               <div className="text-center space-y-2">
                 <Sparkles className="h-10 w-10 text-primary mx-auto" />
-                <p className="text-lg font-bold text-foreground">Hey! How can I help?</p>
-                <p className="text-sm text-muted-foreground">Ask me about SOPs, your jobs, or anything Brightly.</p>
+                <p className="text-lg font-bold text-foreground">Hey! I'm your Brightly Assistant.</p>
+                <p className="text-sm text-muted-foreground">Ask me about your business data, jobs, revenue, staff performance, or anything Brightly.</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 max-w-md">
                 {SUGGESTED.map((q) => (
