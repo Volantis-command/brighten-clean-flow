@@ -15,7 +15,7 @@ const OPTIONS = [
 
 function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-muted flex flex-col">
       <div className="bg-primary px-6 pt-12 pb-10 text-center">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary-foreground tracking-tight">
           Get Your Brightly Quote <Sparkles className="inline w-7 h-7 mb-1" />
@@ -24,13 +24,13 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
           Tell us about your space and we'll have a quote to you within 24 hours.
         </p>
       </div>
-      <div className="flex-1 max-w-lg mx-auto w-full px-4 py-8 space-y-3">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">What type of clean are you after?</p>
+      <div className="flex-1 max-w-lg mx-auto w-full px-4 py-8 space-y-4">
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">What type of clean are you after?</p>
         {OPTIONS.map(opt => (
           <button
             key={opt.key}
             onClick={() => onSelect(opt.key)}
-            className="w-full flex items-start gap-4 rounded-2xl border border-border bg-card p-5 text-left hover:border-primary hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-start gap-4 rounded-2xl border border-border bg-card p-5 text-left shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.98]"
           >
             <div className="rounded-xl bg-primary/10 p-3 shrink-0">
               <opt.icon className="w-6 h-6 text-primary" />
