@@ -61,10 +61,11 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
     if (meta?.preferredDate) {
       setSelectedDate(new Date(meta.preferredDate + 'T00:00:00'));
     }
-    if (meta?.preferredTime) {
-      const defaults: Record<string, string> = { morning: '08:00', midday: '11:30', afternoon: '14:00' };
-      setSelectedTime(defaults[meta.preferredTime] || meta.preferredTime);
-    }
+    setSelectedTime(
+      meta?.preferredTime
+        ? PREFERRED_TIME_DEFAULTS[meta.preferredTime] || meta.preferredTime
+        : '14:00'
+    );
     setCleanerId('');
   }, [meta?.quoteRequestId]);
 
