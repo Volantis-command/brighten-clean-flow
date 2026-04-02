@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, isToday } from 'date-fns';
-import { getStatusColor } from './CalendarStatusColors';
+import { getCleanerColor } from './cleanerColors';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 
@@ -59,11 +59,11 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
   };
 
   return (
-    <div className="bg-card rounded-2xl shadow-md overflow-hidden">
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-7 border-b border-border bg-muted/30">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-          <div key={d} className="py-2 text-center text-[11px] font-bold text-muted-foreground uppercase">
+          <div key={d} className="py-2 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
             {d}
           </div>
         ))}
@@ -103,7 +103,7 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
 
                 <div className="space-y-0.5">
                   {dayJobs.slice(0, maxPills).map(job => {
-                    const sc = getStatusColor(job.status);
+                    const color = getCleanerColor(job.cleaner_1_id);
                     const shortName = (job.properties?.property_name || 'Job').split(' ').slice(0, 2).join(' ');
                     return (
                       <div
@@ -114,10 +114,12 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                           e.dataTransfer.effectAllowed = 'move';
                         }}
                         onClick={(e) => { e.stopPropagation(); onJobClick(job); }}
-                        className={cn(
-                          'text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80',
-                          sc.bg, sc.text
-                        )}
+                        className="text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80"
+                        style={{
+                          backgroundColor: color.hslLight,
+                          color: color.bg,
+                          borderLeft: `2px solid ${color.bg}`,
+                        }}
                       >
                         {shortName}
                       </div>
