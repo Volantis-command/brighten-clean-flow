@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { token, deposit_amount } = await req.json();
+    const { token, deposit_amount, success_url, cancel_url } = await req.json();
     if (!token || !deposit_amount) throw new Error('Missing token or deposit_amount');
 
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const { data: quote, error: qErr } = await supabase
       .from('quote_requests')
       .select('*')
-      .eq('token', token)
+      .eq('id', token)
       .single();
     if (qErr || !quote) throw new Error('Quote not found');
     if (quote.deposit_paid) throw new Error('Deposit already paid');
@@ -34,6 +34,49 @@ Deno.serve(async (req) => {
 
     const amountCents = Math.round(parseFloat(deposit_amount) * 100);
 
+    // If success_url provided, use Checkout Sessions
+    if (success_url) {
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: 'aud',
+              unit_amount: amountCents,
+              product_data: {
+                name: 'Brightly Cleaning Deposit',
+                description: `Booking deposit for ${quote.first_name || ''} ${quote.last_name || ''}`.trim(),
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url,
+        cancel_url: cancel_url || success_url,
+        metadata: {
+          quote_id: quote.id,
+          client_name: `${quote.first_name || ''} ${quote.last_name || ''}`.trim(),
+        },
+        customer_email: quote.email || undefined,
+      });
+
+      // Store the payment intent from the session
+      if (session.payment_intent) {
+        await supabase
+          .from('quote_requests')
+          .update({ stripe_payment_intent_id: session.payment_intent as string })
+          .eq('id', token);
+      }
+
+      return new Response(JSON.stringify({
+        checkout_url: session.url,
+        session_id: session.id,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Fallback: create PaymentIntent directly
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'aud',

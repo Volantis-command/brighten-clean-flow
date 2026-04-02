@@ -13,6 +13,8 @@ export function InvoiceBadge({ status }: InvoiceBadgeProps) {
   const config: Record<string, { label: string; className: string; icon?: boolean }> = {
     draft: { label: 'Draft', className: 'bg-[hsl(var(--accent))] text-accent-foreground border-transparent' },
     sent: { label: 'Sent', className: 'bg-blue-100 text-blue-800 border-transparent' },
+    awaiting_approval: { label: 'Awaiting Approval', className: 'bg-[hsl(45,100%,90%)] text-[hsl(45,100%,25%)] border-transparent' },
+    awaiting_payment: { label: 'Awaiting Payment', className: 'bg-[hsl(45,100%,90%)] text-[hsl(45,100%,25%)] border-transparent' },
     paid: { label: 'Paid', className: 'bg-primary text-primary-foreground border-transparent', icon: true },
     voided: { label: 'Voided', className: 'bg-muted text-muted-foreground border-transparent line-through' },
   };

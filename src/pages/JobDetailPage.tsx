@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
+import { ExtraTimePhotosModal } from '@/components/job-detail/ExtraTimePhotosModal';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -38,7 +39,8 @@ export default function JobDetailPage() {
   const [refundingDeposit, setRefundingDeposit] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [refundReason, setRefundReason] = useState('');
-  
+  const [showExtraPhotos, setShowExtraPhotos] = useState(false);
+  const [waivingDeposit, setWaivingDeposit] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -107,6 +109,21 @@ export default function JobDetailPage() {
       return data || [];
     },
     enabled: !!jobId,
+  });
+
+  // Extra-time evidence photos
+  const { data: extraTimePhotos = [] } = useQuery({
+    queryKey: ['job-extra-time-photos', jobId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('job_photos')
+        .select('*')
+        .eq('job_id', jobId!)
+        .eq('room_label', 'Extra Time Evidence')
+        .order('uploaded_at');
+      return data || [];
+    },
+    enabled: !!jobId && role === 'admin',
   });
 
   // Before photos (from linked quote_request)
@@ -778,7 +795,7 @@ export default function JobDetailPage() {
       )}
 
       {/* Deposit Info — Admin only */}
-      {role === 'admin' && (job as any).deposit_paid && (
+      {role === 'admin' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -787,43 +804,99 @@ export default function JobDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Deposit Amount</span>
-              <span className="font-bold text-primary">${Number((job as any).deposit_amount || 0).toFixed(2)} ✓</span>
-            </div>
-            {(job as any).deposit_paid_at && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Paid on</span>
-                <span className="font-semibold">{format(new Date((job as any).deposit_paid_at), 'd MMM yyyy, h:mm a')}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Balance owing</span>
-              <span className="font-bold">${(Number(job.price_inc_gst || 0) - Number((job as any).deposit_amount || 0)).toFixed(2)}</span>
-            </div>
-            {(job as any).stripe_payment_intent_id && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Stripe ID</span>
-                <span className="font-mono text-xs">{(job as any).stripe_payment_intent_id}</span>
-              </div>
-            )}
-            {(job as any).deposit_refunded ? (
-              <div className="p-3 bg-destructive/10 rounded-xl text-sm text-destructive font-semibold">
-                ✓ Deposit refunded{(job as any).deposit_refund_reason ? ` — ${(job as any).deposit_refund_reason}` : ''}
-              </div>
+            {(job as any).deposit_paid ? (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Deposit Amount</span>
+                  <span className="font-bold text-primary">${Number((job as any).deposit_amount || 0).toFixed(2)} ✓</span>
+                </div>
+                {(job as any).deposit_paid_at && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Paid on</span>
+                    <span className="font-semibold">{format(new Date((job as any).deposit_paid_at), 'd MMM yyyy, h:mm a')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Balance owing</span>
+                  <span className="font-bold">${(Number(job.price_inc_gst || 0) - Number((job as any).deposit_amount || 0)).toFixed(2)}</span>
+                </div>
+                {(job as any).stripe_payment_intent_id && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Stripe ID</span>
+                    <span className="font-mono text-xs">{(job as any).stripe_payment_intent_id}</span>
+                  </div>
+                )}
+                {(job as any).deposit_refunded ? (
+                  <div className="p-3 bg-destructive/10 rounded-xl text-sm text-destructive font-semibold">
+                    ✓ Deposit refunded{(job as any).deposit_refund_reason ? ` — ${(job as any).deposit_refund_reason}` : ''}
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                    onClick={() => setShowRefundDialog(true)}
+                  >
+                    Refund Deposit
+                  </Button>
+                )}
+              </>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
-                onClick={() => setShowRefundDialog(true)}
-              >
-                Refund Deposit
-              </Button>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">No deposit collected</p>
+                  <p className="text-xs text-muted-foreground">Waive deposit for this job</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={waivingDeposit}
+                  onClick={async () => {
+                    setWaivingDeposit(true);
+                    await supabase.from('jobs').update({
+                      deposit_paid: true,
+                      deposit_amount: 0,
+                      deposit_paid_at: new Date().toISOString(),
+                    } as any).eq('id', jobId!);
+                    toast.success('Deposit waived');
+                    queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                    setWaivingDeposit(false);
+                  }}
+                  className="gap-1.5 text-xs"
+                >
+                  {waivingDeposit ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Waive Deposit
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      {/* Extra Time Photos — Admin only */}
+      {role === 'admin' && extraTimePhotos.length > 0 && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                <p className="text-sm font-bold text-foreground">Extra Time Evidence</p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowExtraPhotos(true)}>
+                <ImageIcon className="h-3 w-3" />
+                View Photos ({extraTimePhotos.length})
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      <ExtraTimePhotosModal
+        open={showExtraPhotos}
+        onOpenChange={setShowExtraPhotos}
+        photos={extraTimePhotos}
+      />
+
+
 
       {/* Refund Dialog */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
