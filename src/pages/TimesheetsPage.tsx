@@ -37,12 +37,13 @@ export default function TimesheetsPage() {
     },
   });
 
-  // Fetch time entries for period
+  // Fetch time entries for period — try time_entries first, fallback to jobs clock_on/clock_off
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['timesheet-entries', periodStart, periodEnd, selectedCleaner],
     queryFn: async () => {
+      // Try time_entries table first
       let query = supabase
-        .from('time_entries')
+        .from('time_entries' as any)
         .select('*, jobs(scheduled_date, properties(property_name), notes, status)')
         .gte('clock_in_time', `${periodStart}T00:00:00`)
         .lte('clock_in_time', `${periodEnd}T23:59:59`)
@@ -50,9 +51,55 @@ export default function TimesheetsPage() {
       if (selectedCleaner !== 'all') {
         query = query.eq('user_id', selectedCleaner);
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+      const { data: timeData, error: timeError } = await query;
+      
+      // If time_entries has data, use it
+      if (!timeError && timeData && timeData.length > 0) return timeData;
+
+      // Fallback: build entries from jobs table clock_on/clock_off
+      let jobQuery = supabase
+        .from('jobs')
+        .select('id, clock_on, clock_off, status, scheduled_date, scheduled_time, duration_minutes, cleaner_1_id, cleaner_2_id, properties(property_name, address)')
+        .not('clock_on', 'is', null)
+        .gte('scheduled_date', periodStart)
+        .lte('scheduled_date', periodEnd)
+        .order('scheduled_date', { ascending: true });
+      
+      const { data: jobsData, error: jobsError } = await jobQuery;
+      if (jobsError) throw jobsError;
+
+      // Map jobs to timesheet-like entries
+      const entries: any[] = [];
+      (jobsData || []).forEach((job: any) => {
+        const cleanerIds: string[] = [];
+        if (job.cleaner_1_id) cleanerIds.push(job.cleaner_1_id);
+        if (job.cleaner_2_id) cleanerIds.push(job.cleaner_2_id);
+        
+        // Filter by selected cleaner
+        const relevantCleaners = selectedCleaner !== 'all' 
+          ? cleanerIds.filter(id => id === selectedCleaner)
+          : cleanerIds;
+
+        relevantCleaners.forEach(cleanerId => {
+          entries.push({
+            id: `${job.id}-${cleanerId}`,
+            job_id: job.id,
+            user_id: cleanerId,
+            clock_in_time: job.clock_on,
+            clock_out_time: job.clock_off,
+            total_minutes: job.duration_minutes || (job.clock_on && job.clock_off ? differenceInMinutes(new Date(job.clock_off), new Date(job.clock_on)) : null),
+            jobs: {
+              scheduled_date: job.scheduled_date,
+              properties: job.properties,
+              notes: null,
+              status: job.status,
+            },
+            approved: job.status === 'completed',
+            flagged: false,
+          });
+        });
+      });
+      return entries;
     },
   });
 

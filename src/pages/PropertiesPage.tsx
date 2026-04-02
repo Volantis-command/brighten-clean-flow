@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, Plus, BedDouble, Bath, Trash2 } from 'lucide-react';
+import { Search, Plus, BedDouble, Bath, Trash2, AlertTriangle, Merge } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PropertiesPage() {
@@ -17,6 +18,7 @@ export default function PropertiesPage() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const { data: cleaners = [] } = useCleanersList();
 
   const handleDelete = async () => {
@@ -41,6 +43,18 @@ export default function PropertiesPage() {
       return data || [];
     },
   });
+
+  // Detect duplicates (case-insensitive by address)
+  const duplicateGroups = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    properties.forEach((p) => {
+      const key = (p.address || '').toLowerCase().trim();
+      if (!key) return;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    return Object.values(groups).filter(g => g.length > 1);
+  }, [properties]);
 
   const cleanerMap = Object.fromEntries(cleaners.map((c) => [c.id, c.full_name]));
 
@@ -84,6 +98,24 @@ export default function PropertiesPage() {
           className="pl-12 h-14 rounded-2xl text-base"
         />
       </div>
+
+      {/* Duplicate properties alert */}
+      {role === 'admin' && duplicateGroups.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">
+              {duplicateGroups.length} duplicate {duplicateGroups.length === 1 ? 'property' : 'properties'} detected
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Properties with the same address (different capitalisation) were found. Review and merge to avoid confusion.
+            </p>
+            <Button variant="outline" size="sm" className="mt-2 gap-1 rounded-xl" onClick={() => setMergeDialogOpen(true)}>
+              <Merge className="h-4 w-4" /> Review Duplicates
+            </Button>
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex items-center justify-center py-12">
@@ -184,6 +216,49 @@ export default function PropertiesPage() {
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? 'Deleting…' : 'Delete'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Merge Dialog */}
+      <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
+        <DialogContent className="rounded-2xl max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Duplicate Properties</DialogTitle>
+            <DialogDescription>These properties share the same address. Delete the duplicate to keep your data clean.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {duplicateGroups.map((group, gi) => (
+              <div key={gi} className="border border-border rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase">{group[0].address}</p>
+                {group.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{p.property_name}</p>
+                      <p className="text-xs text-muted-foreground">{p.client_name || 'No client'} · {p.bedrooms}BR/{p.bathrooms}BA</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10 rounded-xl gap-1 shrink-0"
+                      onClick={async () => {
+                        const confirmed = window.confirm(`Delete "${p.property_name}"? This cannot be undone.`);
+                        if (!confirmed) return;
+                        const { error } = await supabase.from('properties').delete().eq('id', p.id);
+                        if (error) { toast.error(error.message); return; }
+                        toast.success(`Deleted "${p.property_name}"`);
+                        queryClient.invalidateQueries({ queryKey: ['properties'] });
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

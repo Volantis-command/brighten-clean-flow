@@ -252,15 +252,21 @@ export default function PropertyFormPage() {
       return;
     }
 
-    // Case-insensitive duplicate detection for new properties
+    // Case-insensitive duplicate detection for new properties (name OR address)
     if (!isEdit) {
-      const { data: dupes } = await supabase
-        .from('properties')
-        .select('id, property_name')
-        .ilike('property_name', form.property_name.trim());
-      if (dupes && dupes.length > 0) {
+      const nameCheck = await supabase.from('properties').select('id, property_name').ilike('property_name', form.property_name.trim());
+      let addrMatches: any[] = [];
+      if (form.address?.trim()) {
+        const addrCheck = await supabase.from('properties').select('id, property_name, address').ilike('address', form.address.trim());
+        addrMatches = addrCheck.data || [];
+      }
+      const nameMatches = nameCheck.data || [];
+      const allDupes = [...nameMatches, ...addrMatches];
+      const uniqueDupes = Array.from(new Map(allDupes.map((d: any) => [d.id, d])).values());
+      if (uniqueDupes.length > 0) {
+        const dupeNames = uniqueDupes.map((d: any) => d.property_name).join(', ');
         const confirmed = window.confirm(
-          `A property with a similar name already exists: "${dupes[0].property_name}". Are you sure you want to create another?`
+          `A property with a similar name or address already exists: "${dupeNames}". Are you sure you want to create another?`
         );
         if (!confirmed) return;
       }

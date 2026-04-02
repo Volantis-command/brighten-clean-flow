@@ -10,11 +10,10 @@ type Msg = { role: 'user' | 'assistant'; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
 const SUGGESTED = [
-  "What do I do if linen isn't here?",
-  "What consumables do I restock?",
-  "How do I report damage?",
-  "Does my sofa bed need making?",
-  "What's the QC pass score?",
+  "How many jobs were completed this week?",
+  "What's my revenue this month?",
+  "Which properties had jobs today?",
+  "Who are my top-performing cleaners?",
 ];
 
 async function streamChat({
@@ -133,7 +132,7 @@ export default function AIAssistantPage() {
       <div className="bg-primary rounded-t-2xl px-5 py-4 flex items-center gap-3 shrink-0">
         <Sparkles className="h-6 w-6 text-accent" />
         <h1 className="text-xl font-extrabold text-primary-foreground tracking-tight">
-          Brightly. AI
+          Brightly Assistant
         </h1>
       </div>
 
@@ -144,8 +143,8 @@ export default function AIAssistantPage() {
             <div className="flex flex-col items-center justify-center py-12 gap-6">
               <div className="text-center space-y-2">
                 <Sparkles className="h-10 w-10 text-primary mx-auto" />
-                <p className="text-lg font-bold text-foreground">Hey! How can I help?</p>
-                <p className="text-sm text-muted-foreground">Ask me about SOPs, your jobs, or anything Brightly.</p>
+                <p className="text-lg font-bold text-foreground">Hey! I'm your Brightly Assistant.</p>
+                <p className="text-sm text-muted-foreground">Ask me about your business data, jobs, revenue, staff performance, or anything Brightly.</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 max-w-md">
                 {SUGGESTED.map((q) => (
