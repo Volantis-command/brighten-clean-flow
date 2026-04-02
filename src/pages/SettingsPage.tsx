@@ -11,11 +11,13 @@ import GuestySection from '@/components/settings/GuestySection';
 import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, CreditCard, Link2 } from 'lucide-react';
 
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState('team');
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-extrabold text-primary">Settings</h1>
 
-      <Tabs defaultValue="team" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1 bg-muted rounded-xl p-1 h-auto">
           <TabsTrigger value="team" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Users className="w-4 h-4" />
