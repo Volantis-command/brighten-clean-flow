@@ -6,6 +6,7 @@ import { MapPin, Clock, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
+import { DEFAULT_CHECKLIST, seedDefaultChecklist } from './defaultChecklist';
 
 interface Props {
   job: any;
