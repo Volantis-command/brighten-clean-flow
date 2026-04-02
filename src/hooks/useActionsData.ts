@@ -232,6 +232,7 @@ export function useActionsData() {
   const totalCount =
     quotesNeeded.length +
     awaitingResponse.length +
+    confirmCleanDate.length +
     awaitingSchedule.length +
     unreadMessages.length +
     jobsInProgress.length +
@@ -240,6 +241,7 @@ export function useActionsData() {
   return {
     quotesNeeded,
     awaitingResponse,
+    confirmCleanDate,
     awaitingSchedule,
     unreadMessages,
     jobsInProgress,
