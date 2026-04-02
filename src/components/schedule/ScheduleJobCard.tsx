@@ -127,7 +127,7 @@ export function ScheduleJobCard({
 
   return (
     <div
-      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${getBorderClass()}`}
+      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${status === 'cancelled' ? 'opacity-50' : ''} ${getBorderClass()}`}
       onClick={() => navigate(`/jobs/${id}`)}
       role="button"
       tabIndex={0}
