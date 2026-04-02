@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const onboardUrl = `https://brighten-clean-flow.lovable.app/onboard/${token}`;
+    const onboardUrl = `https://app.brightly.cleaning/onboard/${token}`;
     const firstName = (profile.full_name || 'there').split(' ')[0];
     const smsBody = `Hi ${firstName}, welcome to Brightly Cleaning! Please fill out your property details here — it only takes a few minutes: ${onboardUrl}`;
 

@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
         const firstName = (profile.full_name || clientName || 'there').split(' ')[0];
         const portalToken = clientProps[0].portal_token || '';
         // Use the app's public URL
-        const rebookUrl = `https://brighten-clean-flow.lovable.app/quote/rebook/${portalToken}`;
+        const rebookUrl = `https://app.brightly.cleaning/quote/rebook/${portalToken}`;
 
         const message = `Hi ${firstName}, hope you're loving the clean! 🏡\n\nReady to book your next one? It's quick and easy: ${rebookUrl}\n\n— The Brightly Team`;
 

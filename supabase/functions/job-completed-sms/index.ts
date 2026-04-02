@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const APP_URL = 'https://brighten-clean-flow.lovable.app';
+const APP_URL = 'https://app.brightly.cleaning';
 
 function formatAuPhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-()]/g, '');

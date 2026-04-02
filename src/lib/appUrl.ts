@@ -1,4 +1,4 @@
-const PUBLISHED_APP_URL = 'https://brighten-clean-flow.lovable.app';
+const PUBLISHED_APP_URL = 'https://app.brightly.cleaning';
 
 export function getAppBaseUrl() {
   if (typeof window === 'undefined') return PUBLISHED_APP_URL;

@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
 
       // Get app URL from settings
       const { data: appUrlSetting } = await supabase.from('app_settings').select('value').eq('key', 'app_url').maybeSingle();
-      const appUrl = appUrlSetting?.value || 'https://brighten-clean-flow.lovable.app';
+      const appUrl = appUrlSetting?.value || 'https://app.brightly.cleaning';
       const jobUrl = job_id ? `${appUrl}/jobs/${job_id}` : appUrl;
 
       for (const admin of (admins || [])) {
