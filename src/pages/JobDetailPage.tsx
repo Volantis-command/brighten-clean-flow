@@ -111,6 +111,21 @@ export default function JobDetailPage() {
     enabled: !!jobId,
   });
 
+  // Extra-time evidence photos
+  const { data: extraTimePhotos = [] } = useQuery({
+    queryKey: ['job-extra-time-photos', jobId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('job_photos')
+        .select('*')
+        .eq('job_id', jobId!)
+        .eq('room_label', 'Extra Time Evidence')
+        .order('uploaded_at');
+      return data || [];
+    },
+    enabled: !!jobId && role === 'admin',
+  });
+
   // Before photos (from linked quote_request)
   const { data: beforePhotos = [] } = useQuery({
     queryKey: ['job-before-photos', job?.linked_quote_id],
