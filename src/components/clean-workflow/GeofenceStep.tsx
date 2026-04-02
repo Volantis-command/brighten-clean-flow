@@ -64,7 +64,7 @@ export default function GeofenceStep({ job, property, userId, onNext, onBack }: 
       setChecking(false);
       onNext('clock_on');
     } catch (err: any) {
-      setError('Could not get your location. Please enable location services and try again.');
+      setError('Location access is required to start a job. Please enable location in your browser settings and try again.');
       setChecking(false);
     }
   }
