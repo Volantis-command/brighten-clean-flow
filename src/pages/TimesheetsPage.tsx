@@ -384,6 +384,12 @@ export default function TimesheetsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="payroll">
+          <PayrollTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
