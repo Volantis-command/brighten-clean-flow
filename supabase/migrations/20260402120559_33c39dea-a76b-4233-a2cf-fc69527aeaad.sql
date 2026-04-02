@@ -1,0 +1,1 @@
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS consumables_selection jsonb DEFAULT '{}'::jsonb;
