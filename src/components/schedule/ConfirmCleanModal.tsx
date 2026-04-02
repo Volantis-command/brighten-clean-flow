@@ -117,10 +117,19 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
         }
       }
 
-      // 3. Create job record
-      const priceIncGst = meta.totalIncGst ? Number(meta.totalIncGst) : null;
-      const priceExGst = priceIncGst ? priceIncGst / 1.1 : null;
+      // 3. Look up price from quote_requests if not in meta
+      let priceIncGst = meta.totalIncGst ? Number(meta.totalIncGst) : null;
+      if (!priceIncGst && meta.quoteRequestId) {
+        const { data: qrPrice } = await supabase
+          .from('quote_requests')
+          .select('total_inc_gst, total_ex_gst')
+          .eq('id', meta.quoteRequestId)
+          .maybeSingle();
+        if (qrPrice?.total_inc_gst) priceIncGst = Number(qrPrice.total_inc_gst);
+      }
+      const priceExGst = priceIncGst ? Math.round((priceIncGst / 1.1) * 100) / 100 : null;
 
+      // 4. Create job record
       const { error: jobErr } = await supabase.from('jobs').insert({
         property_id: propertyId,
         scheduled_date: dateStr,
@@ -131,6 +140,7 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
         price_inc_gst: priceIncGst,
         price_ex_gst: priceExGst,
         source: 'quote_request',
+        linked_quote_id: meta.quoteRequestId || null,
       });
       if (jobErr) throw jobErr;
 
