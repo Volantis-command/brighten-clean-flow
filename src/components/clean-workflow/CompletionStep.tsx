@@ -184,7 +184,7 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-bottom z-50">
         <Button
           size="lg"
-          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
+          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground max-w-lg mx-auto block"
           onClick={handleClockOffSubmit}
           disabled={submitting}
         >
