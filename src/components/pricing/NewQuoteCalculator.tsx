@@ -376,12 +376,20 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       // STEP 3 — If opened from /quoting?lead=<id>, move lead out of Quotes Needed
       if (leadId) {
-        const { error: quoteRequestError } = await supabase
+        // Try updating quote_requests first
+        const { data: qrUpdated } = await supabase
           .from('quote_requests')
           .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
-          .eq('id', leadId);
+          .eq('id', leadId)
+          .select('id');
 
-        if (quoteRequestError) throw quoteRequestError;
+        // If no quote_requests row matched, try the leads table
+        if (!qrUpdated?.length) {
+          await supabase
+            .from('leads')
+            .update({ status: 'quote_sent' })
+            .eq('id', leadId);
+        }
       }
 
       // STEP 4 — Create admin notification
