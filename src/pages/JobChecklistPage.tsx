@@ -560,8 +560,116 @@ export default function JobChecklistPage() {
 
   const isSubmitted = !!existingForm?.submitted_at;
 
+  // ─── STEP 1: ARRIVAL GATE ───
+  if (!hasArrived && !isSubmitted && job.status !== 'completed' && job.status !== 'complete') {
+    const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
+    return (
+      <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
+        <div className="bg-primary text-primary-foreground px-5 py-5">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-primary-foreground/70 text-sm mb-2">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <h1 className="text-xl font-extrabold">On My Way</h1>
+          <p className="text-primary-foreground/70 text-sm mt-1">Head to the property & tap when you arrive</p>
+        </div>
+        <main className="flex-1 px-4 py-5 space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <h2 className="text-lg font-bold text-foreground">{property?.property_name ?? 'Property'}</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">{property?.address ?? 'No address'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">{job.scheduled_time ? format(jobDate, 'h:mm a') : '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {property?.address && (
+            <Button
+              variant="outline"
+              className="w-full h-14 text-base font-bold rounded-2xl"
+              onClick={() => {
+                const encoded = encodeURIComponent(property.address);
+                const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                window.open(isIos ? `maps://maps.apple.com/?q=${encoded}` : `https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+              }}
+            >
+              <Navigation className="h-5 w-5 mr-2" /> Open in Maps
+            </Button>
+          )}
+
+          <Button
+            size="lg"
+            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleArrived}
+            disabled={arriving}
+          >
+            {arriving ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : null}
+            I've Arrived
+          </Button>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── STEP 2: CLOCK ON GATE ───
+  if (hasArrived && !hasClockedOn && !clockOnTime && !isSubmitted && job.status !== 'completed' && job.status !== 'complete') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
+        <div className="bg-primary text-primary-foreground px-5 py-5">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-primary-foreground/70 text-sm mb-2">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <h1 className="text-xl font-extrabold">Ready to Start</h1>
+          <p className="text-primary-foreground/70 text-sm mt-1">{property?.property_name}</p>
+        </div>
+        <main className="flex-1 px-4 py-5 space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <p className="text-sm text-green-600 font-bold flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Arrival recorded
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">{property?.address ?? 'No address'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">Arrived {format(new Date(job.arrived_at!), 'h:mm a')}</span>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            size="lg"
+            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleClockOn}
+            disabled={clockingOn}
+          >
+            {clockingOn ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <Clock className="h-6 w-6 mr-2" />}
+            Clock On
+          </Button>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-2xl pb-24">
+      {/* Running timer banner */}
+      {(hasClockedOn || clockOnTime) && !job?.clock_off && (
+        <div className="bg-accent text-accent-foreground rounded-2xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
+            <span className="font-extrabold text-lg">{elapsed}</span>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">{property?.property_name}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
