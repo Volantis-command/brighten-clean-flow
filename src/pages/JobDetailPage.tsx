@@ -1098,13 +1098,22 @@ export default function JobDetailPage() {
             </Button>
           ) : null
         )}
-        ) : (
+        {role === 'admin' && (job.status === 'completed' || job.status === 'complete') && (
           <Button
             className="w-full gap-2 h-12 text-base font-bold"
-            onClick={() => navigate(job.status === 'completed' || job.status === 'complete' ? `/clean/${jobId}` : `/jobs/${jobId}/checklist`)}
+            onClick={() => navigate(`/clean/${jobId}`)}
           >
             <ClipboardList className="h-5 w-5" />
-            {job.status === 'completed' || job.status === 'complete' ? 'View Summary' : 'Open Checklist'}
+            View Summary
+          </Button>
+        )}
+        {role === 'admin' && job.status !== 'completed' && job.status !== 'complete' && (
+          <Button
+            className="w-full gap-2 h-12 text-base font-bold"
+            onClick={() => navigate(`/jobs/${jobId}/checklist`)}
+          >
+            <ClipboardList className="h-5 w-5" />
+            Open Checklist
           </Button>
         )}
 
