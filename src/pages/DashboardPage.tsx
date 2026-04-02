@@ -7,12 +7,13 @@ import { getCurrentPosition } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { JobCard } from '@/components/dashboard/JobCard';
-import { TodaySummary } from '@/components/dashboard/TodaySummary';
 import { LiveStatusStrip } from '@/components/dashboard/LiveStatusStrip';
-import { AlertsSection } from '@/components/dashboard/AlertsSection';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { RecentQCScores } from '@/components/dashboard/RecentQCScores';
-import { TeamPerformance } from '@/components/dashboard/TeamPerformance';
+import { TopStatsBar } from '@/components/dashboard/TopStatsBar';
+import { TodayAtAGlance } from '@/components/dashboard/TodayAtAGlance';
+import { TeamPerformanceTable } from '@/components/dashboard/TeamPerformanceTable';
+import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
+import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
 import { toast } from 'sonner';
@@ -27,15 +28,16 @@ export default function DashboardPage() {
     upcomingJobCards,
     clockedInCleaners,
     alerts,
-    qcDisplayScores,
     kpi,
     isLoading,
     isAdmin,
+    teamPerformance,
+    revenueTrend,
+    recentFeedback,
   } = useDashboardData();
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
 
-  // Pending staff onboarding alerts
   const { data: pendingOnboarding = [] } = useQuery({
     queryKey: ['pending-staff-onboarding'],
     enabled: isAdmin,
@@ -87,7 +89,6 @@ export default function DashboardPage() {
 
   // Cleaner dashboard
   if (role === 'cleaner') {
-    // Group upcoming by date
     const upcomingByDate: Record<string, typeof upcomingJobCards> = {};
     upcomingJobCards.forEach((j) => {
       if (!upcomingByDate[j.scheduledDate]) upcomingByDate[j.scheduledDate] = [];
@@ -97,8 +98,6 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6 max-w-lg mx-auto">
         <DashboardGreeting />
-
-        {/* Today's Jobs */}
         <div>
           <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
           {jobCards.length === 0 ? (
@@ -117,8 +116,6 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-
-        {/* Upcoming 7 Days */}
         {Object.keys(upcomingByDate).length > 0 && (
           <div>
             <h2 className="text-xl font-bold text-primary mb-4">Upcoming</h2>
@@ -161,8 +158,18 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <DashboardGreeting />
-      <TodaySummary kpi={kpi} />
 
+      {/* Row 1: Top Stats */}
+      <TopStatsBar kpi={kpi} />
+
+      {/* Row 2: Today at a Glance */}
+      <TodayAtAGlance
+        kpi={kpi}
+        clockedInCleaners={clockedInCleaners}
+        alerts={alerts}
+      />
+
+      {/* Today's Jobs */}
       <div>
         <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
         {jobCards.length === 0 ? (
@@ -178,7 +185,10 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <LiveStatusStrip clockedInCleaners={clockedInCleaners} />
+      {/* Live Status — only show if cleaners are clocked in */}
+      {clockedInCleaners.length > 0 && (
+        <LiveStatusStrip clockedInCleaners={clockedInCleaners} />
+      )}
 
       {/* Leave conflict alerts */}
       {leaveAlerts.length > 0 && (
@@ -198,8 +208,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <AlertsSection alerts={alerts} />
-
       {/* Pending staff onboarding */}
       {pendingOnboarding.length > 0 && (
         <div>
@@ -209,23 +217,32 @@ export default function DashboardPage() {
           <div className="space-y-2">
             {pendingOnboarding.map((s: any) => (
               <div key={s.user_id}
-                className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors"
+                className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-accent/20 transition-colors"
                 onClick={() => navigate('/staff')}>
                 <div className="flex items-center gap-3">
-                  <ClipboardList className="h-5 w-5 text-amber-600 shrink-0" />
+                  <ClipboardList className="h-5 w-5 text-accent shrink-0" />
                   <p className="text-sm font-semibold text-foreground">
                     {s.full_name || 'Staff member'} has submitted their onboarding form — review HR details
                   </p>
                 </div>
-                <span className="text-xs font-bold text-amber-700 bg-amber-200 px-2 py-0.5 rounded-full">Action Needed</span>
+                <span className="text-xs font-bold text-accent bg-accent/20 px-2 py-0.5 rounded-full">Action Needed</span>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Row 3: Team Performance */}
+      <TeamPerformanceTable data={teamPerformance} />
+
+      {/* Row 4: Revenue Trend */}
+      <RevenueTrend data={revenueTrend} />
+
+      {/* Row 5: Recent Feedback */}
+      <RecentFeedback data={recentFeedback} />
+
+      {/* Quick Actions */}
       <QuickActions />
-      <RecentQCScores scores={qcDisplayScores} />
-      <TeamPerformance />
     </div>
   );
 }
