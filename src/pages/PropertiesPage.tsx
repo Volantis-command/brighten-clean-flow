@@ -219,6 +219,49 @@ export default function PropertiesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate Merge Dialog */}
+      <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
+        <DialogContent className="rounded-2xl max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Duplicate Properties</DialogTitle>
+            <DialogDescription>These properties share the same address. Delete the duplicate to keep your data clean.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {duplicateGroups.map((group, gi) => (
+              <div key={gi} className="border border-border rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase">{group[0].address}</p>
+                {group.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{p.property_name}</p>
+                      <p className="text-xs text-muted-foreground">{p.client_name || 'No client'} · {p.bedrooms}BR/{p.bathrooms}BA</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10 rounded-xl gap-1 shrink-0"
+                      onClick={async () => {
+                        const confirmed = window.confirm(`Delete "${p.property_name}"? This cannot be undone.`);
+                        if (!confirmed) return;
+                        const { error } = await supabase.from('properties').delete().eq('id', p.id);
+                        if (error) { toast.error(error.message); return; }
+                        toast.success(`Deleted "${p.property_name}"`);
+                        queryClient.invalidateQueries({ queryKey: ['properties'] });
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
