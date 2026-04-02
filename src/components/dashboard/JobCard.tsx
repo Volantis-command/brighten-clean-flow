@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, MapPin, Users, Loader2, Navigation } from 'lucide-react';
+import { Clock, MapPin, Users, Loader2, Navigation, Repeat, Star } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 
@@ -21,6 +21,8 @@ interface JobCardProps {
   onStartJob?: () => Promise<void>;
   showNavigateButton?: boolean;
   acceptances?: JobCardAcceptance[];
+  isRecurring?: boolean;
+  feedbackScore?: number | null;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
