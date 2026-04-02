@@ -541,18 +541,25 @@ export type Database = {
       }
       jobs: {
         Row: {
+          arrived_at: string | null
+          arrived_lat: number | null
+          arrived_lng: number | null
           check_in_time: string | null
           check_out_time: string | null
           cleaner_1_id: string | null
           cleaner_2_id: string | null
           cleaner_notes: string | null
           client_booking_sms_sent_at: string | null
+          clock_off: string | null
+          clock_on: string | null
+          completion_notes: string | null
           created_at: string
           deposit_amount: number | null
           deposit_paid: boolean | null
           deposit_paid_at: string | null
           deposit_refund_reason: string | null
           deposit_refunded: boolean | null
+          duration_minutes: number | null
           estimated_duration: number | null
           feedback_score: number | null
           guest_checkin_time: string | null
@@ -566,6 +573,7 @@ export type Database = {
           linked_quote_id: string | null
           no_show_alert_sent: boolean | null
           notes: string | null
+          pre_clean_notes: Json | null
           price_ex_gst: number | null
           price_inc_gst: number | null
           price_notes: string | null
@@ -584,18 +592,25 @@ export type Database = {
           xero_invoice_number: string | null
         }
         Insert: {
+          arrived_at?: string | null
+          arrived_lat?: number | null
+          arrived_lng?: number | null
           check_in_time?: string | null
           check_out_time?: string | null
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           cleaner_notes?: string | null
           client_booking_sms_sent_at?: string | null
+          clock_off?: string | null
+          clock_on?: string | null
+          completion_notes?: string | null
           created_at?: string
           deposit_amount?: number | null
           deposit_paid?: boolean | null
           deposit_paid_at?: string | null
           deposit_refund_reason?: string | null
           deposit_refunded?: boolean | null
+          duration_minutes?: number | null
           estimated_duration?: number | null
           feedback_score?: number | null
           guest_checkin_time?: string | null
@@ -609,6 +624,7 @@ export type Database = {
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
+          pre_clean_notes?: Json | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
           price_notes?: string | null
@@ -627,18 +643,25 @@ export type Database = {
           xero_invoice_number?: string | null
         }
         Update: {
+          arrived_at?: string | null
+          arrived_lat?: number | null
+          arrived_lng?: number | null
           check_in_time?: string | null
           check_out_time?: string | null
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           cleaner_notes?: string | null
           client_booking_sms_sent_at?: string | null
+          clock_off?: string | null
+          clock_on?: string | null
+          completion_notes?: string | null
           created_at?: string
           deposit_amount?: number | null
           deposit_paid?: boolean | null
           deposit_paid_at?: string | null
           deposit_refund_reason?: string | null
           deposit_refunded?: boolean | null
+          duration_minutes?: number | null
           estimated_duration?: number | null
           feedback_score?: number | null
           guest_checkin_time?: string | null
@@ -652,6 +675,7 @@ export type Database = {
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
+          pre_clean_notes?: Json | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
           price_notes?: string | null
