@@ -66,8 +66,8 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
   };
 
   const canNext = () => {
-    if (STEPS[step] === 'Business Details') return contactName.trim() && mobile.trim() && email.trim();
-    if (STEPS[step] === 'Space Details') return address.trim();
+    if (STEPS[step] === 'Business Details') return !!(contactName.trim() && mobile.trim() && email.trim());
+    if (STEPS[step] === 'Space Details') return !!address.trim();
     return true;
   };
 

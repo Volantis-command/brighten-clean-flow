@@ -67,8 +67,8 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
   };
 
   const canNext = () => {
-    if (STEPS[step] === 'Contact') return fullName.trim() && mobile.trim() && email.trim();
-    if (STEPS[step] === 'Property') return address.trim();
+    if (STEPS[step] === 'Contact') return !!(fullName.trim() && mobile.trim() && email.trim());
+    if (STEPS[step] === 'Property') return !!address.trim();
     return true;
   };
 

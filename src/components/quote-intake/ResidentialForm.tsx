@@ -79,8 +79,8 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
 
   const canNext = () => {
     const s = steps[step];
-    if (s === 'Contact') return fullName.trim() && mobile.trim() && email.trim();
-    if (s === 'Property') return address.trim();
+    if (s === 'Contact') return !!(fullName.trim() && mobile.trim() && email.trim());
+    if (s === 'Property') return !!address.trim();
     return true;
   };
 
