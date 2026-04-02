@@ -1204,6 +1204,24 @@ export default function JobDetailPage() {
           </Button>
         )}
 
+        {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
+          <Button
+            variant="outline"
+            className="w-full gap-2 h-12 text-base font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setCancelOpen(true)}
+          >
+            Cancel Job
+          </Button>
+        )}
+
+        {role === 'admin' && job.status === 'cancelled' && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 space-y-1">
+            <p className="text-sm font-bold text-destructive">Job Cancelled</p>
+            {(job as any).cancellation_reason && <p className="text-sm text-muted-foreground">Reason: {(job as any).cancellation_reason.replace('_', ' ')}</p>}
+            {(job as any).cancellation_notes && <p className="text-sm text-muted-foreground">{(job as any).cancellation_notes}</p>}
+          </div>
+        )}
+
         {role === 'admin' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
