@@ -1,9 +1,29 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, Phone, Mail } from 'lucide-react';
+import { LogOut, Phone, Mail, Star } from 'lucide-react';
 
 export default function CleanerProfilePage() {
   const { profile, signOut } = useAuth();
+
+  const { data: avgRating } = useQuery({
+    queryKey: ['cleaner-avg-rating', profile?.id],
+    enabled: !!profile?.id,
+    queryFn: async () => {
+      // Get jobs where this cleaner was assigned
+      const { data: jobs } = await supabase
+        .from('jobs')
+        .select('feedback_score')
+        .or(`cleaner_1_id.eq.${profile!.id},cleaner_2_id.eq.${profile!.id}`)
+        .not('feedback_score', 'is', null);
+
+      if (!jobs?.length) return null;
+      const scores = jobs.map(j => j.feedback_score!).filter(s => s > 0);
+      if (!scores.length) return null;
+      return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+    },
+  });
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
