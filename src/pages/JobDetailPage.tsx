@@ -21,6 +21,7 @@ import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
 import { ExtraTimePhotosModal } from '@/components/job-detail/ExtraTimePhotosModal';
+import { CancelJobModal } from '@/components/job-detail/CancelJobModal';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
