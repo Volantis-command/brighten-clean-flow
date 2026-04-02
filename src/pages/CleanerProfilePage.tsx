@@ -36,9 +36,17 @@ export default function CleanerProfilePage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground">{profile?.full_name || 'Cleaner'}</h2>
-            <span className="inline-block text-xs font-bold bg-secondary text-secondary-foreground px-3 py-1 rounded-full mt-1">
-              Cleaner
-            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="inline-block text-xs font-bold bg-secondary text-secondary-foreground px-3 py-1 rounded-full">
+                Cleaner
+              </span>
+              {avgRating && (
+                <span className="inline-flex items-center gap-1 text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                  {avgRating} avg
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

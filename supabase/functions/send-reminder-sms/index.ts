@@ -38,6 +38,13 @@ async function sendTwilioSms(to: string, body: string): Promise<{ success: boole
   return { success: true };
 }
 
+function getJobDateTimeAEST(scheduledDate: string, scheduledTime: string | null): Date {
+  const timeStr = scheduledTime ? scheduledTime.slice(0, 5) : '09:00';
+  // Parse as AEST (UTC+10)
+  const dt = new Date(`${scheduledDate}T${timeStr}:00+10:00`);
+  return dt;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -47,69 +54,106 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Find scheduled jobs happening within the next 48 hours that haven't had a reminder sent
+    // Check if reminders are enabled
+    const { data: appSettings } = await supabase
+      .from('app_settings')
+      .select('key, value')
+      .in('key', ['reminders_enabled']);
+    const settingsMap: Record<string, string> = {};
+    (appSettings || []).forEach((s: any) => { settingsMap[s.key] = s.value; });
+
+    if (settingsMap['reminders_enabled'] === 'false') {
+      return new Response(JSON.stringify({ success: true, message: 'Reminders disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const now = new Date();
-    const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    const in46h = new Date(now.getTime() + 46 * 60 * 60 * 1000); // 46-48h window to avoid duplicates
-
-    const todayStr = now.toISOString().split('T')[0];
-    const in2daysStr = in48h.toISOString().split('T')[0];
-
-    // Get jobs scheduled tomorrow (approximately 24-48h from now)
-    const { data: upcomingJobs } = await supabase
-      .from('jobs')
-      .select('id, scheduled_date, scheduled_time, property_id, series_id, client_booking_sms_sent_at, properties(property_name, address, suburb, client_name)')
-      .eq('status', 'scheduled')
-      .in('scheduled_date', [in2daysStr]) // jobs day after tomorrow
-      .not('series_id', 'is', null); // only recurring jobs
-
     const results: any[] = [];
 
+    // Get jobs in the next 26 hours (covers both 24h and 2h windows with buffer)
+    const futureLimit = new Date(now.getTime() + 26 * 60 * 60 * 1000);
+    const todayStr = now.toISOString().split('T')[0];
+    const tomorrowStr = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dayAfterStr = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const { data: upcomingJobs } = await supabase
+      .from('jobs')
+      .select('id, scheduled_date, scheduled_time, property_id, cleaner_1_id, cleaner_2_id, client_reminder_sms_sent_at, cleaner_reminder_sms_sent_at, properties(property_name, address, suburb, client_name)')
+      .in('status', ['scheduled', 'confirmed'])
+      .in('scheduled_date', [todayStr, tomorrowStr, dayAfterStr])
+      .not('cleaner_1_id', 'is', null);
+
     for (const job of (upcomingJobs || [])) {
-      // Skip if we already sent a reminder (using client_booking_sms_sent_at as our "reminder sent" flag)
-      // We check for a specific pattern — the reminder is distinct
-      // For simplicity, use a notes check or a new field. We'll reuse rebook_sms_sent_at as "reminder_sent_at"
-      if ((job as any).rebook_sms_sent_at) continue;
-
       const property = (job as any).properties;
-      if (!property?.client_name) continue;
+      if (!property) continue;
 
-      // Find client
-      const { data: clientProps } = await supabase
-        .from('client_properties')
-        .select('client_id')
-        .eq('property_id', job.property_id!)
-        .limit(1);
+      const jobDt = getJobDateTimeAEST(job.scheduled_date, job.scheduled_time);
+      const hoursUntilJob = (jobDt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-      if (!clientProps?.length) continue;
+      // ─── CLIENT REMINDER: 22-26 hours before (24h window) ───
+      if (hoursUntilJob >= 22 && hoursUntilJob <= 26 && !(job as any).client_reminder_sms_sent_at) {
+        // Find client
+        const { data: clientProps } = await supabase
+          .from('client_properties')
+          .select('client_id')
+          .eq('property_id', job.property_id!)
+          .limit(1);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, phone')
-        .eq('id', clientProps[0].client_id)
-        .single();
+        if (clientProps?.length) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', clientProps[0].client_id)
+            .single();
 
-      if (!profile?.phone) continue;
+          if (profile?.phone) {
+            const firstName = (profile.full_name || 'there').split(' ')[0];
+            const timeStr = job.scheduled_time ? job.scheduled_time.slice(0, 5) : '';
+            const address = [property.address, property.suburb].filter(Boolean).join(', ');
 
-      const firstName = (profile.full_name || 'there').split(' ')[0];
-      const timeStr = job.scheduled_time ? job.scheduled_time.slice(0, 5) : '';
+            const message = `Hi ${firstName}, just a reminder your Brightly clean is tomorrow${timeStr ? ` at ${timeStr}` : ''} at ${address || property.property_name}. Reply STOP to opt out.\n\n— Brightly Cleaning`;
 
-      let formattedDate = job.scheduled_date;
-      try {
-        const d = new Date(job.scheduled_date + 'T00:00:00');
-        formattedDate = d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
-      } catch { /* use raw */ }
+            const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
+            if (smsResult.success) {
+              await supabase.from('jobs').update({ client_reminder_sms_sent_at: now.toISOString() }).eq('id', job.id);
+              results.push({ job_id: job.id, type: 'client_reminder', status: 'sent' });
+            } else {
+              results.push({ job_id: job.id, type: 'client_reminder', status: 'failed', error: smsResult.error });
+            }
+          }
+        }
+      }
 
-      const message = `Hi ${firstName}, just a reminder your clean is ${formattedDate}${timeStr ? ` at ${timeStr}` : ''}. 🧹\n\nReply STOP to cancel.\n\n— Brightly Cleaning`;
+      // ─── CLEANER REMINDER: 1.5-2.5 hours before ───
+      if (hoursUntilJob >= 1.5 && hoursUntilJob <= 2.5 && !(job as any).cleaner_reminder_sms_sent_at) {
+        const cleanerIds = [job.cleaner_1_id, job.cleaner_2_id].filter(Boolean) as string[];
 
-      const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
+        for (const cleanerId of cleanerIds) {
+          const { data: cleanerProfile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', cleanerId)
+            .single();
 
-      if (smsResult.success) {
-        // Mark reminder as sent using rebook_sms_sent_at field
-        await supabase.from('jobs').update({ rebook_sms_sent_at: now.toISOString() }).eq('id', job.id);
-        results.push({ job_id: job.id, status: 'sent' });
-      } else {
-        results.push({ job_id: job.id, status: 'failed', error: smsResult.error });
+          if (cleanerProfile?.phone) {
+            const firstName = (cleanerProfile.full_name || 'Team member').split(' ')[0];
+            const timeStr = job.scheduled_time ? job.scheduled_time.slice(0, 5) : '';
+            const address = [property.address, property.suburb].filter(Boolean).join(', ');
+
+            const message = `Hi ${firstName}, reminder: you have a clean today at ${timeStr || 'TBC'} — ${address || property.property_name}. See job details in the app.\n\n— Brightly`;
+
+            const smsResult = await sendTwilioSms(formatAuPhone(cleanerProfile.phone), message);
+            if (smsResult.success) {
+              results.push({ job_id: job.id, type: 'cleaner_reminder', cleaner: cleanerId, status: 'sent' });
+            } else {
+              results.push({ job_id: job.id, type: 'cleaner_reminder', cleaner: cleanerId, status: 'failed', error: smsResult.error });
+            }
+          }
+        }
+
+        // Mark cleaner reminder sent for the job
+        await supabase.from('jobs').update({ cleaner_reminder_sms_sent_at: now.toISOString() }).eq('id', job.id);
       }
     }
 

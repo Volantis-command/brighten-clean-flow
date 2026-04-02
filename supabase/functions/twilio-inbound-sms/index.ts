@@ -83,7 +83,6 @@ function phoneMatchesAny(storedPhone: string, variants: string[], normalizedInco
 }
 
 async function handleQuoteReply(supabase: any, from: string, body: string, variants: string[], normalizedIncoming: string): Promise<Response | null> {
-  // Find quotes with status 'quote_sent' where client_phone matches
   const { data: allQuotes } = await supabase
     .from('quotes')
     .select('id, client_name, client_phone, property_address, property_name, clean_type, status, property_id')
@@ -97,13 +96,11 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
   const firstName = (matchedQuote.client_name || 'there').split(' ')[0];
 
   if (body === 'YES' || body === 'Y') {
-    // Update quote status
     await supabase.from('quotes').update({ 
       status: 'client_accepted', 
       quote_accepted_at: new Date().toISOString() 
     }).eq('id', matchedQuote.id);
 
-    // Look up the quote_requests record for this phone to build booking URL
     let bookingLink = APP_URL;
     const { data: allQr } = await supabase
       .from('quote_requests')
@@ -117,10 +114,8 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
       }
     }
 
-    // Send follow-up SMS
     await sendTwilioSms(from, `Great! 🎉 To confirm your booking, please select your preferred date and time here: ${bookingLink}`);
 
-    // Create admin notification
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     for (const admin of (admins || [])) {
       await supabase.from('notifications').insert({
@@ -137,16 +132,13 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
   }
 
   if (body === 'NO' || body === 'N') {
-    // Update quote status
     await supabase.from('quotes').update({ 
       status: 'quote_declined', 
       quote_declined_at: new Date().toISOString() 
     }).eq('id', matchedQuote.id);
 
-    // Send decline SMS
     await sendTwilioSms(from, `No worries ${firstName}! If you change your mind, we're here. — Brightly Cleaning 🌿`);
 
-    // Notify admin
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     for (const admin of (admins || [])) {
       await supabase.from('notifications').insert({
@@ -162,8 +154,102 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
     return twimlResponse('');
   }
 
-  // Not YES/NO but matched a quote — prompt
   return null;
+}
+
+// ─── Handle feedback rating reply (1-5) ───
+async function handleFeedbackRating(supabase: any, from: string, body: string, matchingProfileIds: string[], variants: string[], normalizedIncoming: string): Promise<Response | null> {
+  const rating = parseInt(body, 10);
+  if (isNaN(rating) || rating < 1 || rating > 5) return null;
+
+  // Find the most recent completed job for this client where we sent a rating SMS
+  // Match by phone via client_properties → profiles
+  const { data: allProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, phone')
+    .not('phone', 'is', null);
+
+  const matchedClientProfiles = (allProfiles || []).filter((p: any) =>
+    p.phone && phoneMatchesAny(p.phone, variants, normalizedIncoming)
+  );
+
+  if (!matchedClientProfiles.length) return null;
+
+  const clientIds = matchedClientProfiles.map((p: any) => p.id);
+
+  // Check if any of these clients have a recent job with feedback_rating_sms_sent_at
+  const { data: clientProps } = await supabase
+    .from('client_properties')
+    .select('client_id, property_id')
+    .in('client_id', clientIds);
+
+  if (!clientProps?.length) return null;
+
+  const propertyIds = clientProps.map((cp: any) => cp.property_id);
+
+  const { data: recentJobs } = await supabase
+    .from('jobs')
+    .select('id, property_id')
+    .in('property_id', propertyIds)
+    .eq('status', 'complete')
+    .not('feedback_rating_sms_sent_at', 'is', null)
+    .order('feedback_rating_sms_sent_at', { ascending: false })
+    .limit(1);
+
+  if (!recentJobs?.length) return null;
+
+  const job = recentJobs[0];
+  const matchedCp = clientProps.find((cp: any) => cp.property_id === job.property_id);
+  if (!matchedCp) return null;
+
+  const clientId = matchedCp.client_id;
+  const firstName = (matchedClientProfiles.find((p: any) => p.id === clientId)?.full_name || 'there').split(' ')[0];
+
+  // Store feedback
+  await supabase.from('job_feedback').upsert({
+    job_id: job.id,
+    client_id: clientId,
+    score: rating,
+    comments: `SMS rating: ${rating}`,
+    submitted_at: new Date().toISOString(),
+  }, { onConflict: 'job_id,client_id', ignoreDuplicates: false });
+
+  // Update job feedback_score
+  await supabase.from('jobs').update({ feedback_score: rating }).eq('id', job.id);
+
+  if (rating >= 4) {
+    // Get Google review URL
+    const { data: appSettings } = await supabase
+      .from('app_settings')
+      .select('key, value')
+      .eq('key', 'google_review_url')
+      .single();
+
+    const googleUrl = appSettings?.value || '';
+
+    if (googleUrl) {
+      await sendTwilioSms(from, `Thank you ${firstName}! 🌟 We're so glad you're happy. If you have a moment, a Google review would mean the world to us: ${googleUrl}\n\n— Brightly Cleaning`);
+    } else {
+      await sendTwilioSms(from, `Thank you ${firstName}! 🌟 We're so glad you're happy with your clean.\n\n— Brightly Cleaning`);
+    }
+  } else {
+    await sendTwilioSms(from, `Thanks for the feedback. Our manager will be in touch shortly.\n\n— Brightly Cleaning`);
+
+    // Create admin alert
+    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+    for (const admin of (admins || [])) {
+      await supabase.from('notifications').insert({
+        user_id: admin.user_id,
+        type: 'alert',
+        title: '⚠️ Low Feedback Score',
+        message: `${firstName} rated their clean ${rating}/5. Follow up needed.`,
+        link: `/jobs/${job.id}`,
+      });
+    }
+  }
+
+  console.log(`[twilio-inbound-sms] Feedback rating ${rating} from ${from} for job ${job.id}`);
+  return twimlResponse('');
 }
 
 Deno.serve(async (req) => {
@@ -174,8 +260,8 @@ Deno.serve(async (req) => {
   try {
     const { from, body } = await parseIncoming(req);
 
-    console.log(`[twilio-inbound-sms v4] From: "${from}"`);
-    console.log(`[twilio-inbound-sms v4] Body: "${body}"`);
+    console.log(`[twilio-inbound-sms v5] From: "${from}"`);
+    console.log(`[twilio-inbound-sms v5] Body: "${body}"`);
 
     if (!from) return twimlResponse('');
 
@@ -194,7 +280,7 @@ Deno.serve(async (req) => {
       .not('phone', 'is', null);
 
     if (profileError) {
-      console.error('[twilio-inbound-sms v5] Error fetching profiles:', profileError);
+      console.error('[twilio-inbound-sms] Error fetching profiles:', profileError);
       return twimlResponse('');
     }
 
@@ -202,7 +288,6 @@ Deno.serve(async (req) => {
       phoneMatchesAny(profile.phone, variants, normalizedIncoming)
     );
 
-    // Check if any matching profile has a staff role
     const matchingProfileIds = matchingProfiles.map((p: any) => p.id);
     let isStaffMember = false;
 
@@ -216,22 +301,22 @@ Deno.serve(async (req) => {
       isStaffMember = (staffRoles || []).length > 0;
     }
 
-    console.log(`[twilio-inbound-sms v5] Matching profiles: ${matchingProfiles.length}, isStaff: ${isStaffMember}`);
+    // ─── 1.5 Check for feedback rating reply (1-5) ───
+    const ratingNum = parseInt(body, 10);
+    if (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) {
+      const feedbackResult = await handleFeedbackRating(supabase, from, body, matchingProfileIds, variants, normalizedIncoming);
+      if (feedbackResult) return feedbackResult;
+    }
 
     // ─── 2. STAFF flow: handle cleaner job acceptance ───
     if (isStaffMember && (body === 'YES' || body === 'Y' || body === 'NO' || body === 'N')) {
-      const { data: pendingAcceptances, error: pendingError } = await supabase
+      const { data: pendingAcceptances } = await supabase
         .from('job_acceptances')
         .select('id, cleaner_id, job_id, acceptance_status, created_at, jobs(id, status, scheduled_date, scheduled_time, properties(property_name))')
         .in('cleaner_id', matchingProfileIds)
         .eq('acceptance_status', 'pending')
         .order('created_at', { ascending: false })
         .limit(20);
-
-      if (pendingError) {
-        console.error('[twilio-inbound-sms v5] Error fetching pending acceptances:', pendingError);
-        return twimlResponse('');
-      }
 
       const pendingScheduledAcceptances = (pendingAcceptances || []).filter((row: any) => {
         const jobStatus = (row.jobs as any)?.status;
@@ -245,7 +330,6 @@ Deno.serve(async (req) => {
       if (matchedAcceptance) {
         selectedProfile = matchingProfiles.find((p: any) => p.id === matchedAcceptance.cleaner_id) || selectedProfile;
       } else {
-        // Fallback: check jobs directly assigned to this cleaner
         const jobOrFilters = matchingProfileIds.flatMap((id: string) => [`cleaner_1_id.eq.${id}`, `cleaner_2_id.eq.${id}`]).join(',');
         const { data: assignedJobs } = await supabase
           .from('jobs')
@@ -297,7 +381,6 @@ Deno.serve(async (req) => {
           return twimlResponse('');
         }
       }
-      // Staff member but no pending jobs — fall through to quote check
     }
 
     // ─── 3. CLIENT flow: check for quote replies ───
@@ -314,7 +397,7 @@ Deno.serve(async (req) => {
 
     return twimlResponse('Sorry, we could not find your account. Please contact your manager. - Brightly');
   } catch (err) {
-    console.error('[twilio-inbound-sms v4] Unhandled error:', err);
+    console.error('[twilio-inbound-sms] Unhandled error:', err);
     return twimlResponse('');
   }
 });
