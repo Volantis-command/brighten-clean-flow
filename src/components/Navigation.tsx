@@ -27,9 +27,10 @@ const navItems: NavItem[] = [
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
-// Cleaners get a simplified 3-tab bottom nav
+// Cleaners get a simplified bottom nav
 const cleanerMobileItems: NavItem[] = [
   { label: 'Today', path: '/dashboard', icon: LayoutDashboard, roles: ['cleaner'] },
+  { label: 'My Cleans', path: '/my-cleans', icon: Sparkles, roles: ['cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['cleaner'] },
   { label: 'Profile', path: '/profile', icon: User, roles: ['cleaner'] },
 ];

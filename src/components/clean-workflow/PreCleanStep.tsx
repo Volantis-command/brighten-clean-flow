@@ -87,7 +87,7 @@ export default function PreCleanStep({ job, property, userId, onNext, onBack }: 
       .from('jobs')
       .update({
         clock_on: now,
-        pre_clean_notes: notes,
+        pre_clean_notes: notes as any,
       })
       .eq('id', job.id);
 
