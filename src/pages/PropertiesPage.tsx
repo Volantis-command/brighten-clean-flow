@@ -44,6 +44,18 @@ export default function PropertiesPage() {
     },
   });
 
+  // Detect duplicates (case-insensitive by address)
+  const duplicateGroups = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    properties.forEach((p) => {
+      const key = (p.address || '').toLowerCase().trim();
+      if (!key) return;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    return Object.values(groups).filter(g => g.length > 1);
+  }, [properties]);
+
   const cleanerMap = Object.fromEntries(cleaners.map((c) => [c.id, c.full_name]));
 
   const filtered = properties.filter((p) => {
