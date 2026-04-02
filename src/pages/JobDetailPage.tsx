@@ -1086,7 +1086,7 @@ export default function JobDetailPage() {
             className="w-full gap-2 h-16 text-lg font-extrabold bg-green-600 hover:bg-green-700 text-white rounded-2xl"
             onClick={() => navigate(`/clean/${jobId}`)}
           >
-            Start Job
+            {job.status === 'in_progress' ? 'Continue Job' : job.clock_on ? 'Resume Job' : 'Start Job'}
           </Button>
         ) : (
           <Button
