@@ -326,8 +326,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const buildSmsMessage = () => {
     const firstName = (form.clientName || 'there').split(' ')[0];
     const leadIdFromUrl = new URLSearchParams(window.location.search).get('lead') || leadId;
+    const APP_URL = 'https://app.brightly.cleaning';
     const bookingUrl = leadIdFromUrl
-      ? `${window.location.origin}/book?lead=${leadIdFromUrl}&name=${encodeURIComponent(form.clientName || '')}&service=${encodeURIComponent(form.cleanType || '')}`
+      ? `${APP_URL}/book?lead=${leadIdFromUrl}&name=${encodeURIComponent(form.clientName || '')}&service=${encodeURIComponent(form.cleanType || '')}`
       : '';
     const bookLine = bookingUrl ? `\n\n📅 Book your preferred date here:\n${bookingUrl}` : '\n\nReply YES to accept or NO to decline.';
     return `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath\n💰 Total: $${result.sellPriceIncGst.toFixed(2)}${bookLine}`;
@@ -375,12 +376,20 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       // STEP 3 — If opened from /quoting?lead=<id>, move lead out of Quotes Needed
       if (leadId) {
-        const { error: quoteRequestError } = await supabase
+        // Try updating quote_requests first
+        const { data: qrUpdated } = await supabase
           .from('quote_requests')
           .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
-          .eq('id', leadId);
+          .eq('id', leadId)
+          .select('id');
 
-        if (quoteRequestError) throw quoteRequestError;
+        // If no quote_requests row matched, try the leads table
+        if (!qrUpdated?.length) {
+          await supabase
+            .from('leads')
+            .update({ status: 'quote_sent' })
+            .eq('id', leadId);
+        }
       }
 
       // STEP 4 — Create admin notification
