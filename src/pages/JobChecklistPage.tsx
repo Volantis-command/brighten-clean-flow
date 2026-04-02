@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Camera, CheckCircle2, Loader2, AlertTriangle, Phone, ImagePlus } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, Loader2, AlertTriangle, Phone, ImagePlus, MapPin, Clock, Navigation } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 import { JobCompletionModal } from '@/components/JobCompletionModal';
 import { ReportIssueModal } from '@/components/checklist/ReportIssueModal';
+import { getCurrentPosition } from '@/lib/geo';
 
 // --------------- Types ---------------
 interface FormData {
