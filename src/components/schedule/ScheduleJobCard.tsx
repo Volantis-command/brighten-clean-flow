@@ -45,6 +45,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
   complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
   flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+  cancelled: { label: 'Cancelled', className: 'bg-destructive/20 text-destructive line-through' },
 };
 
 export function ScheduleJobCard({
@@ -126,7 +127,7 @@ export function ScheduleJobCard({
 
   return (
     <div
-      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${getBorderClass()}`}
+      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${status === 'cancelled' ? 'opacity-50' : ''} ${getBorderClass()}`}
       onClick={() => navigate(`/jobs/${id}`)}
       role="button"
       tabIndex={0}
@@ -135,7 +136,7 @@ export function ScheduleJobCard({
         <div className="flex items-center gap-2">
           {seriesId && <Repeat className="h-4 w-4 text-primary shrink-0" />}
           <div>
-            <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
+            <h3 className={`text-lg font-bold text-foreground leading-tight ${status === 'cancelled' ? 'line-through text-muted-foreground' : ''}`}>{propertyName}</h3>
             {isAdmin && priceExGst != null && priceExGst > 0 && (
               <p className="text-xs text-muted-foreground mt-0.5">${priceExGst.toFixed(2)} ex GST</p>
             )}

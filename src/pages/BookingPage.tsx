@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -203,6 +204,25 @@ export default function BookingPage() {
   }, []);
 
   if (submitted) {
+    const handleReschedule = async () => {
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-reminder-sms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'reschedule_request',
+            lead_id: leadId,
+            client_name: displayName,
+            address: qrData?.address || '',
+            date: confirmedDate,
+          }),
+        });
+        toast.success('Reschedule request sent. We\'ll call you back shortly.');
+      } catch {
+        toast.error('Could not send request. Please call us directly.');
+      }
+    };
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
         <div className="bg-card rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4">
@@ -221,6 +241,12 @@ export default function BookingPage() {
           <p className="text-sm text-muted-foreground">
             Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
           </p>
+          <button
+            onClick={handleReschedule}
+            className="text-sm text-muted-foreground underline hover:text-foreground transition-colors"
+          >
+            Need to reschedule?
+          </button>
         </div>
       </div>
     );

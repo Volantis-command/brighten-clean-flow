@@ -631,6 +631,8 @@ export type Database = {
           arrived_at: string | null
           arrived_lat: number | null
           arrived_lng: number | null
+          cancellation_notes: string | null
+          cancellation_reason: string | null
           check_in_time: string | null
           check_out_time: string | null
           cleaner_1_id: string | null
@@ -688,6 +690,8 @@ export type Database = {
           arrived_at?: string | null
           arrived_lat?: number | null
           arrived_lng?: number | null
+          cancellation_notes?: string | null
+          cancellation_reason?: string | null
           check_in_time?: string | null
           check_out_time?: string | null
           cleaner_1_id?: string | null
@@ -745,6 +749,8 @@ export type Database = {
           arrived_at?: string | null
           arrived_lat?: number | null
           arrived_lng?: number | null
+          cancellation_notes?: string | null
+          cancellation_reason?: string | null
           check_in_time?: string | null
           check_out_time?: string | null
           cleaner_1_id?: string | null
@@ -1989,6 +1995,45 @@ export type Database = {
           tfn?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      staff_pay_rates: {
+        Row: {
+          airbnb_rate: number | null
+          commercial_rate: number | null
+          created_at: string
+          deep_rate: number | null
+          hourly_rate: number | null
+          id: string
+          rate_type: string
+          staff_id: string
+          standard_rate: number | null
+          updated_at: string
+        }
+        Insert: {
+          airbnb_rate?: number | null
+          commercial_rate?: number | null
+          created_at?: string
+          deep_rate?: number | null
+          hourly_rate?: number | null
+          id?: string
+          rate_type?: string
+          staff_id: string
+          standard_rate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          airbnb_rate?: number | null
+          commercial_rate?: number | null
+          created_at?: string
+          deep_rate?: number | null
+          hourly_rate?: number | null
+          id?: string
+          rate_type?: string
+          staff_id?: string
+          standard_rate?: number | null
+          updated_at?: string
         }
         Relationships: []
       }

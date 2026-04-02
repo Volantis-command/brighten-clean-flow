@@ -9,9 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Check, Flag, Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, differenceInMinutes, parseISO } from 'date-fns';
+import PayrollTab from '@/components/timeclock/PayrollTab';
 
 export default function TimesheetsPage() {
   const { user } = useAuth();
@@ -220,8 +222,17 @@ export default function TimesheetsPage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Timesheets & Payroll</h1>
+
+      <Tabs defaultValue="timesheets">
+        <TabsList>
+          <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
+          <TabsTrigger value="payroll">Payroll</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="timesheets">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Timesheets</h1>
+        <div />
         <Button onClick={exportCSV} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
           <Download className="w-4 h-4" /> Export Payroll CSV
         </Button>
@@ -373,6 +384,12 @@ export default function TimesheetsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="payroll">
+          <PayrollTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

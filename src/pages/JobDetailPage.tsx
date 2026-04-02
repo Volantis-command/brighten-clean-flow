@@ -21,6 +21,7 @@ import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
 import { ExtraTimePhotosModal } from '@/components/job-detail/ExtraTimePhotosModal';
+import { CancelJobModal } from '@/components/job-detail/CancelJobModal';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -41,6 +42,7 @@ export default function JobDetailPage() {
   const [refundReason, setRefundReason] = useState('');
   const [showExtraPhotos, setShowExtraPhotos] = useState(false);
   const [waivingDeposit, setWaivingDeposit] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -301,6 +303,7 @@ export default function JobDetailPage() {
     in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
     complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
     flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+    cancelled: { label: 'Cancelled', className: 'bg-destructive/20 text-destructive' },
   };
 
   const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
@@ -1201,6 +1204,24 @@ export default function JobDetailPage() {
           </Button>
         )}
 
+        {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
+          <Button
+            variant="outline"
+            className="w-full gap-2 h-12 text-base font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setCancelOpen(true)}
+          >
+            Cancel Job
+          </Button>
+        )}
+
+        {role === 'admin' && job.status === 'cancelled' && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 space-y-1">
+            <p className="text-sm font-bold text-destructive">Job Cancelled</p>
+            {(job as any).cancellation_reason && <p className="text-sm text-muted-foreground">Reason: {(job as any).cancellation_reason.replace('_', ' ')}</p>}
+            {(job as any).cancellation_notes && <p className="text-sm text-muted-foreground">{(job as any).cancellation_notes}</p>}
+          </div>
+        )}
+
         {role === 'admin' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -1278,6 +1299,8 @@ export default function JobDetailPage() {
           </AlertDialog>
         )}
       </div>
+
+      <CancelJobModal open={cancelOpen} onOpenChange={setCancelOpen} jobId={jobId!} onCancelled={() => navigate('/schedule')} />
 
       {/* Price Prompt Modal */}
       <Dialog open={showPricePrompt} onOpenChange={setShowPricePrompt}>

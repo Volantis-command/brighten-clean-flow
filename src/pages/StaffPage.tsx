@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
 import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
 import { StaffPaySection } from '@/components/staff/StaffPaySection';
+import { StaffPayRatesSection } from '@/components/staff/StaffPayRatesSection';
 import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
 import { StaffOnboardingSection, useStaffOnboardingStatuses } from '@/components/staff/StaffOnboardingSection';
 import { Button } from '@/components/ui/button';
@@ -302,6 +303,7 @@ export default function StaffPage() {
 
         <StaffOnboardingSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
+        <StaffPayRatesSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPerformanceSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
       </div>
