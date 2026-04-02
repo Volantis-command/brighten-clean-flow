@@ -44,7 +44,6 @@ export default function ExtraTimeStep({ job, property, userId, onNext, onBack }:
     setSaving(true);
 
     if (answer === 'yes') {
-      // Update job
       await supabase.from('jobs').update({
         extra_time_requested: true,
       }).eq('id', job.id);
