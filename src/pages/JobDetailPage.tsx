@@ -895,19 +895,8 @@ export default function JobDetailPage() {
         onOpenChange={setShowExtraPhotos}
         photos={extraTimePhotos}
       />
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
-                onClick={() => setShowRefundDialog(true)}
-              >
-                Refund Deposit
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+
 
       {/* Refund Dialog */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
