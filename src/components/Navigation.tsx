@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox } from 'lucide-react';
+import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useActionsData } from '@/hooks/useActionsData';
 
