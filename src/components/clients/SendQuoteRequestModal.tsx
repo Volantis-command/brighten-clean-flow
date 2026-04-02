@@ -62,7 +62,7 @@ export default function SendQuoteRequestModal({ open, onOpenChange }: { open: bo
           </div>
           <div className="bg-muted rounded-xl p-3 text-sm">
             <p className="text-muted-foreground text-xs mb-1 font-semibold">SMS Preview:</p>
-            <p className="text-foreground text-xs">Hi {firstName || '[name]'}, thanks for reaching out to Brightly Cleaning! Fill out your clean details here and we'll get a quote back to you ASAP: {BASE_URL}/quote/...</p>
+            <p className="text-foreground text-xs">Hi {firstName || '[name]'}, thanks for reaching out to Brightly Cleaning! Fill out your clean details here and we'll get a quote back to you ASAP: {BASE_URL}/quote</p>
           </div>
         </div>
         <DialogFooter>

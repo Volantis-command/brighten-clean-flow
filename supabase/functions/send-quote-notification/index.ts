@@ -177,6 +177,36 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── Intake form submitted — notify admin + confirm to client ───
+    if (type === 'intake_submitted') {
+      const { client_phone, client_name, clean_type: ct, address: addr } = body;
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+
+      for (const admin of (admins || [])) {
+        await supabase.from('notifications').insert({
+          user_id: admin.user_id,
+          type: 'quote',
+          title: 'New Quote Request',
+          message: `New quote request from ${client_name} — ${ct} at ${addr}`,
+          link: '/actions',
+        });
+
+        const { data: profile } = await supabase.from('profiles').select('phone').eq('id', admin.user_id).single();
+        if (profile?.phone) {
+          await sendTwilioSms(formatAuPhone(profile.phone), `New quote request from ${client_name} — ${ct}. Check your Brightly inbox.`);
+        }
+      }
+
+      // Client confirmation SMS
+      if (client_phone) {
+        await sendTwilioSms(formatAuPhone(client_phone), `Hi ${client_name}, thanks for reaching out to Brightly! We've received your request and will have a quote to you within 24 hours. 😊`);
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ─── Default: form submitted notification to admin ───
     const { token: qToken, first_name, last_name, bedrooms, bathrooms, clean_type, address } = body;
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
