@@ -68,16 +68,14 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
       .order('sort_order');
 
     if (!sopItems || sopItems.length === 0) {
-      const toInsert = DEFAULT_CHECKLIST.flatMap((g, gi) =>
-        g.tasks.map((task, ti) => ({
-          property_id: property.id,
-          room: g.room,
-          task,
-          sort_order: gi * 100 + ti,
-          active: true,
-        }))
-      );
-      const { data: inserted } = await supabase.from('property_sop_items').insert(toInsert).select();
+      await seedDefaultChecklist(property.id);
+      const { data: inserted } = await supabase
+        .from('property_sop_items')
+        .select('*')
+        .eq('property_id', property.id)
+        .eq('active', true)
+        .order('room')
+        .order('sort_order');
       sopItems = inserted ?? [];
     }
 
