@@ -18,6 +18,7 @@ export default function PropertiesPage() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const { data: cleaners = [] } = useCleanersList();
 
   const handleDelete = async () => {
