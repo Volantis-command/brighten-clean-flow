@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
 import ClockedOnBanner from './ClockedOnBanner';
@@ -15,8 +15,41 @@ interface Props {
   onBack: () => void;
 }
 
+interface RoomSummary {
+  room: string;
+  total: number;
+  completed: number;
+  tasks: { task: string; completed: boolean }[];
+}
+
 export default function CompletionStep({ job, property, userId, onNext, onBack }: Props) {
   const [submitting, setSubmitting] = useState(false);
+  const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadSummary(); }, []);
+
+  async function loadSummary() {
+    const [{ data: sopItems }, { data: completions }] = await Promise.all([
+      supabase.from('property_sop_items').select('id, room, task, sort_order').eq('property_id', property.id).eq('active', true).order('room').order('sort_order'),
+      supabase.from('job_checklist_completions').select('sop_item_id, completed').eq('job_id', job.id),
+    ]);
+
+    const cMap = new Map((completions ?? []).map((c: any) => [c.sop_item_id, c.completed]));
+    const grouped: Record<string, { task: string; completed: boolean }[]> = {};
+    (sopItems ?? []).forEach((s: any) => {
+      if (!grouped[s.room]) grouped[s.room] = [];
+      grouped[s.room].push({ task: s.task, completed: cMap.get(s.id) ?? false });
+    });
+
+    setRooms(Object.entries(grouped).map(([room, tasks]) => ({
+      room,
+      total: tasks.length,
+      completed: tasks.filter(t => t.completed).length,
+      tasks,
+    })));
+    setLoading(false);
+  }
 
   function formatAuPhone(phone: string): string {
     let cleaned = phone.replace(/[\s\-()]/g, '');
@@ -26,7 +59,7 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
     return '+61' + cleaned;
   }
 
-  async function handleComplete() {
+  async function handleClockOffSubmit() {
     setSubmitting(true);
     const now = new Date();
     const clockOff = now.toISOString();
@@ -90,36 +123,75 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
     });
   }
 
+  const allComplete = rooms.length > 0 && rooms.every(r => r.completed === r.total);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
       <ClockedOnBanner clockOn={job.clock_on} />
 
       <div className="bg-primary text-primary-foreground px-5 py-5 safe-area-top">
-        <h1 className="text-xl font-extrabold">Complete Job</h1>
+        <h1 className="text-xl font-extrabold">Final Sign-Off</h1>
         <p className="text-primary-foreground/70 text-sm mt-1">{property?.property_name}</p>
       </div>
 
-      <main className="flex-1 px-4 py-5 space-y-5 flex flex-col items-center justify-center">
-        <Card className="border-green-200 bg-green-50 w-full">
-          <CardContent className="p-5 flex items-center gap-3">
-            <CheckCircle2 className="h-8 w-8 text-green-600 shrink-0" />
-            <div>
-              <p className="font-bold text-green-800 text-lg">All tasks complete</p>
-              <p className="text-sm text-green-700">Ready to clock off and finish the job</p>
-            </div>
-          </CardContent>
-        </Card>
+      <main className="flex-1 px-4 py-5 space-y-3 pb-32">
+        <p className="text-sm text-muted-foreground font-medium">Review each room before clocking off:</p>
 
+        {rooms.map((room) => {
+          const roomDone = room.completed === room.total;
+          return (
+            <Card key={room.room} className={`border ${roomDone ? 'border-green-200 bg-green-50/50' : 'border-destructive/30 bg-destructive/5'}`}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-foreground text-sm">{room.room}</h3>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${roomDone ? 'bg-green-100 text-green-700' : 'bg-destructive/10 text-destructive'}`}>
+                    {room.completed}/{room.total}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {room.tasks.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      {t.completed
+                        ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        : <Circle className="h-4 w-4 text-destructive shrink-0" />
+                      }
+                      <span className={t.completed ? 'text-muted-foreground' : 'text-foreground font-medium'}>
+                        {t.task}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {!allComplete && (
+          <p className="text-sm text-destructive font-semibold text-center">
+            ⚠️ Some tasks are incomplete. Go back to finish them or proceed anyway.
+          </p>
+        )}
+      </main>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-bottom z-50">
         <Button
           size="lg"
-          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
-          onClick={handleComplete}
+          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
+          onClick={handleClockOffSubmit}
           disabled={submitting}
         >
           {submitting ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <CheckCircle2 className="h-6 w-6 mr-2" />}
-          Complete Job
+          Clock Off & Submit
         </Button>
-      </main>
+      </div>
     </div>
   );
 }
