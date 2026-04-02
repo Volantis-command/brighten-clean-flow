@@ -240,15 +240,26 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
             </Popover>
           </div>
 
-          {/* Time */}
+          {/* Time slots */}
           <div className="space-y-1.5">
             <Label className="text-sm font-bold">Time</Label>
-            <Input
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full"
-            />
+            <div className="grid grid-cols-4 gap-1.5">
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot.value}
+                  type="button"
+                  onClick={() => setSelectedTime(slot.value)}
+                  className={cn(
+                    'rounded-full px-2 py-1.5 text-xs font-semibold transition-colors border',
+                    selectedTime === slot.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-foreground border-border hover:bg-muted'
+                  )}
+                >
+                  {slot.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Cleaner dropdown */}
