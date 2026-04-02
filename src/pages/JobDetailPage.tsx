@@ -39,7 +39,8 @@ export default function JobDetailPage() {
   const [refundingDeposit, setRefundingDeposit] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [refundReason, setRefundReason] = useState('');
-  
+  const [showExtraPhotos, setShowExtraPhotos] = useState(false);
+  const [waivingDeposit, setWaivingDeposit] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
