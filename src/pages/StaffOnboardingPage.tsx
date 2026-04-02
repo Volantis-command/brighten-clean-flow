@@ -8,12 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle2, AlertCircle, Upload, Calendar } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 
 const SECTIONS = [
   'Personal Details',
@@ -27,6 +25,21 @@ const SECTIONS = [
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const START_TIMES = ['7:00am', '8:00am', '9:00am', '10:00am'];
 const MAX_JOBS = ['1', '2', '3', 'No limit'];
+const DOB_MONTHS = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+const DOB_YEARS = Array.from({ length: 2005 - 1950 + 1 }, (_, index) => String(2005 - index));
 
 const POLICIES = [
   'I have read and understand the Cleaner Onboarding & Training SOP (B-ABNB-HR-002) and agree to comply with all standards and expectations.',
@@ -94,6 +107,9 @@ export default function StaffOnboardingPage() {
   const [uploadingPolice, setUploadingPolice] = useState(false);
   const [idFileUrl, setIdFileUrl] = useState('');
   const [policeFileUrl, setPoliceFileUrl] = useState('');
+  const [dobDay, setDobDay] = useState('');
+  const [dobMonth, setDobMonth] = useState('');
+  const [dobYear, setDobYear] = useState('');
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -118,6 +134,12 @@ export default function StaffOnboardingPage() {
           date_of_birth: d.date_of_birth ? new Date(d.date_of_birth) : undefined,
           address: d.address || '',
         }));
+        if (d.date_of_birth) {
+          const existingDob = new Date(d.date_of_birth);
+          setDobDay(String(existingDob.getDate()));
+          setDobMonth(String(existingDob.getMonth() + 1));
+          setDobYear(String(existingDob.getFullYear()));
+        }
         setLoading(false);
       });
   }, [token]);
@@ -141,6 +163,41 @@ export default function StaffOnboardingPage() {
       return { ...prev, policy_acks: newAcks };
     });
   };
+
+  const updateDateOfBirth = (part: 'day' | 'month' | 'year', value: string) => {
+    const nextDay = part === 'day' ? value : dobDay;
+    const nextMonth = part === 'month' ? value : dobMonth;
+    const nextYear = part === 'year' ? value : dobYear;
+
+    setDobDay(nextDay);
+    setDobMonth(nextMonth);
+    setDobYear(nextYear);
+
+    if (!nextDay || !nextMonth || !nextYear) {
+      update('date_of_birth', undefined);
+      return;
+    }
+
+    const dayNumber = Number(nextDay);
+    const monthNumber = Number(nextMonth);
+    const yearNumber = Number(nextYear);
+    const maxDay = new Date(yearNumber, monthNumber, 0).getDate();
+    const safeDay = Math.min(dayNumber, maxDay);
+
+    if (safeDay !== dayNumber) {
+      setDobDay(String(safeDay));
+    }
+
+    update('date_of_birth', new Date(yearNumber, monthNumber - 1, safeDay));
+  };
+
+  const availableDobDays = (() => {
+    if (!dobMonth || !dobYear) {
+      return Array.from({ length: 31 }, (_, index) => index + 1);
+    }
+    const totalDays = new Date(Number(dobYear), Number(dobMonth), 0).getDate();
+    return Array.from({ length: totalDays }, (_, index) => index + 1);
+  })();
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const ext = file.name.split('.').pop();
@@ -434,27 +491,40 @@ export default function StaffOnboardingPage() {
             </div>
             <div>
               <Label className="text-sm">Date of Birth *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !form.date_of_birth && "text-muted-foreground")}>
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {form.date_of_birth ? format(form.date_of_birth, 'dd/MM/yyyy') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarPicker
-                    mode="single"
-                    selected={form.date_of_birth}
-                    onSelect={(d) => update('date_of_birth', d)}
-                    disabled={(date) => date > new Date() || date < new Date('1940-01-01')}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                    captionLayout="dropdown-buttons"
-                    fromYear={1940}
-                    toYear={new Date().getFullYear() - 16}
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="grid grid-cols-3 gap-3">
+                <Select value={dobDay} onValueChange={(value) => updateDateOfBirth('day', value)}>
+                  <SelectTrigger className="h-12 rounded-xl">
+                    <SelectValue placeholder="Day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDobDays.map((day) => (
+                      <SelectItem key={day} value={String(day)}>{day}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={dobMonth} onValueChange={(value) => updateDateOfBirth('month', value)}>
+                  <SelectTrigger className="h-12 rounded-xl">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOB_MONTHS.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={dobYear} onValueChange={(value) => updateDateOfBirth('year', value)}>
+                  <SelectTrigger className="h-12 rounded-xl">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOB_YEARS.map((year) => (
+                      <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label className="text-sm">Residential Address *</Label>

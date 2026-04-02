@@ -20,6 +20,31 @@ import { cn } from '@/lib/utils';
 
 const BED_OPTIONS: BedType[] = ['King', 'Queen', 'King Single', 'Single'];
 
+const splitClientName = (fullName: string) => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || '',
+    lastName: parts.slice(1).join(' '),
+  };
+};
+
+const normaliseStoredBedTypes = (bedTypes: unknown, bedroomCount: number): BedType[] => {
+  const rawValues = Array.isArray(bedTypes)
+    ? bedTypes
+    : bedTypes && typeof bedTypes === 'object'
+      ? Array.from({ length: bedroomCount }, (_, index) => {
+          const record = bedTypes as Record<string, unknown>;
+          return record[String(index)] ?? record[index];
+        })
+      : [];
+
+  return Array.from({ length: bedroomCount }, (_, index) => {
+    const raw = rawValues[index];
+    const mapped = raw === 'Bunk Beds' ? 'Single' : raw === 'Double' ? 'Queen' : raw;
+    return BED_OPTIONS.includes(mapped as BedType) ? (mapped as BedType) : 'Queen';
+  });
+};
+
 type FormState = {
   cleanType: string;
   clientName: string;
@@ -107,6 +132,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const [showConfirm, setShowConfirm] = useState(false);
   const rates = pricing?.map || {};
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
+  const [leadSource, setLeadSource] = useState<'quote_request' | 'lead' | null>(null);
+  const [leadStatus, setLeadStatus] = useState<string | null>(null);
+  const [leadFormData, setLeadFormData] = useState<Record<string, any>>({});
 
   const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
 
@@ -156,6 +184,11 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   useEffect(() => {
     if (!leadId || editQuote) return;
     const loadLead = async () => {
+      setLeadSource(null);
+      setLeadStatus(null);
+      setLeadFormData({});
+      setSavedQuoteId(null);
+
       // Try quote_requests first
       const { data: qr } = await supabase
         .from('quote_requests')
@@ -165,18 +198,17 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       if (qr) {
         const fd = (qr.form_data || {}) as Record<string, any>;
+        const storedConsumables = fd.consumables && typeof fd.consumables === 'object' ? fd.consumables as Record<string, boolean> : {};
         const ct = normaliseLegacyServiceType(qr.clean_type || SERVICE_TYPES.AIRBNB_TURNOVER);
         const clientName = [qr.first_name, qr.last_name].filter(Boolean).join(' ');
-
-        // Parse bed_types from form_data: stored as { "0": "King", "1": "Queen" }
-        const rawBedTypes = fd.bed_types || {};
         const bedroomCount = qr.bedrooms || 1;
-        const parsedBedTypes: BedType[] = [];
-        for (let i = 0; i < bedroomCount; i++) {
-          const bt = rawBedTypes[String(i)] || rawBedTypes[i];
-          // Map client form bed type to admin BedType
-          const mapped = bt === 'Bunk Beds' ? 'Single' : bt === 'Double' ? 'Queen' : bt;
-          parsedBedTypes.push((mapped as BedType) || 'Queen');
+        const parsedBedTypes = normaliseStoredBedTypes(fd.bed_types, bedroomCount);
+
+        setLeadSource('quote_request');
+        setLeadStatus(qr.status || null);
+        setLeadFormData(fd);
+        if (typeof fd.quote_id === 'string' && fd.quote_id) {
+          setSavedQuoteId(fd.quote_id);
         }
 
         setForm(prev => ({
@@ -184,8 +216,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           cleanType: ct,
           clientName,
           clientPhone: qr.phone || '',
-          propertyName: qr.address || '',
-          propertyAddress: qr.address || '',
+          propertyId: fd.property_id || '',
+          propertyName: fd.property_name || qr.address || '',
+          propertyAddress: fd.property_address || qr.address || '',
           bedrooms: qr.bedrooms || 1,
           bathrooms: qr.bathrooms || 1,
           livingAreas: fd.living_areas != null ? Number(fd.living_areas) : 1,
@@ -194,13 +227,18 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           sofaBeds: fd.sofa_beds != null ? Number(fd.sofa_beds) : 0,
           outdoorAreas: fd.outdoor_areas === true,
           bedTypes: parsedBedTypes.length > 0 ? parsedBedTypes : ['Queen'],
-          hours: DEFAULT_HOURS[ct] || 3,
-          notes: [qr.extra_notes, fd.hosting_notes].filter(Boolean).join('\n'),
+          hours: fd.hours != null ? Number(fd.hours) : DEFAULT_HOURS[ct] || 3,
+          notes: fd.quote_notes ?? [qr.extra_notes, fd.hosting_notes].filter(Boolean).join('\n'),
           consumables: {
-            amenities_kit: fd.amenities_kit === true,
-            wash_kit: fd.wash_kit === true,
-            tea_coffee_kit: fd.tea_coffee_kit === true,
+            amenities_kit: storedConsumables.amenities_kit === true || fd.amenities_kit === true,
+            wash_kit: storedConsumables.wash_kit === true || fd.wash_kit === true,
+            tea_coffee_kit: storedConsumables.tea_coffee_kit === true || fd.tea_coffee_kit === true,
           },
+          includePhotoReport: fd.include_photo_report === true,
+          manualPriceOverride: fd.manual_price_override === true,
+          manualPriceIncGst: fd.manual_price_inc_gst != null ? String(fd.manual_price_inc_gst) : '',
+          gpOverride: fd.gp_override != null ? String(fd.gp_override) : '',
+          discountGp: fd.discount_gp != null ? String(fd.discount_gp) : '',
         }));
         return;
       }
@@ -214,6 +252,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       if (lead) {
         const ct = normaliseLegacyServiceType(lead.service_type || SERVICE_TYPES.STANDARD_CLEAN);
+        setLeadSource('lead');
+        setLeadStatus(lead.status || null);
         setForm(prev => ({
           ...prev,
           cleanType: ct,
@@ -387,19 +427,89 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
       };
 
-      const existingId = editQuote?.id || savedQuoteId;
+      const existingId = editQuote?.id || savedQuoteId || (typeof leadFormData.quote_id === 'string' ? leadFormData.quote_id : null);
+      let nextSavedQuoteId = existingId;
+
       if (existingId) {
         const { error } = await supabase.from('quotes').update(payload).eq('id', existingId);
         if (error) throw error;
       } else {
         const { data: inserted, error } = await supabase.from('quotes').insert(payload).select('id').single();
         if (error) throw error;
-        if (inserted) setSavedQuoteId(inserted.id);
+        if (inserted?.id) {
+          nextSavedQuoteId = inserted.id;
+          setSavedQuoteId(inserted.id);
+        }
       }
+
+      if (leadId && leadSource === 'quote_request') {
+        const { firstName, lastName } = splitClientName(form.clientName);
+        const nextLeadStatus = status === 'quote_sent' ? 'quote_sent' : leadStatus || 'form_submitted';
+        const nextLeadFormData = {
+          ...leadFormData,
+          property_id: form.propertyId || null,
+          property_name: form.propertyName || null,
+          property_address: form.propertyAddress || null,
+          client_name: form.clientName || null,
+          client_phone: form.clientPhone || null,
+          living_areas: form.livingAreas,
+          kitchens: form.kitchens,
+          balconies: form.balconies,
+          sofa_beds: form.sofaBeds,
+          outdoor_areas: form.outdoorAreas,
+          bed_types: form.bedTypes,
+          consumables: form.consumables,
+          amenities_kit: form.consumables.amenities_kit,
+          wash_kit: form.consumables.wash_kit,
+          tea_coffee_kit: form.consumables.tea_coffee_kit,
+          hours: form.hours,
+          quote_notes: form.notes || null,
+          manual_price_override: form.manualPriceOverride,
+          manual_price_inc_gst: form.manualPriceOverride ? (parseFloat(form.manualPriceIncGst) || result.sellPriceIncGst) : null,
+          gp_override: form.gpOverride || null,
+          discount_gp: form.discountGp || null,
+          include_photo_report: form.includePhotoReport,
+          quote_id: nextSavedQuoteId,
+          quote_reference: reference,
+          quote_status: nextLeadStatus,
+        };
+
+        const { data: updatedLead, error: leadError } = await supabase
+          .from('quote_requests')
+          .update({
+            first_name: firstName || null,
+            last_name: lastName || null,
+            phone: form.clientPhone || null,
+            address: form.propertyAddress || null,
+            clean_type: form.cleanType,
+            bedrooms: form.bedrooms,
+            bathrooms: form.bathrooms,
+            estimated_hours: form.hours,
+            hourly_rate: hourlyRate,
+            total_ex_gst: result.sellPriceExGst,
+            total_inc_gst: result.sellPriceIncGst,
+            addons: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+            form_data: nextLeadFormData,
+            status: nextLeadStatus,
+            ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
+          })
+          .eq('id', leadId)
+          .select('id, status')
+          .single();
+
+        if (leadError) throw leadError;
+        setLeadFormData(nextLeadFormData);
+        setLeadStatus(updatedLead.status);
+      }
+
+      return nextSavedQuoteId;
     },
-    onSuccess: (_, status) => {
+    onSuccess: (nextSavedQuoteId, status) => {
+      if (nextSavedQuoteId) setSavedQuoteId(nextSavedQuoteId);
       if (status !== 'quote_sent') toast.success('Quote saved!');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['actions-quotes-needed-qr'] });
+      queryClient.invalidateQueries({ queryKey: ['quote-requests-leads'] });
       onSaved?.();
     },
     onError: (e: any) => toast.error(e.message),
