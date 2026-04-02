@@ -14,7 +14,6 @@ import { CalendarLegend } from '@/components/schedule/CalendarLegend';
 import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
-import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
