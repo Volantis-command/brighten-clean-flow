@@ -46,10 +46,13 @@ export default function CleanWorkflowPage() {
     },
   });
 
-  const [step, setStep] = useState<WorkflowStep>('geofence');
+  const [step, setStep] = useState<WorkflowStep | null>(null);
+  const manualStepRef = useRef<WorkflowStep | null>(null);
 
   useEffect(() => {
-    if (job) setStep(resolveStep(job));
+    if (job && !manualStepRef.current) {
+      setStep(resolveStep(job));
+    }
   }, [job]);
 
   const refreshJob = async () => {
