@@ -155,7 +155,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         <SectionHeader icon="🛏️" label="Hosting Details" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel sub="Brightly supplies all linen">Linen change required?</QuestionLabel><YesNo value={linenChange} onChange={setLinenChange} /></div>
+            <div className="space-y-2"><QuestionLabel sub="Brightly supplies all linen">Is linen required?</QuestionLabel><YesNo value={linenChange} onChange={setLinenChange} /></div>
             <div className="space-y-2"><QuestionLabel sub="Toilet paper, soap, hand wash — Brightly supplies">Consumables restock required?</QuestionLabel><YesNo value={consumablesRestock} onChange={setConsumablesRestock} /></div>
             <div className="space-y-2"><QuestionLabel>Are toiletries included in your listing?</QuestionLabel><YesNo value={toiletriesIncluded} onChange={setToiletriesIncluded} /></div>
           </div>
