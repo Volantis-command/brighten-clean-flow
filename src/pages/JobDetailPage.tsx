@@ -303,6 +303,7 @@ export default function JobDetailPage() {
     in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
     complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
     flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+    cancelled: { label: 'Cancelled', className: 'bg-destructive/20 text-destructive' },
   };
 
   const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
