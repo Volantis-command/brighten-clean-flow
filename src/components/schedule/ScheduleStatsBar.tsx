@@ -30,26 +30,17 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
     .filter(j => j.price_ex_gst && j.price_ex_gst > 0 && ['scheduled', 'in_progress', 'complete'].includes(j.status))
     .reduce((s, j) => s + Number(j.price_ex_gst), 0);
   const completed = periodJobs.filter(j => j.status === 'complete').length;
-  const pending = periodJobs.filter(j => j.status === 'awaiting_quote').length;
-
-  const stats = [
-    { label: 'Total Jobs', value: totalJobs, icon: '📋' },
-    { label: 'Revenue', value: `$${revenue.toLocaleString()}`, icon: '💰' },
-    { label: 'Completed', value: completed, icon: '✅' },
-    { label: 'Pending', value: pending, icon: '⏳' },
-  ];
+  const inProgress = periodJobs.filter(j => j.status === 'in_progress').length;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sticky top-0 z-10 bg-background pb-3">
-      {stats.map(s => (
-        <div key={s.label} className="bg-card rounded-xl shadow-sm p-3 flex items-center gap-3 border border-border/50">
-          <span className="text-xl">{s.icon}</span>
-          <div>
-            <p className="text-xs font-bold text-muted-foreground">{s.label}</p>
-            <p className="text-lg font-extrabold text-foreground">{s.value}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+    <p className="text-sm text-muted-foreground font-medium">
+      <span>{totalJobs} job{totalJobs !== 1 ? 's' : ''}</span>
+      <span className="mx-1.5 opacity-40">·</span>
+      <span>${revenue.toLocaleString()} revenue</span>
+      <span className="mx-1.5 opacity-40">·</span>
+      <span>{completed} completed</span>
+      <span className="mx-1.5 opacity-40">·</span>
+      <span>{inProgress} in progress</span>
+    </p>
   );
 }

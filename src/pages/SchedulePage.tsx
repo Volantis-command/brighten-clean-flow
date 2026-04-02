@@ -14,7 +14,6 @@ import { CalendarLegend } from '@/components/schedule/CalendarLegend';
 import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
-import { AcceptanceFilter } from '@/components/schedule/AcceptanceFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
@@ -38,7 +37,6 @@ export default function SchedulePage() {
   const [selectedJob, setSelectedJob] = useState<ScheduleJob | null>(null);
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
-  const [acceptanceFilter, setAcceptanceFilter] = useState(searchParams.get('acceptance') || 'all');
 
   useEffect(() => {
     localStorage.setItem('schedule-view', view);
@@ -52,26 +50,8 @@ export default function SchedulePage() {
     setSearchParams(params, { replace: true });
   };
 
-  const handleAcceptanceChange = (value: string) => {
-    setAcceptanceFilter(value);
-    const params = new URLSearchParams(searchParams);
-    if (value === 'all') params.delete('acceptance');
-    else params.set('acceptance', value);
-    setSearchParams(params, { replace: true });
-  };
-
-  const getAcceptanceCategory = (jobId: string) => {
-    const acc = acceptancesByJob[jobId];
-    if (!acc || acc.length === 0) return 'none';
-    if (acc.some(a => a.acceptance_status === 'declined')) return 'declined';
-    if (acc.some(a => a.acceptance_status === 'pending')) return 'pending';
-    if (acc.every(a => a.acceptance_status === 'accepted')) return 'confirmed';
-    return 'pending';
-  };
-
   const filteredJobs = jobs.filter(j => {
     if (statusFilter !== 'all' && j.status !== statusFilter) return false;
-    if (acceptanceFilter !== 'all' && getAcceptanceCategory(j.id) !== acceptanceFilter) return false;
     return true;
   });
 
@@ -176,14 +156,14 @@ export default function SchedulePage() {
   // Admin calendar view
   if (isAdmin) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Pre-schedule strip */}
         {preScheduleJobs.length > 0 && (
-          <div className="bg-[hsl(45,100%,51%)]/10 border border-[hsl(45,100%,51%)]/30 rounded-2xl p-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-5 w-5 text-[hsl(45,100%,40%)]" />
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
               <p className="font-bold text-foreground text-sm">
-                ⚠️ {preScheduleJobs.length} job{preScheduleJobs.length !== 1 ? 's' : ''} need{preScheduleJobs.length === 1 ? 's' : ''} attention before scheduling
+                {preScheduleJobs.length} job{preScheduleJobs.length !== 1 ? 's' : ''} need{preScheduleJobs.length === 1 ? 's' : ''} attention
               </p>
             </div>
             <div className="space-y-2">
@@ -200,7 +180,7 @@ export default function SchedulePage() {
                     <p className="text-xs text-muted-foreground truncate">{(j.properties as any)?.property_name}</p>
                   </div>
                   <Button variant="outline" size="sm" className="shrink-0 text-xs font-bold gap-1">
-                    {j.status === 'awaiting_quote' ? 'Set Price →' : 'Confirm →'}
+                    {j.status === 'awaiting_quote' ? 'Set Price' : 'Confirm'}
                   </Button>
                 </div>
               ))}
@@ -208,9 +188,12 @@ export default function SchedulePage() {
           </div>
         )}
 
-        {/* Top bar */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
+        {/* Row 1: Title + controls */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
+            <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
+          </div>
           <div className="flex items-center gap-3 flex-wrap">
             <CalendarViewToggle view={view} onChange={setView} />
             <Button variant="accent" onClick={() => handleAddJob(selectedDate)} className="gap-2">
@@ -219,40 +202,33 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        {/* Date navigation */}
-        <div className="flex items-center justify-between gap-3">
+        {/* Row 2: Filters + date navigation */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigateDate('prev')}
-              className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <h2 className="text-lg font-extrabold text-foreground min-w-[200px] text-center">
+            <h2 className="text-base font-bold text-foreground min-w-[180px] text-center">
               {getHeaderLabel()}
             </h2>
             <button
               onClick={() => navigateDate('next')}
-              className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
             {!isToday(selectedDate) && (
-              <Button variant="outline" size="sm" className="gap-1.5 ml-2" onClick={() => setSelectedDate(new Date())}>
-                <CalendarDays className="h-4 w-4" /> Today
+              <Button variant="outline" size="sm" className="gap-1.5 ml-1 text-xs h-8" onClick={() => setSelectedDate(new Date())}>
+                <CalendarDays className="h-3.5 w-3.5" /> Today
               </Button>
             )}
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <StatusFilter value={statusFilter} onChange={handleStatusChange} />
-          </div>
+          <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
-
-        <AcceptanceFilter value={acceptanceFilter} onChange={handleAcceptanceChange} />
-
-        {/* Stats bar — all views */}
-        <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
 
         {/* Calendar body */}
         {isLoading ? (

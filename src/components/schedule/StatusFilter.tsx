@@ -2,10 +2,9 @@ import { cn } from '@/lib/utils';
 
 const FILTERS = [
   { value: 'all', label: 'All' },
-  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'scheduled', label: 'Confirmed' },
   { value: 'in_progress', label: 'In Progress' },
-  { value: 'complete', label: 'Complete' },
-  { value: 'flagged', label: 'Flagged' },
+  { value: 'complete', label: 'Completed' },
 ] as const;
 
 interface StatusFilterProps {
@@ -15,16 +14,16 @@ interface StatusFilterProps {
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="inline-flex bg-muted rounded-xl p-1 gap-0.5">
       {FILTERS.map((f) => (
         <button
           key={f.value}
           onClick={() => onChange(f.value)}
           className={cn(
-            'px-4 py-2 rounded-xl text-sm font-bold transition-colors',
+            'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all',
             value === f.value
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           {f.label}
