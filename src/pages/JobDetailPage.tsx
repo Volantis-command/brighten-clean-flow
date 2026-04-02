@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
+import { ExtraTimePhotosModal } from '@/components/job-detail/ExtraTimePhotosModal';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
