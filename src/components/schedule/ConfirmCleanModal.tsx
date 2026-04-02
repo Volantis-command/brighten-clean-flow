@@ -140,7 +140,7 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
         price_inc_gst: priceIncGst,
         price_ex_gst: priceExGst,
         source: 'quote_request',
-        linked_quote_id: meta.quoteRequestId || null,
+        linked_quote_id: null,
       });
       if (jobErr) throw jobErr;
 
