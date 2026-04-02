@@ -49,6 +49,8 @@ import CleanerPortalPage from "./pages/CleanerPortalPage";
 import CleanReportPage from "./pages/CleanReportPage";
 import EnquiryPage from "./pages/EnquiryPage";
 import BookingPage from "./pages/BookingPage";
+import MyCleans from "./pages/MyCleans";
+import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
