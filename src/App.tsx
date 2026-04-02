@@ -49,6 +49,7 @@ import CleanerPortalPage from "./pages/CleanerPortalPage";
 import CleanReportPage from "./pages/CleanReportPage";
 import EnquiryPage from "./pages/EnquiryPage";
 import BookingPage from "./pages/BookingPage";
+import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import NotFound from "./pages/NotFound";
@@ -190,6 +191,7 @@ function AppRoutes() {
       <Route path="/report/:token" element={<CleanReportPage />} />
       <Route path="/enquire" element={<EnquiryPage />} />
       <Route path="/book" element={<BookingPage />} />
+      <Route path="/quote" element={<QuoteIntakePage />} />
 
       {/* Protected staff routes */}
       <Route element={<AuthenticatedArea><><ActiveClockBanner /><ProtectedRoute><AppLayout /></ProtectedRoute></></AuthenticatedArea>}>

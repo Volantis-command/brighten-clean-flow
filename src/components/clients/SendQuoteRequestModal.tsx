@@ -19,17 +19,9 @@ export default function SendQuoteRequestModal({ open, onOpenChange }: { open: bo
 
   const sendMutation = useMutation({
     mutationFn: async () => {
-      // Insert quote_request
-      const { data, error } = await supabase
-        .from('quote_requests')
-        .insert({ first_name: firstName, phone, email: email || null, status: 'pending_form' })
-        .select('token')
-        .single();
-      if (error) throw error;
+      const link = `${BASE_URL}/quote`;
 
-      const link = `${BASE_URL}/quote/${data.token}`;
-
-      // Send SMS
+      // Send SMS with direct link to intake form
       await supabase.functions.invoke('send-quote-notification', {
         body: {
           type: 'send_link',
@@ -38,8 +30,6 @@ export default function SendQuoteRequestModal({ open, onOpenChange }: { open: bo
           link,
         },
       });
-
-      return data.token;
     },
     onSuccess: () => {
       toast.success(`Quote request sent to ${phone} ✓`);
@@ -72,7 +62,7 @@ export default function SendQuoteRequestModal({ open, onOpenChange }: { open: bo
           </div>
           <div className="bg-muted rounded-xl p-3 text-sm">
             <p className="text-muted-foreground text-xs mb-1 font-semibold">SMS Preview:</p>
-            <p className="text-foreground text-xs">Hi {firstName || '[name]'}, thanks for reaching out to Brightly Cleaning! Fill out your clean details here and we'll get a quote back to you ASAP: {BASE_URL}/quote/...</p>
+            <p className="text-foreground text-xs">Hi {firstName || '[name]'}, thanks for reaching out to Brightly Cleaning! Fill out your clean details here and we'll get a quote back to you ASAP: {BASE_URL}/quote</p>
           </div>
         </div>
         <DialogFooter>
