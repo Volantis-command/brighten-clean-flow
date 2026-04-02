@@ -45,6 +45,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
   complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
   flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+  cancelled: { label: 'Cancelled', className: 'bg-destructive/20 text-destructive line-through' },
 };
 
 export function ScheduleJobCard({
