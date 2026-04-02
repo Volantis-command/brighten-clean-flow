@@ -126,29 +126,41 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
-  // GROUP 3b: Accepted quote_requests (client booked via /book page)
-  const { data: awaitingScheduleQR = [] } = useQuery({
-    queryKey: ['actions-awaiting-schedule-qr'],
+  // GROUP 3b: Confirm Clean Date — accepted quote_requests (client booked via /book page)
+  const { data: confirmCleanDate = [] } = useQuery({
+    queryKey: ['actions-confirm-clean-date'],
     queryFn: async () => {
       const { data } = await supabase
         .from('quote_requests')
-        .select('id, first_name, last_name, phone, address, clean_type, preferred_date, preferred_time, accepted_at')
+        .select('id, first_name, last_name, phone, address, clean_type, preferred_date, preferred_time, accepted_at, total_inc_gst, bedrooms, bathrooms, email')
         .eq('status', 'accepted')
         .order('accepted_at', { ascending: true });
       return (data || []).map((r: any) => ({
-        id: `as-qr-${r.id}`,
-        group: 'awaiting_schedule',
+        id: `ccd-${r.id}`,
+        group: 'confirm_clean_date',
         title: `Booking received — ${[r.first_name, r.last_name].filter(Boolean).join(' ') || 'Client'}`,
         subtitle: `${r.address || 'No address'} · ${r.clean_type || ''} · ${r.preferred_date || ''}`.trim(),
         timestamp: r.accepted_at,
-        path: `/quoting?lead=${r.id}`,
-        meta: { quoteRequestId: r.id, preferredDate: r.preferred_date, preferredTime: r.preferred_time },
+        path: undefined,
+        meta: {
+          quoteRequestId: r.id,
+          clientName: [r.first_name, r.last_name].filter(Boolean).join(' '),
+          clientPhone: r.phone,
+          clientEmail: r.email,
+          address: r.address,
+          cleanType: r.clean_type,
+          preferredDate: r.preferred_date,
+          preferredTime: r.preferred_time,
+          totalIncGst: r.total_inc_gst,
+          bedrooms: r.bedrooms,
+          bathrooms: r.bathrooms,
+        },
       }));
     },
     enabled: isAdmin,
   });
 
-  const awaitingSchedule = [...awaitingScheduleJobs, ...awaitingScheduleQR].sort(
+  const awaitingSchedule = [...awaitingScheduleJobs].sort(
     (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
   );
 
