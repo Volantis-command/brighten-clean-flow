@@ -13,6 +13,12 @@ import {
 
 interface Props { onComplete: () => void; onBack: () => void; }
 
+const CONSUMABLE_KITS_CLIENT = [
+  { key: 'amenities_kit', name: 'Amenities Kit', price: '$6.50 inc GST', desc: '1× Shampoo, 1× Conditioner, 1× Body Wash, 1× Hand Soap' },
+  { key: 'wash_kit', name: 'Wash Kit', price: '$7.50 inc GST', desc: 'Dishwasher powder, liquid, detergent, scourer, bin liners' },
+  { key: 'tea_coffee_kit', name: 'Tea/Coffee Kit', price: '$6.50 inc GST', desc: 'Tea, Coffee, Milk & Sugar' },
+];
+
 export default function AirbnbForm({ onComplete, onBack }: Props) {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -27,10 +33,16 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
   const [bedrooms, setBedrooms] = useState('2');
   const [bathrooms, setBathrooms] = useState('1');
   const [bedTypes, setBedTypes] = useState<Record<number, string>>({});
+  const [kitchens, setKitchens] = useState('1');
+  const [livingAreas, setLivingAreas] = useState('1');
+  const [balconies, setBalconies] = useState('0');
+  const [sofaBeds, setSofaBeds] = useState('0');
+  const [outdoorAreas, setOutdoorAreas] = useState<boolean | null>(null);
 
   const [linenChange, setLinenChange] = useState<boolean | null>(null);
-  const [consumablesRestock, setConsumablesRestock] = useState<boolean | null>(null);
-  const [toiletriesIncluded, setToiletriesIncluded] = useState<boolean | null>(null);
+  const [amenitiesKit, setAmenitiesKit] = useState<boolean | null>(null);
+  const [washKit, setWashKit] = useState<boolean | null>(null);
+  const [teaCoffeeKit, setTeaCoffeeKit] = useState<boolean | null>(null);
   const [checkoutTime, setCheckoutTime] = useState('10:00');
   const [checkinTime, setCheckinTime] = useState('15:00');
 
@@ -81,11 +93,25 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
       const bedroomCount = parseInt(bedrooms) || 1;
       const bedConfigStr = Array.from({ length: bedroomCount }, (_, i) => `Bedroom ${i + 1}: ${bedTypes[i] || 'Not specified'}`).join(', ');
       const formData = {
-        bed_config: bedConfigStr, bed_types: bedTypes, linen_change: linenChange,
-        consumables_restock: consumablesRestock, toiletries_included: toiletriesIncluded,
-        checkout_time: checkoutTime, checkin_time: checkinTime,
-        access_method: accessMethod, access_instructions: accessInstructions,
-        parking, platform, first_clean: firstClean, hosting_notes: hostingNotes,
+        bed_config: bedConfigStr,
+        bed_types: bedTypes,
+        kitchens: parseInt(kitchens) || 1,
+        living_areas: parseInt(livingAreas) || 1,
+        balconies: parseInt(balconies) || 0,
+        sofa_beds: parseInt(sofaBeds) || 0,
+        outdoor_areas: outdoorAreas === true,
+        linen_change: linenChange,
+        amenities_kit: amenitiesKit === true,
+        wash_kit: washKit === true,
+        tea_coffee_kit: teaCoffeeKit === true,
+        checkout_time: checkoutTime,
+        checkin_time: checkinTime,
+        access_method: accessMethod,
+        access_instructions: accessInstructions,
+        parking,
+        platform,
+        first_clean: firstClean,
+        hosting_notes: hostingNotes,
       };
       const { error } = await supabase.from('quote_requests').insert({
         first_name: firstName, last_name: lastName, phone: mobile, email, address,
@@ -134,6 +160,15 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel>Bedrooms</QuestionLabel><OptionGrid options={['1', '2', '3', '4', '5+']} value={bedrooms} onChange={(v) => { setBedrooms(v); setBedTypes({}); }} /></div>
             <div className="space-y-2"><QuestionLabel>Bathrooms</QuestionLabel><OptionGrid options={['1', '2', '3', '4+']} value={bathrooms} onChange={setBathrooms} cols={4} /></div>
+            <div className="space-y-2"><QuestionLabel>Kitchens</QuestionLabel><OptionGrid options={['1', '2', '3+']} value={kitchens} onChange={setKitchens} cols={3} /></div>
+            <div className="space-y-2"><QuestionLabel>Living Areas</QuestionLabel><OptionGrid options={['1', '2', '3+']} value={livingAreas} onChange={setLivingAreas} cols={3} /></div>
+          </div>
+        </FormCard>
+        <FormCard>
+          <div className="space-y-5">
+            <div className="space-y-2"><QuestionLabel>Balconies</QuestionLabel><OptionGrid options={['0', '1', '2+']} value={balconies} onChange={setBalconies} cols={3} /></div>
+            <div className="space-y-2"><QuestionLabel>Sofa Beds</QuestionLabel><OptionGrid options={['0', '1', '2+']} value={sofaBeds} onChange={setSofaBeds} cols={3} /></div>
+            <div className="space-y-2"><QuestionLabel>Outdoor areas to clean?</QuestionLabel><YesNo value={outdoorAreas} onChange={setOutdoorAreas} /></div>
           </div>
         </FormCard>
         <FormCard>
@@ -156,10 +191,29 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel sub="Brightly supplies all linen">Is linen required?</QuestionLabel><YesNo value={linenChange} onChange={setLinenChange} /></div>
-            <div className="space-y-2"><QuestionLabel sub="Toilet paper, soap, hand wash — Brightly supplies">Consumables restock required?</QuestionLabel><YesNo value={consumablesRestock} onChange={setConsumablesRestock} /></div>
-            <div className="space-y-2"><QuestionLabel>Are toiletries included in your listing?</QuestionLabel><YesNo value={toiletriesIncluded} onChange={setToiletriesIncluded} /></div>
           </div>
         </FormCard>
+
+        <SectionHeader icon="🧴" label="Consumable Kits" />
+        {CONSUMABLE_KITS_CLIENT.map(kit => (
+          <FormCard key={kit.key}>
+            <div className="space-y-3">
+              <QuestionLabel sub={kit.desc}>
+                {kit.name} — {kit.price}
+              </QuestionLabel>
+              <p className="text-sm text-muted-foreground">Would you like this included?</p>
+              <YesNo
+                value={kit.key === 'amenities_kit' ? amenitiesKit : kit.key === 'wash_kit' ? washKit : teaCoffeeKit}
+                onChange={(v) => {
+                  if (kit.key === 'amenities_kit') setAmenitiesKit(v);
+                  else if (kit.key === 'wash_kit') setWashKit(v);
+                  else setTeaCoffeeKit(v);
+                }}
+              />
+            </div>
+          </FormCard>
+        ))}
+
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel>Typical guest checkout time</QuestionLabel><Input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className="h-12 rounded-xl" /></div>
