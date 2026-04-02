@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Camera, CheckCircle2, Loader2, AlertTriangle, Phone, ImagePlus } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, Loader2, AlertTriangle, Phone, ImagePlus, MapPin, Clock, Navigation } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
 import { JobCompletionModal } from '@/components/JobCompletionModal';
 import { ReportIssueModal } from '@/components/checklist/ReportIssueModal';
+import { getCurrentPosition } from '@/lib/geo';
 
 // --------------- Types ---------------
 interface FormData {
@@ -137,6 +138,86 @@ export default function JobChecklistPage() {
   const [completionModal, setCompletionModal] = useState(false);
   const [nextJobInfo, setNextJobInfo] = useState<{ propertyName: string; address: string | null; scheduledTime: string | null } | null>(null);
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [arriving, setArriving] = useState(false);
+  const [clockingOn, setClockingOn] = useState(false);
+  const [clockOnTime, setClockOnTime] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState('00:00:00');
+
+  // Determine workflow phase from job data
+  const hasArrived = !!job?.arrived_at;
+  const hasClockedOn = !!job?.clock_on;
+
+  // Live timer when clocked on but not clocked off
+  useEffect(() => {
+    const startTime = job?.clock_on || clockOnTime;
+    if (!startTime || job?.clock_off) return;
+    const update = () => {
+      const ms = Date.now() - new Date(startTime).getTime();
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const sec = String(s % 60).padStart(2, '0');
+      setElapsed(`${h}:${m}:${sec}`);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [job?.clock_on, clockOnTime, job?.clock_off]);
+
+  const handleArrived = async () => {
+    setArriving(true);
+    let lat: number | null = null;
+    let lng: number | null = null;
+    try {
+      const pos = await getCurrentPosition();
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch { /* proceed without GPS */ }
+
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('jobs')
+      .update({ arrived_at: now, arrived_lat: lat, arrived_lng: lng, status: 'in_progress' })
+      .eq('id', job!.id);
+
+    if (error) {
+      toast.error('Failed to record arrival');
+      setArriving(false);
+      return;
+    }
+    toast.success('Location captured ✓');
+    setArriving(false);
+    queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+  };
+
+  const handleClockOn = async () => {
+    setClockingOn(true);
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('jobs')
+      .update({ clock_on: now })
+      .eq('id', job!.id);
+
+    if (error) {
+      toast.error('Failed to clock on');
+      setClockingOn(false);
+      return;
+    }
+
+    // Also create time_entry for the banner
+    await supabase.from('time_entries').insert({
+      job_id: job!.id,
+      user_id: user!.id,
+      clock_in_time: now,
+      geo_override: false,
+    });
+
+    setClockOnTime(now);
+    toast.success('Clocked on! Timer started.');
+    setClockingOn(false);
+    queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+    queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+  };
 
   // Hydrate from existing form or initialize
   useEffect(() => {
@@ -479,8 +560,116 @@ export default function JobChecklistPage() {
 
   const isSubmitted = !!existingForm?.submitted_at;
 
+  // ─── STEP 1: ARRIVAL GATE ───
+  if (!hasArrived && !isSubmitted && job.status !== 'completed' && job.status !== 'complete') {
+    const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
+    return (
+      <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
+        <div className="bg-primary text-primary-foreground px-5 py-5">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-primary-foreground/70 text-sm mb-2">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <h1 className="text-xl font-extrabold">On My Way</h1>
+          <p className="text-primary-foreground/70 text-sm mt-1">Head to the property & tap when you arrive</p>
+        </div>
+        <main className="flex-1 px-4 py-5 space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <h2 className="text-lg font-bold text-foreground">{property?.property_name ?? 'Property'}</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">{property?.address ?? 'No address'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">{job.scheduled_time ? format(jobDate, 'h:mm a') : '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {property?.address && (
+            <Button
+              variant="outline"
+              className="w-full h-14 text-base font-bold rounded-2xl"
+              onClick={() => {
+                const encoded = encodeURIComponent(property.address);
+                const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                window.open(isIos ? `maps://maps.apple.com/?q=${encoded}` : `https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+              }}
+            >
+              <Navigation className="h-5 w-5 mr-2" /> Open in Maps
+            </Button>
+          )}
+
+          <Button
+            size="lg"
+            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleArrived}
+            disabled={arriving}
+          >
+            {arriving ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : null}
+            I've Arrived
+          </Button>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── STEP 2: CLOCK ON GATE ───
+  if (hasArrived && !hasClockedOn && !clockOnTime && !isSubmitted && job.status !== 'completed' && job.status !== 'complete') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
+        <div className="bg-primary text-primary-foreground px-5 py-5">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-primary-foreground/70 text-sm mb-2">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <h1 className="text-xl font-extrabold">Ready to Start</h1>
+          <p className="text-primary-foreground/70 text-sm mt-1">{property?.property_name}</p>
+        </div>
+        <main className="flex-1 px-4 py-5 space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <p className="text-sm text-green-600 font-bold flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Arrival recorded
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">{property?.address ?? 'No address'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="text-foreground font-medium">Arrived {format(new Date(job.arrived_at!), 'h:mm a')}</span>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            size="lg"
+            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleClockOn}
+            disabled={clockingOn}
+          >
+            {clockingOn ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <Clock className="h-6 w-6 mr-2" />}
+            Clock On
+          </Button>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-2xl pb-24">
+      {/* Running timer banner */}
+      {(hasClockedOn || clockOnTime) && !job?.clock_off && (
+        <div className="bg-accent text-accent-foreground rounded-2xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
+            <span className="font-extrabold text-lg">{elapsed}</span>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">{property?.property_name}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
