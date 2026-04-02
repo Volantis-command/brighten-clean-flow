@@ -1081,13 +1081,22 @@ export default function JobDetailPage() {
 
       {/* Actions */}
       <div className="space-y-3">
-        <Button
-          className="w-full gap-2 h-12 text-base font-bold"
-          onClick={() => navigate(`/jobs/${jobId}/checklist`)}
-        >
-          <ClipboardList className="h-5 w-5" />
-          {job.status === 'complete' ? 'View Checklist' : 'Open Checklist'}
-        </Button>
+        {(role === 'cleaner' || role === 'head_cleaner') && job.status !== 'completed' && job.status !== 'complete' ? (
+          <Button
+            className="w-full gap-2 h-16 text-lg font-extrabold bg-green-600 hover:bg-green-700 text-white rounded-2xl"
+            onClick={() => navigate(`/clean/${jobId}`)}
+          >
+            Start Job
+          </Button>
+        ) : (
+          <Button
+            className="w-full gap-2 h-12 text-base font-bold"
+            onClick={() => navigate(job.status === 'completed' || job.status === 'complete' ? `/clean/${jobId}` : `/jobs/${jobId}/checklist`)}
+          >
+            <ClipboardList className="h-5 w-5" />
+            {job.status === 'completed' || job.status === 'complete' ? 'View Summary' : 'Open Checklist'}
+          </Button>
+        )}
 
         {role === 'admin' && (
           <Button
