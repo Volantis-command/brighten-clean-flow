@@ -5,17 +5,18 @@ import { Button } from '@/components/ui/button';
 import { LogOut, Phone, Mail, Star } from 'lucide-react';
 
 export default function CleanerProfilePage() {
-  const { profile, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
+
+  const userId = user?.id;
 
   const { data: avgRating } = useQuery({
-    queryKey: ['cleaner-avg-rating', profile?.id],
-    enabled: !!profile?.id,
+    queryKey: ['cleaner-avg-rating', userId],
+    enabled: !!userId,
     queryFn: async () => {
-      // Get jobs where this cleaner was assigned
       const { data: jobs } = await supabase
         .from('jobs')
         .select('feedback_score')
-        .or(`cleaner_1_id.eq.${profile!.id},cleaner_2_id.eq.${profile!.id}`)
+        .or(`cleaner_1_id.eq.${userId},cleaner_2_id.eq.${userId}`)
         .not('feedback_score', 'is', null);
 
       if (!jobs?.length) return null;
