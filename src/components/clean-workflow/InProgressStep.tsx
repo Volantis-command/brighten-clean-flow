@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Loader2, ArrowLeft, Clock, Plus, X } from 'lucide-react';
+import { Camera, Loader2, ArrowLeft, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
+import ClockedOnBanner from './ClockedOnBanner';
 
 const DEFAULT_CHECKLIST = [
   { room: 'Kitchen', tasks: ['Benchtops wiped', 'Stovetop cleaned', 'Sink scrubbed', 'Appliances wiped'] },
@@ -41,7 +42,6 @@ interface Props {
 export default function InProgressStep({ job, property, userId, onNext, onBack }: Props) {
   const [checklist, setChecklist] = useState<CheckItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [elapsed, setElapsed] = useState(0);
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [notePhoto, setNotePhoto] = useState<string | null>(null);
@@ -49,19 +49,7 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
   const [notes, setNotes] = useState<NotePhoto[]>([]);
   const noteFileRef = useRef<HTMLInputElement>(null);
 
-  // Timer
-  useEffect(() => {
-    const clockOn = job.clock_on ? new Date(job.clock_on).getTime() : Date.now();
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - clockOn) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [job.clock_on]);
-
-  // Load checklist
-  useEffect(() => {
-    loadChecklist();
-  }, []);
+  useEffect(() => { loadChecklist(); }, []);
 
   async function loadChecklist() {
     setLoading(true);
@@ -148,25 +136,16 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
     toast.success('Note saved');
   }
 
-  function handleFinishCleaning() {
-    // Save any notes to job
+  function handleCompleteJob() {
     if (notes.length > 0) {
       supabase.from('jobs').update({ cleaner_notes: JSON.stringify(notes) }).eq('id', job.id);
     }
     onNext('completion');
   }
 
-  const formatTime = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-  };
-
   const completedCount = checklist.filter(c => c.completed).length;
   const totalCount = checklist.length;
 
-  // Group by room
   const roomGroups = checklist.reduce<Record<string, { index: number; item: CheckItem }[]>>((acc, item, i) => {
     if (!acc[item.room]) acc[item.room] = [];
     acc[item.room].push({ index: i, item });
@@ -183,7 +162,8 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
 
   return (
     <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
-      {/* Header with timer */}
+      <ClockedOnBanner clockOn={job.clock_on} />
+
       <div className="bg-primary text-primary-foreground px-5 py-5 safe-area-top">
         <button onClick={onBack} className="flex items-center gap-1 text-primary-foreground/70 text-sm mb-2">
           <ArrowLeft className="h-4 w-4" /> My Cleans
@@ -192,10 +172,6 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
           <div>
             <h1 className="text-xl font-extrabold">Cleaning</h1>
             <p className="text-primary-foreground/70 text-sm">{property?.property_name}</p>
-          </div>
-          <div className="bg-accent text-accent-foreground px-4 py-2 rounded-xl flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span className="font-mono font-bold text-lg">{formatTime(elapsed)}</span>
           </div>
         </div>
         <div className="mt-3 bg-primary-foreground/10 rounded-full h-2 overflow-hidden">
@@ -230,7 +206,6 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
           </Card>
         ))}
 
-        {/* Notes during job */}
         {notes.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-muted-foreground uppercase">Notes</h3>
@@ -246,7 +221,7 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
         {showNoteForm ? (
           <Card className="border-border">
             <CardContent className="p-4 space-y-3">
-              <Textarea placeholder="Add a note..." value={noteText} onChange={e => setNoteText(e.target.value)} />
+              <Textarea placeholder="Add a note..." value={noteText} onChange={e => setNoteText(e.target.value)} className="text-base" />
               <input ref={noteFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleNotePhoto} />
               <div className="flex items-center gap-2">
                 {notePhoto ? (
@@ -259,7 +234,7 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
                     {uploadingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                   </Button>
                 )}
-                <Button size="sm" onClick={saveNote} disabled={!noteText.trim()}>Save Note</Button>
+                <Button size="sm" onClick={saveNote} disabled={!noteText.trim()}>Save</Button>
                 <Button variant="ghost" size="sm" onClick={() => { setShowNoteForm(false); setNoteText(''); setNotePhoto(null); }}>Cancel</Button>
               </div>
             </CardContent>
@@ -271,14 +246,13 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
         )}
       </main>
 
-      {/* Fixed bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-bottom z-50">
         <Button
           size="lg"
-          className="w-full h-14 text-base font-extrabold rounded-2xl max-w-lg mx-auto block"
-          onClick={handleFinishCleaning}
+          className="w-full h-14 text-base font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
+          onClick={handleCompleteJob}
         >
-          Finish Cleaning →
+          Complete Job
         </Button>
       </div>
     </div>
