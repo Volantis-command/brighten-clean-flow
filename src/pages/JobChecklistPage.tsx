@@ -138,6 +138,86 @@ export default function JobChecklistPage() {
   const [completionModal, setCompletionModal] = useState(false);
   const [nextJobInfo, setNextJobInfo] = useState<{ propertyName: string; address: string | null; scheduledTime: string | null } | null>(null);
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [arriving, setArriving] = useState(false);
+  const [clockingOn, setClockingOn] = useState(false);
+  const [clockOnTime, setClockOnTime] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState('00:00:00');
+
+  // Determine workflow phase from job data
+  const hasArrived = !!job?.arrived_at;
+  const hasClockedOn = !!job?.clock_on;
+
+  // Live timer when clocked on but not clocked off
+  useEffect(() => {
+    const startTime = job?.clock_on || clockOnTime;
+    if (!startTime || job?.clock_off) return;
+    const update = () => {
+      const ms = Date.now() - new Date(startTime).getTime();
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const sec = String(s % 60).padStart(2, '0');
+      setElapsed(`${h}:${m}:${sec}`);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [job?.clock_on, clockOnTime, job?.clock_off]);
+
+  const handleArrived = async () => {
+    setArriving(true);
+    let lat: number | null = null;
+    let lng: number | null = null;
+    try {
+      const pos = await getCurrentPosition();
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch { /* proceed without GPS */ }
+
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('jobs')
+      .update({ arrived_at: now, arrived_lat: lat, arrived_lng: lng, status: 'in_progress' })
+      .eq('id', job!.id);
+
+    if (error) {
+      toast.error('Failed to record arrival');
+      setArriving(false);
+      return;
+    }
+    toast.success('Location captured ✓');
+    setArriving(false);
+    queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+  };
+
+  const handleClockOn = async () => {
+    setClockingOn(true);
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('jobs')
+      .update({ clock_on: now })
+      .eq('id', job!.id);
+
+    if (error) {
+      toast.error('Failed to clock on');
+      setClockingOn(false);
+      return;
+    }
+
+    // Also create time_entry for the banner
+    await supabase.from('time_entries').insert({
+      job_id: job!.id,
+      user_id: user!.id,
+      clock_in_time: now,
+      geo_override: false,
+    });
+
+    setClockOnTime(now);
+    toast.success('Clocked on! Timer started.');
+    setClockingOn(false);
+    queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+    queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+  };
 
   // Hydrate from existing form or initialize
   useEffect(() => {
