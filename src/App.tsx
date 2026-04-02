@@ -53,6 +53,9 @@ import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import NotFound from "./pages/NotFound";
+import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
+import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
+import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
 
 const queryClient = new QueryClient();
 
@@ -192,6 +195,9 @@ function AppRoutes() {
       <Route path="/enquire" element={<EnquiryPage />} />
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
+      <Route path="/client-portal" element={<ClientPortalLoginPage />} />
+      <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
+      <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
 
       {/* Protected staff routes */}
       <Route element={<AuthenticatedArea><><ActiveClockBanner /><ProtectedRoute><AppLayout /></ProtectedRoute></></AuthenticatedArea>}>
