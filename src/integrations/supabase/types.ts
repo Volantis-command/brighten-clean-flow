@@ -1433,6 +1433,7 @@ export type Database = {
           estimated_hours: number | null
           extra_notes: string | null
           first_name: string | null
+          form_data: Json | null
           form_submitted_at: string | null
           has_garage: boolean | null
           hourly_rate: number | null
@@ -1475,6 +1476,7 @@ export type Database = {
           estimated_hours?: number | null
           extra_notes?: string | null
           first_name?: string | null
+          form_data?: Json | null
           form_submitted_at?: string | null
           has_garage?: boolean | null
           hourly_rate?: number | null
@@ -1517,6 +1519,7 @@ export type Database = {
           estimated_hours?: number | null
           extra_notes?: string | null
           first_name?: string | null
+          form_data?: Json | null
           form_submitted_at?: string | null
           has_garage?: boolean | null
           hourly_rate?: number | null

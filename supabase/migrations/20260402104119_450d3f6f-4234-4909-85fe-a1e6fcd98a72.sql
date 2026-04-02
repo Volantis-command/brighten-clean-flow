@@ -1,0 +1,1 @@
+ALTER TABLE public.quote_requests ADD COLUMN IF NOT EXISTS form_data jsonb DEFAULT '{}'::jsonb;
