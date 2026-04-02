@@ -151,7 +151,85 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     }
   }, [editQuote]);
 
-  const { data: properties = [] } = useQuery({
+  // Auto-populate from quote_requests when opened via ?lead=<id>
+  useEffect(() => {
+    if (!leadId || editQuote) return;
+    const loadLead = async () => {
+      // Try quote_requests first
+      const { data: qr } = await supabase
+        .from('quote_requests')
+        .select('*')
+        .eq('id', leadId)
+        .maybeSingle();
+
+      if (qr) {
+        const fd = (qr.form_data || {}) as Record<string, any>;
+        const ct = normaliseLegacyServiceType(qr.clean_type || SERVICE_TYPES.AIRBNB_TURNOVER);
+        const clientName = [qr.first_name, qr.last_name].filter(Boolean).join(' ');
+
+        // Parse bed_types from form_data: stored as { "0": "King", "1": "Queen" }
+        const rawBedTypes = fd.bed_types || {};
+        const bedroomCount = qr.bedrooms || 1;
+        const parsedBedTypes: BedType[] = [];
+        for (let i = 0; i < bedroomCount; i++) {
+          const bt = rawBedTypes[String(i)] || rawBedTypes[i];
+          // Map client form bed type to admin BedType
+          const mapped = bt === 'Bunk Beds' ? 'Single' : bt === 'Double' ? 'Queen' : bt;
+          parsedBedTypes.push((mapped as BedType) || 'Queen');
+        }
+
+        setForm(prev => ({
+          ...prev,
+          cleanType: ct,
+          clientName,
+          clientPhone: qr.phone || '',
+          propertyName: qr.address || '',
+          propertyAddress: qr.address || '',
+          bedrooms: qr.bedrooms || 1,
+          bathrooms: qr.bathrooms || 1,
+          livingAreas: fd.living_areas != null ? Number(fd.living_areas) : 1,
+          kitchens: fd.kitchens != null ? Number(fd.kitchens) : 1,
+          balconies: fd.balconies != null ? Number(fd.balconies) : 0,
+          sofaBeds: fd.sofa_beds != null ? Number(fd.sofa_beds) : 0,
+          outdoorAreas: fd.outdoor_areas === true,
+          bedTypes: parsedBedTypes.length > 0 ? parsedBedTypes : ['Queen'],
+          hours: DEFAULT_HOURS[ct] || 3,
+          notes: [qr.extra_notes, fd.hosting_notes].filter(Boolean).join('\n'),
+          consumables: {
+            amenities_kit: fd.amenities_kit === true,
+            wash_kit: fd.wash_kit === true,
+            tea_coffee_kit: fd.tea_coffee_kit === true,
+          },
+        }));
+        return;
+      }
+
+      // Fallback: try leads table
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', leadId)
+        .maybeSingle();
+
+      if (lead) {
+        const ct = normaliseLegacyServiceType(lead.service_type || SERVICE_TYPES.STANDARD_CLEAN);
+        setForm(prev => ({
+          ...prev,
+          cleanType: ct,
+          clientName: [lead.first_name, lead.last_name].filter(Boolean).join(' '),
+          clientPhone: lead.phone || '',
+          propertyName: lead.address || '',
+          propertyAddress: [lead.address, lead.suburb].filter(Boolean).join(', '),
+          bedrooms: parseInt(lead.bedrooms || '1') || 1,
+          bathrooms: parseInt(lead.bathrooms || '1') || 1,
+          hours: DEFAULT_HOURS[ct] || 3,
+          notes: lead.notes || '',
+        }));
+      }
+    };
+    loadLead();
+  }, [leadId, editQuote]);
+
     queryKey: ['properties-list'],
     queryFn: async () => {
       const { data, error } = await supabase
