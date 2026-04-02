@@ -26,8 +26,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
   const [propertyType, setPropertyType] = useState('Apartment');
   const [bedrooms, setBedrooms] = useState('2');
   const [bathrooms, setBathrooms] = useState('1');
-  const [bedConfig, setBedConfig] = useState('');
-  const [towelSets, setTowelSets] = useState('2');
+  const [bedTypes, setBedTypes] = useState<Record<number, string>>({});
 
   const [linenChange, setLinenChange] = useState<boolean | null>(null);
   const [consumablesRestock, setConsumablesRestock] = useState<boolean | null>(null);
