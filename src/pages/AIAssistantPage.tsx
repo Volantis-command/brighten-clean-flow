@@ -132,7 +132,7 @@ export default function AIAssistantPage() {
       <div className="bg-primary rounded-t-2xl px-5 py-4 flex items-center gap-3 shrink-0">
         <Sparkles className="h-6 w-6 text-accent" />
         <h1 className="text-xl font-extrabold text-primary-foreground tracking-tight">
-          Brightly. AI
+          Brightly Assistant
         </h1>
       </div>
 
