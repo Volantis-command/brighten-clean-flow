@@ -8,15 +8,7 @@ import { Camera, Loader2, ArrowLeft, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
 import ClockedOnBanner from './ClockedOnBanner';
-
-const DEFAULT_CHECKLIST = [
-  { room: 'Kitchen', tasks: ['Benchtops wiped', 'Stovetop cleaned', 'Sink scrubbed', 'Appliances wiped'] },
-  { room: 'Bathrooms', tasks: ['Toilet scrubbed', 'Shower/bath scrubbed', 'Vanity wiped', 'Mirror cleaned'] },
-  { room: 'Bedrooms', tasks: ['Surfaces dusted', 'Bed made / linen changed', 'Floors vacuumed'] },
-  { room: 'Living Areas', tasks: ['Surfaces dusted', 'Floors vacuumed and mopped'] },
-  { room: 'Vacuuming', tasks: ['All floors vacuumed'] },
-  { room: 'Mopping', tasks: ['All hard floors mopped'] },
-];
+import { seedDefaultChecklist } from './defaultChecklist';
 
 interface CheckItem {
   id: string;
@@ -68,16 +60,14 @@ export default function InProgressStep({ job, property, userId, onNext, onBack }
       .order('sort_order');
 
     if (!sopItems || sopItems.length === 0) {
-      const toInsert = DEFAULT_CHECKLIST.flatMap((g, gi) =>
-        g.tasks.map((task, ti) => ({
-          property_id: property.id,
-          room: g.room,
-          task,
-          sort_order: gi * 100 + ti,
-          active: true,
-        }))
-      );
-      const { data: inserted } = await supabase.from('property_sop_items').insert(toInsert).select();
+      await seedDefaultChecklist(property.id);
+      const { data: inserted } = await supabase
+        .from('property_sop_items')
+        .select('*')
+        .eq('property_id', property.id)
+        .eq('active', true)
+        .order('room')
+        .order('sort_order');
       sopItems = inserted ?? [];
     }
 
