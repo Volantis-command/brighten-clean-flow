@@ -254,15 +254,13 @@ export default function PropertyFormPage() {
 
     // Case-insensitive duplicate detection for new properties (name OR address)
     if (!isEdit) {
-      const checks: Promise<any>[] = [
-        supabase.from('properties').select('id, property_name').ilike('property_name', form.property_name.trim()),
-      ];
+      const nameCheck = await supabase.from('properties').select('id, property_name').ilike('property_name', form.property_name.trim());
+      let addrMatches: any[] = [];
       if (form.address?.trim()) {
-        checks.push(supabase.from('properties').select('id, property_name, address').ilike('address', form.address.trim()));
+        const addrCheck = await supabase.from('properties').select('id, property_name, address').ilike('address', form.address.trim());
+        addrMatches = addrCheck.data || [];
       }
-      const results = await Promise.all(checks);
-      const nameMatches = results[0]?.data || [];
-      const addrMatches = results[1]?.data || [];
+      const nameMatches = nameCheck.data || [];
       const allDupes = [...nameMatches, ...addrMatches];
       const uniqueDupes = Array.from(new Map(allDupes.map((d: any) => [d.id, d])).values());
       if (uniqueDupes.length > 0) {

@@ -32,25 +32,33 @@ serve(async (req) => {
 
     const { messages } = await req.json();
 
-    // Fetch profile, today's jobs, and knowledge base in parallel
     const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const [profileRes, jobsRes, kbRes] = await Promise.all([
+    // Fetch profile, knowledge base, and business stats in parallel
+    const today = new Date().toISOString().split("T")[0];
+    const monthStart = today.slice(0, 7) + "-01";
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+
+    const [profileRes, kbRes, jobsThisMonthRes, jobsTodayRes, recentFeedbackRes, cleanersRes, propertiesRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      supabase
-        .from("jobs")
-        .select("*, properties(*)")
-        .or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`)
-        .eq("scheduled_date", new Date().toISOString().split("T")[0]),
       serviceClient.from("knowledge_base").select("code, title, content"),
+      serviceClient.from("jobs").select("id, status, price_ex_gst, cleaner_1_id, cleaner_2_id, scheduled_date, scheduled_time, property_id, properties(property_name, address)").gte("scheduled_date", monthStart),
+      serviceClient.from("jobs").select("id, status, scheduled_time, cleaner_1_id, properties(property_name, address)").eq("scheduled_date", today),
+      serviceClient.from("job_feedback").select("score, created_at, client_id").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(20),
+      serviceClient.from("profiles").select("id, full_name").limit(100),
+      serviceClient.from("properties").select("id, property_name, address, client_name").eq("active", true),
     ]);
 
     const firstName = profileRes.data?.full_name?.split(" ")[0] || "there";
-    const jobs = jobsRes.data;
     const kbRows = kbRes.data;
+    const monthJobs = jobsThisMonthRes.data || [];
+    const todayJobs = jobsTodayRes.data || [];
+    const recentFeedback = recentFeedbackRes.data || [];
+    const allCleaners = cleanersRes.data || [];
+    const allProperties = propertiesRes.data || [];
 
     // Build knowledge base context
     let kbContext = "";
@@ -61,35 +69,46 @@ serve(async (req) => {
       }
     }
 
-    // Build job context
-    let jobContext = "";
-    if (jobs && jobs.length > 0) {
-      jobContext = "\n\nCURRENT JOB DATA FOR TODAY:\n";
-      for (const job of jobs) {
-        const p = job.properties as any;
-        jobContext += `\nJob ID: ${job.id}
-Status: ${job.status}
-Scheduled: ${job.scheduled_time || "No time set"}
-Notes: ${job.notes || "None"}
-Property: ${p?.property_name || "Unknown"}
-Address: ${p?.address || ""}, ${p?.suburb || ""} ${p?.state || ""} ${p?.postcode || ""}
-Bedrooms: ${p?.bedrooms || "?"}
-Bathrooms: ${p?.bathrooms || "?"}
-Access Method: ${p?.access_method || "Not specified"}
-Access Code: ${p?.access_code || "Not set"}
-Access Notes: ${p?.access_notes || "None"}
-Host Preferences: ${p?.host_preferences || "None"}
-Product Restrictions: ${p?.product_restrictions || "None"}
-Linen Fold Style: ${p?.linen_fold_style || "Standard"}
-Amenities Notes: ${p?.amenities_notes || "None"}
-Clean Frequency: ${p?.clean_frequency || "Not set"}
-`;
-      }
-    } else {
-      jobContext = "\n\nNo jobs assigned to this cleaner today.";
-    }
+    // Build business data context
+    const completedThisMonth = monthJobs.filter((j: any) => j.status === "completed");
+    const revenueThisMonth = completedThisMonth.reduce((sum: number, j: any) => sum + (Number(j.price_ex_gst) || 0), 0);
+    const avgScore = recentFeedback.length > 0 ? (recentFeedback.reduce((s: number, f: any) => s + (f.score || 0), 0) / recentFeedback.length).toFixed(1) : "N/A";
 
-    const systemPrompt = `You are the Brightly Operations Assistant. You have full knowledge of Brightly's SOPs, QC standards, HR policies, linen procedures, consumables, property onboarding, and finance processes. Use the knowledge base below to answer staff questions accurately and practically. Staff are usually on their phone mid-job — be concise. Always answer in the context of Brightly operations.${kbContext}${jobContext}\n\nThe cleaner's first name is "${firstName}". Address them by name occasionally.`;
+    // Cleaner stats
+    const cleanerJobCounts: Record<string, number> = {};
+    completedThisMonth.forEach((j: any) => {
+      if (j.cleaner_1_id) cleanerJobCounts[j.cleaner_1_id] = (cleanerJobCounts[j.cleaner_1_id] || 0) + 1;
+      if (j.cleaner_2_id) cleanerJobCounts[j.cleaner_2_id] = (cleanerJobCounts[j.cleaner_2_id] || 0) + 1;
+    });
+    const cleanerMap: Record<string, string> = {};
+    allCleaners.forEach((c: any) => { cleanerMap[c.id] = c.full_name || "Unknown"; });
+
+    let businessContext = `\n\nBUSINESS DATA SNAPSHOT:
+- Date: ${today}
+- Jobs completed this month: ${completedThisMonth.length}
+- Total jobs this month (all statuses): ${monthJobs.length}
+- Revenue this month (ex GST): $${revenueThisMonth.toFixed(2)}
+- Average feedback score (last 7 days): ${avgScore}/5
+- Jobs today: ${todayJobs.length}
+- Active properties: ${allProperties.length}
+
+TODAY'S JOBS:
+${todayJobs.map((j: any) => `- ${(j.properties as any)?.property_name || "Unknown"} at ${j.scheduled_time || "TBA"} — Status: ${j.status} — Cleaner: ${cleanerMap[j.cleaner_1_id] || "Unassigned"}`).join("\n") || "No jobs today"}
+
+CLEANER PERFORMANCE THIS MONTH:
+${Object.entries(cleanerJobCounts).sort((a, b) => b[1] - a[1]).map(([id, count]) => `- ${cleanerMap[id] || id}: ${count} jobs`).join("\n") || "No data"}
+
+PROPERTIES LIST:
+${allProperties.slice(0, 30).map((p: any) => `- ${p.property_name} (${p.address || "no address"}) — Client: ${p.client_name || "N/A"}`).join("\n")}
+`;
+
+    const systemPrompt = `You are the Brightly Assistant — an AI-powered business intelligence tool for Brightly Cleaning operations. You help admins understand their business data, track performance, and make decisions.
+
+You have access to real-time business data below. Answer questions accurately using this data. If you can't find specific data, say so honestly.
+
+Be concise, practical, and use numbers. Format responses with markdown when helpful (tables, lists, bold numbers).${kbContext}${businessContext}
+
+The admin's name is "${firstName}". Address them by name occasionally.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
