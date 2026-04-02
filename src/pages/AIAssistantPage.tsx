@@ -10,11 +10,10 @@ type Msg = { role: 'user' | 'assistant'; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
 const SUGGESTED = [
-  "What do I do if linen isn't here?",
-  "What consumables do I restock?",
-  "How do I report damage?",
-  "Does my sofa bed need making?",
-  "What's the QC pass score?",
+  "How many jobs were completed this week?",
+  "What's my revenue this month?",
+  "Which properties had jobs today?",
+  "Who are my top-performing cleaners?",
 ];
 
 async function streamChat({
