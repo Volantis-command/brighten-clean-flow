@@ -1,7 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
-import { CalendarJobCard } from './CalendarJobCard';
-import { getStatusColor } from './CalendarStatusColors';
+import { getCleanerColor, getCleanerName } from './cleanerColors';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
@@ -17,35 +16,30 @@ interface CalendarWeekViewProps {
   onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
 }
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am-6pm
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 6); // 6am-6pm
+const HOUR_HEIGHT = 64; // px per hour row
 
-function getTimeSlot(time: string | null): number {
+function parseTime(time: string | null): number {
   if (!time) return 8;
-  const [h] = time.split(':').map(Number);
-  return Math.max(7, Math.min(h, 18));
+  const parts = time.split(':').map(Number);
+  return parts[0] + (parts[1] || 0) / 60;
+}
+
+function getDurationHours(minutes: number | null): number {
+  if (!minutes || minutes <= 0) return 1.5; // default visual block
+  return Math.max(0.5, minutes / 60);
+}
+
+function formatHour(hour: number): string {
+  if (hour === 0 || hour === 24) return '12 AM';
+  if (hour === 12) return '12 PM';
+  if (hour < 12) return `${hour} AM`;
+  return `${hour - 12} PM`;
 }
 
 export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onDateClick, onAddJob, onJobDrop }: CalendarWeekViewProps) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-  const jobsByDayHour = useMemo(() => {
-    const map: Record<string, Record<number, ScheduleJob[]>> = {};
-    days.forEach(d => {
-      const key = format(d, 'yyyy-MM-dd');
-      map[key] = {};
-      HOURS.forEach(h => { map[key][h] = []; });
-    });
-    jobs.forEach(j => {
-      const jd = new Date(j.scheduled_date + 'T00:00:00');
-      const dayMatch = days.find(d => isSameDay(d, jd));
-      if (!dayMatch) return;
-      const key = format(dayMatch, 'yyyy-MM-dd');
-      const h = getTimeSlot(j.scheduled_time);
-      if (map[key]?.[h]) map[key][h].push(j);
-    });
-    return map;
-  }, [jobs, days]);
 
   const jobsByDay = useMemo(() => {
     const map: Record<string, ScheduleJob[]> = {};
@@ -78,108 +72,179 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  return (
-    <div className="bg-card rounded-2xl shadow-md overflow-hidden">
-      {/* Day headers */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border">
-        <div className="border-r border-border/50" />
-        {days.map(day => {
-          const key = format(day, 'yyyy-MM-dd');
-          const dayJobs = jobsByDay[key] || [];
-          const today = isToday(day);
-          const selected = isSameDay(day, date);
+  const totalHeight = HOURS.length * HOUR_HEIGHT;
+  const firstHour = HOURS[0];
 
+  return (
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+      {/* Day headers */}
+      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border bg-muted/30">
+        <div className="border-r border-border" />
+        {days.map(day => {
+          const today = isToday(day);
           return (
             <button
-              key={key}
+              key={format(day, 'yyyy-MM-dd')}
               onClick={() => onDateClick(day)}
               className={cn(
-                'flex flex-col items-center py-3 px-1 border-r border-border/50 last:border-r-0 transition-colors',
-                today && 'bg-primary/5',
-                selected && 'bg-primary/10'
+                'flex flex-col items-center py-2.5 border-r border-border last:border-r-0 transition-colors',
+                today && 'bg-primary/5'
               )}
             >
-              <span className="text-[10px] font-bold uppercase text-muted-foreground">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {format(day, 'EEE')}
               </span>
               <span className={cn(
-                'text-lg font-extrabold w-9 h-9 flex items-center justify-center rounded-full',
-                today && 'bg-primary text-primary-foreground',
-                selected && !today && 'bg-accent text-accent-foreground'
+                'text-xl font-extrabold mt-0.5 w-9 h-9 flex items-center justify-center rounded-full transition-colors',
+                today ? 'bg-primary text-primary-foreground' : 'text-foreground'
               )}>
                 {format(day, 'd')}
               </span>
-              {dayJobs.length > 0 && (
-                <div className="flex items-center gap-0.5 mt-1">
-                  {dayJobs.slice(0, 5).map(j => (
-                    <span key={j.id} className={cn('w-1.5 h-1.5 rounded-full', getStatusColor(j.status).dot)} />
-                  ))}
-                  {dayJobs.length > 5 && (
-                    <span className="text-[8px] font-bold text-muted-foreground">+{dayJobs.length - 5}</span>
-                  )}
-                </div>
-              )}
             </button>
           );
         })}
       </div>
 
       {/* Time grid */}
-      <div className="max-h-[600px] overflow-y-auto">
-        {HOURS.map(hour => (
-          <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/30 min-h-[56px]">
-            {/* Time label */}
-            <div className="py-2 px-2 text-[10px] font-bold text-muted-foreground text-right border-r border-border/50 flex items-start justify-end">
-              {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
-            </div>
-
-            {/* Day columns */}
-            {days.map(day => {
-              const key = format(day, 'yyyy-MM-dd');
-              const hourJobs = jobsByDayHour[key]?.[hour] || [];
-
-              return (
-                <div
-                  key={`${key}-${hour}`}
-                  className={cn(
-                    'border-r border-border/30 last:border-r-0 p-0.5 group/cell relative',
-                    isToday(day) && 'bg-primary/[0.02]'
-                  )}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, key, hour)}
-                >
-                  {hourJobs.length > 0 ? (
-                    <div className="space-y-0.5">
-                      {hourJobs.map(job => (
-                        <div
-                          key={job.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, job)}
-                          className="cursor-grab active:cursor-grabbing"
-                        >
-                          <CalendarJobCard
-                            job={job}
-                            nameMap={nameMap}
-                            acceptances={acceptancesByJob[job.id]}
-                            compact
-                            onClick={() => onJobClick(job)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => onAddJob?.(day, hour)}
-                      className="w-full h-full min-h-[48px] flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity rounded border border-dashed border-border/40 text-muted-foreground/50 hover:border-primary/30 hover:text-primary"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+      <div className="overflow-y-auto max-h-[calc(100vh-280px)]" style={{ minHeight: '400px' }}>
+        <div className="grid grid-cols-[56px_repeat(7,1fr)] relative" style={{ height: totalHeight }}>
+          {/* Hour labels + horizontal lines */}
+          <div className="relative border-r border-border">
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute right-0 w-full flex items-start justify-end pr-2"
+                style={{ top: i * HOUR_HEIGHT }}
+              >
+                <span className="text-[10px] font-semibold text-muted-foreground -translate-y-1/2 tabular-nums">
+                  {formatHour(hour)}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
+
+          {/* Day columns */}
+          {days.map(day => {
+            const key = format(day, 'yyyy-MM-dd');
+            const dayJobs = jobsByDay[key] || [];
+            const today = isToday(day);
+
+            return (
+              <div
+                key={key}
+                className={cn(
+                  'relative border-r border-border last:border-r-0',
+                  today && 'bg-primary/[0.03]'
+                )}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, key)}
+              >
+                {/* Hour gridlines */}
+                {HOURS.map((hour, i) => (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 border-t border-border/40"
+                    style={{ top: i * HOUR_HEIGHT }}
+                  />
+                ))}
+                {/* Half-hour gridlines */}
+                {HOURS.map((hour, i) => (
+                  <div
+                    key={`${hour}-half`}
+                    className="absolute left-0 right-0 border-t border-border/20"
+                    style={{ top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+                  />
+                ))}
+
+                {/* Click-to-add zones */}
+                {HOURS.map((hour, i) => (
+                  <button
+                    key={`add-${hour}`}
+                    className="absolute left-0 right-0 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center text-muted-foreground/40 hover:text-primary/40 z-0"
+                    style={{ top: i * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                    onClick={() => onAddJob?.(day, hour)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                ))}
+
+                {/* Event blocks */}
+                {dayJobs.map(job => {
+                  const startTime = parseTime(job.scheduled_time);
+                  const duration = getDurationHours(job.estimated_duration);
+                  const top = (startTime - firstHour) * HOUR_HEIGHT;
+                  const height = Math.max(duration * HOUR_HEIGHT, 28);
+                  const color = getCleanerColor(job.cleaner_1_id);
+                  const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
+                  const clientName = job.properties?.property_name || 'Job';
+                  const address = job.properties?.address || '';
+
+                  return (
+                    <div
+                      key={job.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, job)}
+                      onClick={() => onJobClick(job)}
+                      className="absolute left-0.5 right-0.5 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event"
+                      style={{
+                        top: Math.max(top, 0),
+                        height,
+                        backgroundColor: color.bg,
+                        borderLeft: `3px solid ${color.border}`,
+                      }}
+                    >
+                      <div className="px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
+                        <p
+                          className="text-[11px] font-bold leading-tight truncate"
+                          style={{ color: color.text }}
+                        >
+                          {clientName}
+                        </p>
+                        {height >= 44 && address && (
+                          <p
+                            className="text-[9px] leading-tight truncate mt-0.5 opacity-85"
+                            style={{ color: color.text }}
+                          >
+                            {address}
+                          </p>
+                        )}
+                        {height >= 56 && (
+                          <p
+                            className="text-[9px] leading-tight truncate mt-0.5 opacity-75"
+                            style={{ color: color.text }}
+                          >
+                            {cleanerName.split(' ')[0]}
+                            {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Current time indicator */}
+                {today && <CurrentTimeIndicator firstHour={firstHour} />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CurrentTimeIndicator({ firstHour }: { firstHour: number }) {
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const top = (currentHour - firstHour) * HOUR_HEIGHT;
+
+  if (top < 0 || top > 13 * HOUR_HEIGHT) return null;
+
+  return (
+    <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top }}>
+      <div className="flex items-center">
+        <div className="w-2.5 h-2.5 rounded-full bg-destructive -ml-1 shrink-0" />
+        <div className="flex-1 h-[2px] bg-destructive" />
       </div>
     </div>
   );

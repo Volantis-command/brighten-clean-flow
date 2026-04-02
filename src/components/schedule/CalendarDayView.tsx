@@ -1,9 +1,8 @@
 import { useMemo, useCallback } from 'react';
-import { format, isSameDay } from 'date-fns';
-import { CalendarJobCard } from './CalendarJobCard';
+import { format, isSameDay, isToday } from 'date-fns';
+import { getCleanerColor, getCleanerName } from './cleanerColors';
 import { Plus } from 'lucide-react';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
-import { cn } from '@/lib/utils';
 
 interface CalendarDayViewProps {
   date: Date;
@@ -15,17 +14,25 @@ interface CalendarDayViewProps {
   onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
 }
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am-6pm
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 6); // 6am-6pm
+const HOUR_HEIGHT = 72; // taller rows for day view
 
-function getTimeSlot(time: string | null): number {
+function parseTime(time: string | null): number {
   if (!time) return 8;
-  const [h] = time.split(':').map(Number);
-  return h;
+  const parts = time.split(':').map(Number);
+  return parts[0] + (parts[1] || 0) / 60;
 }
 
-function getDurationSlots(minutes: number | null): number {
-  if (!minutes || minutes <= 0) return 2;
-  return Math.max(1, Math.round(minutes / 30));
+function getDurationHours(minutes: number | null): number {
+  if (!minutes || minutes <= 0) return 1.5;
+  return Math.max(0.5, minutes / 60);
+}
+
+function formatHour(hour: number): string {
+  if (hour === 0 || hour === 24) return '12 AM';
+  if (hour === 12) return '12 PM';
+  if (hour < 12) return `${hour} AM`;
+  return `${hour - 12} PM`;
 }
 
 export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onAddJob, onJobDrop }: CalendarDayViewProps) {
@@ -34,29 +41,10 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
     [jobs, date]
   );
 
-  const jobsByHour = useMemo(() => {
-    const map: Record<number, ScheduleJob[]> = {};
-    dayJobs.forEach(j => {
-      const h = getTimeSlot(j.scheduled_time);
-      if (!map[h]) map[h] = [];
-      map[h].push(j);
-    });
-    return map;
-  }, [dayJobs]);
-
-  const occupiedSlots = useMemo(() => {
-    const set = new Set<number>();
-    dayJobs.forEach(j => {
-      const startH = getTimeSlot(j.scheduled_time);
-      const durationHours = j.estimated_duration ? Math.ceil(j.estimated_duration / 60) : 1;
-      for (let i = 1; i < durationHours; i++) {
-        set.add(startH + i);
-      }
-    });
-    return set;
-  }, [dayJobs]);
-
   const dateStr = format(date, 'yyyy-MM-dd');
+  const today = isToday(date);
+  const firstHour = HOURS[0];
+  const totalHeight = HOURS.length * HOUR_HEIGHT;
 
   const handleDragStart = useCallback((e: React.DragEvent, job: ScheduleJob) => {
     e.dataTransfer.setData('application/json', JSON.stringify({ jobId: job.id }));
@@ -81,9 +69,10 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
   }, []);
 
   return (
-    <div className="bg-card rounded-2xl shadow-md overflow-hidden">
-      <div className="bg-primary/5 px-4 py-3 border-b border-border">
-        <h2 className="text-lg font-extrabold text-primary">
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-3 border-b border-border bg-muted/30">
+        <h2 className="text-lg font-extrabold text-foreground">
           {format(date, 'EEEE, d MMMM yyyy')}
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -91,59 +80,128 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
         </p>
       </div>
 
-      <div className="divide-y divide-border/50">
-        {HOURS.map(hour => {
-          const hourJobs = jobsByHour[hour] || [];
-          const isOccupied = occupiedSlots.has(hour);
-
-          if (isOccupied && hourJobs.length === 0) return null;
-
-          return (
-            <div
-              key={hour}
-              className="flex min-h-[64px] group/slot"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, hour)}
-            >
-              <div className="w-20 shrink-0 py-3 px-3 text-xs font-bold text-muted-foreground text-right border-r border-border/50">
-                {hour === 12 ? '12:00 PM' : hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`}
+      {/* Time grid */}
+      <div className="overflow-y-auto max-h-[calc(100vh-300px)]" style={{ minHeight: '400px' }}>
+        <div className="grid grid-cols-[72px_1fr] relative" style={{ height: totalHeight }}>
+          {/* Hour labels */}
+          <div className="relative border-r border-border">
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute right-0 w-full flex items-start justify-end pr-3"
+                style={{ top: i * HOUR_HEIGHT }}
+              >
+                <span className="text-[11px] font-semibold text-muted-foreground -translate-y-1/2 tabular-nums">
+                  {formatHour(hour)}
+                </span>
               </div>
+            ))}
+          </div>
 
-              <div className="flex-1 py-2 px-3 relative">
-                {hourJobs.length > 0 ? (
-                  <div className="space-y-2">
-                    {hourJobs.map(job => (
-                      <div
-                        key={job.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, job)}
-                        className="cursor-grab active:cursor-grabbing"
-                        style={{
-                          minHeight: `${getDurationSlots(job.estimated_duration) * 32}px`,
-                        }}
-                      >
-                        <CalendarJobCard
-                          job={job}
-                          nameMap={nameMap}
-                          acceptances={acceptancesByJob[job.id]}
-                          onClick={() => onJobClick(job)}
-                        />
-                      </div>
-                    ))}
+          {/* Day column */}
+          <div
+            className="relative"
+            onDragOver={handleDragOver}
+          >
+            {/* Hour gridlines */}
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute left-0 right-0 border-t border-border/40"
+                style={{ top: i * HOUR_HEIGHT }}
+              />
+            ))}
+            {/* Half-hour gridlines */}
+            {HOURS.map((hour, i) => (
+              <div
+                key={`${hour}-half`}
+                className="absolute left-0 right-0 border-t border-border/20"
+                style={{ top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+              />
+            ))}
+
+            {/* Click-to-add zones */}
+            {HOURS.map((hour, i) => (
+              <button
+                key={`add-${hour}`}
+                className="absolute left-0 right-0 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center text-muted-foreground/30 hover:text-primary/40 z-0"
+                style={{ top: i * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                onClick={() => onAddJob?.(date, hour)}
+                onDrop={(e) => handleDrop(e, hour)}
+                onDragOver={handleDragOver}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="text-xs font-semibold">Add job</span>
+              </button>
+            ))}
+
+            {/* Event blocks */}
+            {dayJobs.map(job => {
+              const startTime = parseTime(job.scheduled_time);
+              const duration = getDurationHours(job.estimated_duration);
+              const top = (startTime - firstHour) * HOUR_HEIGHT;
+              const height = Math.max(duration * HOUR_HEIGHT, 36);
+              const color = getCleanerColor(job.cleaner_1_id);
+              const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
+              const clientName = job.properties?.property_name || 'Job';
+              const address = job.properties?.address || '';
+
+              return (
+                <div
+                  key={job.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, job)}
+                  onClick={() => onJobClick(job)}
+                  className="absolute left-1 right-4 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+                  style={{
+                    top: Math.max(top, 0),
+                    height,
+                    backgroundColor: color.bg,
+                    borderLeft: `4px solid ${color.border}`,
+                  }}
+                >
+                  <div className="px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">
+                    <p className="text-sm font-bold leading-tight truncate" style={{ color: color.text }}>
+                      {clientName}
+                    </p>
+                    {height >= 52 && address && (
+                      <p className="text-xs leading-tight truncate mt-0.5 opacity-85" style={{ color: color.text }}>
+                        📍 {address}
+                      </p>
+                    )}
+                    {height >= 68 && (
+                      <p className="text-xs leading-tight truncate mt-0.5 opacity-75" style={{ color: color.text }}>
+                        👤 {cleanerName}
+                        {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}
+                        {job.estimated_duration ? ` · ${job.estimated_duration / 60}hr` : ''}
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    onClick={() => onAddJob?.(date, hour)}
-                    className="w-full h-full min-h-[48px] flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity rounded-lg border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/30 hover:text-primary"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    <span className="text-xs font-bold">Add job</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
+
+            {/* Current time indicator */}
+            {today && <CurrentTimeIndicator firstHour={firstHour} hourHeight={HOUR_HEIGHT} totalHours={HOURS.length} />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CurrentTimeIndicator({ firstHour, hourHeight, totalHours }: { firstHour: number; hourHeight: number; totalHours: number }) {
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const top = (currentHour - firstHour) * hourHeight;
+
+  if (top < 0 || top > totalHours * hourHeight) return null;
+
+  return (
+    <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top }}>
+      <div className="flex items-center">
+        <div className="w-3 h-3 rounded-full bg-destructive -ml-1.5 shrink-0" />
+        <div className="flex-1 h-[2px] bg-destructive" />
       </div>
     </div>
   );

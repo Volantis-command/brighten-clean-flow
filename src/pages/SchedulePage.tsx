@@ -300,7 +300,7 @@ export default function SchedulePage() {
           </>
         )}
 
-        <CalendarLegend />
+        <CalendarLegend jobs={filteredJobs} nameMap={nameMap} />
 
         {selectedJob && (
           <JobDetailSlideOver
