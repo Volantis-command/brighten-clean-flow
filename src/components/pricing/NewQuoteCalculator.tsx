@@ -106,6 +106,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const leadId = searchParams.get('lead');
   const [showConfirm, setShowConfirm] = useState(false);
   const rates = pricing?.map || {};
+  const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
 
@@ -386,12 +387,14 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
       };
 
-      if (editQuote?.id) {
-        const { error } = await supabase.from('quotes').update(payload).eq('id', editQuote.id);
+      const existingId = editQuote?.id || savedQuoteId;
+      if (existingId) {
+        const { error } = await supabase.from('quotes').update(payload).eq('id', existingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('quotes').insert(payload);
+        const { data: inserted, error } = await supabase.from('quotes').insert(payload).select('id').single();
         if (error) throw error;
+        if (inserted) setSavedQuoteId(inserted.id);
       }
     },
     onSuccess: (_, status) => {

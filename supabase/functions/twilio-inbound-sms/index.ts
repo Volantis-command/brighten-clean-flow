@@ -113,7 +113,7 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
     if (allQr?.length) {
       const matchedQr = allQr.find((qr: any) => qr.phone && phoneMatchesAny(qr.phone, variants, normalizedIncoming));
       if (matchedQr) {
-        bookingLink = `${APP_URL}/quote`;
+        bookingLink = `${APP_URL}/book?lead=${matchedQr.id}`;
       }
     }
 
