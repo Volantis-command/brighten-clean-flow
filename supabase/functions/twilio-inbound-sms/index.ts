@@ -103,22 +103,22 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
       quote_accepted_at: new Date().toISOString() 
     }).eq('id', matchedQuote.id);
 
-    // Find the client_properties portal_token for this property
-    let scheduleLink = APP_URL;
-    if (matchedQuote.property_id) {
-      const { data: cp } = await supabase
-        .from('client_properties')
-        .select('portal_token')
-        .eq('property_id', matchedQuote.property_id)
-        .limit(1)
-        .maybeSingle();
-      if (cp?.portal_token) {
-        scheduleLink = `${APP_URL}/client/${cp.portal_token}/schedule`;
+    // Look up the quote_requests record for this phone to build booking URL
+    let bookingLink = APP_URL;
+    const { data: allQr } = await supabase
+      .from('quote_requests')
+      .select('id, phone, status')
+      .eq('status', 'quote_sent');
+
+    if (allQr?.length) {
+      const matchedQr = allQr.find((qr: any) => qr.phone && phoneMatchesAny(qr.phone, variants, normalizedIncoming));
+      if (matchedQr) {
+        bookingLink = `${APP_URL}/book?lead=${matchedQr.id}`;
       }
     }
 
     // Send follow-up SMS
-    await sendTwilioSms(from, `Great! 🎉 To confirm your booking, please select your preferred date and time here: ${scheduleLink}`);
+    await sendTwilioSms(from, `Great! 🎉 To confirm your booking, please select your preferred date and time here: ${bookingLink}`);
 
     // Create admin notification
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
