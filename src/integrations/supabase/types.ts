@@ -561,6 +561,7 @@ export type Database = {
           deposit_refunded: boolean | null
           duration_minutes: number | null
           estimated_duration: number | null
+          extra_time_requested: boolean | null
           feedback_score: number | null
           guest_checkin_time: string | null
           guest_checkout_time: string | null
@@ -612,6 +613,7 @@ export type Database = {
           deposit_refunded?: boolean | null
           duration_minutes?: number | null
           estimated_duration?: number | null
+          extra_time_requested?: boolean | null
           feedback_score?: number | null
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
@@ -663,6 +665,7 @@ export type Database = {
           deposit_refunded?: boolean | null
           duration_minutes?: number | null
           estimated_duration?: number | null
+          extra_time_requested?: boolean | null
           feedback_score?: number | null
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
