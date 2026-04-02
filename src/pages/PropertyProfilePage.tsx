@@ -82,12 +82,16 @@ export default function PropertyProfilePage() {
         <TabsList className="w-full">
           <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
           <TabsTrigger value="sop" className="flex-1">SOP & Restocking</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1">Job History</TabsTrigger>
         </TabsList>
         <TabsContent value="details">
           <DetailsTab property={property} cleaners={cleaners} />
         </TabsContent>
         <TabsContent value="sop">
           <SOPTab property={property} />
+        </TabsContent>
+        <TabsContent value="history">
+          <JobHistoryTab propertyId={property.id} />
         </TabsContent>
       </Tabs>
 
