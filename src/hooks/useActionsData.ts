@@ -25,7 +25,7 @@ export function useActionsData() {
       const { data } = await supabase
         .from('quote_requests')
         .select('id, first_name, last_name, phone, address, clean_type, preferred_date, bedrooms, bathrooms, status, created_at')
-        .in('status', ['pending_form', 'form_submitted', 'awaiting_quote'])
+        .in('status', ['form_submitted', 'awaiting_quote'])
         .order('created_at', { ascending: true });
       return (data || []).map((r: any) => ({
         id: `qn-${r.id}`,
