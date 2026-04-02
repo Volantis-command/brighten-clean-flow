@@ -221,6 +221,93 @@ export type Database = {
           },
         ]
       }
+      google_calendar_config: {
+        Row: {
+          access_token: string | null
+          add_cleaner: boolean
+          auto_create_event: boolean
+          calendar_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          invite_client: boolean
+          refresh_token: string | null
+          token_expiry: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          add_cleaner?: boolean
+          auto_create_event?: boolean
+          calendar_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          invite_client?: boolean
+          refresh_token?: string | null
+          token_expiry?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          add_cleaner?: boolean
+          auto_create_event?: boolean
+          calendar_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          invite_client?: boolean
+          refresh_token?: string | null
+          token_expiry?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guesty_config: {
+        Row: {
+          access_token: string | null
+          account_name: string | null
+          api_key: string | null
+          auto_create_job: boolean
+          buffer_hours: number
+          client_id: string | null
+          client_secret: string | null
+          created_at: string
+          default_clean_type: string
+          id: string
+          refresh_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_name?: string | null
+          api_key?: string | null
+          auto_create_job?: boolean
+          buffer_hours?: number
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          default_clean_type?: string
+          id?: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          account_name?: string | null
+          api_key?: string | null
+          auto_create_job?: boolean
+          buffer_hours?: number
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          default_clean_type?: string
+          id?: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       job_acceptances: {
         Row: {
           acceptance_status: string
@@ -563,8 +650,10 @@ export type Database = {
           estimated_duration: number | null
           extra_time_requested: boolean | null
           feedback_score: number | null
+          google_event_id: string | null
           guest_checkin_time: string | null
           guest_checkout_time: string | null
+          guesty_reservation_id: string | null
           id: string
           invoice_amount: number | null
           invoice_notes: string | null
@@ -615,8 +704,10 @@ export type Database = {
           estimated_duration?: number | null
           extra_time_requested?: boolean | null
           feedback_score?: number | null
+          google_event_id?: string | null
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
+          guesty_reservation_id?: string | null
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
@@ -667,8 +758,10 @@ export type Database = {
           estimated_duration?: number | null
           extra_time_requested?: boolean | null
           feedback_score?: number | null
+          google_event_id?: string | null
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
+          guesty_reservation_id?: string | null
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
