@@ -4,8 +4,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { useActionsData, type ActionItem } from '@/hooks/useActionsData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, CalendarPlus, MessageSquare, Clock, PlayCircle, CheckCircle2, ChevronRight } from 'lucide-react';
+import { FileText, CalendarPlus, MessageSquare, Clock, PlayCircle, CheckCircle2, ChevronRight, UserCheck } from 'lucide-react';
 import { ScheduleApprovalModal } from '@/components/schedule/ScheduleApprovalModal';
+import { ConfirmCleanModal } from '@/components/schedule/ConfirmCleanModal';
 
 interface GroupConfig {
   key: string;
@@ -16,6 +17,7 @@ interface GroupConfig {
 const GROUPS: GroupConfig[] = [
   { key: 'quotes_needed', label: '📝 Quotes Needed', icon: FileText },
   { key: 'awaiting_response', label: '📩 Awaiting Client Response', icon: Clock },
+  { key: 'confirm_clean_date', label: '📅 Confirm Clean Date', icon: UserCheck },
   { key: 'awaiting_schedule', label: '📅 Pending Schedule Approval', icon: CalendarPlus },
   { key: 'unread_messages', label: '💬 Unread Messages', icon: MessageSquare },
   { key: 'jobs_in_progress', label: '🔄 Jobs In Progress', icon: PlayCircle },
@@ -58,10 +60,12 @@ export default function ActionsPage() {
   const [searchParams] = useSearchParams();
   const filterGroup = searchParams.get('filter');
   const [approvalItem, setApprovalItem] = useState<ActionItem | null>(null);
+  const [confirmItem, setConfirmItem] = useState<ActionItem | null>(null);
 
   const {
     quotesNeeded,
     awaitingResponse,
+    confirmCleanDate,
     awaitingSchedule,
     unreadMessages,
     jobsInProgress,
@@ -72,6 +76,7 @@ export default function ActionsPage() {
   const dataMap: Record<string, ActionItem[]> = {
     quotes_needed: quotesNeeded,
     awaiting_response: awaitingResponse,
+    confirm_clean_date: confirmCleanDate,
     awaiting_schedule: awaitingSchedule,
     unread_messages: unreadMessages,
     jobs_in_progress: jobsInProgress,
@@ -81,6 +86,7 @@ export default function ActionsPage() {
   const actionLabels: Record<string, string> = {
     quotes_needed: 'Send Quote',
     awaiting_response: 'View',
+    confirm_clean_date: 'Confirm & Assign',
     awaiting_schedule: 'Approve',
     unread_messages: 'Reply',
     jobs_in_progress: 'View',
@@ -128,7 +134,11 @@ export default function ActionsPage() {
                   key={item.id}
                   item={item}
                   actionLabel={actionLabels[group.key]}
-                  onClick={group.key === 'awaiting_schedule' ? () => setApprovalItem(item) : undefined}
+                  onClick={
+                    group.key === 'awaiting_schedule' ? () => setApprovalItem(item) :
+                    group.key === 'confirm_clean_date' ? () => setConfirmItem(item) :
+                    undefined
+                  }
                 />
               ))}
             </div>
@@ -140,6 +150,12 @@ export default function ActionsPage() {
         open={!!approvalItem}
         onOpenChange={(open) => { if (!open) setApprovalItem(null); }}
         item={approvalItem}
+      />
+
+      <ConfirmCleanModal
+        open={!!confirmItem}
+        onOpenChange={(open) => { if (!open) setConfirmItem(null); }}
+        item={confirmItem}
       />
     </div>
   );
