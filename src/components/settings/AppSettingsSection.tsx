@@ -118,7 +118,13 @@ export default function AppSettingsSection() {
         </div>
 
         <Button
-          onClick={() => saveMutation.mutate()}
+          onClick={() => {
+            if (form.secondary_contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.secondary_contact_email)) {
+              toast.error('Secondary contact email is not a valid email address');
+              return;
+            }
+            saveMutation.mutate();
+          }}
           disabled={saveMutation.isPending}
           className="bg-primary text-primary-foreground font-bold rounded-xl gap-2"
         >
