@@ -106,6 +106,31 @@ export default function AppSettingsSection() {
           <Input type="number" min="50" step="50" value={form.geofence_radius || '200'} onChange={(e) => update('geofence_radius', e.target.value)} />
         </div>
         <div>
+          <Label>Google Review URL</Label>
+          <Input
+            type="url"
+            value={form.google_review_url || ''}
+            onChange={(e) => update('google_review_url', e.target.value)}
+            placeholder="https://g.page/r/your-business/review"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Used in post-clean feedback SMS when clients rate 4-5 stars</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Pre-Service Reminders</Label>
+            <p className="text-xs text-muted-foreground">Send SMS reminders to clients (24h) and cleaners (2h) before jobs</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.reminders_enabled !== 'false'}
+            onClick={() => update('reminders_enabled', form.reminders_enabled === 'false' ? 'true' : 'false')}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${form.reminders_enabled === 'false' ? 'bg-muted' : 'bg-primary'}`}
+          >
+            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition-transform ${form.reminders_enabled === 'false' ? 'translate-x-0' : 'translate-x-5'}`} />
+          </button>
+        </div>
+        <div>
           <Label>Timezone</Label>
           <Select value={form.timezone || 'Australia/Brisbane'} onValueChange={(v) => update('timezone', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>

@@ -16,6 +16,13 @@ const TIME_WINDOWS = [
   { value: 'afternoon', label: '🌇 Afternoon (2pm – 5pm)' },
 ];
 
+const FREQUENCIES = [
+  { value: 'one_off', label: 'One-off' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'fortnightly', label: 'Fortnightly' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
 export default function BookingPage() {
   const [searchParams] = useSearchParams();
   const leadId = searchParams.get('lead');
@@ -24,12 +31,12 @@ export default function BookingPage() {
 
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('');
+  const [frequency, setFrequency] = useState('one_off');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmedDate, setConfirmedDate] = useState('');
   const [error, setError] = useState('');
 
-  // Fetch quote_request details for context if name/service not in URL
   const [qrData, setQrData] = useState<any>(null);
   useEffect(() => {
     if (!leadId) return;
@@ -56,7 +63,6 @@ export default function BookingPage() {
     const formattedDate = format(date, 'yyyy-MM-dd');
 
     try {
-      // 1. Update quote_requests status to accepted
       const { error: qrError } = await supabase
         .from('quote_requests')
         .update({
@@ -64,12 +70,11 @@ export default function BookingPage() {
           accepted_at: new Date().toISOString(),
           preferred_date: formattedDate,
           preferred_time: time,
+          preferred_frequency: frequency,
         })
         .eq('id', leadId);
 
       if (qrError) throw qrError;
-
-      // Notification will be picked up by admin via Actions inbox (quote_requests status = 'accepted')
 
       setConfirmedDate(format(date, 'EEEE d MMMM yyyy'));
       setSubmitted(true);
@@ -92,6 +97,11 @@ export default function BookingPage() {
           <p className="text-muted-foreground">
             We'll see you on <span className="font-bold text-foreground">{confirmedDate}</span>.
           </p>
+          {frequency !== 'one_off' && (
+            <p className="text-sm font-semibold text-primary">
+              🔄 {FREQUENCIES.find(f => f.value === frequency)?.label} recurring clean set up
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
           </p>
@@ -151,6 +161,27 @@ export default function BookingPage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm font-bold">Frequency</Label>
+          <div className="flex gap-2 flex-wrap">
+            {FREQUENCIES.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFrequency(f.value)}
+                className={cn(
+                  'px-4 py-2 rounded-full text-sm font-bold border-2 transition-all',
+                  frequency === f.value
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error ? <p className="text-center text-sm text-destructive">{error}</p> : null}

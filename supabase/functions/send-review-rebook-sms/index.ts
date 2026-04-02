@@ -5,6 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function formatAuPhone(phone: string): string {
+  let cleaned = phone.replace(/[\s\-()]/g, '');
+  if (cleaned.startsWith('+61')) return cleaned;
+  if (cleaned.startsWith('61') && cleaned.length >= 11) return '+' + cleaned;
+  if (cleaned.startsWith('0')) return '+61' + cleaned.slice(1);
+  return '+61' + cleaned;
+}
+
 async function sendTwilioSms(to: string, body: string): Promise<{ success: boolean; sid?: string; error?: string }> {
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
@@ -39,18 +47,16 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Check if manual trigger with specific job_id
     let manualJobId: string | null = null;
     let manualType: string | null = null;
     if (req.method === 'POST') {
       try {
         const body = await req.json();
         manualJobId = body.job_id || null;
-        manualType = body.type || null; // 'review' or 'rebook'
+        manualType = body.type || null;
       } catch { /* scheduled call with no body */ }
     }
 
-    // Fetch settings
     const { data: notifSettings } = await supabase
       .from('notification_settings')
       .select('key, enabled');
@@ -64,39 +70,34 @@ Deno.serve(async (req) => {
     (appSettings || []).forEach((s: any) => { settingsMap[s.key] = s.value; });
 
     const googleReviewUrl = settingsMap['google_review_url'] || '';
-    const reviewDelayHours = parseFloat(settingsMap['review_sms_delay_hours'] || '2');
-    const rebookDelayHours = parseFloat(settingsMap['rebook_sms_delay_hours'] || '24');
-    const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '').replace('https://','') || '';
+    const ratingDelayHours = parseFloat(settingsMap['review_sms_delay_hours'] || '2');
 
     const results: any[] = [];
     const now = new Date();
+    const ratingCutoff = new Date(now.getTime() - ratingDelayHours * 60 * 60 * 1000).toISOString();
 
-    // --- REVIEW SMS ---
-    if (notifMap['send_google_review_sms'] !== false && googleReviewUrl) {
-      const reviewCutoff = new Date(now.getTime() - reviewDelayHours * 60 * 60 * 1000).toISOString();
-
-      let reviewQuery = supabase
+    // ─── FEEDBACK RATING SMS (2h after completion) ───
+    {
+      let query = supabase
         .from('jobs')
-        .select('id, scheduled_date, property_id, properties(property_name, client_name)')
+        .select('id, scheduled_date, property_id, clock_off, properties(property_name, client_name)')
         .eq('status', 'complete')
-        .is('review_sms_sent_at', null);
+        .is('feedback_rating_sms_sent_at', null)
+        .not('clock_off', 'is', null);
 
-      if (manualJobId && manualType === 'review') {
-        reviewQuery = reviewQuery.eq('id', manualJobId);
+      if (manualJobId && manualType === 'rating') {
+        query = query.eq('id', manualJobId);
       } else if (!manualJobId) {
-        // Only jobs completed at least reviewDelayHours ago
-        // We approximate "completed at" by checking jobs that were updated before the cutoff
-        // Since we don't have a completed_at column, we filter by created_at or scheduled_date
+        // Only jobs completed at least ratingDelayHours ago
+        query = query.lte('clock_off', ratingCutoff);
       }
 
-      const { data: reviewJobs } = await reviewQuery.limit(50);
+      const { data: ratingJobs } = await query.limit(50);
 
-      for (const job of (reviewJobs || [])) {
+      for (const job of (ratingJobs || [])) {
         const property = (job as any).properties;
-        const clientName = property?.client_name;
-        if (!clientName) continue;
+        if (!property?.client_name) continue;
 
-        // Find client profile with phone
         const { data: clientProps } = await supabase
           .from('client_properties')
           .select('client_id')
@@ -113,28 +114,28 @@ Deno.serve(async (req) => {
 
         if (!profile?.phone) continue;
 
-        const firstName = (profile.full_name || clientName || 'there').split(' ')[0];
-        const message = `Hi ${firstName}, thank you for choosing Brightly Cleaning! We hope everything looks amazing ✨\n\nIf you're happy with the result, we'd love a Google review — it means the world to a small business: ${googleReviewUrl}`;
+        const firstName = (profile.full_name || property.client_name || 'there').split(' ')[0];
+        const message = `Hi ${firstName}, how was your Brightly clean today? Reply 1-5 to rate us ⭐`;
 
-        const smsResult = await sendTwilioSms(profile.phone, message);
+        const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
 
         if (smsResult.success) {
-          await supabase.from('jobs').update({ review_sms_sent_at: now.toISOString() }).eq('id', job.id);
-          results.push({ job_id: job.id, type: 'review', status: 'sent' });
+          await supabase.from('jobs').update({ feedback_rating_sms_sent_at: now.toISOString() }).eq('id', job.id);
+          results.push({ job_id: job.id, type: 'rating', status: 'sent' });
         } else {
-          results.push({ job_id: job.id, type: 'review', status: 'failed', error: smsResult.error });
+          results.push({ job_id: job.id, type: 'rating', status: 'failed', error: smsResult.error });
         }
       }
     }
 
-    // --- REBOOK SMS ---
+    // ─── REBOOK SMS (one-off jobs, 24h+ after completion) ───
     if (notifMap['send_rebook_sms'] !== false) {
       let rebookQuery = supabase
         .from('jobs')
         .select('id, scheduled_date, property_id, series_id, properties(property_name, client_name)')
         .eq('status', 'complete')
         .is('rebook_sms_sent_at', null)
-        .is('series_id', null); // Only one-off jobs
+        .is('series_id', null);
 
       if (manualJobId && manualType === 'rebook') {
         rebookQuery = supabase
@@ -147,14 +148,10 @@ Deno.serve(async (req) => {
       const { data: rebookJobs } = await rebookQuery.limit(50);
 
       for (const job of (rebookJobs || [])) {
-        // Skip recurring jobs
         if ((job as any).series_id) continue;
-
         const property = (job as any).properties;
-        const clientName = property?.client_name;
-        if (!clientName) continue;
+        if (!property?.client_name) continue;
 
-        // Find client
         const { data: clientProps } = await supabase
           .from('client_properties')
           .select('client_id, portal_token')
@@ -171,28 +168,12 @@ Deno.serve(async (req) => {
 
         if (!profile?.phone) continue;
 
-        // Check if client already has recurring jobs on this property
-        const { data: activeSeries } = await supabase
-          .from('job_series')
-          .select('id')
-          .eq('property_id', job.property_id!)
-          .limit(1);
-
-        if (activeSeries?.length) {
-          // Skip — client already has recurring booking
-          await supabase.from('jobs').update({ rebook_sms_sent_at: now.toISOString() }).eq('id', job.id);
-          results.push({ job_id: job.id, type: 'rebook', status: 'skipped_recurring' });
-          continue;
-        }
-
-        const firstName = (profile.full_name || clientName || 'there').split(' ')[0];
+        const firstName = (profile.full_name || property.client_name || 'there').split(' ')[0];
         const portalToken = clientProps[0].portal_token || '';
-        // Use the app's public URL
         const rebookUrl = `https://app.brightly.cleaning/quote/rebook/${portalToken}`;
-
         const message = `Hi ${firstName}, hope you're loving the clean! 🏡\n\nReady to book your next one? It's quick and easy: ${rebookUrl}\n\n— The Brightly Team`;
 
-        const smsResult = await sendTwilioSms(profile.phone, message);
+        const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
 
         if (smsResult.success) {
           await supabase.from('jobs').update({ rebook_sms_sent_at: now.toISOString() }).eq('id', job.id);

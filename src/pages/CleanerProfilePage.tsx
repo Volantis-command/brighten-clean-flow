@@ -1,9 +1,30 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, Phone, Mail } from 'lucide-react';
+import { LogOut, Phone, Mail, Star } from 'lucide-react';
 
 export default function CleanerProfilePage() {
-  const { profile, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
+
+  const userId = user?.id;
+
+  const { data: avgRating } = useQuery({
+    queryKey: ['cleaner-avg-rating', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data: jobs } = await supabase
+        .from('jobs')
+        .select('feedback_score')
+        .or(`cleaner_1_id.eq.${userId},cleaner_2_id.eq.${userId}`)
+        .not('feedback_score', 'is', null);
+
+      if (!jobs?.length) return null;
+      const scores = jobs.map(j => j.feedback_score!).filter(s => s > 0);
+      if (!scores.length) return null;
+      return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+    },
+  });
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -16,9 +37,17 @@ export default function CleanerProfilePage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground">{profile?.full_name || 'Cleaner'}</h2>
-            <span className="inline-block text-xs font-bold bg-secondary text-secondary-foreground px-3 py-1 rounded-full mt-1">
-              Cleaner
-            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="inline-block text-xs font-bold bg-secondary text-secondary-foreground px-3 py-1 rounded-full">
+                Cleaner
+              </span>
+              {avgRating && (
+                <span className="inline-flex items-center gap-1 text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                  {avgRating} avg
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

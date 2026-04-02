@@ -636,7 +636,9 @@ export type Database = {
           cleaner_1_id: string | null
           cleaner_2_id: string | null
           cleaner_notes: string | null
+          cleaner_reminder_sms_sent_at: string | null
           client_booking_sms_sent_at: string | null
+          client_reminder_sms_sent_at: string | null
           clock_off: string | null
           clock_on: string | null
           completion_notes: string | null
@@ -649,6 +651,7 @@ export type Database = {
           duration_minutes: number | null
           estimated_duration: number | null
           extra_time_requested: boolean | null
+          feedback_rating_sms_sent_at: string | null
           feedback_score: number | null
           google_event_id: string | null
           guest_checkin_time: string | null
@@ -690,7 +693,9 @@ export type Database = {
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           cleaner_notes?: string | null
+          cleaner_reminder_sms_sent_at?: string | null
           client_booking_sms_sent_at?: string | null
+          client_reminder_sms_sent_at?: string | null
           clock_off?: string | null
           clock_on?: string | null
           completion_notes?: string | null
@@ -703,6 +708,7 @@ export type Database = {
           duration_minutes?: number | null
           estimated_duration?: number | null
           extra_time_requested?: boolean | null
+          feedback_rating_sms_sent_at?: string | null
           feedback_score?: number | null
           google_event_id?: string | null
           guest_checkin_time?: string | null
@@ -744,7 +750,9 @@ export type Database = {
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           cleaner_notes?: string | null
+          cleaner_reminder_sms_sent_at?: string | null
           client_booking_sms_sent_at?: string | null
+          client_reminder_sms_sent_at?: string | null
           clock_off?: string | null
           clock_on?: string | null
           completion_notes?: string | null
@@ -757,6 +765,7 @@ export type Database = {
           duration_minutes?: number | null
           estimated_duration?: number | null
           extra_time_requested?: boolean | null
+          feedback_rating_sms_sent_at?: string | null
           feedback_score?: number | null
           google_event_id?: string | null
           guest_checkin_time?: string | null
@@ -1536,6 +1545,7 @@ export type Database = {
           phone: string | null
           photos: Json | null
           preferred_date: string | null
+          preferred_frequency: string | null
           preferred_time: string | null
           property_size: string | null
           property_type: string | null
@@ -1579,6 +1589,7 @@ export type Database = {
           phone?: string | null
           photos?: Json | null
           preferred_date?: string | null
+          preferred_frequency?: string | null
           preferred_time?: string | null
           property_size?: string | null
           property_type?: string | null
@@ -1622,6 +1633,7 @@ export type Database = {
           phone?: string | null
           photos?: Json | null
           preferred_date?: string | null
+          preferred_frequency?: string | null
           preferred_time?: string | null
           property_size?: string | null
           property_type?: string | null

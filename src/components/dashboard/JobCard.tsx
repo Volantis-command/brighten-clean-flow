@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, MapPin, Users, Loader2, Navigation } from 'lucide-react';
+import { Clock, MapPin, Users, Loader2, Navigation, Repeat, Star } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 
@@ -21,6 +21,8 @@ interface JobCardProps {
   onStartJob?: () => Promise<void>;
   showNavigateButton?: boolean;
   acceptances?: JobCardAcceptance[];
+  isRecurring?: boolean;
+  feedbackScore?: number | null;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -42,6 +44,8 @@ export function JobCard({
   onStartJob,
   showNavigateButton,
   acceptances,
+  isRecurring,
+  feedbackScore,
 }: JobCardProps) {
   const statusInfo = statusConfig[status] || statusConfig.scheduled;
   const cleanerNames = [cleaner1Name, cleaner2Name].filter(Boolean).join(', ');
@@ -79,10 +83,21 @@ export function JobCard({
       className={`w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border ${getBorderClass()}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
-        <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
-          {statusInfo.label}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {isRecurring && <Repeat className="h-4 w-4 text-primary shrink-0" />}
+          <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {feedbackScore != null && feedbackScore > 0 && (
+            <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+              <Star className="h-3.5 w-3.5 fill-amber-500" />
+              {feedbackScore}
+            </span>
+          )}
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
+            {statusInfo.label}
+          </span>
+        </div>
       </div>
 
       {address && (
