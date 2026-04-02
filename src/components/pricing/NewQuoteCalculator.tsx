@@ -106,6 +106,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const leadId = searchParams.get('lead');
   const [showConfirm, setShowConfirm] = useState(false);
   const rates = pricing?.map || {};
+  const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
 
