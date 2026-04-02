@@ -187,7 +187,7 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
-  // GROUP 5: Jobs In Progress today
+  // GROUP 5: Jobs In Progress today (exclude cancelled)
   const { data: jobsInProgress = [] } = useQuery({
     queryKey: ['actions-jobs-in-progress', today],
     queryFn: async () => {
@@ -208,7 +208,7 @@ export function useActionsData() {
     enabled: isAdmin,
   });
 
-  // GROUP 6: Completed Today
+  // GROUP 6: Completed Today (exclude cancelled)
   const { data: completedToday = [] } = useQuery({
     queryKey: ['actions-completed-today', today],
     queryFn: async () => {

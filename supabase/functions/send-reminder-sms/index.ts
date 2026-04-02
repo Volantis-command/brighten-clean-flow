@@ -54,6 +54,25 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // Handle reschedule request from client
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      if (body.type === 'reschedule_request') {
+        const { data: settings } = await supabase.from('app_settings').select('value').eq('key', 'business_phone').maybeSingle();
+        const adminPhone = settings?.value || Deno.env.get('ADMIN_PHONE');
+        if (adminPhone) {
+          const msg = `Reschedule request from ${body.client_name || 'Client'} at ${body.address || 'N/A'} on ${body.date || 'N/A'}. Call them back.`;
+          const result = await sendTwilioSms(formatAuPhone(adminPhone), msg);
+          return new Response(JSON.stringify({ success: result.success }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ success: false, error: 'No admin phone configured' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Check if reminders are enabled
     const { data: appSettings } = await supabase
       .from('app_settings')
