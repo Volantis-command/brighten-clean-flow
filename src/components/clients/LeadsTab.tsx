@@ -47,12 +47,15 @@ export default function LeadsTab() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'client_accepted', 'awaiting_schedule_approval', 'quote_declined', 'declined'];
+
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['quote-requests'],
+    queryKey: ['quote-requests-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quote_requests')
         .select('*')
+        .in('status', LEAD_STATUSES)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
