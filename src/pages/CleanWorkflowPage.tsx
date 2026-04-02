@@ -77,8 +77,12 @@ export default function CleanWorkflowPage() {
     property,
     userId: user!.id,
     onNext: (nextStep: WorkflowStep) => {
+      manualStepRef.current = nextStep;
       setStep(nextStep);
-      refreshJob();
+      refreshJob().then(() => {
+        // Allow resolveStep to take over again after data is fresh
+        manualStepRef.current = null;
+      });
     },
     onBack: () => navigate('/my-cleans'),
   };
