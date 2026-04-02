@@ -8,15 +8,7 @@ import { Camera, Loader2, ArrowLeft, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
 import ClockedOnBanner from './ClockedOnBanner';
-
-const DEFAULT_CHECKLIST = [
-  { room: 'Kitchen', tasks: ['Benchtops wiped', 'Stovetop cleaned', 'Sink scrubbed', 'Appliances wiped'] },
-  { room: 'Bathrooms', tasks: ['Toilet scrubbed', 'Shower/bath scrubbed', 'Vanity wiped', 'Mirror cleaned'] },
-  { room: 'Bedrooms', tasks: ['Surfaces dusted', 'Bed made / linen changed', 'Floors vacuumed'] },
-  { room: 'Living Areas', tasks: ['Surfaces dusted', 'Floors vacuumed and mopped'] },
-  { room: 'Vacuuming', tasks: ['All floors vacuumed'] },
-  { room: 'Mopping', tasks: ['All hard floors mopped'] },
-];
+import { seedDefaultChecklist } from './defaultChecklist';
 
 interface CheckItem {
   id: string;
