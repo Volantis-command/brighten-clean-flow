@@ -53,6 +53,9 @@ import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import NotFound from "./pages/NotFound";
+import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
+import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
+import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
 
 const queryClient = new QueryClient();
 
