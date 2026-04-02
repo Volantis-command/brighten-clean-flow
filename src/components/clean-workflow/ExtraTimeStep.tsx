@@ -44,7 +44,6 @@ export default function ExtraTimeStep({ job, property, userId, onNext, onBack }:
     setSaving(true);
 
     if (answer === 'yes') {
-      // Update job
       await supabase.from('jobs').update({
         extra_time_requested: true,
       }).eq('id', job.id);
@@ -74,6 +73,9 @@ export default function ExtraTimeStep({ job, property, userId, onNext, onBack }:
       }
 
       toast.success('Extra time request sent to admin for approval.');
+    } else {
+      // Mark as answered "no" so resolveStep knows this step is done
+      await supabase.from('jobs').update({ extra_time_requested: false }).eq('id', job.id);
     }
 
     setSaving(false);

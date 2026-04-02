@@ -47,6 +47,9 @@ export default function DamageCheckStep({ job, property, userId, onNext, onBack 
     if (answer === 'yes') {
       const notes = [{ type: 'damage', note, photo_url: photo ?? undefined }];
       await supabase.from('jobs').update({ pre_clean_notes: notes as any }).eq('id', job.id);
+    } else {
+      // Store empty array to mark step as completed
+      await supabase.from('jobs').update({ pre_clean_notes: [] as any }).eq('id', job.id);
     }
     setSaving(false);
     onNext('extra_time');

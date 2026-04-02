@@ -16,7 +16,12 @@ export type WorkflowStep = 'geofence' | 'clock_on' | 'damage_check' | 'extra_tim
 
 function resolveStep(job: any): WorkflowStep {
   if (job.status === 'completed') return 'done';
-  if (job.clock_on && !job.clock_off) return 'in_progress';
+  if (job.clock_on && !job.clock_off) {
+    // Check if pre-clean questions have been answered
+    if (job.pre_clean_notes === null || job.pre_clean_notes === undefined) return 'damage_check';
+    if (job.extra_time_requested === null || job.extra_time_requested === undefined) return 'extra_time';
+    return 'in_progress';
+  }
   if (job.arrived_at && !job.clock_on) return 'clock_on';
   return 'geofence';
 }
