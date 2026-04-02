@@ -37,7 +37,6 @@ export default function SchedulePage() {
   const [selectedJob, setSelectedJob] = useState<ScheduleJob | null>(null);
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
-  const [acceptanceFilter, setAcceptanceFilter] = useState(searchParams.get('acceptance') || 'all');
 
   useEffect(() => {
     localStorage.setItem('schedule-view', view);
@@ -51,26 +50,8 @@ export default function SchedulePage() {
     setSearchParams(params, { replace: true });
   };
 
-  const handleAcceptanceChange = (value: string) => {
-    setAcceptanceFilter(value);
-    const params = new URLSearchParams(searchParams);
-    if (value === 'all') params.delete('acceptance');
-    else params.set('acceptance', value);
-    setSearchParams(params, { replace: true });
-  };
-
-  const getAcceptanceCategory = (jobId: string) => {
-    const acc = acceptancesByJob[jobId];
-    if (!acc || acc.length === 0) return 'none';
-    if (acc.some(a => a.acceptance_status === 'declined')) return 'declined';
-    if (acc.some(a => a.acceptance_status === 'pending')) return 'pending';
-    if (acc.every(a => a.acceptance_status === 'accepted')) return 'confirmed';
-    return 'pending';
-  };
-
   const filteredJobs = jobs.filter(j => {
     if (statusFilter !== 'all' && j.status !== statusFilter) return false;
-    if (acceptanceFilter !== 'all' && getAcceptanceCategory(j.id) !== acceptanceFilter) return false;
     return true;
   });
 
