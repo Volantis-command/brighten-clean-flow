@@ -172,10 +172,20 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         discountGp: editQuote.discount_gp_percent != null ? String(editQuote.discount_gp_percent) : '',
         notes: editQuote.notes || '',
         residentialAddons: Array.isArray(editQuote.extras) && editQuote.extras.length > 0 ? editQuote.extras : INITIAL.residentialAddons,
-        consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false },
-        includePhotoReport: false,
-        manualPriceOverride: false,
-        manualPriceIncGst: '',
+        consumables: (() => {
+          const cs = editQuote.consumables_selection;
+          if (cs && typeof cs === 'object') {
+            return {
+              amenities_kit: cs.amenities_kit === true,
+              wash_kit: cs.wash_kit === true,
+              tea_coffee_kit: cs.tea_coffee_kit === true,
+            };
+          }
+          return { amenities_kit: false, wash_kit: false, tea_coffee_kit: false };
+        })(),
+        includePhotoReport: editQuote.consumables_selection?.include_photo_report === true,
+        manualPriceOverride: editQuote.consumables_selection?.manual_price_override === true,
+        manualPriceIncGst: editQuote.consumables_selection?.manual_price_inc_gst != null ? String(editQuote.consumables_selection.manual_price_inc_gst) : '',
       });
     }
   }, [editQuote]);
@@ -425,6 +435,14 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         service_type: form.cleanType,
         extras: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
         ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
+        consumables_selection: {
+          amenities_kit: form.consumables.amenities_kit,
+          wash_kit: form.consumables.wash_kit,
+          tea_coffee_kit: form.consumables.tea_coffee_kit,
+          include_photo_report: form.includePhotoReport,
+          manual_price_override: form.manualPriceOverride,
+          manual_price_inc_gst: form.manualPriceOverride ? (parseFloat(form.manualPriceIncGst) || null) : null,
+        },
       };
 
       const existingId = editQuote?.id || savedQuoteId || (typeof leadFormData.quote_id === 'string' ? leadFormData.quote_id : null);
