@@ -9,9 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Check, Flag, Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, differenceInMinutes, parseISO } from 'date-fns';
+import PayrollTab from '@/components/timeclock/PayrollTab';
 
 export default function TimesheetsPage() {
   const { user } = useAuth();
