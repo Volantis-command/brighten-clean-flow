@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,10 +46,13 @@ export default function CleanWorkflowPage() {
     },
   });
 
-  const [step, setStep] = useState<WorkflowStep>('geofence');
+  const [step, setStep] = useState<WorkflowStep | null>(null);
+  const manualStepRef = useRef<WorkflowStep | null>(null);
 
   useEffect(() => {
-    if (job) setStep(resolveStep(job));
+    if (job && !manualStepRef.current) {
+      setStep(resolveStep(job));
+    }
   }, [job]);
 
   const refreshJob = async () => {
@@ -59,7 +62,7 @@ export default function CleanWorkflowPage() {
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
   };
 
-  if (isLoading || !job) {
+  if (isLoading || !job || !step) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -74,8 +77,12 @@ export default function CleanWorkflowPage() {
     property,
     userId: user!.id,
     onNext: (nextStep: WorkflowStep) => {
+      manualStepRef.current = nextStep;
       setStep(nextStep);
-      refreshJob();
+      refreshJob().then(() => {
+        // Allow resolveStep to take over again after data is fresh
+        manualStepRef.current = null;
+      });
     },
     onBack: () => navigate('/my-cleans'),
   };
