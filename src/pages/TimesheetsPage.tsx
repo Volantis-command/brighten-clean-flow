@@ -222,8 +222,17 @@ export default function TimesheetsPage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Timesheets & Payroll</h1>
+
+      <Tabs defaultValue="timesheets">
+        <TabsList>
+          <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
+          <TabsTrigger value="payroll">Payroll</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="timesheets">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Timesheets</h1>
+        <div />
         <Button onClick={exportCSV} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
           <Download className="w-4 h-4" /> Export Payroll CSV
         </Button>
