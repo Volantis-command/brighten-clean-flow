@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import TeamSection from '@/components/settings/TeamSection';
 import ClientsSection from '@/components/settings/ClientsSection';
