@@ -35,6 +35,9 @@ export default function ClockOnStep({ job, property, userId, onNext, onBack }: P
       return;
     }
 
+    // Seed default checklist if none exist for this property
+    await seedDefaultChecklist(property.id);
+
     // Create time_entry
     await supabase.from('time_entries').insert({
       job_id: job.id,
