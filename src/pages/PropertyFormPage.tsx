@@ -251,6 +251,21 @@ export default function PropertyFormPage() {
       setStep(0);
       return;
     }
+
+    // Case-insensitive duplicate detection for new properties
+    if (!isEdit) {
+      const { data: dupes } = await supabase
+        .from('properties')
+        .select('id, property_name')
+        .ilike('property_name', form.property_name.trim());
+      if (dupes && dupes.length > 0) {
+        const confirmed = window.confirm(
+          `A property with a similar name already exists: "${dupes[0].property_name}". Are you sure you want to create another?`
+        );
+        if (!confirmed) return;
+      }
+    }
+
     setSaving(true);
     const { lat, lng, has_product_restrictions, price_turnover, price_deep_clean, price_end_of_lease, price_post_build, avg_nightly_rate, ...rest } = form;
     const payload: Record<string, any> = {

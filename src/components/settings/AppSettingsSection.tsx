@@ -82,7 +82,16 @@ export default function AppSettingsSection() {
         </div>
         <div>
           <Label>Secondary Contact Email</Label>
-          <Input type="email" value={form.secondary_contact_email || ''} onChange={(e) => update('secondary_contact_email', e.target.value)} placeholder="soki@brightly.cleaning" />
+          <Input
+            type="email"
+            value={form.secondary_contact_email || ''}
+            onChange={(e) => update('secondary_contact_email', e.target.value)}
+            placeholder="soki@brightly.cleaning"
+            pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+          />
+          {form.secondary_contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.secondary_contact_email) && (
+            <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+          )}
         </div>
         <div>
           <Label>Secondary Contact Phone</Label>
@@ -109,7 +118,13 @@ export default function AppSettingsSection() {
         </div>
 
         <Button
-          onClick={() => saveMutation.mutate()}
+          onClick={() => {
+            if (form.secondary_contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.secondary_contact_email)) {
+              toast.error('Secondary contact email is not a valid email address');
+              return;
+            }
+            saveMutation.mutate();
+          }}
           disabled={saveMutation.isPending}
           className="bg-primary text-primary-foreground font-bold rounded-xl gap-2"
         >
