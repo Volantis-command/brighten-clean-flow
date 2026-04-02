@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
@@ -26,6 +26,27 @@ const TIME_LABEL: Record<string, string> = {
   afternoon: 'Afternoon (2pm–5pm)',
 };
 
+const TIME_SLOTS = [
+  { label: '7:00 AM', value: '07:00' },
+  { label: '8:00 AM', value: '08:00' },
+  { label: '9:00 AM', value: '09:00' },
+  { label: '10:00 AM', value: '10:00' },
+  { label: '11:00 AM', value: '11:00' },
+  { label: '12:00 PM', value: '12:00' },
+  { label: '1:00 PM', value: '13:00' },
+  { label: '2:00 PM', value: '14:00' },
+  { label: '3:00 PM', value: '15:00' },
+  { label: '4:00 PM', value: '16:00' },
+  { label: '5:00 PM', value: '17:00' },
+  { label: '6:00 PM', value: '18:00' },
+];
+
+const PREFERRED_TIME_DEFAULTS: Record<string, string> = {
+  morning: '08:00',
+  midday: '12:00',
+  afternoon: '14:00',
+};
+
 export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModalProps) {
   const meta = item?.meta;
   const queryClient = useQueryClient();
@@ -40,10 +61,11 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
     if (meta?.preferredDate) {
       setSelectedDate(new Date(meta.preferredDate + 'T00:00:00'));
     }
-    if (meta?.preferredTime) {
-      const defaults: Record<string, string> = { morning: '08:00', midday: '11:30', afternoon: '14:00' };
-      setSelectedTime(defaults[meta.preferredTime] || meta.preferredTime);
-    }
+    setSelectedTime(
+      meta?.preferredTime
+        ? PREFERRED_TIME_DEFAULTS[meta.preferredTime] || meta.preferredTime
+        : '14:00'
+    );
     setCleanerId('');
   }, [meta?.quoteRequestId]);
 
@@ -218,15 +240,26 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
             </Popover>
           </div>
 
-          {/* Time */}
+          {/* Time slots */}
           <div className="space-y-1.5">
             <Label className="text-sm font-bold">Time</Label>
-            <Input
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full"
-            />
+            <div className="grid grid-cols-4 gap-1.5">
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot.value}
+                  type="button"
+                  onClick={() => setSelectedTime(slot.value)}
+                  className={cn(
+                    'rounded-full px-2 py-1.5 text-xs font-semibold transition-colors border',
+                    selectedTime === slot.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-foreground border-border hover:bg-muted'
+                  )}
+                >
+                  {slot.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Cleaner dropdown */}
