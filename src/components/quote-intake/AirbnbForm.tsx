@@ -132,10 +132,19 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         </FormCard>
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Bedrooms</QuestionLabel><OptionGrid options={['1', '2', '3', '4', '5+']} value={bedrooms} onChange={setBedrooms} /></div>
+            <div className="space-y-2"><QuestionLabel>Bedrooms</QuestionLabel><OptionGrid options={['1', '2', '3', '4', '5+']} value={bedrooms} onChange={(v) => { setBedrooms(v); setBedTypes({}); }} /></div>
             <div className="space-y-2"><QuestionLabel>Bathrooms</QuestionLabel><OptionGrid options={['1', '2', '3', '4+']} value={bathrooms} onChange={setBathrooms} cols={4} /></div>
-            <div className="space-y-2"><QuestionLabel sub="e.g. 1x King, 2x Single">Bed configuration</QuestionLabel><Input value={bedConfig} onChange={e => setBedConfig(e.target.value)} placeholder="1x King, 2x Single" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Number of towel sets needed</QuestionLabel><OptionGrid options={['1', '2', '3', '4+']} value={towelSets} onChange={setTowelSets} cols={4} /></div>
+          </div>
+        </FormCard>
+        <FormCard>
+          <div className="space-y-5">
+            <QuestionLabel sub="Select the bed type for each bedroom">Bed configuration</QuestionLabel>
+            {Array.from({ length: Math.min(parseInt(bedrooms) || 1, 5) }, (_, i) => (
+              <div key={i} className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Bedroom {i + 1}</p>
+                <OptionGrid options={['King', 'Queen', 'Double', 'King Single', 'Single', 'Bunk Beds']} value={bedTypes[i] || ''} onChange={(v) => setBedTypes(prev => ({ ...prev, [i]: v }))} cols={3} />
+              </div>
+            ))}
           </div>
         </FormCard>
       </>
