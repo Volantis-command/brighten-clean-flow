@@ -1561,6 +1561,7 @@ export type Database = {
           client_name: string | null
           client_phone: string | null
           consumables_cost: number | null
+          consumables_selection: Json | null
           created_at: string
           created_by: string | null
           deep_clean_multiplier: number | null
@@ -1619,6 +1620,7 @@ export type Database = {
           client_name?: string | null
           client_phone?: string | null
           consumables_cost?: number | null
+          consumables_selection?: Json | null
           created_at?: string
           created_by?: string | null
           deep_clean_multiplier?: number | null
@@ -1677,6 +1679,7 @@ export type Database = {
           client_name?: string | null
           client_phone?: string | null
           consumables_cost?: number | null
+          consumables_selection?: Json | null
           created_at?: string
           created_by?: string | null
           deep_clean_multiplier?: number | null
