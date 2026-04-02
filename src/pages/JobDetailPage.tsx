@@ -1081,13 +1081,23 @@ export default function JobDetailPage() {
 
       {/* Actions */}
       <div className="space-y-3">
-        {(role === 'cleaner' || role === 'head_cleaner') && job.status !== 'completed' && job.status !== 'complete' ? (
-          <Button
-            className="w-full gap-2 h-16 text-lg font-extrabold bg-green-600 hover:bg-green-700 text-white rounded-2xl"
-            onClick={() => navigate(`/clean/${jobId}`)}
-          >
-            {job.status === 'in_progress' ? 'Continue Job' : job.clock_on ? 'Resume Job' : 'Start Job'}
-          </Button>
+        {(role === 'cleaner' || role === 'head_cleaner') && !job.clock_off && (
+          job.clock_on ? (
+            <Button
+              className="w-full gap-2 h-16 text-lg font-extrabold bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-2xl"
+              onClick={() => navigate(`/clean/${jobId}`)}
+            >
+              End Job
+            </Button>
+          ) : job.status !== 'completed' && job.status !== 'complete' ? (
+            <Button
+              className="w-full gap-2 h-16 text-lg font-extrabold bg-green-600 hover:bg-green-700 text-white rounded-2xl"
+              onClick={() => navigate(`/clean/${jobId}`)}
+            >
+              Start Job
+            </Button>
+          ) : null
+        )}
         ) : (
           <Button
             className="w-full gap-2 h-12 text-base font-bold"
