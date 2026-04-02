@@ -230,6 +230,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     loadLead();
   }, [leadId, editQuote]);
 
+  const { data: properties = [] } = useQuery({
     queryKey: ['properties-list'],
     queryFn: async () => {
       const { data, error } = await supabase
