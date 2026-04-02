@@ -99,6 +99,24 @@ export default function PropertiesPage() {
         />
       </div>
 
+      {/* Duplicate properties alert */}
+      {role === 'admin' && duplicateGroups.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">
+              {duplicateGroups.length} duplicate {duplicateGroups.length === 1 ? 'property' : 'properties'} detected
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Properties with the same address (different capitalisation) were found. Review and merge to avoid confusion.
+            </p>
+            <Button variant="outline" size="sm" className="mt-2 gap-1 rounded-xl" onClick={() => setMergeDialogOpen(true)}>
+              <Merge className="h-4 w-4" /> Review Duplicates
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <p className="text-primary font-bold">Loading properties…</p>
