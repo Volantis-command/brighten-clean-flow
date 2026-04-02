@@ -1300,6 +1300,8 @@ export default function JobDetailPage() {
         )}
       </div>
 
+      <CancelJobModal open={cancelOpen} onOpenChange={setCancelOpen} jobId={jobId!} onCancelled={() => navigate('/schedule')} />
+
       {/* Price Prompt Modal */}
       <Dialog open={showPricePrompt} onOpenChange={setShowPricePrompt}>
         <DialogContent>
