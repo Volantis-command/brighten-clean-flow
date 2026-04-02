@@ -72,15 +72,15 @@ export function useActionsData() {
     queryKey: ['actions-awaiting-response'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('quotes')
-        .select('id, client_name, client_phone, property_address, property_name, clean_type, quote_sent_at, created_at')
+        .from('quote_requests')
+        .select('id, first_name, last_name, phone, address, clean_type, quote_sent_at, created_at')
         .eq('status', 'quote_sent')
         .order('quote_sent_at', { ascending: true });
       return (data || []).map((q: any) => ({
         id: `ar-${q.id}`,
         group: 'awaiting_response',
-        title: `Quote sent — awaiting response · ${q.client_name || 'Client'}`,
-        subtitle: `${q.property_address || q.property_name || ''} · ${q.clean_type || ''}`.trim(),
+        title: `Quote sent — awaiting response · ${[q.first_name, q.last_name].filter(Boolean).join(' ') || 'Client'}`,
+        subtitle: `${q.address || ''} · ${q.clean_type || ''}`.trim(),
         timestamp: q.quote_sent_at || q.created_at,
         path: `/quoting?lead=${q.id}`,
       }));
