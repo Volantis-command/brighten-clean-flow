@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
         });
 
       let newUserId: string;
+      let existingUser = false;
 
       if (createError) {
         if (createError.message.includes("already been registered")) {
@@ -95,6 +96,19 @@ Deno.serve(async (req) => {
             });
           }
           newUserId = existing.id;
+          existingUser = true;
+
+          // Guard: never overwrite an admin's role
+          const { data: isExistingAdmin } = await adminClient.rpc("has_role", {
+            _user_id: newUserId,
+            _role: "admin",
+          });
+          if (isExistingAdmin) {
+            return new Response(
+              JSON.stringify({ error: "This email belongs to an admin account and cannot be reassigned." }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
         } else {
           return new Response(JSON.stringify({ error: createError.message }), {
             status: 400,
@@ -105,8 +119,14 @@ Deno.serve(async (req) => {
         newUserId = createData.user.id;
       }
 
-      await adminClient.from("user_roles").delete().eq("user_id", newUserId);
-      await adminClient.from("user_roles").insert({ user_id: newUserId, role });
+      // For existing users, upsert role; for new users, insert
+      if (existingUser) {
+        await adminClient
+          .from("user_roles")
+          .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
+      } else {
+        await adminClient.from("user_roles").insert({ user_id: newUserId, role });
+      }
 
       if (phone || full_name) {
         const updates: Record<string, string> = {};
