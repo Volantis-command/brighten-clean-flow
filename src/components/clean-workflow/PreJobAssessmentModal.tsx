@@ -16,20 +16,19 @@ interface Props {
 
 export default function PreJobAssessmentModal({ job, property, userId, onComplete }: Props) {
   const [step, setStep] = useState<ModalStep>('damage');
-
-  // Damage state
   const [damagePhotos, setDamagePhotos] = useState<string[]>([]);
   const [damageNotes, setDamageNotes] = useState('');
   const [uploadingDamage, setUploadingDamage] = useState(false);
   const [savingDamage, setSavingDamage] = useState(false);
   const damageFileRef = useRef<HTMLInputElement>(null);
 
-  // Extra time state
   const [extraPhotos, setExtraPhotos] = useState<string[]>([]);
   const [extraNotes, setExtraNotes] = useState('');
   const [uploadingExtra, setUploadingExtra] = useState(false);
   const [savingExtra, setSavingExtra] = useState(false);
   const extraFileRef = useRef<HTMLInputElement>(null);
+
+  const allocatedHrs = job.estimated_duration ? (job.estimated_duration / 60).toFixed(1) : '?';
 
   async function uploadPhoto(
     file: File,
@@ -54,9 +53,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       await supabase.functions.invoke('send-job-sms', {
         body: { to: 'ADMIN', message },
       });
-    } catch {
-      // Non-blocking — notification also sent in-app
-    }
+    } catch { /* Non-blocking */ }
   }
 
   async function handleNoDamage() {
@@ -69,8 +66,6 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
 
   async function handleSubmitDamage() {
     setSavingDamage(true);
-
-    // Get cleaner name
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle();
     const cleanerName = profile?.full_name || 'A cleaner';
     const address = property?.address || property?.property_name || 'Unknown';
@@ -82,49 +77,35 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       pre_clean_notes: [{ type: 'damage', note: damageNotes, photos: damagePhotos }] as any,
     }).eq('id', job.id);
 
-    // Save photos to job_photos table
     for (const url of damagePhotos) {
       const storagePath = url.split('/job-photos/')[1] ?? '';
       await supabase.from('job_photos').insert({
-        job_id: job.id,
-        storage_path: storagePath,
-        public_url: url,
-        room_label: 'Damage Report',
+        job_id: job.id, storage_path: storagePath, public_url: url, room_label: 'Damage Report',
       });
     }
 
-    // Admin notification
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     if (admins) {
-      const notifs = admins.map((a: any) => ({
-        user_id: a.user_id,
-        title: '⚠️ Damage Reported',
+      await supabase.from('notifications').insert(admins.map((a: any) => ({
+        user_id: a.user_id, title: '⚠️ Damage Reported',
         message: `${cleanerName} reported existing damage at ${address}`,
-        type: 'damage_report',
-        link: `/jobs/${job.id}`,
-      }));
-      await supabase.from('notifications').insert(notifs);
+        type: 'damage_report', link: `/jobs/${job.id}`,
+      })));
     }
 
-    // SMS to admin
-    const smsBody = `⚠️ DAMAGE REPORTED — ${cleanerName} has reported existing damage at ${address} before the clean started. Log in to review: https://app.brightly.cleaning/jobs/${job.id}`;
-    await sendAdminSms(smsBody);
-
+    await sendAdminSms(`⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address} before starting. View: https://app.brightly.cleaning/jobs/${job.id}`);
     toast.success('Damage report submitted');
     setSavingDamage(false);
     setStep('extra_time');
   }
 
   async function handleNoExtraTime() {
-    await supabase.from('jobs').update({
-      extra_time_requested: false,
-    }).eq('id', job.id);
+    await supabase.from('jobs').update({ extra_time_requested: false }).eq('id', job.id);
     onComplete();
   }
 
   async function handleSubmitExtraTime() {
     setSavingExtra(true);
-
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle();
     const cleanerName = profile?.full_name || 'A cleaner';
     const address = property?.address || property?.property_name || 'Unknown';
@@ -135,222 +116,123 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       extra_time_notes: extraNotes || null,
     }).eq('id', job.id);
 
-    // Save photos to job_photos table
     for (const url of extraPhotos) {
       const storagePath = url.split('/job-photos/')[1] ?? '';
       await supabase.from('job_photos').insert({
-        job_id: job.id,
-        storage_path: storagePath,
-        public_url: url,
-        room_label: 'Extra Time Evidence',
+        job_id: job.id, storage_path: storagePath, public_url: url, room_label: 'Extra Time Evidence',
       });
     }
 
-    // Admin notification
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     if (admins) {
-      const notifs = admins.map((a: any) => ({
-        user_id: a.user_id,
-        title: '⏱ Extra Time Requested',
-        message: `${cleanerName} at ${address} is requesting additional time`,
-        type: 'extra_time',
-        link: `/jobs/${job.id}`,
-      }));
-      await supabase.from('notifications').insert(notifs);
+      await supabase.from('notifications').insert(admins.map((a: any) => ({
+        user_id: a.user_id, title: '⏱ Extra Time Requested',
+        message: `${cleanerName} at ${address} needs more than ${allocatedHrs} hrs`,
+        type: 'extra_time', link: `/jobs/${job.id}`,
+      })));
     }
 
-    // SMS to admin
-    const smsBody = `⏱ EXTRA TIME REQUEST — ${cleanerName} at ${address} is requesting additional time beyond the scheduled allocation. Photo evidence submitted. Review and approve at: https://app.brightly.cleaning/jobs/${job.id}`;
-    await sendAdminSms(smsBody);
-
+    await sendAdminSms(`⏱ EXTRA TIME REQUEST — ${cleanerName} at ${address} needs more than ${allocatedHrs} hrs allocated. Reason: ${extraNotes || 'N/A'}. Approve at: https://app.brightly.cleaning/jobs/${job.id}`);
     toast.success('Extra time request sent');
     setSavingExtra(false);
     onComplete();
   }
 
+  function PhotoGrid({ photos, setPhotos, uploading, fileRef, prefix, setUploadingFn }: any) {
+    return (
+      <>
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden"
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) uploadPhoto(f, prefix, setPhotos, setUploadingFn);
+            e.target.value = '';
+          }}
+        />
+        <div className="grid grid-cols-3 gap-2">
+          {photos.map((url: string, i: number) => (
+            <div key={i} className="relative">
+              <img src={url} alt="" className="w-full aspect-square object-cover rounded-xl" />
+              <button onClick={() => setPhotos((prev: string[]) => prev.filter((_: any, idx: number) => idx !== i))} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full aspect-square border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors min-h-[80px]"
+          >
+            {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+            <span className="text-[10px] font-bold mt-1">Add Photo</span>
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col max-w-lg mx-auto safe-area-top safe-area-bottom">
-      {/* Header */}
       <div className="bg-primary text-primary-foreground px-5 py-5">
-        <p className="text-xs font-semibold text-primary-foreground/60 uppercase tracking-wider">Pre-Job Check</p>
+        <p className="text-xs font-semibold text-primary-foreground/60 uppercase tracking-wider">
+          Pre-Job Check — {step === 'damage' || step === 'damage_detail' ? '1 of 2' : '2 of 2'}
+        </p>
         <h1 className="text-xl font-extrabold mt-1">
-          {step === 'damage' || step === 'damage_detail' ? 'Step 1 — Damage Check' : 'Step 2 — Extra Time'}
+          {step === 'damage' || step === 'damage_detail' ? 'Is there any existing damage at this property?' : `Do you need more than the ${allocatedHrs} hrs allocated for this job?`}
         </h1>
         <p className="text-primary-foreground/70 text-sm mt-1">{property?.property_name}</p>
       </div>
 
-      {/* Progress */}
       <div className="flex gap-2 px-5 py-3">
-        <div className={`h-1.5 flex-1 rounded-full ${step === 'extra_time' || step === 'extra_time_detail' ? 'bg-primary' : 'bg-primary/40'}`} />
-        <div className={`h-1.5 flex-1 rounded-full ${step === 'extra_time' || step === 'extra_time_detail' ? 'bg-primary/40' : 'bg-muted'}`} />
+        <div className={`h-1.5 flex-1 rounded-full ${step === 'damage' || step === 'damage_detail' ? 'bg-primary' : 'bg-primary'}`} />
+        <div className={`h-1.5 flex-1 rounded-full ${step === 'extra_time' || step === 'extra_time_detail' ? 'bg-primary' : 'bg-muted'}`} />
       </div>
 
       <main className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-        {/* STEP 1: Damage check */}
         {step === 'damage' && (
-          <div className="space-y-5">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="h-7 w-7 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-lg font-bold text-foreground">Is there any existing damage at this property?</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={handleNoDamage}
-                className="h-20 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white flex flex-col gap-1"
-              >
-                <CheckCircle2 className="h-6 w-6" />
-                No Damage
-              </Button>
-              <Button
-                onClick={() => setStep('damage_detail')}
-                className="h-20 text-lg font-extrabold rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground flex flex-col gap-1"
-              >
-                <ShieldAlert className="h-6 w-6" />
-                Damage Found
-              </Button>
-            </div>
+          <div className="space-y-4">
+            <Button onClick={handleNoDamage} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white gap-2">
+              <CheckCircle2 className="h-6 w-6" /> ✓ No Damage
+            </Button>
+            <Button onClick={() => setStep('damage_detail')} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2">
+              <ShieldAlert className="h-6 w-6" /> ⚠ Damage Found
+            </Button>
           </div>
         )}
 
-        {/* STEP 1b: Damage detail */}
         {step === 'damage_detail' && (
-          <div className="space-y-5">
-            <div className="flex items-start gap-3">
-              <Camera className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
-              <p className="text-lg font-bold text-foreground">Please photograph the damage</p>
-            </div>
-
-            <input ref={damageFileRef} type="file" accept="image/*" capture="environment" className="hidden"
-              onChange={e => {
-                const f = e.target.files?.[0];
-                if (f) uploadPhoto(f, 'damage', setDamagePhotos, setUploadingDamage);
-                e.target.value = '';
-              }}
-            />
-
-            <div className="grid grid-cols-3 gap-2">
-              {damagePhotos.map((url, i) => (
-                <div key={i} className="relative">
-                  <img src={url} alt={`Damage ${i + 1}`} className="w-full aspect-square object-cover rounded-xl" />
-                  <button onClick={() => setDamagePhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5">
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => damageFileRef.current?.click()}
-                disabled={uploadingDamage}
-                className="w-full aspect-square border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
-              >
-                {uploadingDamage ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
-                <span className="text-[10px] font-bold mt-1">Add Photo</span>
-              </button>
-            </div>
-
-            <Textarea
-              placeholder="Describe the damage (optional)"
-              value={damageNotes}
-              onChange={e => setDamageNotes(e.target.value)}
-              className="min-h-[80px] text-base rounded-xl"
-            />
-
-            <Button
-              size="lg"
-              className="w-full h-16 text-lg font-extrabold rounded-2xl"
-              onClick={handleSubmitDamage}
-              disabled={damagePhotos.length === 0 || savingDamage}
-            >
+          <div className="space-y-4">
+            <p className="font-bold text-foreground">Photograph all damage before starting</p>
+            <PhotoGrid photos={damagePhotos} setPhotos={setDamagePhotos} uploading={uploadingDamage} fileRef={damageFileRef} prefix="damage" setUploadingFn={setUploadingDamage} />
+            <Textarea placeholder="Describe the damage (optional)" value={damageNotes} onChange={e => setDamageNotes(e.target.value)} className="min-h-[80px] text-base rounded-xl" />
+            <Button onClick={handleSubmitDamage} disabled={damagePhotos.length === 0 || savingDamage} className="w-full h-16 text-lg font-extrabold rounded-2xl">
               {savingDamage ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : null}
               Submit & Continue
             </Button>
-
-            <button onClick={() => setStep('damage')} className="text-sm text-muted-foreground underline w-full text-center">
-              ← Go back
-            </button>
+            <button onClick={() => setStep('damage')} className="text-sm text-muted-foreground underline w-full text-center">← Go back</button>
           </div>
         )}
 
-        {/* STEP 2: Extra time check */}
         {step === 'extra_time' && (
-          <div className="space-y-5">
-            <div className="flex items-start gap-3">
-              <Clock className="h-7 w-7 text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-lg font-bold text-foreground">Do you require more time than scheduled for this job?</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={handleNoExtraTime}
-                className="h-20 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white flex flex-col gap-1"
-              >
-                <CheckCircle2 className="h-6 w-6" />
-                No, I'm fine
-              </Button>
-              <Button
-                onClick={() => setStep('extra_time_detail')}
-                className="h-20 text-lg font-extrabold rounded-2xl bg-amber-500 hover:bg-amber-600 text-white flex flex-col gap-1"
-              >
-                <Clock className="h-6 w-6" />
-                Yes, need more time
-              </Button>
-            </div>
+          <div className="space-y-4">
+            <Button onClick={handleNoExtraTime} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white gap-2">
+              <CheckCircle2 className="h-6 w-6" /> ✓ No, I'm Fine
+            </Button>
+            <Button onClick={() => setStep('extra_time_detail')} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-amber-500 hover:bg-amber-600 text-white gap-2">
+              <Clock className="h-6 w-6" /> ⏱ Yes, Need More Time
+            </Button>
           </div>
         )}
 
-        {/* STEP 2b: Extra time detail */}
         {step === 'extra_time_detail' && (
-          <div className="space-y-5">
-            <div className="flex items-start gap-3">
-              <Camera className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-lg font-bold text-foreground">Please provide photo evidence</p>
-            </div>
-
-            <input ref={extraFileRef} type="file" accept="image/*" capture="environment" className="hidden"
-              onChange={e => {
-                const f = e.target.files?.[0];
-                if (f) uploadPhoto(f, 'extra_time', setExtraPhotos, setUploadingExtra);
-                e.target.value = '';
-              }}
-            />
-
-            <div className="grid grid-cols-3 gap-2">
-              {extraPhotos.map((url, i) => (
-                <div key={i} className="relative">
-                  <img src={url} alt={`Evidence ${i + 1}`} className="w-full aspect-square object-cover rounded-xl" />
-                  <button onClick={() => setExtraPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5">
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => extraFileRef.current?.click()}
-                disabled={uploadingExtra}
-                className="w-full aspect-square border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
-              >
-                {uploadingExtra ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
-                <span className="text-[10px] font-bold mt-1">Add Photo</span>
-              </button>
-            </div>
-
-            <Textarea
-              placeholder="Why do you need more time? (optional)"
-              value={extraNotes}
-              onChange={e => setExtraNotes(e.target.value)}
-              className="min-h-[80px] text-base rounded-xl"
-            />
-
-            <Button
-              size="lg"
-              className="w-full h-16 text-lg font-extrabold rounded-2xl"
-              onClick={handleSubmitExtraTime}
-              disabled={extraPhotos.length === 0 || savingExtra}
-            >
+          <div className="space-y-4">
+            <p className="font-bold text-foreground">Provide photo evidence</p>
+            <Textarea placeholder="Why do you need more time? (required)" value={extraNotes} onChange={e => setExtraNotes(e.target.value)} className="min-h-[80px] text-base rounded-xl" />
+            <PhotoGrid photos={extraPhotos} setPhotos={setExtraPhotos} uploading={uploadingExtra} fileRef={extraFileRef} prefix="extra_time" setUploadingFn={setUploadingExtra} />
+            <Button onClick={handleSubmitExtraTime} disabled={extraPhotos.length === 0 || !extraNotes.trim() || savingExtra} className="w-full h-16 text-lg font-extrabold rounded-2xl">
               {savingExtra ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : null}
               Submit Request
             </Button>
-
-            <button onClick={() => setStep('extra_time')} className="text-sm text-muted-foreground underline w-full text-center">
-              ← Go back
-            </button>
+            <button onClick={() => setStep('extra_time')} className="text-sm text-muted-foreground underline w-full text-center">← Go back</button>
           </div>
         )}
       </main>
