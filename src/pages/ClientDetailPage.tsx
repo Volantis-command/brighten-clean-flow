@@ -238,6 +238,22 @@ export default function ClientDetailPage() {
             onRefresh={refreshAll}
           />
 
+          {/* Send Portal Login Link */}
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-bold text-foreground mb-3">Client Portal Access</h3>
+            <p className="text-sm text-muted-foreground mb-3">Send the client an SMS with a link to log into their portal and view clean history.</p>
+            <Button
+              onClick={handleSendPortalLink}
+              disabled={sendingPortalLink || !profile?.phone}
+              variant="outline"
+              className="gap-2"
+            >
+              {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+              Send Portal Login Link
+            </Button>
+            {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
+          </div>
+
           <OnboardingStatusSection
             clientId={id!}
             onboardToken={firstLink?.onboard_token || null}
