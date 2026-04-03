@@ -1,4 +1,5 @@
 import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
+import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
