@@ -940,7 +940,7 @@ export default function JobDetailPage() {
       )}
 
       {/* Invoicing Section - Admin only */}
-      {role === 'admin' && job.status === 'complete' && (
+      {role === 'admin' && (job.status === 'complete' || job.status === 'completed') && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Invoicing</CardTitle>
