@@ -29,7 +29,7 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
   const [elapsed, setElapsed] = useState('00:00:00');
   const [isPaused, setIsPaused] = useState(!!job.paused_at);
   const [pausing, setPausing] = useState(false);
-  const [accessOpen, setAccessOpen] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(true);
 
   // Quick note state
   const [showNote, setShowNote] = useState(false);
