@@ -54,6 +54,8 @@ import MyCleans from "./pages/MyCleans";
 import MyJobsPage from "./pages/MyJobsPage";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import CompletionFormPage from "./pages/CompletionFormPage";
+import JobCompleteDonePage from "./pages/JobCompleteDonePage";
+import JobAuditPage from "./pages/JobAuditPage";
 import NotFound from "./pages/NotFound";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
