@@ -235,6 +235,9 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
       <Field label="🔑 Lockbox Code (only shown to cleaner after check-in)">
         <Input value={form.lockbox_code} onChange={(e) => u('lockbox_code', e.target.value)} className="h-12 rounded-xl" />
       </Field>
+      <Field label="📝 Cleaner Notes (visible to cleaners during active jobs)">
+        <Textarea value={form.property_notes} onChange={(e) => u('property_notes', e.target.value)} rows={3} className="rounded-xl" placeholder="e.g. Use back entrance, bins go out Tuesdays" />
+      </Field>
       <div className="flex items-center justify-between py-2">
         <Label className="font-semibold">Active</Label>
         <Switch checked={form.status === 'active'} onCheckedChange={(v) => u('status', v ? 'active' : 'inactive')} />
