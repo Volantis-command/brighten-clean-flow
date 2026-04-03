@@ -47,7 +47,18 @@ Deno.serve(async (req) => {
 
     // Direct SMS mode: send a custom message to a specific number
     if (to && message) {
-      const smsResult = await sendTwilioSms(formatAuPhone(to), message);
+      let recipient = to;
+      // If "ADMIN", look up the ADMIN_PHONE secret
+      if (to === 'ADMIN') {
+        const adminPhone = Deno.env.get('ADMIN_PHONE');
+        if (!adminPhone) {
+          return new Response(JSON.stringify({ success: false, error: 'ADMIN_PHONE not configured' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        recipient = adminPhone;
+      }
+      const smsResult = await sendTwilioSms(formatAuPhone(recipient), message);
       return new Response(JSON.stringify(smsResult), {
         status: smsResult.success ? 200 : 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
