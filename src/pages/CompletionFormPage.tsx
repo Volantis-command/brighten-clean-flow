@@ -299,21 +299,151 @@ export default function CompletionFormPage() {
   }
 
   async function handleSubmit() {
-    if (!job) return;
+    if (!job || !user) return;
     setSubmitting(true);
     setShowConfirm(false);
 
+    const now = new Date();
+    const clockOff = now.toISOString();
+    const clockOnMs = job.clock_on ? new Date(job.clock_on).getTime() : now.getTime();
+    const totalPaused = (job.total_pause_seconds || 0) * 1000;
+    const netMinutes = Math.round((now.getTime() - clockOnMs - totalPaused) / 60000);
+
+    // 1. Update job record
     await supabase.from('jobs').update({
-      completion_form_completed_at: new Date().toISOString(),
+      completion_form_completed_at: clockOff,
       completion_form_data: formData as any,
       completion_signatures: signatures as any,
+      clock_off: clockOff,
+      clock_off_at: clockOff,
+      check_out_time: clockOff,
+      status: 'completed',
+      duration_minutes: netMinutes,
     }).eq('id', job.id);
 
+    // 2. Update time_entries — close open entry or insert new
+    const { data: existingEntry } = await supabase
+      .from('time_entries')
+      .select('id')
+      .eq('job_id', job.id)
+      .eq('user_id', user.id)
+      .is('clock_out_time', null)
+      .maybeSingle();
+
+    if (existingEntry) {
+      await supabase.from('time_entries').update({
+        clock_out_time: clockOff,
+        total_minutes: netMinutes,
+      }).eq('id', existingEntry.id);
+    }
+
+    // Also close entries for second cleaner if present
+    if (job.cleaner_2_id && job.cleaner_2_id !== user.id) {
+      await supabase.from('time_entries').update({
+        clock_out_time: clockOff,
+        total_minutes: netMinutes,
+      }).eq('job_id', job.id).eq('user_id', job.cleaner_2_id).is('clock_out_time', null);
+    }
+
+    // 3. Save completion photos to job_photos
+    if (formData) {
+      for (const [sectionId, fields] of Object.entries(formData)) {
+        for (const [fieldKey, url] of Object.entries(fields)) {
+          if (url) {
+            const storagePath = url.split('/job-photos/')[1] ?? '';
+            if (storagePath) {
+              await supabase.from('job_photos').upsert({
+                job_id: job.id,
+                storage_path: storagePath,
+                public_url: url,
+                room_label: `${sectionId} - ${fieldKey}`,
+              }, { onConflict: 'job_id,storage_path' }).select();
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Admin notification
+    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+    if (admins) {
+      await supabase.from('notifications').insert(admins.map((a: any) => ({
+        user_id: a.user_id,
+        title: 'Job Completed',
+        message: `Clean at ${property?.property_name ?? 'property'} has been completed (${netMinutes}min)`,
+        type: 'job_completed',
+        link: `/jobs/${job.id}`,
+      })));
+    }
+
+    // 5. SMS to admin
+    try {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+      const cleanerName = profile?.full_name || 'A cleaner';
+      const addr = property?.address || property?.property_name || 'Unknown';
+      const timeStr = format(now, 'h:mm a');
+      await supabase.functions.invoke('send-job-sms', {
+        body: { to: 'ADMIN', message: `Job complete — ${cleanerName} clocked off at ${addr} at ${timeStr}. Duration: ${netMinutes} min.` },
+      });
+    } catch { /* non-blocking */ }
+
+    // 6. SMS to client
+    try {
+      const clientName = property?.client_name?.split(' ')[0] || 'there';
+      const shortAddr = property?.address || property?.property_name || 'your property';
+      await supabase.functions.invoke('send-job-sms', {
+        body: { to: 'CLIENT', job_id: job.id, message: `Hi ${clientName}, your Brightly clean at ${shortAddr} is complete. Thank you for choosing Brightly.` },
+      });
+    } catch { /* non-blocking */ }
+
+    // 7. Auto-raise Xero invoice
+    try {
+      await supabase.functions.invoke('xero-create-invoice', {
+        body: {
+          job_id: job.id,
+          contact_name: property?.client_name || property?.property_name || 'Unknown Client',
+          description: `Clean — ${property?.property_name || 'Property'} — ${job.scheduled_date}`,
+          amount: job.price_ex_gst || 0,
+          account_code: '200',
+          invoice_prefix: 'BCL-',
+          due_days: '7',
+        },
+      });
+    } catch { /* non-blocking — Xero may not be configured */ }
+
     queryClient.invalidateQueries({ queryKey: ['clean-workflow-job', jobId] });
-    toast.success('Completion form saved');
+    queryClient.invalidateQueries({ queryKey: ['my-cleans'] });
+    queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
+    queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+
     setSubmitting(false);
-    // Navigate back — Part 3 will handle clock-off from here
-    navigate(`/clean/${job.id}`);
+
+    // 8. Check for next job today
+    const { data: nextJobs } = await supabase
+      .from('jobs')
+      .select('id, scheduled_time, properties(property_name, address)')
+      .eq('scheduled_date', job.scheduled_date)
+      .in('status', ['confirmed', 'scheduled'])
+      .or(`cleaner_1_id.eq.${user.id},cleaner_2_id.eq.${user.id}`)
+      .gt('scheduled_time', job.scheduled_time || '00:00')
+      .order('scheduled_time', { ascending: true })
+      .limit(1);
+
+    if (nextJobs && nextJobs.length > 0) {
+      const next = nextJobs[0];
+      navigate(`/clean/${job.id}/done`, {
+        state: {
+          nextJob: {
+            id: next.id,
+            time: next.scheduled_time?.slice(0, 5),
+            name: (next.properties as any)?.property_name,
+            address: (next.properties as any)?.address,
+          },
+        },
+      });
+    } else {
+      navigate(`/clean/${job.id}/done`);
+    }
   }
 
   if (isLoading || !job) {
