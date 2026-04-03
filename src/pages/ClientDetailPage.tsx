@@ -12,8 +12,6 @@ import { Star, Check, X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { getAppBaseUrl } from '@/lib/appUrl';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
 
 import ClientHeader from '@/components/client-detail/ClientHeader';
 import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
