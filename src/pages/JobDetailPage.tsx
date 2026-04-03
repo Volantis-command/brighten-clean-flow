@@ -37,11 +37,7 @@ export default function JobDetailPage() {
   const [syncingStatus, setSyncingStatus] = useState(false);
   const [sendingReviewSms, setSendingReviewSms] = useState(false);
   const [sendingRebookSms, setSendingRebookSms] = useState(false);
-  const [refundingDeposit, setRefundingDeposit] = useState(false);
-  const [showRefundDialog, setShowRefundDialog] = useState(false);
-  const [refundReason, setRefundReason] = useState('');
   const [showExtraPhotos, setShowExtraPhotos] = useState(false);
-  const [waivingDeposit, setWaivingDeposit] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
   // Pricing state
