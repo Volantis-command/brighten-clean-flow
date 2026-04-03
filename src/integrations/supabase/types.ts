@@ -658,6 +658,13 @@ export type Database = {
           arrived_at: string | null
           arrived_lat: number | null
           arrived_lng: number | null
+          audit_areas: string[] | null
+          audit_completed_at: string | null
+          audit_notes: string | null
+          audit_outcome: string | null
+          audit_photos: string[] | null
+          audit_rating: number | null
+          audited_by: string | null
           cancellation_notes: string | null
           cancellation_reason: string | null
           check_in_time: string | null
@@ -669,9 +676,16 @@ export type Database = {
           client_booking_sms_sent_at: string | null
           client_reminder_sms_sent_at: string | null
           clock_off: string | null
+          clock_off_at: string | null
           clock_on: string | null
+          clock_on_lat: number | null
+          clock_on_lng: number | null
+          completion_form_completed_at: string | null
+          completion_form_data: Json | null
+          completion_form_started_at: string | null
           completion_notes: string | null
           completion_photos: string[] | null
+          completion_signatures: Json | null
           created_at: string
           damage_notes: string | null
           damage_photos: string[] | null
@@ -695,12 +709,16 @@ export type Database = {
           id: string
           invoice_amount: number | null
           invoice_notes: string | null
+          invoice_paid_at: string | null
+          invoice_raised_at: string | null
+          invoice_sent_at: string | null
           invoice_status: string | null
           is_urgent: boolean | null
           late_alert_sent: boolean | null
           linked_quote_id: string | null
           no_show_alert_sent: boolean | null
           notes: string | null
+          paused_at: string | null
           pre_clean_notes: Json | null
           price_ex_gst: number | null
           price_inc_gst: number | null
@@ -715,6 +733,7 @@ export type Database = {
           source: string | null
           status: string
           stripe_payment_intent_id: string | null
+          total_pause_seconds: number
           turnaround_minutes: number | null
           xero_invoice_id: string | null
           xero_invoice_number: string | null
@@ -723,6 +742,13 @@ export type Database = {
           arrived_at?: string | null
           arrived_lat?: number | null
           arrived_lng?: number | null
+          audit_areas?: string[] | null
+          audit_completed_at?: string | null
+          audit_notes?: string | null
+          audit_outcome?: string | null
+          audit_photos?: string[] | null
+          audit_rating?: number | null
+          audited_by?: string | null
           cancellation_notes?: string | null
           cancellation_reason?: string | null
           check_in_time?: string | null
@@ -734,9 +760,16 @@ export type Database = {
           client_booking_sms_sent_at?: string | null
           client_reminder_sms_sent_at?: string | null
           clock_off?: string | null
+          clock_off_at?: string | null
           clock_on?: string | null
+          clock_on_lat?: number | null
+          clock_on_lng?: number | null
+          completion_form_completed_at?: string | null
+          completion_form_data?: Json | null
+          completion_form_started_at?: string | null
           completion_notes?: string | null
           completion_photos?: string[] | null
+          completion_signatures?: Json | null
           created_at?: string
           damage_notes?: string | null
           damage_photos?: string[] | null
@@ -760,12 +793,16 @@ export type Database = {
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
+          invoice_paid_at?: string | null
+          invoice_raised_at?: string | null
+          invoice_sent_at?: string | null
           invoice_status?: string | null
           is_urgent?: boolean | null
           late_alert_sent?: boolean | null
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
+          paused_at?: string | null
           pre_clean_notes?: Json | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
@@ -780,6 +817,7 @@ export type Database = {
           source?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          total_pause_seconds?: number
           turnaround_minutes?: number | null
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
@@ -788,6 +826,13 @@ export type Database = {
           arrived_at?: string | null
           arrived_lat?: number | null
           arrived_lng?: number | null
+          audit_areas?: string[] | null
+          audit_completed_at?: string | null
+          audit_notes?: string | null
+          audit_outcome?: string | null
+          audit_photos?: string[] | null
+          audit_rating?: number | null
+          audited_by?: string | null
           cancellation_notes?: string | null
           cancellation_reason?: string | null
           check_in_time?: string | null
@@ -799,9 +844,16 @@ export type Database = {
           client_booking_sms_sent_at?: string | null
           client_reminder_sms_sent_at?: string | null
           clock_off?: string | null
+          clock_off_at?: string | null
           clock_on?: string | null
+          clock_on_lat?: number | null
+          clock_on_lng?: number | null
+          completion_form_completed_at?: string | null
+          completion_form_data?: Json | null
+          completion_form_started_at?: string | null
           completion_notes?: string | null
           completion_photos?: string[] | null
+          completion_signatures?: Json | null
           created_at?: string
           damage_notes?: string | null
           damage_photos?: string[] | null
@@ -825,12 +877,16 @@ export type Database = {
           id?: string
           invoice_amount?: number | null
           invoice_notes?: string | null
+          invoice_paid_at?: string | null
+          invoice_raised_at?: string | null
+          invoice_sent_at?: string | null
           invoice_status?: string | null
           is_urgent?: boolean | null
           late_alert_sent?: boolean | null
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
+          paused_at?: string | null
           pre_clean_notes?: Json | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
@@ -845,6 +901,7 @@ export type Database = {
           source?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          total_pause_seconds?: number
           turnaround_minutes?: number | null
           xero_invoice_id?: string | null
           xero_invoice_number?: string | null
@@ -1094,6 +1151,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          audit_scores: number[]
           avatar_url: string | null
           created_at: string
           email: string | null
@@ -1107,6 +1165,7 @@ export type Database = {
           weekly_availability: Json | null
         }
         Insert: {
+          audit_scores?: number[]
           avatar_url?: string | null
           created_at?: string
           email?: string | null
@@ -1120,6 +1179,7 @@ export type Database = {
           weekly_availability?: Json | null
         }
         Update: {
+          audit_scores?: number[]
           avatar_url?: string | null
           created_at?: string
           email?: string | null
@@ -1202,6 +1262,7 @@ export type Database = {
           property_type: string | null
           skip_areas: string | null
           spare_linen: string | null
+          special_instructions: string | null
           state: string | null
           status: string | null
           suburb: string | null
@@ -1276,6 +1337,7 @@ export type Database = {
           property_type?: string | null
           skip_areas?: string | null
           spare_linen?: string | null
+          special_instructions?: string | null
           state?: string | null
           status?: string | null
           suburb?: string | null
@@ -1350,6 +1412,7 @@ export type Database = {
           property_type?: string | null
           skip_areas?: string | null
           spare_linen?: string | null
+          special_instructions?: string | null
           state?: string | null
           status?: string | null
           suburb?: string | null
