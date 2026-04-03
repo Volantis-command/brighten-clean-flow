@@ -697,6 +697,7 @@ export type Database = {
           deposit_refunded: boolean | null
           duration_minutes: number | null
           estimated_duration: number | null
+          extra_time_approved: boolean | null
           extra_time_notes: string | null
           extra_time_photos: string[] | null
           extra_time_requested: boolean | null
@@ -781,6 +782,7 @@ export type Database = {
           deposit_refunded?: boolean | null
           duration_minutes?: number | null
           estimated_duration?: number | null
+          extra_time_approved?: boolean | null
           extra_time_notes?: string | null
           extra_time_photos?: string[] | null
           extra_time_requested?: boolean | null
@@ -865,6 +867,7 @@ export type Database = {
           deposit_refunded?: boolean | null
           duration_minutes?: number | null
           estimated_duration?: number | null
+          extra_time_approved?: boolean | null
           extra_time_notes?: string | null
           extra_time_photos?: string[] | null
           extra_time_requested?: boolean | null

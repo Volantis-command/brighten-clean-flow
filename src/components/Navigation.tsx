@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { useActionsData } from '@/hooks/useActionsData';
+import { useAlertsData } from '@/hooks/useAlertsData';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Actions', path: '/actions', icon: Inbox, roles: ['admin', 'head_cleaner'] },
+  { label: 'Alerts', path: '/actions', icon: Inbox, roles: ['admin', 'head_cleaner'] },
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'My Jobs', path: '/my-jobs', icon: ClipboardList, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
@@ -38,7 +38,7 @@ const cleanerMobileItems: NavItem[] = [
 
 export function MobileNav() {
   const { role } = useAuth();
-  const { totalCount } = useActionsData();
+  const { totalCount } = useAlertsData();
 
   // Cleaners get a simplified 3-item nav with bigger tap targets
   if (role === 'cleaner') {
@@ -113,7 +113,7 @@ export function MobileNav() {
 
 export function DesktopSidebar() {
   const { role, profile, signOut } = useAuth();
-  const { totalCount } = useActionsData();
+  const { totalCount } = useAlertsData();
   
   // Don't show sidebar for cleaners on desktop either — they use a simpler layout
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
