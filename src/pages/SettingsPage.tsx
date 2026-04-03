@@ -7,7 +7,7 @@ import AppSettingsSection from '@/components/settings/AppSettingsSection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
 import XeroSection from '@/components/settings/XeroSection';
 import LegalSection from '@/components/settings/LegalSection';
-import PaymentsSection from '@/components/settings/PaymentsSection';
+
 import GuestySection from '@/components/settings/GuestySection';
 import GoogleCalendarSection from '@/components/settings/GoogleCalendarSection';
 import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, CreditCard, Link2, Calendar } from 'lucide-react';
