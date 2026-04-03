@@ -171,6 +171,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
       access_notes: form.access_notes || null,
       lockbox_code: form.lockbox_code || null,
       status: form.status,
+      special_instructions: form.special_instructions || null,
     } as any).eq('id', property.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
