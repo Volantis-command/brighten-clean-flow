@@ -200,7 +200,7 @@ export function useDashboardData() {
       const { data } = await supabase
         .from('jobs')
         .select('scheduled_date, price_ex_gst')
-        .eq('status', 'complete')
+        .in('status', ['complete', 'completed'])
         .gte('scheduled_date', months[0].start)
         .lte('scheduled_date', months[months.length - 1].end)
         .gt('price_ex_gst', 0);
