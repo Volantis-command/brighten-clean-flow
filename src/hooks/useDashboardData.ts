@@ -95,7 +95,7 @@ export function useDashboardData() {
         .select('id, status, price_ex_gst, invoice_status')
         .gte('scheduled_date', monthStart)
         .lte('scheduled_date', monthEnd)
-        .eq('status', 'complete');
+        .in('status', ['complete', 'completed']);
       return data || [];
     },
     enabled: isAdmin,
@@ -200,7 +200,7 @@ export function useDashboardData() {
       const { data } = await supabase
         .from('jobs')
         .select('scheduled_date, price_ex_gst')
-        .eq('status', 'complete')
+        .in('status', ['complete', 'completed'])
         .gte('scheduled_date', months[0].start)
         .lte('scheduled_date', months[months.length - 1].end)
         .gt('price_ex_gst', 0);
@@ -331,9 +331,9 @@ export function useDashboardData() {
 
   // Today stats
   const totalJobsToday = jobs.length;
-  const scheduledToday = jobs.filter((j: any) => j.status === 'scheduled').length;
+  const scheduledToday = jobs.filter((j: any) => j.status === 'scheduled' || j.status === 'confirmed').length;
   const inProgressToday = jobs.filter((j: any) => j.status === 'in_progress').length;
-  const completedToday = jobs.filter((j: any) => j.status === 'complete').length;
+  const completedToday = jobs.filter((j: any) => j.status === 'completed' || j.status === 'complete').length;
 
   // Live status
   const clockedInCleaners = activeTimeEntries.map((entry: any) => ({

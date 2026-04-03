@@ -307,8 +307,8 @@ export default function CompletionFormPage() {
     const totalPaused = (job.total_pause_seconds || 0) * 1000;
     const netMinutes = Math.round((now.getTime() - clockOnMs - totalPaused) / 60000);
 
-    // 1. Update job record
-    await supabase.from('jobs').update({
+    // 1. Update job record — explicitly set status to 'completed'
+    const { error: updateError } = await supabase.from('jobs').update({
       completion_form_completed_at: clockOff,
       completion_form_data: formData as any,
       completion_signatures: signatures as any,
@@ -318,6 +318,12 @@ export default function CompletionFormPage() {
       status: 'completed',
       duration_minutes: netMinutes,
     }).eq('id', job.id);
+
+    if (updateError) {
+      toast.error('Failed to complete job: ' + updateError.message);
+      setSubmitting(false);
+      return;
+    }
 
     // 2. Update time_entries — close open entry or insert new
     const { data: existingEntry } = await supabase
@@ -411,6 +417,10 @@ export default function CompletionFormPage() {
     queryClient.invalidateQueries({ queryKey: ['my-cleans'] });
     queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['today-jobs-widget'] });
+    queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+    queryClient.invalidateQueries({ queryKey: ['active-time-entries'] });
 
     setSubmitting(false);
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
@@ -19,10 +20,15 @@ function formatElapsedTime(startTime: string) {
 
 export function ActiveClockBanner() {
   const { user } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { data: activeEntry } = useActiveTimeEntry();
   const [elapsed, setElapsed] = useState('00:00:00');
   const [clockingOut, setClockingOut] = useState(false);
+
+  // Hide the global clock-out banner on clean workflow routes
+  // The only way to clock off should be via the completion form
+  const isCleanRoute = location.pathname.startsWith('/clean/');
 
   useEffect(() => {
     if (!activeEntry?.clock_in_time) return;
@@ -32,7 +38,7 @@ export function ActiveClockBanner() {
     return () => clearInterval(interval);
   }, [activeEntry?.clock_in_time]);
 
-  if (!user || !activeEntry) return null;
+  if (!user || !activeEntry || isCleanRoute) return null;
 
   const handleClockOut = async () => {
     setClockingOut(true);
