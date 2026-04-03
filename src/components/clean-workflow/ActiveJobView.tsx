@@ -29,10 +29,15 @@ function openMaps(address: string) {
 
 export default function ActiveJobView({ job, property, userId, onRefresh }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [elapsed, setElapsed] = useState('00:00:00');
   const [isPaused, setIsPaused] = useState(!!job.paused_at);
   const [pausing, setPausing] = useState(false);
   const [accessOpen, setAccessOpen] = useState(true);
+
+  // SOS state
+  const [sosOpen, setSosOpen] = useState(false);
+  const [sendingSos, setSendingSos] = useState(false);
 
   // Quick note state
   const [showNote, setShowNote] = useState(false);
@@ -41,6 +46,46 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
   const [uploadingNote, setUploadingNote] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const noteFileRef = useRef<HTMLInputElement>(null);
+
+  async function handleSOS() {
+    setSendingSos(true);
+    try {
+      let lat: number | null = null;
+      let lng: number | null = null;
+      try {
+        const pos = await getCurrentPosition();
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch { /* GPS failed, send without */ }
+
+      await supabase.from('sos_alerts' as any).insert({
+        cleaner_id: userId,
+        job_id: job.id,
+        triggered_at: new Date().toISOString(),
+        lat,
+        lng,
+        resolved: false,
+      });
+
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle();
+      const cleanerName = profile?.full_name || 'A cleaner';
+      const address = property?.address || property?.property_name || 'Unknown';
+      const locationUrl = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : 'Location unavailable';
+
+      await supabase.functions.invoke('send-job-sms', {
+        body: {
+          to: 'ADMIN',
+          message: `🆘 SOS ALERT — ${cleanerName} needs help at job ${address}. Location: ${locationUrl} — Brightly Ops`,
+        },
+      });
+
+      toast.error('Alert sent to manager ✓', { duration: 5000 });
+      setSosOpen(false);
+    } catch {
+      toast.error('Failed to send SOS alert');
+    }
+    setSendingSos(false);
+  }
 
   // Timer
   useEffect(() => {
