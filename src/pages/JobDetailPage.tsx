@@ -939,54 +939,151 @@ export default function JobDetailPage() {
         </Card>
       )}
 
-      {/* Invoicing Section - Admin only */}
+      {/* Invoice Status Card — Admin only, completed jobs */}
       {role === 'admin' && (job.status === 'complete' || job.status === 'completed') && (
-        <Card>
+        <Card className={
+          job.invoice_status === 'paid' ? 'border-green-500/30 bg-green-50 dark:bg-green-500/10' :
+          job.invoice_status === 'sent' ? 'border-blue-500/30 bg-blue-50 dark:bg-blue-500/10' :
+          job.invoice_status === 'raised' ? 'border-primary/30 bg-primary/5' :
+          'border-amber-500/30 bg-amber-50 dark:bg-amber-500/10'
+        }>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Invoicing</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Invoice
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {job.xero_invoice_number && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Invoice #</span>
                 <span className="text-sm font-bold">{job.xero_invoice_number}</span>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Status</span>
-              <InvoiceBadge status={job.invoice_status} />
-            </div>
 
-            {!job.xero_invoice_id ? (
-              <Button
-                onClick={handlePushInvoice}
-                disabled={pushingInvoice}
-                className="w-full gap-2"
-                style={{ backgroundColor: '#13B5EA' }}
-              >
-                {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Push to Xero
-              </Button>
-            ) : (
-              <div className="space-y-2">
+            {/* Not Raised */}
+            {(!job.invoice_status || job.invoice_status === 'not_raised') && !job.xero_invoice_id && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                  <p className="text-sm font-bold text-foreground">Invoice not raised</p>
+                </div>
                 <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
+                  onClick={handlePushInvoice}
+                  disabled={pushingInvoice}
+                  className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  Open in Xero
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={handleSyncInvoiceStatus}
-                  disabled={syncingStatus}
-                >
-                  {syncingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
-                  Sync Xero Status
+                  {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+                  Raise Invoice
                 </Button>
               </div>
+            )}
+
+            {/* Raised */}
+            {(job.invoice_status === 'raised' || (job.xero_invoice_id && job.invoice_status !== 'sent' && job.invoice_status !== 'paid')) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <p className="text-sm font-bold text-foreground">
+                    Invoice Raised {job.invoice_raised_at ? format(new Date(job.invoice_raised_at), 'd MMM yyyy') : ''}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={async () => {
+                      if (!job.xero_invoice_id) return;
+                      setPushingInvoice(true);
+                      try {
+                        const { error } = await supabase.from('jobs').update({
+                          invoice_status: 'sent',
+                          invoice_sent_at: new Date().toISOString(),
+                        }).eq('id', jobId!);
+                        if (error) throw error;
+                        toast.success('Invoice marked as sent');
+                        queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                      } catch (err: any) {
+                        toast.error(err.message);
+                      }
+                      setPushingInvoice(false);
+                    }}
+                    disabled={pushingInvoice}
+                  >
+                    {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    Send to Client
+                  </Button>
+                  {job.xero_invoice_id && (
+                    <Button variant="outline" size="icon" onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Sent */}
+            {job.invoice_status === 'sent' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                  <p className="text-sm font-bold text-foreground">
+                    Invoice Sent {job.invoice_sent_at ? format(new Date(job.invoice_sent_at), 'd MMM yyyy') : ''}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={async () => {
+                      setPushingInvoice(true);
+                      try {
+                        const { error } = await supabase.from('jobs').update({
+                          invoice_status: 'paid',
+                          invoice_paid_at: new Date().toISOString(),
+                        }).eq('id', jobId!);
+                        if (error) throw error;
+                        toast.success('Invoice marked as paid');
+                        queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                      } catch (err: any) {
+                        toast.error(err.message);
+                      }
+                      setPushingInvoice(false);
+                    }}
+                    disabled={pushingInvoice}
+                  >
+                    {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    Mark as Paid
+                  </Button>
+                  {job.xero_invoice_id && (
+                    <Button variant="outline" size="icon" onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Paid */}
+            {job.invoice_status === 'paid' && (
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                  Invoice Paid {job.invoice_paid_at ? format(new Date(job.invoice_paid_at), 'd MMM yyyy') : ''} ✓
+                </p>
+              </div>
+            )}
+
+            {/* Sync button */}
+            {job.xero_invoice_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 text-xs"
+                onClick={handleSyncInvoiceStatus}
+                disabled={syncingStatus}
+              >
+                {syncingStatus ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCw className="h-3 w-3" />}
+                Sync Xero Status
+              </Button>
             )}
           </CardContent>
         </Card>

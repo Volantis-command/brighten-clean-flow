@@ -33,7 +33,9 @@ export function useNotifications() {
     },
   });
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const unreadCount = notifications.filter((n) => !n.read && new Date(n.created_at) > thirtyDaysAgo).length;
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
