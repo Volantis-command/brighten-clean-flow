@@ -473,3 +473,35 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; initialNotes: string }) {
+  const [notes, setNotes] = useState(initialNotes);
+  const [saving, setSaving] = useState(false);
+
+  const handleBlur = async () => {
+    if (notes === initialNotes) return;
+    setSaving(true);
+    await supabase.from('properties').update({ property_notes: notes || null } as any).eq('id', propertyId);
+    setSaving(false);
+    toast.success('Notes saved');
+  };
+
+  return (
+    <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
+      <h3 className="text-lg font-bold text-foreground">🔧 Notes for Next Clean</h3>
+      <p className="text-xs text-muted-foreground">Visible to cleaners before and during the job.</p>
+      <Textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+        onBlur={handleBlur}
+        rows={3}
+        className="rounded-xl"
+        placeholder="e.g. Check under beds, back patio gate needs oiling, owner left key in letterbox..."
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{notes.length} / 500 characters</span>
+        {saving && <span className="text-xs text-primary font-semibold">Saving…</span>}
+      </div>
+    </div>
+  );
+}
