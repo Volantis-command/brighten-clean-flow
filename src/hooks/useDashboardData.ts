@@ -159,7 +159,7 @@ export function useDashboardData() {
       const { data } = await supabase
         .from('jobs')
         .select('id, price_ex_gst, invoice_status, properties(property_name)')
-        .eq('status', 'complete')
+        .in('status', ['complete', 'completed'])
         .gt('price_ex_gst', 0)
         .not('invoice_status', 'in', '("paid","voided")');
       return data || [];
