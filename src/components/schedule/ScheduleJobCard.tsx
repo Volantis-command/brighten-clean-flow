@@ -40,12 +40,14 @@ interface ScheduleJobCardProps {
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  awaiting_quote: { label: '⚠️ Needs Quote', className: 'bg-[hsl(45,100%,51%)] text-[hsl(162,72%,16%)]' },
+  awaiting_quote: { label: 'Needs Quote', className: 'bg-amber-100 text-amber-800' },
   scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
-  in_progress: { label: 'In Progress', className: 'bg-accent text-accent-foreground' },
-  complete: { label: 'Complete', className: 'bg-primary text-primary-foreground' },
+  confirmed: { label: 'Confirmed', className: 'bg-muted text-muted-foreground' },
+  in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800' },
+  completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+  complete: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive line-through' },
   flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
-  cancelled: { label: 'Cancelled', className: 'bg-destructive/20 text-destructive line-through' },
 };
 
 export function ScheduleJobCard({

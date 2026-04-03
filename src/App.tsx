@@ -54,6 +54,8 @@ import MyCleans from "./pages/MyCleans";
 import MyJobsPage from "./pages/MyJobsPage";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import CompletionFormPage from "./pages/CompletionFormPage";
+import JobCompleteDonePage from "./pages/JobCompleteDonePage";
+import JobAuditPage from "./pages/JobAuditPage";
 import NotFound from "./pages/NotFound";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
@@ -231,6 +233,8 @@ function AppRoutes() {
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
         <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
+        <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
+        <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

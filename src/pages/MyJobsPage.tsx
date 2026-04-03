@@ -11,7 +11,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   confirmed: { label: 'Upcoming', className: 'bg-muted text-muted-foreground border-0' },
   in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800 border-0' },
   completed: { label: 'Completed', className: 'bg-green-100 text-green-800 border-0' },
-  cancelled: { label: 'Cancelled', className: 'bg-destructive/10 text-destructive border-0' },
+  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive border-0' },
 };
 
 export default function MyJobsPage() {
