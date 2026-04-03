@@ -20,10 +20,16 @@ function formatElapsedTime(startTime: string) {
 
 export function ActiveClockBanner() {
   const { user } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { data: activeEntry } = useActiveTimeEntry();
   const [elapsed, setElapsed] = useState('00:00:00');
   const [clockingOut, setClockingOut] = useState(false);
+
+  // Hide the global clock-out banner on clean workflow routes
+  // The only way to clock off should be via the completion form
+  const isCleanRoute = location.pathname.startsWith('/clean/');
+  if (isCleanRoute) return null;
 
   useEffect(() => {
     if (!activeEntry?.clock_in_time) return;

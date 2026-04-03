@@ -331,9 +331,9 @@ export function useDashboardData() {
 
   // Today stats
   const totalJobsToday = jobs.length;
-  const scheduledToday = jobs.filter((j: any) => j.status === 'scheduled').length;
+  const scheduledToday = jobs.filter((j: any) => j.status === 'scheduled' || j.status === 'confirmed').length;
   const inProgressToday = jobs.filter((j: any) => j.status === 'in_progress').length;
-  const completedToday = jobs.filter((j: any) => j.status === 'complete').length;
+  const completedToday = jobs.filter((j: any) => j.status === 'completed' || j.status === 'complete').length;
 
   // Live status
   const clockedInCleaners = activeTimeEntries.map((entry: any) => ({

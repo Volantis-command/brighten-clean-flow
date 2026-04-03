@@ -417,6 +417,10 @@ export default function CompletionFormPage() {
     queryClient.invalidateQueries({ queryKey: ['my-cleans'] });
     queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['today-jobs-widget'] });
+    queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+    queryClient.invalidateQueries({ queryKey: ['active-time-entries'] });
 
     setSubmitting(false);
 
