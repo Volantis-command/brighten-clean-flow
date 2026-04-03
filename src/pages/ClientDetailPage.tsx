@@ -396,6 +396,9 @@ export default function ClientDetailPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Communication History */}
+      <ClientCommsLog clientId={id!} />
+
       <EditClientDialog
         open={editOpen}
         onOpenChange={setEditOpen}
