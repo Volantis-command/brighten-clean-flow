@@ -885,7 +885,42 @@ export default function JobDetailPage() {
         photos={extraTimePhotos}
       />
 
+      {/* Post-Job Report — Admin only */}
+      {role === 'admin' && job.status === 'completed' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Post-Job Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Completion Photos */}
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Completion Photos</p>
+              {(job as any).completion_photos && (job as any).completion_photos.length > 0 ? (
+                <div className="flex gap-2 flex-wrap">
+                  {((job as any).completion_photos as string[]).map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                      <img src={url} alt={`Completion ${i + 1}`} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No completion photos</p>
+              )}
+            </div>
 
+            {/* Completion Notes */}
+            {(job as any).completion_notes && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Completion Notes</p>
+                <p className="text-sm text-foreground bg-secondary p-2 rounded-lg">{(job as any).completion_notes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
 
       {job.notes && (
