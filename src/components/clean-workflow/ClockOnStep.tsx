@@ -19,7 +19,9 @@ interface Props {
 
 export default function ClockOnStep({ job, property, userId, onNext, onBack }: Props) {
   const [clockingOn, setClockingOn] = useState(false);
-  const [showAssessment, setShowAssessment] = useState(false);
+  // If already clocked on but assessment not done, show modal immediately
+  const alreadyClockedOn = !!job.clock_on;
+  const [showAssessment, setShowAssessment] = useState(alreadyClockedOn);
   const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
 
   async function handleClockOn() {
