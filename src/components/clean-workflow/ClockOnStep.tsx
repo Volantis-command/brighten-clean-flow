@@ -6,7 +6,8 @@ import { MapPin, Clock, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
-import { DEFAULT_CHECKLIST, seedDefaultChecklist } from './defaultChecklist';
+import { seedDefaultChecklist } from './defaultChecklist';
+import PreJobAssessmentModal from './PreJobAssessmentModal';
 
 interface Props {
   job: any;
@@ -18,6 +19,9 @@ interface Props {
 
 export default function ClockOnStep({ job, property, userId, onNext, onBack }: Props) {
   const [clockingOn, setClockingOn] = useState(false);
+  // If already clocked on but assessment not done, show modal immediately
+  const alreadyClockedOn = !!job.clock_on;
+  const [showAssessment, setShowAssessment] = useState(alreadyClockedOn);
   const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
 
   async function handleClockOn() {
@@ -48,7 +52,24 @@ export default function ClockOnStep({ job, property, userId, onNext, onBack }: P
 
     toast.success('Clocked on! Timer started.');
     setClockingOn(false);
-    onNext('damage_check');
+    // Show pre-job assessment modal instead of proceeding directly
+    setShowAssessment(true);
+  }
+
+  function handleAssessmentComplete() {
+    setShowAssessment(false);
+    onNext('in_progress');
+  }
+
+  if (showAssessment) {
+    return (
+      <PreJobAssessmentModal
+        job={job}
+        property={property}
+        userId={userId}
+        onComplete={handleAssessmentComplete}
+      />
+    );
   }
 
   return (

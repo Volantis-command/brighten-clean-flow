@@ -672,6 +672,9 @@ export type Database = {
           clock_on: string | null
           completion_notes: string | null
           created_at: string
+          damage_notes: string | null
+          damage_photos: string[] | null
+          damage_reported: boolean
           deposit_amount: number | null
           deposit_paid: boolean | null
           deposit_paid_at: string | null
@@ -679,6 +682,8 @@ export type Database = {
           deposit_refunded: boolean | null
           duration_minutes: number | null
           estimated_duration: number | null
+          extra_time_notes: string | null
+          extra_time_photos: string[] | null
           extra_time_requested: boolean | null
           feedback_rating_sms_sent_at: string | null
           feedback_score: number | null
@@ -731,6 +736,9 @@ export type Database = {
           clock_on?: string | null
           completion_notes?: string | null
           created_at?: string
+          damage_notes?: string | null
+          damage_photos?: string[] | null
+          damage_reported?: boolean
           deposit_amount?: number | null
           deposit_paid?: boolean | null
           deposit_paid_at?: string | null
@@ -738,6 +746,8 @@ export type Database = {
           deposit_refunded?: boolean | null
           duration_minutes?: number | null
           estimated_duration?: number | null
+          extra_time_notes?: string | null
+          extra_time_photos?: string[] | null
           extra_time_requested?: boolean | null
           feedback_rating_sms_sent_at?: string | null
           feedback_score?: number | null
@@ -790,6 +800,9 @@ export type Database = {
           clock_on?: string | null
           completion_notes?: string | null
           created_at?: string
+          damage_notes?: string | null
+          damage_photos?: string[] | null
+          damage_reported?: boolean
           deposit_amount?: number | null
           deposit_paid?: boolean | null
           deposit_paid_at?: string | null
@@ -797,6 +810,8 @@ export type Database = {
           deposit_refunded?: boolean | null
           duration_minutes?: number | null
           estimated_duration?: number | null
+          extra_time_notes?: string | null
+          extra_time_photos?: string[] | null
           extra_time_requested?: boolean | null
           feedback_rating_sms_sent_at?: string | null
           feedback_score?: number | null

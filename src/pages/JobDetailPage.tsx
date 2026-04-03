@@ -793,6 +793,75 @@ export default function JobDetailPage() {
         </Card>
       )}
 
+      {/* Pre-Job Report — Admin only */}
+      {role === 'admin' && (job.clock_on) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Pre-Job Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Damage Status */}
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Damage Check</p>
+              {(job as any).damage_reported ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-destructive flex items-center gap-1">
+                    <AlertTriangleIcon className="h-4 w-4" /> Damage Reported
+                  </p>
+                  {(job as any).damage_notes && (
+                    <p className="text-sm text-foreground bg-destructive/5 p-2 rounded-lg">{(job as any).damage_notes}</p>
+                  )}
+                  {(job as any).damage_photos && (job as any).damage_photos.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {((job as any).damage_photos as string[]).map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                          <img src={url} alt={`Damage ${i + 1}`} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-green-600 flex items-center gap-1 font-semibold">
+                  <CheckCircle2 className="h-4 w-4" /> No damage reported
+                </p>
+              )}
+            </div>
+
+            {/* Extra Time Status */}
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Extra Time</p>
+              {(job as any).extra_time_requested ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-amber-600 flex items-center gap-1">
+                    <Clock className="h-4 w-4" /> Extra time requested
+                  </p>
+                  {(job as any).extra_time_notes && (
+                    <p className="text-sm text-foreground bg-amber-50 dark:bg-amber-500/10 p-2 rounded-lg">{(job as any).extra_time_notes}</p>
+                  )}
+                  {(job as any).extra_time_photos && (job as any).extra_time_photos.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {((job as any).extra_time_photos as string[]).map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                          <img src={url} alt={`Evidence ${i + 1}`} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-green-600 flex items-center gap-1 font-semibold">
+                  <CheckCircle2 className="h-4 w-4" /> No extra time needed
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Extra Time Photos — Admin only */}
       {role === 'admin' && extraTimePhotos.length > 0 && (
         <Card>
