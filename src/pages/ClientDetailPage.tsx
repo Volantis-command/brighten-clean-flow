@@ -127,6 +127,7 @@ export default function ClientDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [sendingPortalLink, setSendingPortalLink] = useState(false);
 
   if (data?.profile && !notesLoaded) {
     setNotes(data.profile.avatar_url || '');
@@ -178,7 +179,6 @@ export default function ClientDetailPage() {
     return 'bg-muted text-muted-foreground';
   };
 
-  const [sendingPortalLink, setSendingPortalLink] = useState(false);
   const handleSendPortalLink = async () => {
     if (!profile?.phone) { toast.error('No phone number on file'); return; }
     setSendingPortalLink(true);
