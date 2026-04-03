@@ -96,6 +96,9 @@ export default function PropertyProfilePage() {
         </TabsContent>
       </Tabs>
 
+      {/* Notes for Next Clean — auto-save watchlist */}
+      <WatchlistNotes propertyId={property.id} initialNotes={(property as any).property_notes || ''} />
+
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="rounded-2xl">
