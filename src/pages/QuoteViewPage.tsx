@@ -156,13 +156,14 @@ export default function QuoteViewPage() {
 
   // Build line items
   const lineItems: { label: string; detail: string; amount: number }[] = [];
+  const cs = quote.consumables_selection && typeof quote.consumables_selection === 'object' ? quote.consumables_selection : {};
 
   // Labour
   if (quote.labour_cost && quote.labour_cost > 0) {
     const hrs = quote.hours || 0;
     lineItems.push({
       label: 'Labour',
-      detail: hrs > 0 ? `${hrs} hrs @ $70/hr` : '',
+      detail: hrs > 0 ? `${hrs} hrs` : '',
       amount: Number(quote.labour_cost),
     });
   }
@@ -176,26 +177,15 @@ export default function QuoteViewPage() {
     });
   }
 
-  // Consumables
-  if (quote.consumables_cost && quote.consumables_cost > 0) {
-    // Try to show individual kits if extras has them; otherwise show total
-    const extras = Array.isArray(quote.extras) ? quote.extras : [];
-    const kitExtras = extras.filter((e: any) => CONSUMABLE_KITS.some(k => k.name === e.name));
-    if (kitExtras.length > 0) {
-      kitExtras.forEach((k: any) => {
-        lineItems.push({ label: k.name, detail: '', amount: Number(k.price) });
-      });
-    } else {
-      lineItems.push({ label: 'Consumables', detail: '', amount: Number(quote.consumables_cost) });
+  // Consumable kits from consumables_selection
+  CONSUMABLE_KITS.forEach(kit => {
+    if (cs[kit.key] === true) {
+      lineItems.push({ label: kit.name, detail: '', amount: kit.price });
     }
-  }
+  });
 
-  // Photo report
-  const hasPhotoReport = quote.notes?.includes('Photo Report') || false;
-  // If we stored photo report fee, show it
-  const totalCost = Number(quote.total_cost || 0);
-  const labourLinen = Number(quote.labour_cost || 0) + Number(quote.linen_cost || 0) + Number(quote.consumables_cost || 0);
-  if (totalCost > labourLinen + 0.01) {
+  // Photo report from consumables_selection
+  if (cs.include_photo_report === true) {
     lineItems.push({ label: 'Photo Reporting', detail: 'Per clean', amount: PHOTO_REPORTING_FEE });
   }
 
@@ -252,10 +242,29 @@ export default function QuoteViewPage() {
               <p className="font-semibold text-foreground">{quote.clean_type || quote.service_type || '—'}</p>
             </div>
             <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Scheduled date</p>
-              <p className="font-semibold text-foreground">TBC — pending your acceptance</p>
+              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Rooms</p>
+              <p className="font-semibold text-foreground">
+                {quote.bedrooms || 0} bed · {quote.bathrooms || 0} bath
+                {quote.sofa_beds > 0 && ` · ${quote.sofa_beds} sofa bed${quote.sofa_beds > 1 ? 's' : ''}`}
+                {quote.balconies > 0 && ` · ${quote.balconies} balcon${quote.balconies > 1 ? 'ies' : 'y'}`}
+              </p>
+              {quote.outdoor_areas && <p className="text-muted-foreground">+ Outdoor areas</p>}
             </div>
           </div>
+
+          {/* Bed Types */}
+          {Array.isArray(quote.bed_types) && quote.bed_types.length > 0 && (
+            <div className="text-sm">
+              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Bed Configuration</p>
+              <div className="flex flex-wrap gap-2">
+                {(quote.bed_types as string[]).map((bt, i) => (
+                  <span key={i} className="bg-[#0C463D]/5 px-2 py-1 rounded text-xs font-semibold">
+                    Bed {i + 1}: {bt}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Line items table */}

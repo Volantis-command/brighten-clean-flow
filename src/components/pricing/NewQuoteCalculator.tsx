@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculate, getHourlyRateIncGst, type BedType, type CalcInput, type ConsumableSelection } from '@/lib/pricingCalculator';
-import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, normaliseLegacyServiceType } from '@/lib/serviceTypes';
+import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, PHOTO_REPORTING_FEE, normaliseLegacyServiceType } from '@/lib/serviceTypes';
 import PriceLivePanel from './PriceLivePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -535,9 +535,35 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const buildSmsMessage = () => {
     const firstName = (form.clientName || 'there').split(' ')[0];
-    const APP_URL = 'https://app.brightly.cleaning';
     const bookLine = '\n\nReply YES to accept or NO to decline.';
-    return `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath\n💰 Total: $${result.sellPriceIncGst.toFixed(2)}${bookLine}`;
+    
+    let msg = `Hi ${firstName}, here's your Brightly Cleaning quote 🌿\n\n📍 ${form.propertyAddress || form.propertyName || 'Property'}\n🧹 ${form.cleanType}\n🛏 ${form.bedrooms} bed · ${form.bathrooms} bath`;
+    
+    if (form.sofaBeds > 0) msg += ` · ${form.sofaBeds} sofa bed${form.sofaBeds > 1 ? 's' : ''}`;
+    if (form.balconies > 0) msg += ` · ${form.balconies} balcon${form.balconies > 1 ? 'ies' : 'y'}`;
+    if (form.outdoorAreas) msg += ` · Outdoor areas`;
+    
+    // Bed types
+    if (form.bedTypes.length > 0) {
+      const bedTypeLines = form.bedTypes.map((bt, i) => `  Bed ${i + 1}: ${bt}`).join('\n');
+      msg += `\n\n🛌 Bed config:\n${bedTypeLines}`;
+    }
+    
+    // Consumable kits
+    const selectedKits = CONSUMABLE_KITS.filter(k => form.consumables[k.key as keyof ConsumableSelection]);
+    if (selectedKits.length > 0) {
+      msg += '\n\n📦 Kits included:';
+      selectedKits.forEach(k => { msg += `\n  ✓ ${k.name} — $${k.price.toFixed(2)}`; });
+    }
+    
+    // Photo reporting
+    if (form.includePhotoReport) {
+      msg += `\n📸 Photo Reporting — $${PHOTO_REPORTING_FEE}.00 + GST`;
+    }
+    
+    msg += `\n\n💰 Total: $${result.sellPriceIncGst.toFixed(2)} inc GST`;
+    msg += bookLine;
+    return msg;
   };
 
   const copyForWhatsApp = () => {
