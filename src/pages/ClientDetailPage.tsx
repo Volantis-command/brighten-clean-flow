@@ -19,6 +19,7 @@ import OnboardingStatusSection from '@/components/client-detail/OnboardingStatus
 import AssignedPropertiesSection from '@/components/client-detail/AssignedPropertiesSection';
 import EditClientDialog from '@/components/client-detail/EditClientDialog';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
+import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
 
 function useClientDetail(clientId: string) {
   return useQuery({
@@ -395,6 +396,9 @@ export default function ClientDetailPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Communication History */}
+      <ClientCommsLog clientId={id!} />
 
       <EditClientDialog
         open={editOpen}

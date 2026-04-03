@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { MapPin, Navigation, Key, Pause, Play, Plus, Camera, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { MapPin, Navigation, Key, Pause, Play, Plus, Camera, Loader2, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getCurrentPosition } from '@/lib/geo';
 
 interface Props {
   job: any;
@@ -26,10 +29,15 @@ function openMaps(address: string) {
 
 export default function ActiveJobView({ job, property, userId, onRefresh }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [elapsed, setElapsed] = useState('00:00:00');
   const [isPaused, setIsPaused] = useState(!!job.paused_at);
   const [pausing, setPausing] = useState(false);
   const [accessOpen, setAccessOpen] = useState(true);
+
+  // SOS state
+  const [sosOpen, setSosOpen] = useState(false);
+  const [sendingSos, setSendingSos] = useState(false);
 
   // Quick note state
   const [showNote, setShowNote] = useState(false);
@@ -38,6 +46,46 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
   const [uploadingNote, setUploadingNote] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const noteFileRef = useRef<HTMLInputElement>(null);
+
+  async function handleSOS() {
+    setSendingSos(true);
+    try {
+      let lat: number | null = null;
+      let lng: number | null = null;
+      try {
+        const pos = await getCurrentPosition();
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch { /* GPS failed, send without */ }
+
+      await supabase.from('sos_alerts' as any).insert({
+        cleaner_id: userId,
+        job_id: job.id,
+        triggered_at: new Date().toISOString(),
+        lat,
+        lng,
+        resolved: false,
+      });
+
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle();
+      const cleanerName = profile?.full_name || 'A cleaner';
+      const address = property?.address || property?.property_name || 'Unknown';
+      const locationUrl = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : 'Location unavailable';
+
+      await supabase.functions.invoke('send-job-sms', {
+        body: {
+          to: 'ADMIN',
+          message: `🆘 SOS ALERT — ${cleanerName} needs help at job ${address}. Location: ${locationUrl} — Brightly Ops`,
+        },
+      });
+
+      toast.error('Alert sent to manager ✓', { duration: 5000 });
+      setSosOpen(false);
+    } catch {
+      toast.error('Failed to send SOS alert');
+    }
+    setSendingSos(false);
+  }
 
   // Timer
   useEffect(() => {
@@ -134,18 +182,52 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
         <div className="flex items-center gap-2 font-mono font-bold text-lg">
           ⏱ {isPaused ? 'PAUSED' : elapsed}
         </div>
-        <p className="text-sm font-bold truncate max-w-[140px]">{property?.property_name}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-white text-white hover:bg-white/20 bg-transparent gap-1 font-bold"
-          onClick={handlePause}
-          disabled={pausing}
-        >
-          {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          {isPaused ? 'Resume' : 'Pause'}
-        </Button>
+        <p className="text-sm font-bold truncate max-w-[100px]">{property?.property_name}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSosOpen(true)}
+            className="h-10 px-3 rounded-lg bg-red-600 text-white font-bold text-sm flex items-center gap-1 active:scale-95 transition-transform"
+          >
+            🆘 SOS
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white text-white hover:bg-white/20 bg-transparent gap-1 font-bold"
+            onClick={handlePause}
+            disabled={pausing}
+          >
+            {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </Button>
+        </div>
       </div>
+
+      {/* SOS confirmation sheet */}
+      <Sheet open={sosOpen} onOpenChange={setSosOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Send emergency alert?
+            </SheetTitle>
+          </SheetHeader>
+          <p className="text-sm text-muted-foreground my-4">
+            Your GPS location will be shared with your manager immediately.
+          </p>
+          <SheetFooter className="flex gap-2 sm:justify-start">
+            <Button variant="outline" onClick={() => setSosOpen(false)} className="flex-1">Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleSOS}
+              disabled={sendingSos}
+              className="flex-1 gap-2"
+            >
+              {sendingSos ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Send Alert
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <main className="flex-1 px-4 py-4 space-y-4">
         {/* Address + maps */}

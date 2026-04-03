@@ -22,6 +22,7 @@ import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
 import { ExtraTimePhotosModal } from '@/components/job-detail/ExtraTimePhotosModal';
 import { CancelJobModal } from '@/components/job-detail/CancelJobModal';
+import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -1442,6 +1443,11 @@ export default function JobDetailPage() {
       </div>
 
       <CancelJobModal open={cancelOpen} onOpenChange={setCancelOpen} jobId={jobId!} onCancelled={() => navigate('/schedule')} />
+
+      {/* Client Messages for this Job */}
+      {role === 'admin' && jobId && (
+        <ClientCommsLog jobId={jobId} title="Client Messages for this Job" />
+      )}
 
       {/* Price Prompt Modal */}
       <Dialog open={showPricePrompt} onOpenChange={setShowPricePrompt}>

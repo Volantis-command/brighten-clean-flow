@@ -8,6 +8,7 @@ import { StaffPaySection } from '@/components/staff/StaffPaySection';
 import { StaffPayRatesSection } from '@/components/staff/StaffPayRatesSection';
 import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
 import { StaffOnboardingSection, useStaffOnboardingStatuses } from '@/components/staff/StaffOnboardingSection';
+import CleanerScorecard from '@/components/staff/CleanerScorecard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -301,6 +302,7 @@ export default function StaffPage() {
           )}
         </div>
 
+        <CleanerScorecard staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffOnboardingSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPayRatesSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />

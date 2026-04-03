@@ -130,6 +130,48 @@ export type Database = {
           },
         ]
       }
+      client_comms: {
+        Row: {
+          client_id: string
+          id: string
+          job_id: string | null
+          message_body: string
+          sent_at: string | null
+          sent_by: string | null
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          job_id?: string | null
+          message_body: string
+          sent_at?: string | null
+          sent_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          job_id?: string | null
+          message_body?: string
+          sent_at?: string | null
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_comms_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_comms_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_messages: {
         Row: {
           client_id: string
@@ -1955,6 +1997,44 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sos_alerts: {
+        Row: {
+          cleaner_id: string
+          id: string
+          job_id: string | null
+          lat: number | null
+          lng: number | null
+          resolved: boolean | null
+          triggered_at: string | null
+        }
+        Insert: {
+          cleaner_id: string
+          id?: string
+          job_id?: string | null
+          lat?: number | null
+          lng?: number | null
+          resolved?: boolean | null
+          triggered_at?: string | null
+        }
+        Update: {
+          cleaner_id?: string
+          id?: string
+          job_id?: string | null
+          lat?: number | null
+          lng?: number | null
+          resolved?: boolean | null
+          triggered_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sos_alerts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
