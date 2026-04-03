@@ -158,6 +158,7 @@ export default function DashboardPage() {
   // Admin / Head Cleaner dashboard
   return (
     <div className="space-y-8">
+      <TodayJobsWidget />
       <DashboardGreeting />
 
       {/* Row 1: Top Stats */}

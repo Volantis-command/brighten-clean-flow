@@ -227,7 +227,9 @@ function AppRoutes() {
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />
         <Route path="/my-cleans" element={<MyCleans />} />
+        <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
+        <Route path="/clean/:jobId/complete" element={<CleanWorkflowPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
