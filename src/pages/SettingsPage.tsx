@@ -57,6 +57,10 @@ export default function SettingsPage() {
             <Calendar className="w-4 h-4" />
             <span className="hidden sm:inline">Calendar</span>
           </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Plug className="w-4 h-4" />
+            <span className="hidden sm:inline">Integrations</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="team"><TeamSection /></TabsContent>
@@ -69,6 +73,7 @@ export default function SettingsPage() {
         <TabsContent value="guesty"><GuestySection /></TabsContent>
         <TabsContent value="xero"><XeroSection /></TabsContent>
         <TabsContent value="calendar"><GoogleCalendarSection /></TabsContent>
+        <TabsContent value="integrations"><IntegrationsSection /></TabsContent>
       </Tabs>
     </div>
   );
