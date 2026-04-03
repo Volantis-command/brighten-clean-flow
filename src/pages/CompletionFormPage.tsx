@@ -39,10 +39,7 @@ function buildSections(property: any): Section[] {
       id: `bedroom_${i}`,
       title: `Bedroom ${i}`,
       fields: [
-        { key: 'wide_shot', label: `Bedroom ${i} — wide shot`, required: true },
-        { key: 'bed_made', label: 'Bed made — linen and pillows close-up', required: true },
-        { key: 'wardrobe', label: 'Wardrobe/closet — open, wiped and clear', required: true },
-        { key: 'surfaces', label: 'Bedside tables/surfaces — dusted and clear', required: true },
+        { key: 'bed_made', label: 'Bed made — bed and linen, full shot', required: true },
       ],
     });
   }
