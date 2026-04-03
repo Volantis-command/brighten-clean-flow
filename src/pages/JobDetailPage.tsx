@@ -822,50 +822,6 @@ export default function JobDetailPage() {
 
 
 
-      {/* Refund Dialog */}
-      <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Refund Deposit</DialogTitle>
-            <DialogDescription>
-              Refund ${Number((job as any)?.deposit_amount || 0).toFixed(2)} to the client via Stripe. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Reason (optional)</Label>
-            <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="e.g. Client cancelled" />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRefundDialog(false)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              disabled={refundingDeposit}
-              onClick={async () => {
-                setRefundingDeposit(true);
-                try {
-                  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-refund-deposit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ job_id: jobId, reason: refundReason }),
-                  });
-                  const data = await res.json();
-                  if (data.error) throw new Error(data.error);
-                  toast.success('Deposit refunded successfully');
-                  queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
-                  setShowRefundDialog(false);
-                } catch (err: any) {
-                  toast.error('Refund failed: ' + err.message);
-                }
-                setRefundingDeposit(false);
-              }}
-              className="gap-2"
-            >
-              {refundingDeposit ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Confirm Refund
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {job.notes && (
         <Card>
