@@ -56,7 +56,7 @@ export function NotificationBell() {
           <Bell className="h-5 w-5 text-primary-foreground md:text-muted-foreground" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-5 min-w-[20px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
@@ -64,14 +64,16 @@ export function NotificationBell() {
       <DropdownMenuContent align="end" className="w-80 max-h-[28rem] overflow-y-auto p-2">
         <div className="flex items-center justify-between px-2 py-1.5">
           <h3 className="text-sm font-bold text-foreground">Notifications</h3>
-          {unreadCount > 0 && (
-            <button
-              onClick={() => markAllAsRead.mutate()}
-              className="text-[11px] font-semibold text-primary hover:underline"
-            >
-              Mark all read
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllAsRead.mutate()}
+                className="text-[11px] font-semibold text-primary hover:underline"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
         </div>
         <DropdownMenuSeparator />
         {recent.length === 0 ? (

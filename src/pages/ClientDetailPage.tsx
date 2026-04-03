@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, Check, X, Send, Loader2 } from 'lucide-react';
+import { Star, Check, X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 import ClientHeader from '@/components/client-detail/ClientHeader';
 import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
@@ -126,6 +127,7 @@ export default function ClientDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [sendingPortalLink, setSendingPortalLink] = useState(false);
 
   if (data?.profile && !notesLoaded) {
     setNotes(data.profile.avatar_url || '');
@@ -164,7 +166,7 @@ export default function ClientDetailPage() {
   const firstLink = data.links[0];
 
   const statusColor = (s: string) => {
-    if (s === 'complete') return 'bg-green-100 text-green-800';
+    if (s === 'complete' || s === 'completed') return 'bg-green-100 text-green-800';
     if (s === 'in_progress') return 'bg-yellow-100 text-yellow-800';
     if (s === 'scheduled') return 'bg-blue-100 text-blue-800';
     return 'bg-muted text-muted-foreground';
@@ -175,6 +177,22 @@ export default function ClientDetailPage() {
     if (s === 'sent') return 'bg-blue-100 text-blue-800';
     if (s === 'draft') return 'bg-yellow-100 text-yellow-800';
     return 'bg-muted text-muted-foreground';
+  };
+
+  const handleSendPortalLink = async () => {
+    if (!profile?.phone) { toast.error('No phone number on file'); return; }
+    setSendingPortalLink(true);
+    try {
+      const baseUrl = getAppBaseUrl();
+      const msg = `Hi ${profile?.full_name?.split(' ')[0] || 'there'}, view your Brightly clean history here: ${baseUrl}/client-portal — Your team at Brightly`;
+      await supabase.functions.invoke('send-job-sms', {
+        body: { to: profile.phone, message: msg },
+      });
+      toast.success('Portal login link sent via SMS');
+    } catch (err: any) {
+      toast.error('Failed to send: ' + err.message);
+    }
+    setSendingPortalLink(false);
   };
 
   return (
@@ -219,6 +237,22 @@ export default function ClientDetailPage() {
             clientName={profile?.full_name || ''}
             onRefresh={refreshAll}
           />
+
+          {/* Send Portal Login Link */}
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-bold text-foreground mb-3">Client Portal Access</h3>
+            <p className="text-sm text-muted-foreground mb-3">Send the client an SMS with a link to log into their portal and view clean history.</p>
+            <Button
+              onClick={handleSendPortalLink}
+              disabled={sendingPortalLink || !profile?.phone}
+              variant="outline"
+              className="gap-2"
+            >
+              {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+              Send Portal Login Link
+            </Button>
+            {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
+          </div>
 
           <OnboardingStatusSection
             clientId={id!}
