@@ -385,12 +385,10 @@ export default function CompletionFormPage() {
       });
     } catch { /* non-blocking */ }
 
-    // 6. SMS to client
+    // 6. SMS to client (uses job-completed-sms which resolves client phone from DB)
     try {
-      const clientName = property?.client_name?.split(' ')[0] || 'there';
-      const shortAddr = property?.address || property?.property_name || 'your property';
-      await supabase.functions.invoke('send-job-sms', {
-        body: { to: 'CLIENT', job_id: job.id, message: `Hi ${clientName}, your Brightly clean at ${shortAddr} is complete. Thank you for choosing Brightly.` },
+      await supabase.functions.invoke('job-completed-sms', {
+        body: { job_id: job.id },
       });
     } catch { /* non-blocking */ }
 
