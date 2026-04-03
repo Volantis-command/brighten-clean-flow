@@ -174,10 +174,17 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const duration = getDurationHours(job.estimated_duration);
                   const top = (startTime - firstHour) * HOUR_HEIGHT;
                   const height = Math.max(duration * HOUR_HEIGHT, 28);
-                  const color = getCleanerColor(job.cleaner_1_id);
                   const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
                   const clientName = job.properties?.property_name || 'Job';
                   const address = job.properties?.address || '';
+
+                  // Status-based colour coding
+                  const isComplete = job.status === 'completed' || job.status === 'complete';
+                  const isInProgress = job.status === 'in_progress';
+                  const isCancelled = job.status === 'cancelled';
+                  const statusBg = isComplete ? 'hsl(160 84% 39%)' : isInProgress ? 'hsl(38 92% 50%)' : isCancelled ? 'hsl(220 9% 64%)' : getCleanerColor(job.cleaner_1_id).bg;
+                  const statusBorder = isComplete ? 'hsl(160 84% 30%)' : isInProgress ? 'hsl(38 92% 40%)' : isCancelled ? 'hsl(220 9% 54%)' : getCleanerColor(job.cleaner_1_id).border;
+                  const statusText = (isComplete || isInProgress || isCancelled) ? '#fff' : getCleanerColor(job.cleaner_1_id).text;
 
                   return (
                     <div
@@ -189,21 +196,21 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                       style={{
                         top: Math.max(top, 0),
                         height,
-                        backgroundColor: color.bg,
-                        borderLeft: `3px solid ${color.border}`,
+                        backgroundColor: statusBg,
+                        borderLeft: `3px solid ${statusBorder}`,
                       }}
                     >
                       <div className="px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
                         <p
-                          className="text-[11px] font-bold leading-tight truncate"
-                          style={{ color: color.text }}
+                          className={`text-[11px] font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`}
+                          style={{ color: statusText }}
                         >
                           {clientName}
                         </p>
                         {height >= 44 && address && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5 opacity-85"
-                            style={{ color: color.text }}
+                            style={{ color: statusText }}
                           >
                             {address}
                           </p>
@@ -211,7 +218,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         {height >= 56 && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5 opacity-75"
-                            style={{ color: color.text }}
+                            style={{ color: statusText }}
                           >
                             {cleanerName.split(' ')[0]}
                             {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}

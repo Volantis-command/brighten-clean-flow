@@ -162,9 +162,9 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
           </Card>
         )}
 
-        {/* Access info collapsed */}
+        {/* Access info — always expanded, yellow background */}
         <Collapsible open={accessOpen} onOpenChange={setAccessOpen}>
-          <Card className="border-border">
+          <Card className="border-border bg-amber-50 dark:bg-amber-500/10">
             <CollapsibleTrigger className="w-full">
               <CardContent className="p-4 flex items-center justify-between">
                 <span className="font-bold text-foreground flex items-center gap-2">
@@ -174,16 +174,34 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
+              <div className="px-4 pb-4 space-y-2">
+                {property?.access_code && (
+                  <p className="text-sm font-mono font-bold text-foreground bg-amber-100 dark:bg-amber-500/20 px-3 py-2 rounded-lg">Code: {property.access_code}</p>
+                )}
+                {property?.lockbox_code && (
+                  <p className="text-sm font-mono font-bold text-foreground bg-amber-100 dark:bg-amber-500/20 px-3 py-2 rounded-lg">Lockbox: {property.lockbox_code}</p>
+                )}
                 {property?.access_notes ? (
                   <p className="text-sm text-foreground whitespace-pre-wrap">{property.access_notes}</p>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">No access notes</p>
+                  !property?.access_code && !property?.lockbox_code && (
+                    <p className="text-sm text-muted-foreground italic">No access notes</p>
+                  )
                 )}
               </div>
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Cleaner Notes — yellow card */}
+        {(property as any)?.property_notes && (
+          <Card className="border-border bg-amber-50 dark:bg-amber-500/10">
+            <CardContent className="p-4">
+              <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Cleaner Note</p>
+              <p className="text-sm text-foreground">{(property as any).property_notes}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Add Note/Photo */}
         {showNote ? (
