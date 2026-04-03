@@ -28,13 +28,23 @@ function useClientsList(currentUserId?: string) {
   return useQuery({
     queryKey: ['clients-list', currentUserId],
     queryFn: async () => {
-      const { data: propertyRows, error: propertiesError } = await supabase
+      // Strategy 1: Get clients via client_properties links
+      const { data: allLinks } = await supabase
+        .from('client_properties')
+        .select('client_id, property_id, portal_token');
+
+      const linksByClientId = new Map<string, Array<{ property_id: string; portal_token: string | null }>>();
+      (allLinks || []).forEach((link) => {
+        const existing = linksByClientId.get(link.client_id) || [];
+        existing.push({ property_id: link.property_id, portal_token: link.portal_token });
+        linksByClientId.set(link.client_id, existing);
+      });
+
+      // Strategy 2: Get clients via properties with client info
+      const { data: propertyRows } = await supabase
         .from('properties')
         .select('id, property_name, client_name, billing_email, client_phone')
-        .or('client_name.not.is.null,billing_email.not.is.null,client_phone.not.is.null')
         .order('property_name');
-
-      if (propertiesError) throw propertiesError;
 
       const properties = (propertyRows || []) as Array<{
         id: string;
@@ -44,95 +54,76 @@ function useClientsList(currentUserId?: string) {
         client_phone: string | null;
       }>;
 
-      if (!properties.length) return [];
+      const propertyNameMap = new Map(properties.map(p => [p.id, p.property_name]));
 
-      const propertyIds = properties.map((property) => property.id);
-      const emails = [...new Set(properties.map((property) => property.billing_email?.trim()).filter(Boolean) as string[])];
-      const phones = [...new Set(properties.map((property) => property.client_phone?.trim()).filter(Boolean) as string[])];
+      // Get all unique client IDs from links
+      const linkedClientIds = [...linksByClientId.keys()];
 
-      const [{ data: clientLinks, error: clientLinksError }, { data: linkedProfiles, error: linkedProfilesError }] = await Promise.all([
-        supabase.from('client_properties').select('client_id, property_id, portal_token').in('property_id', propertyIds),
-        supabase.from('profiles').select('id, full_name, email, phone').in('id', [
-          ...new Set(
-            ((await supabase.from('client_properties').select('client_id, property_id').in('property_id', propertyIds)).data || [])
-              .map((link) => link.client_id)
-              .filter(Boolean)
-          ),
-        ]),
-      ]);
+      // Get profiles for linked clients
+      const { data: linkedProfiles } = linkedClientIds.length
+        ? await supabase.from('profiles').select('id, full_name, email, phone').in('id', linkedClientIds)
+        : { data: [] };
 
-      if (clientLinksError) throw clientLinksError;
-      if (linkedProfilesError) throw linkedProfilesError;
+      // Also get client role users
+      const { data: clientRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'client');
+      const clientRoleIds = (clientRoles || []).map(r => r.user_id);
+      const additionalIds = clientRoleIds.filter(id => !linkedClientIds.includes(id));
+      const { data: additionalProfiles } = additionalIds.length
+        ? await supabase.from('profiles').select('id, full_name, email, phone').in('id', additionalIds)
+        : { data: [] };
 
-      const profileQueries = [] as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>[];
+      const allProfiles = [...(linkedProfiles || []), ...(additionalProfiles || [])];
 
-      if (emails.length) {
-        profileQueries.push(
-          supabase.from('profiles').select('id, full_name, email, phone').in('email', emails) as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>
-        );
-      }
-
-      if (phones.length) {
-        profileQueries.push(
-          supabase.from('profiles').select('id, full_name, email, phone').in('phone', phones) as PromiseLike<{ data: Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }> | null; error: Error | null }>
-        );
-      }
-
-      const matchedProfileResults = profileQueries.length ? await Promise.all(profileQueries) : [];
-      matchedProfileResults.forEach((result) => {
-        if (result.error) throw result.error;
-      });
-
-      const allProfiles = [
-        ...(linkedProfiles || []),
-        ...matchedProfileResults.flatMap((result) => result.data || []),
-      ];
-
-      const profileById = new Map(allProfiles.map((profile) => [profile.id, profile]));
-      const profileByEmail = new Map(
-        allProfiles
-          .filter((profile) => profile.email)
-          .map((profile) => [profile.email!.trim().toLowerCase(), profile])
-      );
-      const profileByPhone = new Map(
-        allProfiles
-          .filter((profile) => profile.phone)
-          .map((profile) => [profile.phone!.trim(), profile])
-      );
-
-      const linksByPropertyId = new Map((clientLinks || []).map((link) => [link.property_id, link]));
       const clientsMap = new Map<string, ClientMember>();
 
-      properties.forEach((property) => {
-        const directLink = linksByPropertyId.get(property.id);
-        const resolvedProfile = (directLink?.client_id ? profileById.get(directLink.client_id) : undefined)
-          || (property.billing_email ? profileByEmail.get(property.billing_email.trim().toLowerCase()) : undefined)
-          || (property.client_phone ? profileByPhone.get(property.client_phone.trim()) : undefined);
-
-        if (resolvedProfile?.id === currentUserId) {
-          return;
-        }
-
-        const key = resolvedProfile?.id || `property-${property.id}`;
-        const existingClient = clientsMap.get(key);
-        const linkedProperty = {
-          property_id: property.id,
-          property_name: property.property_name || 'Unknown',
-          portal_token: directLink?.portal_token ?? null,
-        };
-
-        if (existingClient) {
-          existingClient.linked_properties.push(linkedProperty);
-          return;
-        }
-
-        clientsMap.set(key, {
-          id: resolvedProfile?.id || key,
-          full_name: resolvedProfile?.full_name || property.client_name || null,
-          email: resolvedProfile?.email || property.billing_email || null,
-          phone: resolvedProfile?.phone || property.client_phone || null,
-          linked_properties: [linkedProperty],
+      // Add clients from profiles (linked or with client role)
+      allProfiles.forEach((profile) => {
+        if (profile.id === currentUserId) return;
+        const links = linksByClientId.get(profile.id) || [];
+        clientsMap.set(profile.id, {
+          id: profile.id,
+          full_name: profile.full_name,
+          email: profile.email,
+          phone: profile.phone,
+          linked_properties: links.map(l => ({
+            property_id: l.property_id,
+            property_name: propertyNameMap.get(l.property_id) || 'Unknown',
+            portal_token: l.portal_token,
+          })),
         });
+      });
+
+      // Add clients from properties that have client info but no profile link
+      properties.forEach((property) => {
+        const hasClient = property.client_name || property.billing_email || property.client_phone;
+        if (!hasClient) return;
+        // Check if already linked
+        const isLinked = [...clientsMap.values()].some(c =>
+          c.linked_properties.some(lp => lp.property_id === property.id)
+        );
+        if (isLinked) return;
+
+        const key = `property-${property.id}`;
+        const existing = clientsMap.get(key);
+        if (existing) {
+          existing.linked_properties.push({
+            property_id: property.id,
+            property_name: property.property_name,
+            portal_token: null,
+          });
+        } else {
+          clientsMap.set(key, {
+            id: key,
+            full_name: property.client_name,
+            email: property.billing_email,
+            phone: property.client_phone,
+            linked_properties: [{
+              property_id: property.id,
+              property_name: property.property_name,
+              portal_token: null,
+            }],
+          });
+        }
       });
 
       return Array.from(clientsMap.values());
