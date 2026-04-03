@@ -64,7 +64,7 @@ export default function SettingsPage() {
         <TabsContent value="properties"><PropertiesSection /></TabsContent>
         <TabsContent value="app"><AppSettingsSection /></TabsContent>
         <TabsContent value="notifications"><NotificationsSection /></TabsContent>
-        <TabsContent value="payments"><PaymentsSection /></TabsContent>
+        
         <TabsContent value="legal"><LegalSection /></TabsContent>
         <TabsContent value="guesty"><GuestySection /></TabsContent>
         <TabsContent value="xero"><XeroSection /></TabsContent>
