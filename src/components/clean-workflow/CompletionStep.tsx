@@ -1,11 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, CheckCircle2, Circle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Camera, Loader2, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
 import ClockedOnBanner from './ClockedOnBanner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
+const ROOM_CHECKLIST = [
+  { id: 'kitchen', label: 'Kitchen cleaned' },
+  { id: 'bathrooms', label: 'Bathrooms cleaned' },
+  { id: 'floors', label: 'Floors vacuumed/mopped' },
+  { id: 'beds', label: 'Beds made / linen changed' },
+  { id: 'bins', label: 'Bins emptied' },
+  { id: 'locked', label: 'Property locked and secured' },
+];
 
 interface Props {
   job: any;
@@ -15,52 +28,43 @@ interface Props {
   onBack: () => void;
 }
 
-interface RoomSummary {
-  room: string;
-  total: number;
-  completed: number;
-  tasks: { task: string; completed: boolean }[];
-}
-
 export default function CompletionStep({ job, property, userId, onNext, onBack }: Props) {
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [rooms, setRooms] = useState<RoomSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { loadSummary(); }, []);
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const path = `jobs/${job.id}/completion_${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from('job-photos').upload(path, file, { contentType: file.type });
+    if (!error) {
+      const { data } = supabase.storage.from('job-photos').getPublicUrl(path);
+      setPhotos(prev => [...prev, data.publicUrl]);
+    } else {
+      toast.error('Photo upload failed');
+    }
+    setUploading(false);
+    e.target.value = '';
+  }
 
-  async function loadSummary() {
-    const [{ data: sopItems }, { data: completions }] = await Promise.all([
-      supabase.from('property_sop_items').select('id, room, task, sort_order').eq('property_id', property.id).eq('active', true).order('room').order('sort_order'),
-      supabase.from('job_checklist_completions').select('sop_item_id, completed').eq('job_id', job.id),
-    ]);
-
-    const cMap = new Map((completions ?? []).map((c: any) => [c.sop_item_id, c.completed]));
-    const grouped: Record<string, { task: string; completed: boolean }[]> = {};
-    (sopItems ?? []).forEach((s: any) => {
-      if (!grouped[s.room]) grouped[s.room] = [];
-      grouped[s.room].push({ task: s.task, completed: cMap.get(s.id) ?? false });
+  function toggleCheck(id: string) {
+    setCheckedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-
-    setRooms(Object.entries(grouped).map(([room, tasks]) => ({
-      room,
-      total: tasks.length,
-      completed: tasks.filter(t => t.completed).length,
-      tasks,
-    })));
-    setLoading(false);
   }
 
-  function formatAuPhone(phone: string): string {
-    let cleaned = phone.replace(/[\s\-()]/g, '');
-    if (cleaned.startsWith('+61')) return cleaned;
-    if (cleaned.startsWith('61') && cleaned.length >= 11) return '+' + cleaned;
-    if (cleaned.startsWith('0')) return '+61' + cleaned.slice(1);
-    return '+61' + cleaned;
-  }
-
-  async function handleClockOffSubmit() {
+  async function handleConfirmClockOff() {
     setSubmitting(true);
+    setShowConfirm(false);
     const now = new Date();
     const clockOff = now.toISOString();
     const clockOnTime = job.clock_on ? new Date(job.clock_on).getTime() : now.getTime();
@@ -71,6 +75,8 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
       clock_off: clockOff,
       check_out_time: clockOff,
       duration_minutes: durationMinutes,
+      completion_photos: photos,
+      completion_notes: notes || null,
     }).eq('id', job.id);
 
     if (error) {
@@ -86,8 +92,36 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
       .eq('user_id', userId)
       .is('clock_out_time', null);
 
-    // Send completion SMS
-    sendCompletionSms().catch(err => console.error('SMS failed:', err));
+    // Save completion photos to job_photos table
+    for (const url of photos) {
+      const storagePath = url.split('/job-photos/')[1] ?? '';
+      await supabase.from('job_photos').insert({
+        job_id: job.id,
+        storage_path: storagePath,
+        public_url: url,
+        room_label: 'Completion Photo',
+      });
+    }
+
+    // Send admin SMS
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle();
+    const cleanerName = profile?.full_name || 'A cleaner';
+    const address = property?.address || property?.property_name || 'Unknown';
+    const timeFormatted = format(now, 'h:mm a');
+
+    try {
+      await supabase.functions.invoke('send-job-sms', {
+        body: {
+          to: 'ADMIN',
+          message: `✅ JOB COMPLETE — ${cleanerName} has completed the clean at ${address}. Clock-off time: ${timeFormatted}. Post-clean photos submitted. View job: https://app.brightly.cleaning/jobs/${job.id}`,
+        },
+      });
+    } catch {
+      // Non-blocking
+    }
+
+    // Send client completion SMS
+    sendClientCompletionSms().catch(() => {});
 
     // Admin notification
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
@@ -107,7 +141,7 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
     onNext('done');
   }
 
-  async function sendCompletionSms() {
+  async function sendClientCompletionSms() {
     const { data: cpRows } = await supabase.from('client_properties').select('client_id').eq('property_id', property?.id).limit(1);
     const clientId = cpRows?.[0]?.client_id;
     if (!clientId) return;
@@ -116,21 +150,16 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
     if (!clientProfile?.phone) return;
 
     const firstName = (clientProfile.full_name ?? '').split(' ')[0] || 'there';
-    const message = `Hi ${firstName}, your Brightly clean is complete! Thanks for using Brightly. 🧹`;
+    let cleaned = clientProfile.phone.replace(/[\s\-()]/g, '');
+    if (!cleaned.startsWith('+61')) {
+      if (cleaned.startsWith('61') && cleaned.length >= 11) cleaned = '+' + cleaned;
+      else if (cleaned.startsWith('0')) cleaned = '+61' + cleaned.slice(1);
+      else cleaned = '+61' + cleaned;
+    }
 
     await supabase.functions.invoke('send-job-sms', {
-      body: { to: formatAuPhone(clientProfile.phone), message },
+      body: { to: cleaned, message: `Hi ${firstName}, your Brightly clean is complete! Thanks for using Brightly. 🧹` },
     });
-  }
-
-  const allComplete = rooms.length > 0 && rooms.every(r => r.completed === r.total);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
   }
 
   return (
@@ -138,60 +167,99 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
       <ClockedOnBanner clockOn={job.clock_on} />
 
       <div className="bg-primary text-primary-foreground px-5 py-5 safe-area-top">
-        <h1 className="text-xl font-extrabold">Final Sign-Off</h1>
-        <p className="text-primary-foreground/70 text-sm mt-1">{property?.property_name}</p>
+        <h1 className="text-xl font-extrabold">Complete Your Clean</h1>
+        <p className="text-primary-foreground/70 text-sm mt-1">{property?.address || property?.property_name}</p>
       </div>
 
-      <main className="flex-1 px-4 py-5 space-y-3 pb-32">
-        <p className="text-sm text-muted-foreground font-medium">Review each room before clocking off:</p>
+      <main className="flex-1 px-4 py-5 space-y-5 pb-32">
+        {/* SECTION 1: Completion Photos */}
+        <Card className="border-border">
+          <CardContent className="p-5 space-y-3">
+            <h3 className="font-bold text-foreground">Post-clean photos</h3>
+            <p className="text-sm text-muted-foreground">Upload at least 1 photo showing the completed clean</p>
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((url, i) => (
+                <div key={i} className="relative">
+                  <img src={url} alt={`Photo ${i + 1}`} className="w-full aspect-square object-cover rounded-xl" />
+                  <button onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="w-full aspect-square border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+                <span className="text-[10px] font-bold mt-1">Add Photo</span>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
-        {rooms.map((room) => {
-          const roomDone = room.completed === room.total;
-          return (
-            <Card key={room.room} className={`border ${roomDone ? 'border-green-200 bg-green-50/50' : 'border-destructive/30 bg-destructive/5'}`}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold text-foreground text-sm">{room.room}</h3>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${roomDone ? 'bg-green-100 text-green-700' : 'bg-destructive/10 text-destructive'}`}>
-                    {room.completed}/{room.total}
+        {/* SECTION 2: Room Checklist */}
+        <Card className="border-border">
+          <CardContent className="p-5 space-y-3">
+            <h3 className="font-bold text-foreground">Room checklist</h3>
+            <div className="space-y-2">
+              {ROOM_CHECKLIST.map(item => (
+                <label
+                  key={item.id}
+                  className="flex items-center gap-3 min-h-[48px] cursor-pointer"
+                  onClick={() => toggleCheck(item.id)}
+                >
+                  <Checkbox checked={checkedItems.has(item.id)} className="h-6 w-6" />
+                  <span className={`text-sm ${checkedItems.has(item.id) ? 'line-through text-muted-foreground' : 'text-foreground font-medium'}`}>
+                    {item.label}
                   </span>
-                </div>
-                <div className="space-y-1.5">
-                  {room.tasks.map((t, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      {t.completed
-                        ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                        : <Circle className="h-4 w-4 text-destructive shrink-0" />
-                      }
-                      <span className={t.completed ? 'text-muted-foreground' : 'text-foreground font-medium'}>
-                        {t.task}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        {!allComplete && (
-          <p className="text-sm text-destructive font-semibold text-center">
-            ⚠️ Some tasks are incomplete. Go back to finish them or proceed anyway.
-          </p>
-        )}
+        {/* SECTION 3: Notes */}
+        <Card className="border-border">
+          <CardContent className="p-5 space-y-3">
+            <h3 className="font-bold text-foreground">Any notes for the manager? (optional)</h3>
+            <Textarea
+              placeholder="e.g. ran low on supplies, owner left items behind..."
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              className="min-h-[80px] text-base rounded-xl"
+            />
+          </CardContent>
+        </Card>
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-bottom z-50">
         <Button
           size="lg"
-          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground max-w-lg mx-auto block"
-          onClick={handleClockOffSubmit}
-          disabled={submitting}
+          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
+          onClick={() => setShowConfirm(true)}
+          disabled={photos.length === 0 || submitting}
         >
           {submitting ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <CheckCircle2 className="h-6 w-6 mr-2" />}
           Clock Off & Submit
         </Button>
       </div>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you ready to clock off?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will end your shift and submit your completion report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmClockOff}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
