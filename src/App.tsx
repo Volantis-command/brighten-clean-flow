@@ -233,6 +233,8 @@ function AppRoutes() {
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
         <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
+        <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
+        <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
