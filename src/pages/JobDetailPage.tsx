@@ -888,7 +888,7 @@ export default function JobDetailPage() {
       />
 
       {/* Post-Job Report — Admin only */}
-      {role === 'admin' && job.status === 'completed' && (
+      {role === 'admin' && (job.status === 'completed' || job.status === 'complete') && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
