@@ -53,6 +53,7 @@ import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
 import MyJobsPage from "./pages/MyJobsPage";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
+import CompletionFormPage from "./pages/CompletionFormPage";
 import NotFound from "./pages/NotFound";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
@@ -229,7 +230,7 @@ function AppRoutes() {
         <Route path="/my-cleans" element={<MyCleans />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
-        <Route path="/clean/:jobId/complete" element={<CleanWorkflowPage />} />
+        <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
