@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { MapPin, Navigation, Key, Pause, Play, Plus, Camera, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { MapPin, Navigation, Key, Pause, Play, Plus, Camera, Loader2, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getCurrentPosition } from '@/lib/geo';
 
 interface Props {
   job: any;
