@@ -149,6 +149,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
         access_notes: property.access_notes || '',
         lockbox_code: property.lockbox_code || '',
         status: property.status || 'active',
+        special_instructions: (property as any).special_instructions || '',
       });
     }
   }, [property]);
