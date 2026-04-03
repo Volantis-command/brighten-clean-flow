@@ -221,10 +221,12 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
           {cleaners.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
         </select>
       </Field>
-      <Field label="Property Access" helperText="Key safe codes, gate codes, parking — visible to cleaners">
+      <Field label="Property Access">
+        <p className="text-xs text-muted-foreground mb-1">Key safe codes, gate codes, parking — visible to cleaners</p>
         <Textarea value={form.access_notes} onChange={(e) => u('access_notes', e.target.value)} rows={3} className="rounded-xl" />
       </Field>
-      <Field label="Cleaning Instructions" helperText="Client preferences and special requirements">
+      <Field label="Cleaning Instructions">
+        <p className="text-xs text-muted-foreground mb-1">Client preferences and special requirements</p>
         <Textarea value={form.special_instructions} onChange={(e) => u('special_instructions', e.target.value)} rows={3} className="rounded-xl" />
       </Field>
       <Field label="🔑 Lockbox Code (only shown to cleaner after check-in)">
