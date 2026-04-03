@@ -671,6 +671,7 @@ export type Database = {
           clock_off: string | null
           clock_on: string | null
           completion_notes: string | null
+          completion_photos: string[] | null
           created_at: string
           damage_notes: string | null
           damage_photos: string[] | null
@@ -735,6 +736,7 @@ export type Database = {
           clock_off?: string | null
           clock_on?: string | null
           completion_notes?: string | null
+          completion_photos?: string[] | null
           created_at?: string
           damage_notes?: string | null
           damage_photos?: string[] | null
@@ -799,6 +801,7 @@ export type Database = {
           clock_off?: string | null
           clock_on?: string | null
           completion_notes?: string | null
+          completion_photos?: string[] | null
           created_at?: string
           damage_notes?: string | null
           damage_photos?: string[] | null
