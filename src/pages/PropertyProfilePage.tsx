@@ -133,6 +133,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
     lockbox_code: '',
     status: 'active',
     special_instructions: '',
+    property_notes: '',
   });
 
   useEffect(() => {
