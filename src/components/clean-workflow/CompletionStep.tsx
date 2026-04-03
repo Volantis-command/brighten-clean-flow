@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import type { WorkflowStep } from '@/pages/CleanWorkflowPage';
 import ClockedOnBanner from './ClockedOnBanner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -24,11 +23,10 @@ interface Props {
   job: any;
   property: any;
   userId: string;
-  onNext: (step: WorkflowStep) => void;
-  onBack: () => void;
+  onComplete: () => void;
 }
 
-export default function CompletionStep({ job, property, userId, onNext, onBack }: Props) {
+export default function CompletionStep({ job, property, userId, onComplete }: Props) {
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
@@ -56,8 +54,7 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
   function toggleCheck(id: string) {
     setCheckedItems(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
@@ -68,15 +65,19 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
     const now = new Date();
     const clockOff = now.toISOString();
     const clockOnTime = job.clock_on ? new Date(job.clock_on).getTime() : now.getTime();
-    const durationMinutes = Math.round((now.getTime() - clockOnTime) / 60000);
+    const totalPaused = (job.total_pause_seconds || 0) * 1000;
+    const durationMinutes = Math.round((now.getTime() - clockOnTime - totalPaused) / 60000);
 
     const { error } = await supabase.from('jobs').update({
       status: 'completed',
       clock_off: clockOff,
+      clock_off_at: clockOff,
       check_out_time: clockOff,
       duration_minutes: durationMinutes,
       completion_photos: photos,
       completion_notes: notes || null,
+      completion_form_data: { checklist: Array.from(checkedItems) } as any,
+      completion_form_completed_at: clockOff,
     }).eq('id', job.id);
 
     if (error) {
@@ -92,18 +93,14 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
       .eq('user_id', userId)
       .is('clock_out_time', null);
 
-    // Save completion photos to job_photos table
     for (const url of photos) {
       const storagePath = url.split('/job-photos/')[1] ?? '';
       await supabase.from('job_photos').insert({
-        job_id: job.id,
-        storage_path: storagePath,
-        public_url: url,
-        room_label: 'Completion Photo',
+        job_id: job.id, storage_path: storagePath, public_url: url, room_label: 'Completion Photo',
       });
     }
 
-    // Send admin SMS
+    // Admin SMS
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle();
     const cleanerName = profile?.full_name || 'A cleaner';
     const address = property?.address || property?.property_name || 'Unknown';
@@ -116,50 +113,21 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
           message: `✅ JOB COMPLETE — ${cleanerName} has completed the clean at ${address}. Clock-off time: ${timeFormatted}. Post-clean photos submitted. View job: https://app.brightly.cleaning/jobs/${job.id}`,
         },
       });
-    } catch {
-      // Non-blocking
-    }
-
-    // Send client completion SMS
-    sendClientCompletionSms().catch(() => {});
+    } catch { /* non-blocking */ }
 
     // Admin notification
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     if (admins) {
-      const notifs = admins.map((a: any) => ({
-        user_id: a.user_id,
-        title: 'Job Completed',
+      await supabase.from('notifications').insert(admins.map((a: any) => ({
+        user_id: a.user_id, title: 'Job Completed',
         message: `Clean at ${property?.property_name ?? 'property'} has been completed (${durationMinutes}min)`,
-        type: 'job_completed',
-        link: `/jobs/${job.id}`,
-      }));
-      await supabase.from('notifications').insert(notifs);
+        type: 'job_completed', link: `/jobs/${job.id}`,
+      })));
     }
 
     toast.success('Job completed!');
     setSubmitting(false);
-    onNext('done');
-  }
-
-  async function sendClientCompletionSms() {
-    const { data: cpRows } = await supabase.from('client_properties').select('client_id').eq('property_id', property?.id).limit(1);
-    const clientId = cpRows?.[0]?.client_id;
-    if (!clientId) return;
-
-    const { data: clientProfile } = await supabase.from('profiles').select('full_name, phone').eq('id', clientId).maybeSingle();
-    if (!clientProfile?.phone) return;
-
-    const firstName = (clientProfile.full_name ?? '').split(' ')[0] || 'there';
-    let cleaned = clientProfile.phone.replace(/[\s\-()]/g, '');
-    if (!cleaned.startsWith('+61')) {
-      if (cleaned.startsWith('61') && cleaned.length >= 11) cleaned = '+' + cleaned;
-      else if (cleaned.startsWith('0')) cleaned = '+61' + cleaned.slice(1);
-      else cleaned = '+61' + cleaned;
-    }
-
-    await supabase.functions.invoke('send-job-sms', {
-      body: { to: cleaned, message: `Hi ${firstName}, your Brightly clean is complete! Thanks for using Brightly. 🧹` },
-    });
+    onComplete();
   }
 
   return (
@@ -172,7 +140,6 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
       </div>
 
       <main className="flex-1 px-4 py-5 space-y-5 pb-32">
-        {/* SECTION 1: Completion Photos */}
         <Card className="border-border">
           <CardContent className="p-5 space-y-3">
             <h3 className="font-bold text-foreground">Post-clean photos</h3>
@@ -181,17 +148,14 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
             <div className="grid grid-cols-3 gap-2">
               {photos.map((url, i) => (
                 <div key={i} className="relative">
-                  <img src={url} alt={`Photo ${i + 1}`} className="w-full aspect-square object-cover rounded-xl" />
+                  <img src={url} alt="" className="w-full aspect-square object-cover rounded-xl" />
                   <button onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5">
                     <X className="h-3 w-3" />
                   </button>
                 </div>
               ))}
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="w-full aspect-square border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
-              >
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="w-full aspect-square border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors">
                 {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
                 <span className="text-[10px] font-bold mt-1">Add Photo</span>
               </button>
@@ -199,48 +163,31 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
           </CardContent>
         </Card>
 
-        {/* SECTION 2: Room Checklist */}
         <Card className="border-border">
           <CardContent className="p-5 space-y-3">
             <h3 className="font-bold text-foreground">Room checklist</h3>
             <div className="space-y-2">
               {ROOM_CHECKLIST.map(item => (
-                <label
-                  key={item.id}
-                  className="flex items-center gap-3 min-h-[48px] cursor-pointer"
-                  onClick={() => toggleCheck(item.id)}
-                >
+                <label key={item.id} className="flex items-center gap-3 min-h-[48px] cursor-pointer" onClick={() => toggleCheck(item.id)}>
                   <Checkbox checked={checkedItems.has(item.id)} className="h-6 w-6" />
-                  <span className={`text-sm ${checkedItems.has(item.id) ? 'line-through text-muted-foreground' : 'text-foreground font-medium'}`}>
-                    {item.label}
-                  </span>
+                  <span className={`text-sm ${checkedItems.has(item.id) ? 'line-through text-muted-foreground' : 'text-foreground font-medium'}`}>{item.label}</span>
                 </label>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* SECTION 3: Notes */}
         <Card className="border-border">
           <CardContent className="p-5 space-y-3">
             <h3 className="font-bold text-foreground">Any notes for the manager? (optional)</h3>
-            <Textarea
-              placeholder="e.g. ran low on supplies, owner left items behind..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              className="min-h-[80px] text-base rounded-xl"
-            />
+            <Textarea placeholder="e.g. ran low on supplies, owner left items behind..." value={notes} onChange={e => setNotes(e.target.value)} className="min-h-[80px] text-base rounded-xl" />
           </CardContent>
         </Card>
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-bottom z-50">
-        <Button
-          size="lg"
-          className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
-          onClick={() => setShowConfirm(true)}
-          disabled={photos.length === 0 || submitting}
-        >
+        <Button size="lg" className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
+          onClick={() => setShowConfirm(true)} disabled={photos.length === 0 || submitting}>
           {submitting ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <CheckCircle2 className="h-6 w-6 mr-2" />}
           Clock Off & Submit
         </Button>
@@ -250,9 +197,7 @@ export default function CompletionStep({ job, property, userId, onNext, onBack }
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you ready to clock off?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will end your shift and submit your completion report.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will end your shift and submit your completion report.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
