@@ -186,7 +186,7 @@ export default function PropertiesPage() {
                 </p>
               )}
 
-              <div className="flex items-center gap-4 mb-3">
+              <div className="flex items-center gap-4 mb-2">
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <BedDouble className="h-4 w-4" />
                   <span className="font-semibold">{property.bedrooms || 0}</span>
@@ -196,6 +196,12 @@ export default function PropertiesPage() {
                   <span className="font-semibold">{property.bathrooms || 0}</span>
                 </div>
               </div>
+
+              <p className="text-xs text-muted-foreground mb-3">
+                {(lastCleanMap as Record<string, string>)[property.id]
+                  ? `Last cleaned: ${formatDistanceToNow(new Date((lastCleanMap as Record<string, string>)[property.id]), { addSuffix: true })}`
+                  : 'Never cleaned'}
+              </p>
 
               <div className="flex items-center justify-between">
                 {property.client_name && (
