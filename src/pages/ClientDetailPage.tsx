@@ -8,7 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, Check, X, Send, Loader2 } from 'lucide-react';
+import { Star, Check, X, Send, Loader2, MessageSquare } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { getAppBaseUrl } from '@/lib/appUrl';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
