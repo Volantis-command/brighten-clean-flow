@@ -247,8 +247,6 @@ export default function DashboardPage() {
       {/* Row 5: Recent Feedback */}
       <RecentFeedback data={recentFeedback} />
 
-      {/* Quick Actions */}
-      <QuickActions />
     </div>
   );
 }
