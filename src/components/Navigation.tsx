@@ -113,7 +113,7 @@ export function MobileNav() {
 
 export function DesktopSidebar() {
   const { role, profile, signOut } = useAuth();
-  const { totalCount } = useActionsData();
+  const { totalCount } = useAlertsData();
   
   // Don't show sidebar for cleaners on desktop either — they use a simpler layout
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
