@@ -302,6 +302,7 @@ export default function StaffPage() {
           )}
         </div>
 
+        <CleanerScorecard staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffOnboardingSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
         <StaffPayRatesSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />

@@ -182,18 +182,52 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
         <div className="flex items-center gap-2 font-mono font-bold text-lg">
           ⏱ {isPaused ? 'PAUSED' : elapsed}
         </div>
-        <p className="text-sm font-bold truncate max-w-[140px]">{property?.property_name}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-white text-white hover:bg-white/20 bg-transparent gap-1 font-bold"
-          onClick={handlePause}
-          disabled={pausing}
-        >
-          {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          {isPaused ? 'Resume' : 'Pause'}
-        </Button>
+        <p className="text-sm font-bold truncate max-w-[100px]">{property?.property_name}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSosOpen(true)}
+            className="h-10 px-3 rounded-lg bg-red-600 text-white font-bold text-sm flex items-center gap-1 active:scale-95 transition-transform"
+          >
+            🆘 SOS
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white text-white hover:bg-white/20 bg-transparent gap-1 font-bold"
+            onClick={handlePause}
+            disabled={pausing}
+          >
+            {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </Button>
+        </div>
       </div>
+
+      {/* SOS confirmation sheet */}
+      <Sheet open={sosOpen} onOpenChange={setSosOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Send emergency alert?
+            </SheetTitle>
+          </SheetHeader>
+          <p className="text-sm text-muted-foreground my-4">
+            Your GPS location will be shared with your manager immediately.
+          </p>
+          <SheetFooter className="flex gap-2 sm:justify-start">
+            <Button variant="outline" onClick={() => setSosOpen(false)} className="flex-1">Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleSOS}
+              disabled={sendingSos}
+              className="flex-1 gap-2"
+            >
+              {sendingSos ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Send Alert
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <main className="flex-1 px-4 py-4 space-y-4">
         {/* Address + maps */}
