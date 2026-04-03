@@ -51,6 +51,7 @@ import EnquiryPage from "./pages/EnquiryPage";
 import BookingPage from "./pages/BookingPage";
 import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
+import MyJobsPage from "./pages/MyJobsPage";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import NotFound from "./pages/NotFound";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
