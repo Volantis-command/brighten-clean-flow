@@ -29,7 +29,6 @@ export function ActiveClockBanner() {
   // Hide the global clock-out banner on clean workflow routes
   // The only way to clock off should be via the completion form
   const isCleanRoute = location.pathname.startsWith('/clean/');
-  if (isCleanRoute) return null;
 
   useEffect(() => {
     if (!activeEntry?.clock_in_time) return;
@@ -39,7 +38,7 @@ export function ActiveClockBanner() {
     return () => clearInterval(interval);
   }, [activeEntry?.clock_in_time]);
 
-  if (!user || !activeEntry) return null;
+  if (!user || !activeEntry || isCleanRoute) return null;
 
   const handleClockOut = async () => {
     setClockingOut(true);
