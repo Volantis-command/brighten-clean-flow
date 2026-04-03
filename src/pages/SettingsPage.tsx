@@ -41,10 +41,6 @@ export default function SettingsPage() {
             <Bell className="w-4 h-4" />
             <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <CreditCard className="w-4 h-4" />
-            <span className="hidden sm:inline">Payments</span>
-          </TabsTrigger>
           <TabsTrigger value="legal" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Scale className="w-4 h-4" />
             <span className="hidden sm:inline">Legal</span>
