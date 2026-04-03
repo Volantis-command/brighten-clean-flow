@@ -95,7 +95,7 @@ export function useDashboardData() {
         .select('id, status, price_ex_gst, invoice_status')
         .gte('scheduled_date', monthStart)
         .lte('scheduled_date', monthEnd)
-        .eq('status', 'complete');
+        .in('status', ['complete', 'completed']);
       return data || [];
     },
     enabled: isAdmin,
