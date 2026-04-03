@@ -1,100 +1,41 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { useActionsData, type ActionItem } from '@/hooks/useActionsData';
+import { useAlertsData, type AlertItem } from '@/hooks/useAlertsData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
-import { ConfirmCleanModal } from '@/components/schedule/ConfirmCleanModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-interface GroupConfig {
-  key: string;
-  label: string;
-  borderColor: string;
-  actionLabel: string;
-}
+function useDismissed() {
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('brightly-dismissed-alerts');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
 
-const GROUPS: GroupConfig[] = [
-  { key: 'quotesNeeded', label: 'Quotes Needed', borderColor: 'border-l-primary', actionLabel: 'Send Quote' },
-  { key: 'confirm_clean_date', label: 'Confirm Clean Date', borderColor: 'border-l-primary', actionLabel: 'Confirm & Assign' },
-  { key: 'quotesAwaiting', label: 'Quotes Awaiting Response', borderColor: 'border-l-amber-400', actionLabel: 'View Quote' },
-  { key: 'not_invoiced', label: 'Jobs Not Invoiced', borderColor: 'border-l-destructive', actionLabel: 'Raise Invoice' },
-  { key: 'not_sent', label: 'Invoices Not Sent', borderColor: 'border-l-destructive', actionLabel: 'Send Invoice' },
-  { key: 'overdue', label: 'Invoices Overdue', borderColor: 'border-l-destructive', actionLabel: 'View' },
-  { key: 'extra_time', label: 'Extra Time Requests', borderColor: 'border-l-amber-500', actionLabel: 'Action' },
-  { key: 're_clean', label: 'Re-Clean Required', borderColor: 'border-l-destructive', actionLabel: 'View Audit' },
-  { key: 'not_clocked_on', label: 'Cleaners Not Clocked On', borderColor: 'border-l-amber-400', actionLabel: 'View' },
-  { key: 'low_ratings', label: 'Low Ratings', borderColor: 'border-l-amber-400', actionLabel: 'View Job' },
-];
+  const dismiss = useCallback((id: string) => {
+    setDismissed(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem('brightly-dismissed-alerts', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
 
-function ActionCard({ item, actionLabel, onAction }: { item: ActionItem; actionLabel: string; onAction?: () => void }) {
-  const navigate = useNavigate();
-
-  const handleClick = () => {
-    if (onAction) {
-      onAction();
-    } else if (item.path) {
-      navigate(item.path);
-    }
-  };
-
-  return (
-    <div
-      onClick={handleClick}
-      className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all"
-    >
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
-        {item.subtitle && <p className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</p>}
-        {item.timestamp && (
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
-          </p>
-        )}
-      </div>
-      <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold">
-        {actionLabel} <ChevronRight className="h-3 w-3" />
-      </Button>
-    </div>
-  );
+  return { dismissed, dismiss };
 }
 
 export default function ActionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [confirmItem, setConfirmItem] = useState<ActionItem | null>(null);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(GROUPS.map(g => g.key)));
-
-  const {
-    quotesAwaiting,
-    notInvoiced,
-    notSent,
-    overdue,
-    extraTime,
-    reClean,
-    notClockedOn,
-    lowRatings,
-    quotesNeeded,
-    confirmCleanDate,
-    totalCount,
-  } = useActionsData();
-
-  const dataMap: Record<string, ActionItem[]> = {
-    quotesNeeded,
-    confirm_clean_date: confirmCleanDate,
-    quotesAwaiting,
-    not_invoiced: notInvoiced,
-    not_sent: notSent,
-    overdue,
-    extra_time: extraTime,
-    re_clean: reClean,
-    not_clocked_on: notClockedOn,
-    low_ratings: lowRatings,
-  };
+  const { groups, totalCount } = useAlertsData();
+  const { dismissed, dismiss } = useDismissed();
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(groups.map(g => g.key)));
+  const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
 
   function toggleGroup(key: string) {
     setOpenGroups(prev => {
@@ -104,42 +45,82 @@ export default function ActionsPage() {
     });
   }
 
-  async function handleExtraTimeAction(item: ActionItem, action: 'approve' | 'deny') {
+  function setLoading(id: string, loading: boolean) {
+    setLoadingActions(prev => {
+      const next = new Set(prev);
+      loading ? next.add(id) : next.delete(id);
+      return next;
+    });
+  }
+
+  async function handleRaiseInvoice(item: AlertItem) {
     const jobId = item.meta?.jobId;
     if (!jobId) return;
-
-    if (action === 'approve') {
-      await supabase.from('jobs').update({ extra_time_requested: false }).eq('id', jobId);
-      try {
-        await supabase.functions.invoke('send-job-sms', {
-          body: { to: 'CLEANER', job_id: jobId, message: `Extra time approved. Take the time you need.` },
-        });
-      } catch { /* non-blocking */ }
-      toast.success('Extra time approved');
-    } else {
-      await supabase.from('jobs').update({ extra_time_requested: false }).eq('id', jobId);
-      try {
-        await supabase.functions.invoke('send-job-sms', {
-          body: { to: 'CLEANER', job_id: jobId, message: `Extra time request denied. Please complete within the allocated time.` },
-        });
-      } catch { /* non-blocking */ }
-      toast.success('Extra time denied');
-    }
-    queryClient.invalidateQueries({ queryKey: ['actions-extra-time'] });
+    setLoading(item.id, true);
+    const { error } = await supabase.from('jobs').update({
+      invoice_status: 'raised',
+      invoice_raised_at: new Date().toISOString(),
+    }).eq('id', jobId);
+    setLoading(item.id, false);
+    if (error) { toast.error('Failed to raise invoice'); return; }
+    toast.success('Invoice raised');
+    queryClient.invalidateQueries({ queryKey: ['alerts-not-invoiced'] });
   }
+
+  async function handleSendInvoice(item: AlertItem) {
+    const jobId = item.meta?.jobId;
+    if (!jobId) return;
+    setLoading(item.id, true);
+    try {
+      await supabase.functions.invoke('xero-create-invoice', { body: { job_id: jobId, action: 'send' } });
+    } catch { /* non-blocking */ }
+    const { error } = await supabase.from('jobs').update({
+      invoice_status: 'sent',
+      invoice_sent_at: new Date().toISOString(),
+    }).eq('id', jobId);
+    setLoading(item.id, false);
+    if (error) { toast.error('Failed to send invoice'); return; }
+    toast.success('Invoice sent');
+    queryClient.invalidateQueries({ queryKey: ['alerts-not-sent'] });
+  }
+
+  async function handleExtraTime(item: AlertItem, approved: boolean) {
+    const jobId = item.meta?.jobId;
+    if (!jobId) return;
+    setLoading(item.id, true);
+    await supabase.from('jobs').update({
+      extra_time_approved: approved,
+      extra_time_requested: !approved ? false : undefined,
+    } as any).eq('id', jobId);
+    try {
+      await supabase.functions.invoke('send-job-sms', {
+        body: { to: 'CLEANER', job_id: jobId, message: approved ? 'Extra time approved. Take the time you need.' : 'Extra time request denied. Please complete within the allocated time.' },
+      });
+    } catch { /* non-blocking */ }
+    setLoading(item.id, false);
+    toast.success(approved ? 'Extra time approved' : 'Extra time denied');
+    queryClient.invalidateQueries({ queryKey: ['alerts-extra-time'] });
+  }
+
+  // Filter dismissed items and count visible
+  const visibleGroups = groups.map(g => ({
+    ...g,
+    items: g.items.filter(i => !dismissed.has(i.id)),
+  }));
+  const visibleCount = visibleGroups.reduce((sum, g) => sum + g.items.length, 0);
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Actions Inbox</h1>
-        {totalCount > 0 && (
+        <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Alerts</h1>
+        {visibleCount > 0 && (
           <Badge variant="destructive" className="text-sm px-3 py-1">
-            {totalCount} pending
+            {visibleCount} pending
           </Badge>
         )}
       </div>
 
-      {totalCount === 0 && (
+      {visibleCount === 0 && (
         <div className="bg-card rounded-2xl shadow-md p-12 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
           <p className="text-xl font-bold text-foreground mb-2">All clear</p>
@@ -147,63 +128,135 @@ export default function ActionsPage() {
         </div>
       )}
 
-      {GROUPS.map(group => {
-        const items = dataMap[group.key] || [];
-        if (items.length === 0) return null;
+      {visibleGroups.map(group => {
+        if (group.items.length === 0) return null;
         const isOpen = openGroups.has(group.key);
 
         return (
           <Collapsible key={group.key} open={isOpen} onOpenChange={() => toggleGroup(group.key)}>
-            <div className={`border-l-4 ${group.borderColor} rounded-r-2xl bg-card`}>
-              <CollapsibleTrigger className="w-full px-4 py-3 flex items-center justify-between">
+            <div className={`border-l-4 ${group.borderColor} rounded-r-2xl bg-card shadow-sm`}>
+              <CollapsibleTrigger className="w-full px-4 py-3 flex items-center justify-between min-h-[48px]">
                 <div className="flex items-center gap-2">
+                  <span className="text-lg">{group.icon}</span>
                   <h2 className="text-base font-extrabold text-foreground">{group.label}</h2>
-                  <Badge variant="secondary" className="text-xs">{items.length}</Badge>
+                  <Badge variant="secondary" className="text-xs">{group.items.length}</Badge>
                 </div>
                 {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="px-4 pb-4 space-y-2">
-                  {items.map(item => {
-                    if (group.key === 'extra_time') {
-                      return (
-                        <div key={item.id} className="bg-card rounded-2xl border border-border p-4">
-                          <p className="font-bold text-foreground text-sm">{item.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{item.subtitle}</p>
-                          <div className="flex gap-2 mt-3">
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleExtraTimeAction(item, 'approve')}>
-                              Approve
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-destructive border-destructive" onClick={() => handleExtraTimeAction(item, 'deny')}>
-                              Deny
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <ActionCard
-                        key={item.id}
-                        item={item}
-                        actionLabel={group.actionLabel}
-                        onAction={
-                          group.key === 'confirm_clean_date' ? () => setConfirmItem(item) : undefined
-                        }
-                      />
-                    );
-                  })}
+                  {group.items.map(item => (
+                    <AlertRow
+                      key={item.id}
+                      item={item}
+                      groupKey={group.key}
+                      loading={loadingActions.has(item.id)}
+                      onDismiss={() => dismiss(item.id)}
+                      onNavigate={() => item.path && navigate(item.path)}
+                      onRaiseInvoice={() => handleRaiseInvoice(item)}
+                      onSendInvoice={() => handleSendInvoice(item)}
+                      onApproveExtra={() => handleExtraTime(item, true)}
+                      onDenyExtra={() => handleExtraTime(item, false)}
+                    />
+                  ))}
                 </div>
               </CollapsibleContent>
             </div>
           </Collapsible>
         );
       })}
+    </div>
+  );
+}
 
-      <ConfirmCleanModal
-        open={!!confirmItem}
-        onOpenChange={(open) => { if (!open) setConfirmItem(null); }}
-        item={confirmItem}
-      />
+interface AlertRowProps {
+  item: AlertItem;
+  groupKey: string;
+  loading: boolean;
+  onDismiss: () => void;
+  onNavigate: () => void;
+  onRaiseInvoice: () => void;
+  onSendInvoice: () => void;
+  onApproveExtra: () => void;
+  onDenyExtra: () => void;
+}
+
+function AlertRow({ item, groupKey, loading, onDismiss, onNavigate, onRaiseInvoice, onSendInvoice, onApproveExtra, onDenyExtra }: AlertRowProps) {
+  const renderActions = () => {
+    if (loading) {
+      return <Button variant="outline" size="sm" disabled className="shrink-0 text-xs">Working...</Button>;
+    }
+
+    switch (groupKey) {
+      case 'not_invoiced':
+        return (
+          <Button size="sm" className="shrink-0 text-xs font-bold bg-green-600 hover:bg-green-700 text-white" onClick={e => { e.stopPropagation(); onRaiseInvoice(); }}>
+            Raise Invoice
+          </Button>
+        );
+      case 'not_sent':
+        return (
+          <Button size="sm" className="shrink-0 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground" onClick={e => { e.stopPropagation(); onSendInvoice(); }}>
+            Send Now
+          </Button>
+        );
+      case 'extra_time':
+        return (
+          <div className="flex gap-1.5">
+            <Button size="sm" className="text-xs font-bold bg-green-600 hover:bg-green-700 text-white" onClick={e => { e.stopPropagation(); onApproveExtra(); }}>
+              Approve
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs font-bold text-destructive border-destructive" onClick={e => { e.stopPropagation(); onDenyExtra(); }}>
+              Deny
+            </Button>
+          </div>
+        );
+      case 'not_clocked_on':
+        return (
+          <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold" onClick={e => { e.stopPropagation(); onNavigate(); }}>
+            SMS Cleaner <ChevronRight className="h-3 w-3" />
+          </Button>
+        );
+      case 'overdue':
+        return (
+          <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold" onClick={e => { e.stopPropagation(); onNavigate(); }}>
+            View Invoice <ChevronRight className="h-3 w-3" />
+          </Button>
+        );
+      case 'quotes_awaiting':
+        return (
+          <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold" onClick={e => { e.stopPropagation(); onNavigate(); }}>
+            View Quote <ChevronRight className="h-3 w-3" />
+          </Button>
+        );
+      default:
+        return (
+          <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs font-bold" onClick={e => { e.stopPropagation(); onNavigate(); }}>
+            View Job <ChevronRight className="h-3 w-3" />
+          </Button>
+        );
+    }
+  };
+
+  return (
+    <div
+      onClick={onNavigate}
+      className="bg-background rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:shadow-sm transition-all min-h-[48px]"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
+        {item.subtitle && <p className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</p>}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {renderActions()}
+        <button
+          onClick={e => { e.stopPropagation(); onDismiss(); }}
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
