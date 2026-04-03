@@ -1444,6 +1444,11 @@ export default function JobDetailPage() {
 
       <CancelJobModal open={cancelOpen} onOpenChange={setCancelOpen} jobId={jobId!} onCancelled={() => navigate('/schedule')} />
 
+      {/* Client Messages for this Job */}
+      {role === 'admin' && jobId && (
+        <ClientCommsLog jobId={jobId} title="Client Messages for this Job" />
+      )}
+
       {/* Price Prompt Modal */}
       <Dialog open={showPricePrompt} onOpenChange={setShowPricePrompt}>
         <DialogContent>
