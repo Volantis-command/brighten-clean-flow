@@ -50,6 +50,16 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
       </div>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-8">
+        {/* Notes for This Clean — top priority yellow card */}
+        {(property as any)?.property_notes && (
+          <Card className="border-amber-300 bg-amber-50 dark:bg-amber-500/10">
+            <CardContent className="p-4">
+              <p className="text-xs font-bold text-amber-700 uppercase mb-1">🔧 Notes for This Clean</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{(property as any).property_notes}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Clock On Button */}
         {canClockOn && (
           <Button
