@@ -172,6 +172,9 @@ export default function DashboardPage() {
         alerts={alerts}
       />
 
+      {/* Quick Actions */}
+      <QuickActions />
+
       {/* Today's Jobs */}
       <div>
         <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
