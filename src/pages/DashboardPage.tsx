@@ -98,6 +98,7 @@ export default function DashboardPage() {
 
     return (
       <div className="space-y-6 max-w-lg mx-auto">
+        <TodayJobsWidget />
         <DashboardGreeting />
         <div>
           <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
