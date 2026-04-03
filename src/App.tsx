@@ -230,7 +230,7 @@ function AppRoutes() {
         <Route path="/my-cleans" element={<MyCleans />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
-        <Route path="/clean/:jobId/complete" element={<CleanWorkflowPage />} />
+        <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
