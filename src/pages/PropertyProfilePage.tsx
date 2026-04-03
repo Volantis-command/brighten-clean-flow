@@ -132,6 +132,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
     access_notes: '',
     lockbox_code: '',
     status: 'active',
+    special_instructions: '',
   });
 
   useEffect(() => {
@@ -148,6 +149,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
         access_notes: property.access_notes || '',
         lockbox_code: property.lockbox_code || '',
         status: property.status || 'active',
+        special_instructions: (property as any).special_instructions || '',
       });
     }
   }, [property]);
@@ -169,6 +171,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
       access_notes: form.access_notes || null,
       lockbox_code: form.lockbox_code || null,
       status: form.status,
+      special_instructions: form.special_instructions || null,
     } as any).eq('id', property.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -218,8 +221,11 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
           {cleaners.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
         </select>
       </Field>
-      <Field label="Access Notes (visible to cleaner before check-in)">
+      <Field label="Property Access" helperText="Key safe codes, gate codes, parking — visible to cleaners">
         <Textarea value={form.access_notes} onChange={(e) => u('access_notes', e.target.value)} rows={3} className="rounded-xl" />
+      </Field>
+      <Field label="Cleaning Instructions" helperText="Client preferences and special requirements">
+        <Textarea value={form.special_instructions} onChange={(e) => u('special_instructions', e.target.value)} rows={3} className="rounded-xl" />
       </Field>
       <Field label="🔑 Lockbox Code (only shown to cleaner after check-in)">
         <Input value={form.lockbox_code} onChange={(e) => u('lockbox_code', e.target.value)} className="h-12 rounded-xl" />

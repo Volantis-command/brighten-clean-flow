@@ -1,30 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
-import GeofenceStep from '@/components/clean-workflow/GeofenceStep';
-import ClockOnStep from '@/components/clean-workflow/ClockOnStep';
-import DamageCheckStep from '@/components/clean-workflow/DamageCheckStep';
-import ExtraTimeStep from '@/components/clean-workflow/ExtraTimeStep';
-import InProgressStep from '@/components/clean-workflow/InProgressStep';
+import { getCurrentPosition, haversineDistance } from '@/lib/geo';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { seedDefaultChecklist } from '@/components/clean-workflow/defaultChecklist';
+import PreClockOnView from '@/components/clean-workflow/PreClockOnView';
+import PreJobAssessmentModal from '@/components/clean-workflow/PreJobAssessmentModal';
+import ActiveJobView from '@/components/clean-workflow/ActiveJobView';
 import CompletionStep from '@/components/clean-workflow/CompletionStep';
-import DoneStep from '@/components/clean-workflow/DoneStep';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-export type WorkflowStep = 'geofence' | 'clock_on' | 'damage_check' | 'extra_time' | 'in_progress' | 'completion' | 'done';
+type View = 'pre_clock_on' | 'assessment' | 'active' | 'completion' | 'done';
 
-function resolveStep(job: any): WorkflowStep {
+function resolveView(job: any): View {
   if (job.status === 'completed') return 'done';
-  if (job.clock_on && !job.clock_off) {
-    // Pre-job assessment is now handled by the modal inside ClockOnStep
-    // If damage check or extra time haven't been answered yet, show clock_on step (which shows the modal)
-    if (job.pre_clean_notes === null || job.pre_clean_notes === undefined) return 'clock_on';
-    if (job.extra_time_requested === null || job.extra_time_requested === undefined) return 'clock_on';
-    return 'in_progress';
-  }
-  if (job.arrived_at && !job.clock_on) return 'clock_on';
-  return 'geofence';
+  if (!job.clock_on) return 'pre_clock_on';
+  // Clocked on but assessment not done
+  if (job.pre_clean_notes === null || job.pre_clean_notes === undefined) return 'assessment';
+  if (job.extra_time_requested === null || job.extra_time_requested === undefined) return 'assessment';
+  return 'active';
 }
 
 export default function CleanWorkflowPage() {
@@ -32,6 +30,8 @@ export default function CleanWorkflowPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [clockingOn, setClockingOn] = useState(false);
+  const [geoDialog, setGeoDialog] = useState<{ type: 'failed' | 'far'; distance?: number } | null>(null);
 
   const { data: job, isLoading, refetch } = useQuery({
     queryKey: ['clean-workflow-job', jobId],
@@ -47,23 +47,98 @@ export default function CleanWorkflowPage() {
     },
   });
 
-  const [step, setStep] = useState<WorkflowStep | null>(null);
-  const manualStepRef = useRef<WorkflowStep | null>(null);
+  // Fetch assigned cleaner profiles
+  const cleanerIds = [job?.cleaner_1_id, job?.cleaner_2_id].filter(Boolean) as string[];
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['clean-workflow-profiles', cleanerIds.join(',')],
+    enabled: cleanerIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
+      return (data ?? []).map((p: any) => ({ id: p.id, full_name: p.full_name || 'Unknown' }));
+    },
+  });
 
-  useEffect(() => {
-    if (job && !manualStepRef.current) {
-      setStep(resolveStep(job));
-    }
-  }, [job]);
-
-  const refreshJob = async () => {
+  const refreshJob = useCallback(async () => {
     await refetch();
     queryClient.invalidateQueries({ queryKey: ['my-cleans'] });
+    queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
+    queryClient.invalidateQueries({ queryKey: ['today-jobs-widget'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
-  };
+  }, [refetch, queryClient]);
 
-  if (isLoading || !job || !step) {
+  async function performClockOn(lat: number | null, lng: number | null) {
+    setClockingOn(true);
+    const now = new Date().toISOString();
+
+    const { error } = await supabase.from('jobs').update({
+      clock_on: now,
+      status: 'in_progress',
+      clock_on_lat: lat,
+      clock_on_lng: lng,
+      arrived_at: now,
+      arrived_lat: lat,
+      arrived_lng: lng,
+    }).eq('id', job!.id);
+
+    if (error) {
+      toast.error('Failed to clock on');
+      setClockingOn(false);
+      return;
+    }
+
+    await seedDefaultChecklist(job!.properties?.id || job!.property_id);
+
+    await supabase.from('time_entries').insert({
+      job_id: job!.id,
+      user_id: user!.id,
+      clock_in_time: now,
+      clock_in_lat: lat,
+      clock_in_lng: lng,
+      geo_override: !lat,
+    });
+
+    // SMS to admin
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user!.id).maybeSingle();
+    const cleanerName = profile?.full_name || 'A cleaner';
+    const address = job!.properties?.address || job!.properties?.property_name || 'Unknown';
+    const timeStr = format(new Date(), 'h:mm a');
+
+    try {
+      await supabase.functions.invoke('send-job-sms', {
+        body: { to: 'ADMIN', message: `${cleanerName} clocked on at ${address} at ${timeStr}.` },
+      });
+    } catch { /* non-blocking */ }
+
+    toast.success('Clocked on! Timer started.');
+    setClockingOn(false);
+    await refreshJob();
+  }
+
+  async function handleClockOn() {
+    setGeoDialog(null);
+
+    try {
+      const pos = await getCurrentPosition();
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      const property = job!.properties as any;
+      if (property?.lat && property?.lng) {
+        const distance = haversineDistance(lat, lng, Number(property.lat), Number(property.lng));
+        if (distance > 300) {
+          setGeoDialog({ type: 'far', distance: Math.round(distance) });
+          return;
+        }
+      }
+
+      await performClockOn(lat, lng);
+    } catch {
+      setGeoDialog({ type: 'failed' });
+    }
+  }
+
+  if (isLoading || !job) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -72,38 +147,95 @@ export default function CleanWorkflowPage() {
   }
 
   const property = job.properties as any;
+  const view = resolveView(job);
 
-  const stepProps = {
-    job,
-    property,
-    userId: user!.id,
-    onNext: (nextStep: WorkflowStep) => {
-      manualStepRef.current = nextStep;
-      setStep(nextStep);
-      refreshJob().then(() => {
-        // Allow resolveStep to take over again after data is fresh
-        manualStepRef.current = null;
-      });
-    },
-    onBack: () => navigate('/my-cleans'),
-  };
-
-  switch (step) {
-    case 'geofence':
-      return <GeofenceStep {...stepProps} />;
-    case 'clock_on':
-      return <ClockOnStep {...stepProps} />;
-    case 'damage_check':
-      return <DamageCheckStep {...stepProps} />;
-    case 'extra_time':
-      return <ExtraTimeStep {...stepProps} />;
-    case 'in_progress':
-      return <InProgressStep {...stepProps} />;
-    case 'completion':
-      return <CompletionStep {...stepProps} />;
-    case 'done':
-      return <DoneStep {...stepProps} />;
-    default:
-      return <GeofenceStep {...stepProps} />;
+  // Completion route handled by CompletionStep
+  if (view === 'done') {
+    return (
+      <PreClockOnView
+        job={job}
+        property={property}
+        profiles={profiles}
+        onClockOn={() => {}}
+        clockingOn={false}
+      />
+    );
   }
+
+  if (view === 'pre_clock_on') {
+    return (
+      <>
+        <PreClockOnView
+          job={job}
+          property={property}
+          profiles={profiles}
+          onClockOn={handleClockOn}
+          clockingOn={clockingOn}
+        />
+        {/* Geofence dialogs */}
+        <AlertDialog open={geoDialog?.type === 'failed'} onOpenChange={() => setGeoDialog(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Location check failed</AlertDialogTitle>
+              <AlertDialogDescription>
+                You can still clock on — your location won't be verified.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setGeoDialog(null); performClockOn(null, null); }}>
+                Clock On Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={geoDialog?.type === 'far'} onOpenChange={() => setGeoDialog(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you at the right property?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You appear to be {geoDialog?.distance}m from {property?.address || 'the property'}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={async () => {
+                setGeoDialog(null);
+                try {
+                  const pos = await getCurrentPosition();
+                  await performClockOn(pos.coords.latitude, pos.coords.longitude);
+                } catch {
+                  await performClockOn(null, null);
+                }
+              }}>
+                Yes, I'm Here
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  if (view === 'assessment') {
+    return (
+      <PreJobAssessmentModal
+        job={job}
+        property={property}
+        userId={user!.id}
+        onComplete={refreshJob}
+      />
+    );
+  }
+
+  // Active view
+  return (
+    <ActiveJobView
+      job={job}
+      property={property}
+      userId={user!.id}
+      onRefresh={refreshJob}
+    />
+  );
 }

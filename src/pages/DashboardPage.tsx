@@ -1,4 +1,5 @@
 import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
+import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -97,6 +98,7 @@ export default function DashboardPage() {
 
     return (
       <div className="space-y-6 max-w-lg mx-auto">
+        <TodayJobsWidget />
         <DashboardGreeting />
         <div>
           <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
@@ -157,6 +159,7 @@ export default function DashboardPage() {
   // Admin / Head Cleaner dashboard
   return (
     <div className="space-y-8">
+      <TodayJobsWidget />
       <DashboardGreeting />
 
       {/* Row 1: Top Stats */}
