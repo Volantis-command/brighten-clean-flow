@@ -98,18 +98,6 @@ export default function AppSettingsSection() {
           <Input value={form.secondary_contact_phone || ''} onChange={(e) => update('secondary_contact_phone', e.target.value)} placeholder="0426 702 883" />
         </div>
         <div>
-          <Label>Deposit Amount ($)</Label>
-          <Input
-            type="number"
-            min="0"
-            step="5"
-            value={form.deposit_amount || '50'}
-            onChange={(e) => update('deposit_amount', e.target.value)}
-            placeholder="50"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Required deposit for new bookings. Set to 0 to disable.</p>
-        </div>
-        <div>
           <Label>Default Job Duration (hours)</Label>
           <Input type="number" min="0.5" step="0.5" value={form.default_job_duration || '3'} onChange={(e) => update('default_job_duration', e.target.value)} />
         </div>

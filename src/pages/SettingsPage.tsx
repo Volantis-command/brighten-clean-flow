@@ -7,10 +7,10 @@ import AppSettingsSection from '@/components/settings/AppSettingsSection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
 import XeroSection from '@/components/settings/XeroSection';
 import LegalSection from '@/components/settings/LegalSection';
-import PaymentsSection from '@/components/settings/PaymentsSection';
+
 import GuestySection from '@/components/settings/GuestySection';
 import GoogleCalendarSection from '@/components/settings/GoogleCalendarSection';
-import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, CreditCard, Link2, Calendar } from 'lucide-react';
+import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar } from 'lucide-react';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('team');
@@ -41,10 +41,6 @@ export default function SettingsPage() {
             <Bell className="w-4 h-4" />
             <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <CreditCard className="w-4 h-4" />
-            <span className="hidden sm:inline">Payments</span>
-          </TabsTrigger>
           <TabsTrigger value="legal" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Scale className="w-4 h-4" />
             <span className="hidden sm:inline">Legal</span>
@@ -68,7 +64,7 @@ export default function SettingsPage() {
         <TabsContent value="properties"><PropertiesSection /></TabsContent>
         <TabsContent value="app"><AppSettingsSection /></TabsContent>
         <TabsContent value="notifications"><NotificationsSection /></TabsContent>
-        <TabsContent value="payments"><PaymentsSection /></TabsContent>
+        
         <TabsContent value="legal"><LegalSection /></TabsContent>
         <TabsContent value="guesty"><GuestySection /></TabsContent>
         <TabsContent value="xero"><XeroSection /></TabsContent>
