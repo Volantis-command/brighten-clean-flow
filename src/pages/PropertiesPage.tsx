@@ -45,6 +45,26 @@ export default function PropertiesPage() {
     },
   });
 
+  // Fetch last clean dates for all properties
+  const { data: lastCleanMap = {} } = useQuery({
+    queryKey: ['properties-last-clean'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('property_id, clock_off_at')
+        .in('status', ['completed', 'complete'])
+        .not('clock_off_at', 'is', null)
+        .order('clock_off_at', { ascending: false });
+      const map: Record<string, string> = {};
+      (data || []).forEach((j: any) => {
+        if (j.property_id && !map[j.property_id]) {
+          map[j.property_id] = j.clock_off_at;
+        }
+      });
+      return map;
+    },
+  });
+
   // Detect duplicates (case-insensitive by address)
   const duplicateGroups = useMemo(() => {
     const groups: Record<string, any[]> = {};
