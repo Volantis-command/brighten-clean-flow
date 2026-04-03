@@ -993,7 +993,7 @@ export default function JobDetailPage() {
       )}
 
       {/* Post-Job SMS Status — Admin only, completed jobs */}
-      {role === 'admin' && job.status === 'complete' && (
+      {role === 'admin' && (job.status === 'complete' || job.status === 'completed') && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
