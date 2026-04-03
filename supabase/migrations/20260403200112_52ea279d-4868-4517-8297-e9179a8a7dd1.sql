@@ -1,0 +1,1 @@
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS extra_time_approved boolean DEFAULT NULL;
