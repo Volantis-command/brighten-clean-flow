@@ -7,10 +7,10 @@ import AppSettingsSection from '@/components/settings/AppSettingsSection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
 import XeroSection from '@/components/settings/XeroSection';
 import LegalSection from '@/components/settings/LegalSection';
-
+import IntegrationsSection from '@/components/settings/IntegrationsSection';
 import GuestySection from '@/components/settings/GuestySection';
 import GoogleCalendarSection from '@/components/settings/GoogleCalendarSection';
-import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar } from 'lucide-react';
+import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar, Plug } from 'lucide-react';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('team');
