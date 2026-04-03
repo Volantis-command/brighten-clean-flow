@@ -10,7 +10,7 @@ import LegalSection from '@/components/settings/LegalSection';
 
 import GuestySection from '@/components/settings/GuestySection';
 import GoogleCalendarSection from '@/components/settings/GoogleCalendarSection';
-import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, CreditCard, Link2, Calendar } from 'lucide-react';
+import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar } from 'lucide-react';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('team');
