@@ -1262,6 +1262,7 @@ export type Database = {
           pricing_notes: string | null
           product_restrictions: string | null
           property_name: string
+          property_notes: string | null
           property_type: string | null
           skip_areas: string | null
           spare_linen: string | null
@@ -1337,6 +1338,7 @@ export type Database = {
           pricing_notes?: string | null
           product_restrictions?: string | null
           property_name: string
+          property_notes?: string | null
           property_type?: string | null
           skip_areas?: string | null
           spare_linen?: string | null
@@ -1412,6 +1414,7 @@ export type Database = {
           pricing_notes?: string | null
           product_restrictions?: string | null
           property_name?: string
+          property_notes?: string | null
           property_type?: string | null
           skip_areas?: string | null
           spare_linen?: string | null
