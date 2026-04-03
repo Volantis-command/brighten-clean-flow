@@ -79,7 +79,7 @@ export function ScheduleJobCard({
 
   const { data: timeEntry, refetch } = useTimeEntry(id, showClockIn ? user?.id : undefined);
 
-  const isComplete = status === 'complete';
+  const isComplete = status === 'complete' || status === 'completed';
 
   const handleReturnToProperty = async (e: React.MouseEvent) => {
     e.stopPropagation();
