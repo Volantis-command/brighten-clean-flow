@@ -887,42 +887,107 @@ export default function JobDetailPage() {
         photos={extraTimePhotos}
       />
 
-      {/* Post-Job Report — Admin only */}
+      {/* Before & After Photos — Admin only, completed jobs */}
       {role === 'admin' && (job.status === 'completed' || job.status === 'complete') && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
-              Post-Job Report
+              Before & After
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Completion Photos */}
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Completion Photos</p>
-              {(job as any).completion_photos && (job as any).completion_photos.length > 0 ? (
-                <div className="flex gap-2 flex-wrap">
-                  {((job as any).completion_photos as string[]).map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                      <img src={url} alt={`Completion ${i + 1}`} className="w-16 h-16 object-cover rounded-lg border border-border" />
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No completion photos</p>
-              )}
-            </div>
-
-            {/* Completion Notes */}
-            {(job as any).completion_notes && (
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Pre-Job (Damage) Photos */}
               <div>
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Completion Notes</p>
-                <p className="text-sm text-foreground bg-secondary p-2 rounded-lg">{(job as any).completion_notes}</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Pre-Job Photos</p>
+                {job.clock_on && (
+                  <p className="text-[10px] text-muted-foreground mb-2">
+                    Taken at clock-on {format(new Date(job.clock_on), 'h:mm a')}
+                  </p>
+                )}
+                {(job as any).damage_photos && (job as any).damage_photos.length > 0 ? (
+                  <div className="flex gap-2 flex-wrap">
+                    {((job as any).damage_photos as string[]).map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                        <img src={url} alt={`Before ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-border hover:ring-2 hover:ring-primary transition-all" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-green-600 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> No pre-job damage reported ✓
+                  </p>
+                )}
               </div>
-            )}
+              {/* Post-Job (Completion) Photos */}
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Post-Job Photos</p>
+                {job.clock_off_at && (
+                  <p className="text-[10px] text-muted-foreground mb-2">
+                    Taken at clock-off {format(new Date(job.clock_off_at), 'h:mm a')}
+                  </p>
+                )}
+                {(job as any).completion_photos && (job as any).completion_photos.length > 0 ? (
+                  <div className="flex gap-2 flex-wrap">
+                    {((job as any).completion_photos as string[]).map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                        <img src={url} alt={`After ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-border hover:ring-2 hover:ring-primary transition-all" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No completion photos</p>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Job Timing — Admin only, completed jobs */}
+      {role === 'admin' && (job.status === 'completed' || job.status === 'complete') && job.clock_on && job.clock_off_at && (() => {
+        const clockOnMs = new Date(job.clock_on).getTime();
+        const clockOffMs = new Date(job.clock_off_at).getTime();
+        const totalPauseSec = (job as any).total_pause_seconds || 0;
+        const actualMs = clockOffMs - clockOnMs - (totalPauseSec * 1000);
+        const actualMins = Math.round(actualMs / 60000);
+        const actualHrs = Math.floor(actualMins / 60);
+        const actualRemMins = actualMins % 60;
+        const allocatedMins = job.estimated_duration || 0;
+        const diffMins = actualMins - allocatedMins;
+        const diffColor = diffMins <= 0 ? 'text-green-600' : diffMins <= 15 ? 'text-amber-600' : 'text-destructive';
+        const diffSign = diffMins > 0 ? '+' : '';
+
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Timer className="h-5 w-5" />
+                Job Timing
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {allocatedMins > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Allocated</span>
+                  <span className="font-semibold text-foreground">{Math.floor(allocatedMins / 60)}hrs {allocatedMins % 60 > 0 ? `${allocatedMins % 60}mins` : ''}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Actual</span>
+                <span className="font-semibold text-foreground">{actualHrs}hrs {actualRemMins}mins</span>
+              </div>
+              {allocatedMins > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Difference</span>
+                  <span className={`font-bold ${diffColor}`}>{diffSign}{diffMins} mins</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
 
       {job.notes && (

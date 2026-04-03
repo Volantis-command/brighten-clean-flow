@@ -133,6 +133,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
     lockbox_code: '',
     status: 'active',
     special_instructions: '',
+    property_notes: '',
   });
 
   useEffect(() => {
@@ -150,6 +151,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
         lockbox_code: property.lockbox_code || '',
         status: property.status || 'active',
         special_instructions: (property as any).special_instructions || '',
+        property_notes: (property as any).property_notes || '',
       });
     }
   }, [property]);
@@ -172,6 +174,7 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
       lockbox_code: form.lockbox_code || null,
       status: form.status,
       special_instructions: form.special_instructions || null,
+      property_notes: form.property_notes || null,
     } as any).eq('id', property.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -231,6 +234,9 @@ function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) 
       </Field>
       <Field label="🔑 Lockbox Code (only shown to cleaner after check-in)">
         <Input value={form.lockbox_code} onChange={(e) => u('lockbox_code', e.target.value)} className="h-12 rounded-xl" />
+      </Field>
+      <Field label="📝 Cleaner Notes (visible to cleaners during active jobs)">
+        <Textarea value={form.property_notes} onChange={(e) => u('property_notes', e.target.value)} rows={3} className="rounded-xl" placeholder="e.g. Use back entrance, bins go out Tuesdays" />
       </Field>
       <div className="flex items-center justify-between py-2">
         <Label className="font-semibold">Active</Label>

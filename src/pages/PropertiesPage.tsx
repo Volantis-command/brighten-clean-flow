@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCleanersList } from '@/hooks/useCleanersList';
+import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,26 @@ export default function PropertiesPage() {
         .order('property_name', { ascending: true });
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Fetch last clean dates for all properties
+  const { data: lastCleanMap = {} } = useQuery({
+    queryKey: ['properties-last-clean'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('property_id, clock_off_at')
+        .in('status', ['completed', 'complete'])
+        .not('clock_off_at', 'is', null)
+        .order('clock_off_at', { ascending: false });
+      const map: Record<string, string> = {};
+      (data || []).forEach((j: any) => {
+        if (j.property_id && !map[j.property_id]) {
+          map[j.property_id] = j.clock_off_at;
+        }
+      });
+      return map;
     },
   });
 
@@ -165,7 +186,7 @@ export default function PropertiesPage() {
                 </p>
               )}
 
-              <div className="flex items-center gap-4 mb-3">
+              <div className="flex items-center gap-4 mb-2">
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <BedDouble className="h-4 w-4" />
                   <span className="font-semibold">{property.bedrooms || 0}</span>
@@ -175,6 +196,12 @@ export default function PropertiesPage() {
                   <span className="font-semibold">{property.bathrooms || 0}</span>
                 </div>
               </div>
+
+              <p className="text-xs text-muted-foreground mb-3">
+                {(lastCleanMap as Record<string, string>)[property.id]
+                  ? `Last cleaned: ${formatDistanceToNow(new Date((lastCleanMap as Record<string, string>)[property.id]), { addSuffix: true })}`
+                  : 'Never cleaned'}
+              </p>
 
               <div className="flex items-center justify-between">
                 {property.client_name && (

@@ -7,10 +7,10 @@ import AppSettingsSection from '@/components/settings/AppSettingsSection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
 import XeroSection from '@/components/settings/XeroSection';
 import LegalSection from '@/components/settings/LegalSection';
-
+import IntegrationsSection from '@/components/settings/IntegrationsSection';
 import GuestySection from '@/components/settings/GuestySection';
 import GoogleCalendarSection from '@/components/settings/GoogleCalendarSection';
-import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar } from 'lucide-react';
+import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar, Plug } from 'lucide-react';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('team');
@@ -57,6 +57,10 @@ export default function SettingsPage() {
             <Calendar className="w-4 h-4" />
             <span className="hidden sm:inline">Calendar</span>
           </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Plug className="w-4 h-4" />
+            <span className="hidden sm:inline">Integrations</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="team"><TeamSection /></TabsContent>
@@ -69,6 +73,7 @@ export default function SettingsPage() {
         <TabsContent value="guesty"><GuestySection /></TabsContent>
         <TabsContent value="xero"><XeroSection /></TabsContent>
         <TabsContent value="calendar"><GoogleCalendarSection /></TabsContent>
+        <TabsContent value="integrations"><IntegrationsSection /></TabsContent>
       </Tabs>
     </div>
   );
