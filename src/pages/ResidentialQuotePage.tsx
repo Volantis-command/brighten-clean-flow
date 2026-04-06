@@ -574,30 +574,18 @@ export default function ResidentialQuotePage() {
       {/* Fixed bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-4 py-4 z-20">
         <div className="max-w-lg mx-auto space-y-3">
-          {/* Price badge on step 0 */}
-          {step === 0 && priceRange && (
-            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
-              <p className="text-sm font-bold text-primary">
-                Estimated quote: ${priceRange[0]}–${priceRange[1]} incl. GST
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Confirmed within 1 hour{linen ? ' · Linen included' : ''}
-                {cleanType === 'eol' ? ' · Bond clean certificate available on request' : ''}
-              </p>
-            </div>
-          )}
-          {step === 0 && !priceRange && cleanType && parseInt(bedrooms) >= 5 && (
-            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
-              <p className="text-sm font-bold text-primary">5+ bedrooms — call us for a quote</p>
-            </div>
-          )}
-
-          {/* Extras total on step 1 */}
-          {step === 1 && extrasTotal > 0 && priceRange && (
+          {/* Price badge — total only, includes extras */}
+          {(step === 0 || step === 1) && priceRange && (
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
               <p className="text-sm font-bold text-primary">
                 Estimated quote: ${priceRange[0] + extrasTotal}–${priceRange[1] + extrasTotal} incl. GST
               </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Confirmed within 1 hour</p>
+            </div>
+          )}
+          {(step === 0 || step === 1) && !priceRange && cleanType && parseInt(bedrooms) >= 5 && (
+            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
+              <p className="text-sm font-bold text-primary">5+ bedrooms — call us for a quote</p>
             </div>
           )}
 
