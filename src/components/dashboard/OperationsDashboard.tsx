@@ -1,19 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, differenceInHours, parseISO, isToday } from 'date-fns';
+import { format, differenceInHours } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, ArrowRight, ChevronRight, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
+import { ChevronRight, ChevronDown, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 
 type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'scheduled' | 'in_progress' | 'complete';
 
-const PIPELINE_COLUMNS: { key: PipelineStatus; label: string }[] = [
+const PIPELINE_STAGES: { key: PipelineStatus; label: string }[] = [
   { key: 'new_enquiry', label: 'New Enquiry' },
   { key: 'quote_sent', label: 'Quote Sent' },
   { key: 'accepted', label: 'Accepted' },
@@ -25,7 +24,6 @@ const PIPELINE_COLUMNS: { key: PipelineStatus; label: string }[] = [
 export default function OperationsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
@@ -36,7 +34,6 @@ export default function OperationsDashboard() {
     queryFn: async () => {
       const alertItems: { type: string; color: string; icon: string; message: string; link?: string }[] = [];
 
-      // Quotes not followed up (>24hrs, form_submitted OR quote_sent)
       const { data: staleQuotes } = await supabase
         .from('quote_requests')
         .select('id, first_name, last_name, form_submitted_at, created_at, status')
@@ -57,7 +54,6 @@ export default function OperationsDashboard() {
         }
       });
 
-      // Client went quiet (accepted >48hrs, no booking)
       const { data: quietClients } = await supabase
         .from('quote_requests')
         .select('id, first_name, last_name, accepted_at')
@@ -68,7 +64,6 @@ export default function OperationsDashboard() {
         }
       });
 
-      // Clean starting soon (within 2 hours)
       const { data: soonJobs } = await supabase
         .from('jobs')
         .select('id, scheduled_time, property_id, properties(property_name)')
@@ -86,7 +81,6 @@ export default function OperationsDashboard() {
         }
       });
 
-      // Completed awaiting review
       const { data: awaitingReview } = await supabase
         .from('jobs')
         .select('id, property_id, properties(property_name)')
@@ -105,7 +99,6 @@ export default function OperationsDashboard() {
   const { data: stats } = useQuery({
     queryKey: ['ops-stats'],
     queryFn: async () => {
-      // This week revenue
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       const { data: weekJobs } = await supabase
@@ -115,19 +108,16 @@ export default function OperationsDashboard() {
         .gte('scheduled_date', format(weekStart, 'yyyy-MM-dd'));
       const weekRevenue = (weekJobs || []).reduce((s: number, j: any) => s + (j.price_inc_gst || 0), 0);
 
-      // Outstanding quotes
       const { count: outstandingQuotes } = await supabase
         .from('quote_requests')
         .select('id', { count: 'exact', head: true })
         .in('status', ['form_submitted', 'quote_sent']);
 
-      // Cleans today
       const { count: cleansToday } = await supabase
         .from('jobs')
         .select('id', { count: 'exact', head: true })
         .eq('scheduled_date', todayStr);
 
-      // Avg score
       const { data: scores } = await supabase
         .from('job_feedback')
         .select('score')
@@ -149,7 +139,6 @@ export default function OperationsDashboard() {
         new_enquiry: [], quote_sent: [], accepted: [], scheduled: [], in_progress: [], complete: [],
       };
 
-      // Quote requests
       const { data: qrs } = await supabase
         .from('quote_requests')
         .select('*')
@@ -162,7 +151,6 @@ export default function OperationsDashboard() {
         else if (['accepted', 'booking_requested'].includes(q.status)) result.accepted.push(q);
       });
 
-      // Jobs
       const { data: jobs } = await supabase
         .from('jobs')
         .select('*, properties(property_name, address)')
@@ -181,8 +169,26 @@ export default function OperationsDashboard() {
     },
   });
 
+  // Auto-expand stages that have items
+  const defaultExpanded = useMemo(() => {
+    const expanded: Record<string, boolean> = {};
+    PIPELINE_STAGES.forEach(s => {
+      expanded[s.key] = (pipeline[s.key] || []).length > 0;
+    });
+    return expanded;
+  }, [pipeline]);
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Merge: use user toggles over defaults
+  const isExpanded = (key: string) =>
+    expanded[key] !== undefined ? expanded[key] : defaultExpanded[key] ?? false;
+
+  const toggle = (key: string) =>
+    setExpanded(prev => ({ ...prev, [key]: !isExpanded(key) }));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-[900px] mx-auto">
       {/* Alerts strip */}
       {alerts.length > 0 && (
         <div className="space-y-2">
@@ -226,32 +232,50 @@ export default function OperationsDashboard() {
         </div>
       </div>
 
-      {/* Pipeline Kanban */}
+      {/* Vertical Pipeline */}
       <div>
         <h2 className="text-xl font-bold text-primary mb-4">Pipeline</h2>
-        <ScrollArea className="w-full">
-          <div className="flex gap-4 pb-4" style={{ minWidth: PIPELINE_COLUMNS.length * 280 }}>
-            {PIPELINE_COLUMNS.map(col => (
-              <div key={col.key} className="min-w-[280px] w-[280px] shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-foreground">{col.label}</h3>
-                  <Badge variant="secondary" className="text-xs">{(pipeline[col.key] || []).length}</Badge>
-                </div>
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                  {(pipeline[col.key] || []).map((item: any) => (
-                    <PipelineCard key={item.id} item={item} column={col.key} navigate={navigate} />
-                  ))}
-                  {(pipeline[col.key] || []).length === 0 && (
-                    <div className="bg-muted/50 rounded-xl p-4 text-center">
-                      <p className="text-xs text-muted-foreground">No items</p>
-                    </div>
-                  )}
-                </div>
+        <div className="space-y-2">
+          {PIPELINE_STAGES.map(stage => {
+            const items = pipeline[stage.key] || [];
+            const count = items.length;
+            const open = isExpanded(stage.key);
+
+            return (
+              <div key={stage.key} className="rounded-xl border border-border bg-card overflow-hidden">
+                {/* Stage header */}
+                <button
+                  onClick={() => toggle(stage.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {open
+                      ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    }
+                    <h3 className="text-sm font-bold text-foreground">{stage.label}</h3>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">{count}</Badge>
+                </button>
+
+                {/* Expanded cards */}
+                {open && (
+                  <div className="px-4 pb-4 space-y-2">
+                    {items.length === 0 ? (
+                      <div className="bg-muted/50 rounded-xl p-4 text-center">
+                        <p className="text-xs text-muted-foreground">No items</p>
+                      </div>
+                    ) : (
+                      items.map((item: any) => (
+                        <PipelineCard key={item.id} item={item} column={stage.key} navigate={navigate} />
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -277,38 +301,84 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
       : 0;
 
     return (
-      <div className={cn('bg-card rounded-xl border p-4 cursor-pointer hover:shadow-md transition-shadow',
-        column === 'quote_sent' && daysWaiting >= 2 ? 'border-destructive/50' :
-        column === 'quote_sent' && daysWaiting >= 1 ? 'border-orange-300' : 'border-border'
+      <div className={cn('bg-card rounded-xl border-l-4 border border-border p-4 cursor-pointer hover:shadow-md transition-shadow',
+        column === 'quote_sent' && daysWaiting >= 2 ? 'border-l-destructive' :
+        column === 'quote_sent' && daysWaiting >= 1 ? 'border-l-orange-400' : 'border-l-border'
       )} onClick={() => navigate('/quoting')}>
-        <p className="text-sm font-bold text-foreground truncate">{name || 'Unknown'}</p>
-        <p className="text-xs text-muted-foreground truncate">{item.address || item.clean_type}</p>
-        {column === 'quote_sent' && daysWaiting > 0 && (
-          <p className="text-xs text-orange-600 font-semibold mt-1">{daysWaiting}d waiting</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-foreground truncate">{name || 'Unknown'}</p>
+            <p className="text-xs text-muted-foreground truncate">{item.address || 'No address'}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {item.clean_type && <Badge variant="secondary" className="text-[10px]">{item.clean_type}</Badge>}
+            {column === 'quote_sent' && daysWaiting > 0 && (
+              <span className={cn('text-xs font-semibold', daysWaiting >= 2 ? 'text-destructive' : 'text-orange-600')}>
+                {daysWaiting}d
+              </span>
+            )}
+          </div>
+        </div>
+        {column === 'new_enquiry' && (
+          <div className="mt-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Send Quote</Button>
+          </div>
         )}
-        {item.clean_type && <Badge variant="secondary" className="text-[10px] mt-1">{item.clean_type}</Badge>}
+        {column === 'quote_sent' && (
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Follow Up</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Mark Accepted</Button>
+          </div>
+        )}
+        {column === 'accepted' && (
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Schedule Clean</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Assign Cleaner</Button>
+          </div>
+        )}
       </div>
     );
   }
 
   // Job card
   const propName = (item as any).properties?.property_name || 'Property';
+  const address = (item as any).properties?.address || '';
   return (
-    <div className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-md transition-shadow"
+    <div className="bg-card rounded-xl border border-border border-l-4 border-l-border p-4 cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => navigate(`/jobs/${item.id}`)}>
-      <p className="text-sm font-bold text-foreground truncate">{propName}</p>
-      <p className="text-xs text-muted-foreground">
-        {item.scheduled_date ? format(new Date(item.scheduled_date + 'T00:00:00'), 'EEE, d MMM') : ''}
-        {item.scheduled_time ? ` · ${item.scheduled_time.slice(0, 5)}` : ''}
-      </p>
-      {column === 'in_progress' && (
-        <div className="flex items-center gap-1 mt-1">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-green-600 font-semibold">Live</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-foreground truncate">{propName}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {address && `${address} · `}
+            {item.scheduled_date ? format(new Date(item.scheduled_date + 'T00:00:00'), 'EEE, d MMM') : ''}
+            {item.scheduled_time ? ` · ${item.scheduled_time.slice(0, 5)}` : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {column === 'in_progress' && (
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-green-600 font-semibold">Live</span>
+            </div>
+          )}
+          {item.invoice_status && column === 'complete' && (
+            <Badge variant="secondary" className="text-[10px]">{item.invoice_status}</Badge>
+          )}
+        </div>
+      </div>
+      {column === 'scheduled' && (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">View Job</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Send Tracker Link</Button>
         </div>
       )}
-      {item.invoice_status && column === 'complete' && (
-        <Badge variant="secondary" className="text-[10px] mt-1">{item.invoice_status}</Badge>
+      {column === 'complete' && (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Send Invoice</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Request Review</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Rebook</Button>
+        </div>
       )}
     </div>
   );
