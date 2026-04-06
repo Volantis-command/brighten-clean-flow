@@ -241,14 +241,14 @@ function AlertRow({ item, groupKey, loading, onDismiss, onNavigate, onRaiseInvoi
   return (
     <div
       onClick={onNavigate}
-      className="bg-background rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:shadow-sm transition-all min-h-[48px]"
+      className="bg-background rounded-xl border border-border p-4 flex flex-col sm:flex-row sm:items-center gap-3 cursor-pointer hover:shadow-sm transition-all min-h-[48px] overflow-hidden"
     >
       <div className="flex-1 min-w-0">
         <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
-        {item.subtitle && <p className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</p>}
+        {item.subtitle && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 break-words">{item.subtitle}</p>}
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {renderActions()}
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+        <div className="flex-1 sm:flex-none">{renderActions()}</div>
         <button
           onClick={e => { e.stopPropagation(); onDismiss(); }}
           className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
