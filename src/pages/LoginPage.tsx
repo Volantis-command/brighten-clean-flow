@@ -55,8 +55,8 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        <div className="bg-card rounded-2xl shadow-xl p-8">
-          <h1 className="text-2xl font-extrabold text-primary text-center mb-6">
+        <div className="bg-card rounded-2xl shadow-xl p-8" style={{ border: '1px solid rgba(254,219,0,0.15)' }}>
+          <h1 className="text-2xl font-extrabold text-center mb-6" style={{ color: '#F0FDF4' }}>
             {isSignUp ? 'Create Account' : 'Welcome back'}
           </h1>
 
