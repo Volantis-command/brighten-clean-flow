@@ -294,7 +294,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
   // Job card
   const propName = (item as any).properties?.property_name || 'Property';
   return (
-    <div className="bg-card rounded-xl border border-border p-3 cursor-pointer hover:shadow-md transition-shadow"
+    <div className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => navigate(`/jobs/${item.id}`)}>
       <p className="text-sm font-bold text-foreground truncate">{propName}</p>
       <p className="text-xs text-muted-foreground">
