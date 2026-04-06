@@ -345,8 +345,13 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
 
     return (
       <div
-        className="glass-card hover-lift p-4 cursor-pointer"
-        style={isOverdue ? { borderLeft: '3px solid #EF4444' } : undefined}
+        className="hover-lift p-4 cursor-pointer"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '12px',
+          ...(isOverdue ? { borderLeft: '3px solid #EF4444' } : {}),
+        }}
         onClick={() => navigate('/quoting')}
       >
         <div className="flex items-center justify-between gap-2">
