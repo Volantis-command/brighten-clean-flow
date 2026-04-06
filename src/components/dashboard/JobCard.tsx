@@ -25,14 +25,35 @@ interface JobCardProps {
   feedbackScore?: number | null;
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
-  confirmed: { label: 'Confirmed', className: 'bg-muted text-muted-foreground' },
-  in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800' },
-  completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
-  complete: { label: 'Completed', className: 'bg-green-100 text-green-800' },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive line-through' },
-  flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+const statusConfig: Record<string, { label: string; style: React.CSSProperties }> = {
+  scheduled: {
+    label: 'Scheduled',
+    style: { background: 'rgba(139,92,246,0.15)', color: '#C4B5FD' },
+  },
+  confirmed: {
+    label: 'Confirmed',
+    style: { background: 'rgba(139,92,246,0.15)', color: '#C4B5FD' },
+  },
+  in_progress: {
+    label: 'In Progress',
+    style: { background: 'rgba(254,219,0,0.15)', color: '#FEDB00' },
+  },
+  completed: {
+    label: 'Completed',
+    style: { background: 'rgba(34,197,94,0.20)', color: '#22C55E' },
+  },
+  complete: {
+    label: 'Completed',
+    style: { background: 'rgba(34,197,94,0.20)', color: '#22C55E' },
+  },
+  cancelled: {
+    label: 'Cancelled',
+    style: { background: 'rgba(239,68,68,0.12)', color: '#FCA5A5', textDecoration: 'line-through' },
+  },
+  flagged: {
+    label: 'Flagged',
+    style: { background: 'rgba(239,68,68,0.20)', color: '#FCA5A5' },
+  },
 };
 
 export function JobCard({
@@ -68,57 +89,61 @@ export function JobCard({
     setStarting(false);
   };
 
-  // Determine left border color based on acceptance status
-  const getBorderClass = () => {
-    if (!acceptances || acceptances.length === 0) return '';
+  // Determine left border color based on acceptance status (returns inline style)
+  const getBorderStyle = (): React.CSSProperties => {
+    if (!acceptances || acceptances.length === 0) return {};
     const hasDeclined = acceptances.some(a => a.acceptance_status === 'declined');
     const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
     const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
-    if (hasDeclined) return 'border-l-4 border-l-destructive';
-    if (allAccepted) return 'border-l-4 border-l-primary';
-    if (hasPending) return 'border-l-4 border-l-[hsl(45,100%,51%)]';
-    return '';
+    if (hasDeclined) return { borderLeft: '3px solid #EF4444' };
+    if (allAccepted) return { borderLeft: '3px solid #22C55E' };
+    if (hasPending) return { borderLeft: '3px solid #FEDB00' };
+    return {};
   };
 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border ${getBorderClass()}`}
+      className="glass-card hover-lift w-full text-left p-5 fade-in"
+      style={getBorderStyle()}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-1.5 min-w-0">
-          {isRecurring && <Repeat className="h-4 w-4 text-primary shrink-0" />}
-          <h3 className="text-lg font-bold text-foreground leading-tight">{propertyName}</h3>
+          {isRecurring && <Repeat className="h-4 w-4 shrink-0" style={{ color: '#FEDB00' }} />}
+          <h3 className="text-lg font-bold leading-tight" style={{ color: '#F0FDF4' }}>{propertyName}</h3>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {feedbackScore != null && feedbackScore > 0 && (
-            <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-              <Star className="h-3.5 w-3.5 fill-amber-500" />
+            <span className="flex items-center gap-0.5 text-xs font-bold" style={{ color: '#FEDB00' }}>
+              <Star className="h-3.5 w-3.5" style={{ fill: '#FEDB00' }} />
               {feedbackScore}
             </span>
           )}
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
+          <span
+            className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+            style={statusInfo.style}
+          >
             {statusInfo.label}
           </span>
         </div>
       </div>
 
       {address && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+        <div className="flex items-center gap-2 text-sm mb-2" style={{ color: '#86EFAC' }}>
           <MapPin className="h-4 w-4 shrink-0" />
           <span className="truncate">{address}</span>
         </div>
       )}
 
       {scheduledTime && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+        <div className="flex items-center gap-2 text-sm mb-2" style={{ color: '#86EFAC' }}>
           <Clock className="h-4 w-4 shrink-0" />
-          <span>{scheduledTime}</span>
+          <span className="tabular-nums">{scheduledTime}</span>
         </div>
       )}
 
       {cleanerNames && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm" style={{ color: '#86EFAC' }}>
           <Users className="h-4 w-4 shrink-0" />
           <span>{cleanerNames}</span>
         </div>
@@ -140,7 +165,12 @@ export function JobCard({
           {showNavigateButton && address && (
             <span
               onClick={handleNavigateClick}
-              className="inline-flex items-center justify-center h-14 px-5 bg-accent text-accent-foreground font-extrabold rounded-2xl text-base gap-2"
+              className="inline-flex items-center justify-center h-14 px-5 font-extrabold rounded-xl text-base gap-2 transition-all active:scale-[0.98]"
+              style={{
+                background: 'rgba(255, 255, 255, 0.06)',
+                color: '#F0FDF4',
+                border: '1px solid rgba(255, 255, 255, 0.10)',
+              }}
             >
               <Navigation className="h-5 w-5" />
               Navigate
@@ -149,7 +179,8 @@ export function JobCard({
           {showStartButton && status === 'scheduled' && (
             <span
               onClick={handleStartClick}
-              className="inline-flex items-center justify-center h-14 px-6 bg-primary text-primary-foreground font-bold rounded-2xl text-base gap-2 flex-1"
+              className="inline-flex items-center justify-center h-14 px-6 font-bold rounded-xl text-base gap-2 flex-1 yellow-glow transition-all active:scale-[0.98]"
+              style={{ background: '#FEDB00', color: '#0C463D' }}
             >
               {starting ? (
                 <>

@@ -37,22 +37,28 @@ const cleanerMobileItems: NavItem[] = [
   { label: 'Profile', path: '/profile', icon: User, roles: ['cleaner'] },
 ];
 
+const NAV_BG = '#0A0F0E';
+const NAV_BORDER = 'rgba(255,255,255,0.06)';
+
 export function MobileNav() {
   const { role } = useAuth();
   const { totalCount } = useAlertsData();
 
-  // Cleaners get a simplified 3-item nav with bigger tap targets
+  // Cleaners get a simplified 4-item nav with bigger tap targets
   if (role === 'cleaner') {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden safe-area-bottom">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom"
+        style={{ background: NAV_BG, borderTop: `1px solid ${NAV_BORDER}` }}
+      >
         <div className="flex justify-around items-center py-1 px-2">
           {cleanerMobileItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-4 py-3 rounded-2xl transition-colors min-w-[72px] ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
+                `flex flex-col items-center gap-1 px-4 py-3 rounded-2xl transition-all duration-200 min-w-[72px] ${
+                  isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
                 }`
               }
             >
@@ -60,7 +66,12 @@ export function MobileNav() {
                 <>
                   <item.icon className="h-6 w-6" />
                   <span className="text-xs font-bold">{item.label}</span>
-                  {isActive && <div className="w-8 h-1 bg-accent rounded-full" />}
+                  {isActive && (
+                    <div
+                      className="w-8 h-1 rounded-full"
+                      style={{ background: '#FEDB00', boxShadow: '0 0 8px rgba(254,219,0,0.6)' }}
+                    />
+                  )}
                 </>
               )}
             </NavLink>
@@ -71,23 +82,23 @@ export function MobileNav() {
   }
 
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
-  // Inject badge count for Actions
   const filteredWithBadge = filtered.map(item =>
     item.path === '/actions' ? { ...item, badge: totalCount } : item
   );
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+      style={{ background: NAV_BG, borderTop: `1px solid ${NAV_BORDER}` }}
+    >
       <div className="flex justify-around items-center py-2 px-1">
         {filteredWithBadge.slice(0, 5).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors min-w-0 relative ${
-                isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
+                isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
               }`
             }
           >
@@ -96,13 +107,21 @@ export function MobileNav() {
                 <div className="relative">
                   <item.icon className="h-5 w-5" />
                   {item.badge && item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                    <span
+                      className="absolute -top-1.5 -right-2.5 text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 tabular-nums"
+                      style={{ background: '#EF4444', color: '#FFFFFF' }}
+                    >
                       {item.badge}
                     </span>
                   )}
                 </div>
                 <span className="text-[10px] font-semibold truncate">{item.label}</span>
-                {isActive && <div className="w-5 h-0.5 bg-accent rounded-full" />}
+                {isActive && (
+                  <div
+                    className="w-5 h-0.5 rounded-full"
+                    style={{ background: '#FEDB00', boxShadow: '0 0 6px rgba(254,219,0,0.6)' }}
+                  />
+                )}
               </>
             )}
           </NavLink>
@@ -115,8 +134,7 @@ export function MobileNav() {
 export function DesktopSidebar() {
   const { role, profile, signOut } = useAuth();
   const { totalCount } = useAlertsData();
-  
-  // Don't show sidebar for cleaners on desktop either — they use a simpler layout
+
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
   const filteredWithBadge = filtered.map(item =>
     item.path === '/actions' ? { ...item, badge: totalCount } : item
@@ -125,10 +143,19 @@ export function DesktopSidebar() {
   const roleBadgeLabel = role === 'head_cleaner' ? 'Head Cleaner' : role === 'admin' ? 'Admin' : 'Cleaner';
 
   return (
-    <aside className="hidden md:flex flex-col w-64 min-h-screen bg-primary text-primary-foreground">
+    <aside
+      className="hidden md:flex flex-col w-64 min-h-screen"
+      style={{
+        background: NAV_BG,
+        borderRight: `1px solid ${NAV_BORDER}`,
+      }}
+    >
       <div className="p-6 pb-4">
-        <h2 className="font-extrabold tracking-tight text-primary-foreground" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px' }}>
-          Brightly<span className="text-accent">.</span>
+        <h2
+          className="font-extrabold tracking-tight"
+          style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: '#F0FDF4' }}
+        >
+          Brightly<span style={{ color: '#FEDB00' }}>.</span>
         </h2>
       </div>
 
@@ -138,39 +165,65 @@ export function DesktopSidebar() {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition-colors ${
+              `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 relative ${
                 isActive
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-primary-foreground/80 hover:bg-sidebar-accent hover:text-primary-foreground'
+                  ? 'text-[#FEDB00]'
+                  : 'text-[#86EFAC] hover:text-[#F0FDF4]'
               }`
             }
+            style={({ isActive }) =>
+              isActive
+                ? {
+                    background: 'rgba(254,219,0,0.08)',
+                    borderLeft: '3px solid #FEDB00',
+                    paddingLeft: '13px',
+                  }
+                : undefined
+            }
           >
-            <item.icon className="h-5 w-5" />
-            <span className="flex-1">{item.label}</span>
-            {item.badge && item.badge > 0 && (
-              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
-                {item.badge}
-              </span>
+            {({ isActive }) => (
+              <>
+                <item.icon className="h-5 w-5" />
+                <span className="flex-1">{item.label}</span>
+                {item.badge && item.badge > 0 && (
+                  <span
+                    className="text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 tabular-nums"
+                    style={{
+                      background: isActive ? '#EF4444' : 'rgba(239,68,68,0.2)',
+                      color: isActive ? '#FFFFFF' : '#FCA5A5',
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </>
             )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4" style={{ borderTop: `1px solid ${NAV_BORDER}` }}>
         <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm">
+          <div
+            className="h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm"
+            style={{ background: '#FEDB00', color: '#0C463D' }}
+          >
             {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold truncate">{profile?.full_name || 'User'}</p>
-            <span className="inline-block text-[10px] font-bold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">
+            <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{profile?.full_name || 'User'}</p>
+            <span
+              className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(254,219,0,0.15)', color: '#FEDB00' }}
+            >
               {roleBadgeLabel}
             </span>
           </div>
         </div>
         <button
           onClick={signOut}
-          className="w-full text-sm font-semibold text-primary-foreground/70 hover:text-primary-foreground transition-colors text-left"
+          className="w-full text-sm font-semibold text-left transition-colors"
+          style={{ color: '#86EFAC' }}
         >
           Sign out
         </button>

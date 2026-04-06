@@ -17,6 +17,19 @@ export default {
         sans: ["Nunito", "sans-serif"],
       },
       colors: {
+        // Direct Brightly brand tokens
+        brightly: {
+          yellow: "#FEDB00",
+          green: {
+            deep: "#0C463D",
+            mid: "#1A6B5E",
+            glow: "#22C55E",
+          },
+          bg: "#0A0F0E",
+          card: "#111916",
+          text: "#F0FDF4",
+          "text-soft": "#86EFAC",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -76,10 +89,19 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "shimmer-slow": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "shimmer-slow": "shimmer-slow 6s ease-in-out infinite",
+      },
+      backgroundImage: {
+        "brightly-gradient": "linear-gradient(135deg, #0C463D 0%, #1A6B5E 100%)",
+        "brightly-gradient-yellow": "linear-gradient(135deg, #FEDB00 0%, #22C55E 100%)",
       },
     },
   },

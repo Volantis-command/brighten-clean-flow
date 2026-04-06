@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -240,54 +239,93 @@ export function CleanerClockCard({ todayJobs }: { todayJobs: Job[] }) {
 
   return (
     <>
-      <div className="bg-card rounded-2xl border-2 border-border p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-primary" />
-          <h3 className="text-base font-extrabold text-foreground">Time clock</h3>
+      <div className="glass-card p-6 flex flex-col items-center gap-5">
+        <div className="flex items-center gap-2 self-start">
+          <Clock className="h-4 w-4" style={{ color: '#86EFAC' }} />
+          <h3
+            className="text-[11px] font-semibold uppercase"
+            style={{ letterSpacing: '0.08em', color: '#86EFAC' }}
+          >
+            Time clock
+          </h3>
         </div>
 
         {activeEvent ? (
           <>
-            <div className="rounded-xl bg-emerald-50 border-2 border-emerald-500 p-4">
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                Clocked on
+            <button
+              onClick={handleClockOut}
+              disabled={busy}
+              className="rounded-full flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 active:scale-[0.98] disabled:opacity-60"
+              style={{
+                width: '140px',
+                height: '140px',
+                background: 'rgba(239,68,68,0.15)',
+                border: '3px solid #EF4444',
+                color: '#EF4444',
+                boxShadow: '0 0 32px rgba(239,68,68,0.25)',
+              }}
+            >
+              {busy ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <>
+                  <span className="text-[11px] font-semibold tracking-widest opacity-80">CLOCK</span>
+                  <span className="text-2xl font-extrabold tracking-wider">OFF</span>
+                </>
+              )}
+            </button>
+            <div className="text-center">
+              <p
+                className="text-3xl font-extrabold tabular-nums"
+                style={{ color: '#F0FDF4', letterSpacing: '-0.02em' }}
+              >
+                {formatDuration(elapsedMinutes)}
               </p>
-              <p className="text-sm font-bold text-emerald-900 mt-1">
-                {startedTime} · {formatDuration(elapsedMinutes)}
+              <p className="text-xs mt-1" style={{ color: '#86EFAC' }}>
+                Started {startedTime}
               </p>
               {propertyName && (
-                <p className="text-xs text-emerald-800 mt-1 flex items-center gap-1">
+                <p className="text-xs mt-1 flex items-center justify-center gap-1" style={{ color: '#86EFAC' }}>
                   <MapPin className="h-3 w-3" /> {propertyName}
                 </p>
               )}
             </div>
-            <Button
-              onClick={handleClockOut}
-              disabled={busy}
-              className="w-full h-16 rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground font-extrabold text-lg"
-            >
-              {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : 'CLOCK OFF'}
-            </Button>
           </>
         ) : (
           <>
-            {nextJob ? (
-              <p className="text-sm text-muted-foreground">
-                Next job:{' '}
-                <span className="font-bold text-foreground">
-                  {nextJob.properties?.property_name}
-                </span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No job available to clock onto.</p>
-            )}
-            <Button
+            <button
               onClick={handleClockIn}
               disabled={busy || !nextJob}
-              className="w-full h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-lg"
+              className="rounded-full flex flex-col items-center justify-center pulse-glow transition-all duration-300 hover:scale-105 active:scale-[0.98] disabled:opacity-50 disabled:pulse-glow-none"
+              style={{
+                width: '140px',
+                height: '140px',
+                background: '#0C463D',
+                border: '3px solid #22C55E',
+                color: '#22C55E',
+              }}
             >
-              {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : 'CLOCK ON'}
-            </Button>
+              {busy ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <>
+                  <span className="text-[11px] font-semibold tracking-widest opacity-80">CLOCK</span>
+                  <span className="text-2xl font-extrabold tracking-wider">ON</span>
+                </>
+              )}
+            </button>
+            <div className="text-center">
+              {nextJob ? (
+                <p className="text-sm" style={{ color: '#86EFAC' }}>
+                  Next job:{' '}
+                  <span className="font-bold" style={{ color: '#F0FDF4' }}>
+                    {nextJob.properties?.property_name}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm" style={{ color: '#86EFAC' }}>No job available to clock onto.</p>
+              )}
+            </div>
           </>
         )}
       </div>

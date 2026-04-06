@@ -1,9 +1,72 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Star, TrendingUp, Loader2, ClipboardCheck } from 'lucide-react';
+import { TrendingUp, Loader2, ClipboardCheck } from 'lucide-react';
 import { format } from 'date-fns';
+
+/** Animated circular score ring per Section 7 spec */
+function BrightlyScoreRing({ scorePct, label }: { scorePct: number; label: string }) {
+  const radius = 44;
+  const strokeWidth = 6;
+  const circumference = 2 * Math.PI * radius;
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => setProgress(scorePct), 80);
+    return () => clearTimeout(t);
+  }, [scorePct]);
+
+  const offset = circumference - (progress / 100) * circumference;
+  const size = (radius + strokeWidth) * 2;
+
+  return (
+    <div className="relative inline-flex flex-col items-center">
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id="brightly-score-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FEDB00" />
+            <stop offset="100%" stopColor="#22C55E" />
+          </linearGradient>
+        </defs>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.10)"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#brightly-score-grad)"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <p
+          className="tabular-nums leading-none"
+          style={{ fontSize: '24px', fontWeight: 800, color: '#F0FDF4' }}
+        >
+          {Math.round(progress)}
+        </p>
+      </div>
+      <p
+        className="mt-3 text-[11px] font-semibold uppercase"
+        style={{ letterSpacing: '0.08em', color: '#86EFAC' }}
+      >
+        {label}
+      </p>
+    </div>
+  );
+}
 
 type AuditRow = {
   id: string;
@@ -77,66 +140,50 @@ export default function MyBrightlyScorePage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#FEDB00' }} />
       </div>
     );
   }
 
-  const renderStars = (score: number) => {
-    const filled = Math.round(score);
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-7 w-7 ${i < filled ? 'fill-accent text-accent' : 'text-muted-foreground/30'}`}
-      />
-    ));
-  };
-
   return (
     <div className="space-y-6 max-w-lg mx-auto pb-12">
       <div>
-        <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-          <TrendingUp className="h-6 w-6 text-primary" /> My Brightly Score
+        <h1 className="page-heading flex items-center gap-2">
+          <TrendingUp className="h-6 w-6" style={{ color: '#FEDB00' }} /> My Brightly Score
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm mt-1" style={{ color: '#86EFAC' }}>
           Your quality rating across recent QC audits.
         </p>
       </div>
 
-      <div className="bg-primary text-primary-foreground rounded-2xl p-6 text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-primary-foreground/70">
-          Current Score
-        </p>
-        <p className="text-5xl font-extrabold mt-2">
-          {stats.starRating ? stats.starRating.toFixed(1) : '—'}
-        </p>
-        <div className="flex justify-center gap-1 mt-3">{renderStars(stats.starRating)}</div>
-        <p className="text-xs text-primary-foreground/70 mt-3">
-          {stats.totalAudits} audits · {stats.passRate}% pass rate · {stats.avgPercent}% average
+      <div className="glass-card p-6 flex flex-col items-center text-center hover-lift">
+        <p className="section-label mb-4">Current Score</p>
+        <BrightlyScoreRing scorePct={stats.avgPercent} label="Brightly Score" />
+        <p className="text-xs mt-4" style={{ color: '#86EFAC' }}>
+          {stats.totalAudits} audits · {stats.passRate}% pass rate ·{' '}
+          {stats.starRating ? stats.starRating.toFixed(1) : '—'} stars
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card rounded-2xl border-2 border-border p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Audits</p>
-          <p className="text-3xl font-extrabold text-foreground mt-1">{stats.totalAudits}</p>
+        <div className="glass-card hover-lift p-4">
+          <p className="section-label">Audits</p>
+          <p className="text-3xl font-extrabold tabular-nums mt-1" style={{ color: '#F0FDF4' }}>{stats.totalAudits}</p>
         </div>
-        <div className="bg-card rounded-2xl border-2 border-border p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Pass rate
-          </p>
-          <p className="text-3xl font-extrabold text-foreground mt-1">{stats.passRate}%</p>
+        <div className="glass-card hover-lift p-4">
+          <p className="section-label">Pass rate</p>
+          <p className="text-3xl font-extrabold tabular-nums mt-1" style={{ color: '#F0FDF4' }}>{stats.passRate}%</p>
         </div>
       </div>
 
       <div>
-        <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+        <h2 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#F0FDF4' }}>
           <ClipboardCheck className="h-5 w-5" /> Recent QC Audits
         </h2>
         {stats.recent.length === 0 ? (
-          <div className="bg-card rounded-2xl border border-border p-6 text-center">
+          <div className="glass-card p-6 text-center">
             <p className="text-3xl mb-2">⭐</p>
-            <p className="text-sm text-muted-foreground">No QC audits yet. Keep cleaning!</p>
+            <p className="text-sm" style={{ color: '#86EFAC' }}>No QC audits yet. Keep cleaning!</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -149,26 +196,25 @@ export default function MyBrightlyScorePage() {
               return (
                 <div
                   key={a.id}
-                  className="bg-card rounded-2xl border border-border p-4 flex items-start justify-between gap-3"
+                  className="glass-card hover-lift p-4 flex items-start justify-between gap-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-foreground text-sm truncate">{propName}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{dateStr}</p>
+                    <p className="font-bold text-sm truncate" style={{ color: '#F0FDF4' }}>{propName}</p>
+                    <p className="text-xs mt-0.5" style={{ color: '#86EFAC' }}>{dateStr}</p>
                     {a.improvement_feedback && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      <p className="text-xs mt-1 line-clamp-2" style={{ color: '#86EFAC', opacity: 0.8 }}>
                         {a.improvement_feedback}
                       </p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
                     <p
-                      className={`text-2xl font-extrabold ${
-                        isFail ? 'text-destructive' : 'text-emerald-600'
-                      }`}
+                      className="text-2xl font-extrabold tabular-nums"
+                      style={{ color: isFail ? '#EF4444' : '#22C55E' }}
                     >
                       {a.percentage != null ? `${Math.round(Number(a.percentage))}%` : '—'}
                     </p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                    <p className="text-[10px] font-bold uppercase" style={{ color: '#86EFAC' }}>
                       {a.result || 'pending'}
                     </p>
                   </div>

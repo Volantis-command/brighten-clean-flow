@@ -5,9 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInHours } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ChevronRight, ChevronDown, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { SendQuoteLinkModal } from './SendQuoteLinkModal';
 
@@ -196,19 +194,41 @@ export default function OperationsDashboard() {
     <div className="space-y-6 w-full max-w-[900px] mx-auto">
       {/* Alerts strip */}
       {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.slice(0, 5).map((a, i) => (
-            <div key={i} onClick={() => a.link && navigate(a.link)}
-              className={cn('rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors',
-                a.color === 'bg-destructive' ? 'bg-destructive/10 border border-destructive/30 hover:bg-destructive/15' :
-                a.color === 'bg-orange-500' ? 'bg-orange-50 border border-orange-200 hover:bg-orange-100' :
-                a.color === 'bg-blue-500' ? 'bg-blue-50 border border-blue-200 hover:bg-blue-100' :
-                'bg-green-50 border border-green-200 hover:bg-green-100')}>
-              <span className="text-sm">{a.icon}</span>
-              <p className="text-sm font-semibold text-foreground flex-1">{a.message}</p>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-          ))}
+        <div className="space-y-2 slide-down">
+          {alerts.slice(0, 5).map((a, i) => {
+            const isRed = a.color === 'bg-destructive';
+            const isAmber = a.color === 'bg-orange-500';
+            const isBlue = a.color === 'bg-blue-500';
+            const accentColor = isRed ? '#EF4444' : isAmber ? '#F59E0B' : isBlue ? '#3B82F6' : '#22C55E';
+            const bgColor = isRed
+              ? 'rgba(239,68,68,0.08)'
+              : isAmber
+                ? 'rgba(245,158,11,0.08)'
+                : isBlue
+                  ? 'rgba(59,130,246,0.08)'
+                  : 'rgba(34,197,94,0.08)';
+            return (
+              <div
+                key={i}
+                onClick={() => a.link && navigate(a.link)}
+                className="glass-card hover-lift px-4 py-3 flex items-center gap-3 cursor-pointer relative overflow-hidden"
+                style={{
+                  background: bgColor,
+                  borderLeft: `4px solid ${accentColor}`,
+                }}
+              >
+                {isRed && (
+                  <span
+                    className="inline-block w-2 h-2 rounded-full animate-pulse-dot"
+                    style={{ background: '#EF4444', boxShadow: '0 0 8px rgba(239,68,68,0.8)' }}
+                  />
+                )}
+                <span className="text-sm">{a.icon}</span>
+                <p className="text-sm font-semibold flex-1" style={{ color: '#F0FDF4' }}>{a.message}</p>
+                <ChevronRight className="h-4 w-4" style={{ color: '#86EFAC' }} />
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -239,7 +259,7 @@ export default function OperationsDashboard() {
 
       {/* Vertical Pipeline */}
       <div>
-        <h2 className="text-xl font-bold text-primary mb-4">Pipeline</h2>
+        <h2 className="page-heading mb-4">Pipeline</h2>
         <div className="space-y-2">
           {PIPELINE_STAGES.map(stage => {
             const items = pipeline[stage.key] || [];
@@ -247,28 +267,33 @@ export default function OperationsDashboard() {
             const open = isExpanded(stage.key);
 
             return (
-              <div key={stage.key} className="rounded-xl border border-border bg-card overflow-hidden">
+              <div key={stage.key} className="glass-card overflow-hidden">
                 {/* Stage header */}
                 <button
                   onClick={() => toggle(stage.key)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.04] transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     {open
-                      ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      ? <ChevronDown className="h-4 w-4" style={{ color: '#86EFAC' }} />
+                      : <ChevronRight className="h-4 w-4" style={{ color: '#86EFAC' }} />
                     }
-                    <h3 className="text-sm font-bold text-foreground">{stage.label}</h3>
+                    <h3 className="text-sm font-bold" style={{ color: '#F0FDF4' }}>{stage.label}</h3>
                   </div>
-                  <Badge variant="secondary" className="text-xs">{count}</Badge>
+                  <span
+                    className="text-[11px] font-bold px-2 py-0.5 rounded-full tabular-nums"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: '#86EFAC' }}
+                  >
+                    {count}
+                  </span>
                 </button>
 
                 {/* Expanded cards */}
                 {open && (
                   <div className="px-4 pb-4 space-y-2">
                     {items.length === 0 ? (
-                      <div className="bg-muted/50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-muted-foreground">No items</p>
+                      <div className="rounded-xl p-4 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                        <p className="text-xs" style={{ color: '#86EFAC' }}>No items</p>
                       </div>
                     ) : (
                       items.map((item: any) => (
@@ -289,37 +314,66 @@ export default function OperationsDashboard() {
 
 function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4 space-y-1">
-      <div className="flex items-center gap-2 text-primary">{icon}</div>
-      <p className="text-xl font-extrabold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="glass-card hover-lift p-4 space-y-1.5">
+      <div className="flex items-center gap-2" style={{ color: '#22C55E' }}>{icon}</div>
+      <p className="text-2xl font-extrabold tabular-nums" style={{ color: '#F0FDF4' }}>{value}</p>
+      <p className="text-[11px] font-semibold uppercase" style={{ letterSpacing: '0.08em', color: '#86EFAC' }}>{label}</p>
     </div>
   );
 }
 
+// Pill colors per pipeline stage (matches spec)
+const STAGE_PILL: Record<PipelineStatus, { bg: string; color: string; label: string }> = {
+  new_enquiry: { bg: 'rgba(59,130,246,0.15)', color: '#93C5FD', label: 'New Enquiry' },
+  quote_sent: { bg: 'rgba(251,191,36,0.15)', color: '#FCD34D', label: 'Quote Sent' },
+  accepted: { bg: 'rgba(34,197,94,0.15)', color: '#86EFAC', label: 'Accepted' },
+  scheduled: { bg: 'rgba(139,92,246,0.15)', color: '#C4B5FD', label: 'Scheduled' },
+  in_progress: { bg: 'rgba(254,219,0,0.15)', color: '#FEDB00', label: 'In Progress' },
+  complete: { bg: 'rgba(34,197,94,0.20)', color: '#22C55E', label: 'Complete' },
+};
+
 function PipelineCard({ item, column, navigate }: { item: any; column: PipelineStatus; navigate: (path: string) => void }) {
   const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted'].includes(column);
+  const pill = STAGE_PILL[column];
 
   if (isQuoteRequest) {
     const name = [item.first_name, item.last_name].filter(Boolean).join(' ');
     const daysWaiting = item.form_submitted_at
       ? Math.floor(differenceInHours(new Date(), new Date(item.form_submitted_at)) / 24)
       : 0;
+    const isOverdue = column === 'quote_sent' && daysWaiting >= 2;
 
     return (
-      <div className={cn('bg-card rounded-xl border-l-4 border border-border p-4 cursor-pointer hover:shadow-md transition-shadow',
-        column === 'quote_sent' && daysWaiting >= 2 ? 'border-l-destructive' :
-        column === 'quote_sent' && daysWaiting >= 1 ? 'border-l-orange-400' : 'border-l-border'
-      )} onClick={() => navigate('/quoting')}>
+      <div
+        className="glass-card hover-lift p-4 cursor-pointer"
+        style={isOverdue ? { borderLeft: '3px solid #EF4444' } : undefined}
+        onClick={() => navigate('/quoting')}
+      >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-foreground truncate">{name || 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground truncate">{item.address || 'No address'}</p>
+            <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{name || 'Unknown'}</p>
+            <p className="text-xs truncate" style={{ color: '#86EFAC' }}>{item.address || 'No address'}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {item.clean_type && <Badge variant="secondary" className="text-[10px]">{item.clean_type}</Badge>}
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: pill.bg, color: pill.color }}
+            >
+              {pill.label}
+            </span>
+            {item.clean_type && (
+              <span
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.06)', color: '#86EFAC' }}
+              >
+                {item.clean_type}
+              </span>
+            )}
             {column === 'quote_sent' && daysWaiting > 0 && (
-              <span className={cn('text-xs font-semibold', daysWaiting >= 2 ? 'text-destructive' : 'text-orange-600')}>
+              <span
+                className="text-xs font-bold tabular-nums"
+                style={{ color: daysWaiting >= 2 ? '#EF4444' : '#F59E0B' }}
+              >
                 {daysWaiting}d
               </span>
             )}
@@ -327,19 +381,19 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         </div>
         {column === 'new_enquiry' && (
           <div className="mt-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Send Quote</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs">Send Quote</Button>
           </div>
         )}
         {column === 'quote_sent' && (
           <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Follow Up</Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Mark Accepted</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs">Follow Up</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs">Mark Accepted</Button>
           </div>
         )}
         {column === 'accepted' && (
           <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Schedule Clean</Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Assign Cleaner</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs">Schedule Clean</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs">Assign Cleaner</Button>
           </div>
         )}
       </div>
@@ -350,40 +404,56 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
   const propName = (item as any).properties?.property_name || 'Property';
   const address = (item as any).properties?.address || '';
   return (
-    <div className="bg-card rounded-xl border border-border border-l-4 border-l-border p-4 cursor-pointer hover:shadow-md transition-shadow"
-      onClick={() => navigate(`/jobs/${item.id}`)}>
+    <div
+      className="glass-card hover-lift p-4 cursor-pointer"
+      onClick={() => navigate(`/jobs/${item.id}`)}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-foreground truncate">{propName}</p>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{propName}</p>
+          <p className="text-xs truncate" style={{ color: '#86EFAC' }}>
             {address && `${address} · `}
             {item.scheduled_date ? format(new Date(item.scheduled_date + 'T00:00:00'), 'EEE, d MMM') : ''}
             {item.scheduled_time ? ` · ${item.scheduled_time.slice(0, 5)}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: pill.bg, color: pill.color }}
+          >
+            {pill.label}
+          </span>
           {column === 'in_progress' && (
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-green-600 font-semibold">Live</span>
+              <div
+                className="w-2 h-2 rounded-full animate-pulse-dot"
+                style={{ background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }}
+              />
+              <span className="text-xs font-semibold" style={{ color: '#22C55E' }}>Live</span>
             </div>
           )}
           {item.invoice_status && column === 'complete' && (
-            <Badge variant="secondary" className="text-[10px]">{item.invoice_status}</Badge>
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#86EFAC' }}
+            >
+              {item.invoice_status}
+            </span>
           )}
         </div>
       </div>
       {column === 'scheduled' && (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">View Job</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Send Tracker Link</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs">View Job</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs">Send Tracker Link</Button>
         </div>
       )}
       {column === 'complete' && (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Send Invoice</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Request Review</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg">Rebook</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs">Send Invoice</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs">Request Review</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs">Rebook</Button>
         </div>
       )}
     </div>
