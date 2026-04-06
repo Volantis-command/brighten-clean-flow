@@ -14,7 +14,7 @@ const PROPERTY_TYPES = ['House', 'Apartment', 'Townhouse', 'Unit'];
 const BEDROOM_OPTIONS = ['1', '2', '3', '4', '5+'];
 const BATHROOM_OPTIONS = ['1', '2', '3', '4+'];
 const PLATFORMS = ['Airbnb', 'Stayz', 'Booking.com', 'VRBO', 'Other'];
-const PROPERTY_COUNTS = ['1', '2–3', '4–10', '10+'];
+const PROPERTY_COUNTS = ['1', '2', '3', '4+'];
 
 const PRICING_NO_LINEN: Record<string, [number, number] | null> = {
   '1-1': [135, 170], '2-1': [170, 205], '2-2': [205, 245],
@@ -120,7 +120,7 @@ export default function AirbnbQuotePage() {
   const priceKey = getPriceKey(bedrooms, bathrooms);
   const priceRange = linen ? PRICING_LINEN[priceKey] : PRICING_NO_LINEN[priceKey];
   const consumablesTotal = CONSUMABLES.reduce((sum, c) => sum + (consumables[c.key] ? c.price : 0), 0);
-  const showVolumeDiscount = ['2–3', '4–10', '10+'].includes(propCount);
+  const showVolumeDiscount = ['3', '4+'].includes(propCount);
 
   const togglePlatform = (p: string) => {
     setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
@@ -260,7 +260,10 @@ export default function AirbnbQuotePage() {
                 ))}
               </div>
               {showVolumeDiscount && (
-                <p className="text-sm font-bold text-primary mt-2">Volume discounts available 🎉</p>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5"
+                  style={{ backgroundColor: '#FEDB00', color: '#0C463D' }}>
+                  <span className="text-sm font-extrabold">🎉 Volume discount unlocked — 3+ properties</span>
+                </div>
               )}
             </div>
 

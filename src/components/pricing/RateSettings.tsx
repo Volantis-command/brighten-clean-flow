@@ -61,7 +61,7 @@ const SECTIONS: { id: string; title: string; rows: RowDef[] }[] = [
     id: 'other',
     title: 'Other Settings',
     rows: [
-      { key: 'default_gp_percent', label: 'Default GP %', suffix: '(decimal, e.g. 0.40 = 40%)', step: '0.01' },
+      { key: 'default_gp_percent', label: 'Default GP %', suffix: '(decimal, e.g. 0.32 = 32%)', step: '0.01' },
       { key: 'gst_rate', label: 'GST Rate', suffix: '(10%)', readOnly: true },
       { key: 'consumable_amenities_kit', label: 'Amenities Kit (inc GST)', prefix: '$', step: '0.50' },
       { key: 'consumable_wash_kit', label: 'Wash Kit (inc GST)', prefix: '$', step: '0.50' },
@@ -78,6 +78,7 @@ const DEFAULTS: Record<string, number> = {
   rate_airbnb_turnover: 70,
   rate_post_renovation: 95,
   rate_office_commercial: 70,
+  default_gp_percent: 0.32,
 };
 
 export default function RateSettings() {

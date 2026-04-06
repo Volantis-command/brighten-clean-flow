@@ -6,8 +6,8 @@ function fmt(n: number) {
 }
 
 function gpColor(pct: number) {
-  if (pct >= 0.4) return 'text-primary';
-  if (pct >= 0.3) return 'text-orange-500';
+  if (pct >= 0.32) return 'text-primary';
+  if (pct >= 0.2) return 'text-gray-700';
   return 'text-destructive';
 }
 
@@ -76,7 +76,7 @@ export default function PriceLivePanel({
             type="number"
             value={gpOverride}
             onChange={(e) => onGpOverrideChange(e.target.value)}
-            placeholder="40"
+            placeholder="32"
             className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
           />
         </div>

@@ -126,7 +126,7 @@ export function calculateLinenCost(
  * Linen (Airbnb/Deep): cost input, marked up with GP.
  */
 export function calculate(input: CalcInput, rates: Record<string, number>): CalcResult {
-  const defaultGp = rates.default_gp_percent || 0.4;
+  const defaultGp = rates.default_gp_percent || 0.32;
   const effectiveGp = input.gpOverride != null ? input.gpOverride / 100 : defaultGp;
   const gpSafe = Math.min(Math.max(effectiveGp, 0), 0.99);
 
