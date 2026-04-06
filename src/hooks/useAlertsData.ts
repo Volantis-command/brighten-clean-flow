@@ -178,12 +178,10 @@ export function useAlertsData() {
   const { data: quotesAwaiting = [] } = useQuery({
     queryKey: ['alerts-quotes-awaiting'],
     queryFn: async () => {
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('quote_requests')
         .select('id, first_name, last_name, address, clean_type, created_at')
         .in('status', ['pending_form', 'form_submitted', 'awaiting_quote'])
-        .lt('created_at', cutoff)
         .order('created_at', { ascending: true });
       return (data || []).map((r: any) => ({
         id: `qa-${r.id}`,
