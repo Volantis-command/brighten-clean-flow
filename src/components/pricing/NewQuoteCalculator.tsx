@@ -395,6 +395,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       const payload: any = {
         client_name: form.clientName || null,
         client_phone: form.clientPhone || null,
+        client_email: form.clientEmail || null,
         property_id: form.propertyId || null,
         property_name: form.propertyName || null,
         property_address: form.propertyAddress || null,
