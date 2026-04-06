@@ -964,7 +964,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => sendQuoteMutation.mutate()}
-              className="bg-primary hover:bg-primary/90 font-bold gap-2"
+              className="bg-[#FEDB00] hover:bg-[#FEDB00]/90 text-[#0C463D] font-bold gap-2"
             >
               <Send className="h-4 w-4" /> Confirm & Send
             </AlertDialogAction>
