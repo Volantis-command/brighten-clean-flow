@@ -43,6 +43,12 @@ import QuoteAcceptPage from "./pages/QuoteAcceptPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
 import StaffOnboardingPage from "./pages/StaffOnboardingPage";
+import CleanerOnboardingPage from "./pages/CleanerOnboardingPage";
+import CleanerAvailabilityPage from "./pages/CleanerAvailabilityPage";
+import MyBrightlyScorePage from "./pages/MyBrightlyScorePage";
+import MyPaySummaryPage from "./pages/MyPaySummaryPage";
+import HeadCleanerQCPage from "./pages/HeadCleanerQCPage";
+import HeadCleanerQCAuditPage from "./pages/HeadCleanerQCAuditPage";
 import ClientSchedulePage from "./pages/ClientSchedulePage";
 import ClientRebookPage from "./pages/ClientRebookPage";
 import CleanerPortalPage from "./pages/CleanerPortalPage";
@@ -245,6 +251,12 @@ function AppRoutes() {
         <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
         <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
         <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
+        <Route path="/cleaner-onboarding" element={<CleanerOnboardingPage />} />
+        <Route path="/availability" element={<CleanerAvailabilityPage />} />
+        <Route path="/my-score" element={<MyBrightlyScorePage />} />
+        <Route path="/my-pay" element={<MyPaySummaryPage />} />
+        <Route path="/qc" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCPage /></ProtectedRoute>} />
+        <Route path="/qc/:jobId" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCAuditPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

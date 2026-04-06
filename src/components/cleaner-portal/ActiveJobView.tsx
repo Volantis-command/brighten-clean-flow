@@ -17,6 +17,7 @@ import {
 import { Camera, CheckCircle2, Loader2, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { triggerJobAutoInvoice } from "@/lib/jobInvoice";
 
 interface ActiveJobViewProps {
   job: any;
@@ -347,7 +348,10 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
     // 3. Send completion SMS (fire-and-forget)
     sendCompletionSms(timeStr).catch((err) => console.error("Completion SMS failed:", err));
 
-    // 4. Notify parent
+    // 4. Auto-raise Xero invoice (fire-and-forget — non-blocking)
+    triggerJobAutoInvoice(job.id).catch((err) => console.error("Auto invoice failed:", err));
+
+    // 5. Notify parent
     onComplete({ ...job, status: "completed", check_out_time: checkOutIso, cleaner_notes: notes });
     toast.success("Job marked as complete!");
   }
@@ -374,7 +378,7 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
     const cleanerFirst = (staff?.full_name ?? "").split(" ")[0] || "Your cleaner";
     const propName = property?.property_name ?? "your property";
     const reportUrl = job.report_token
-      ? `https://brightly.cleaning/report/${job.report_token}`
+      ? `https://app.brightly.cleaning/report/${job.report_token}`
       : "";
 
     const message = isAirbnb

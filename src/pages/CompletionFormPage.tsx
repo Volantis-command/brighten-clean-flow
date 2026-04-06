@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import SignaturePad from '@/components/clean-workflow/SignaturePad';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { triggerJobAutoInvoice } from '@/lib/jobInvoice';
 
 // ─── Photo field definition ───
 interface PhotoField {
@@ -398,19 +399,9 @@ export default function CompletionFormPage() {
       });
     } catch { /* non-blocking */ }
 
-    // 7. Auto-raise Xero invoice
+    // 7. Auto-raise Xero invoice with full line-item breakdown
     try {
-      await supabase.functions.invoke('xero-create-invoice', {
-        body: {
-          job_id: job.id,
-          contact_name: property?.client_name || property?.property_name || 'Unknown Client',
-          description: `Clean — ${property?.property_name || 'Property'} — ${job.scheduled_date}`,
-          amount: job.price_ex_gst || 0,
-          account_code: '200',
-          invoice_prefix: 'BCL-',
-          due_days: '7',
-        },
-      });
+      await triggerJobAutoInvoice(job.id);
     } catch { /* non-blocking — Xero may not be configured */ }
 
     queryClient.invalidateQueries({ queryKey: ['clean-workflow-job', jobId] });

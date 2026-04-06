@@ -1,5 +1,25 @@
 import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
+import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
+
+function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
+  const { data: jobs = [] } = useQuery({
+    queryKey: ['cleaner-clock-card-jobs', jobIds.join(',')],
+    enabled: jobIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(
+          'id, status, scheduled_time, property_id, properties(property_name, address, lat, lng)'
+        )
+        .in('id', jobIds);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+  if (jobIds.length === 0) return null;
+  return <CleanerClockCard todayJobs={jobs as any} />;
+}
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -101,6 +121,7 @@ export default function DashboardPage() {
       <div className="space-y-6 max-w-lg mx-auto">
         <TodayJobsWidget />
         <DashboardGreeting />
+        <CleanerClockCardForToday jobIds={jobCards.map((j) => j.id)} />
         <div>
           <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
           {jobCards.length === 0 ? (

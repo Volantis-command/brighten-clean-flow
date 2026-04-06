@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import ClockedOnBanner from './ClockedOnBanner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { triggerJobAutoInvoice } from '@/lib/jobInvoice';
 
 const ROOM_CHECKLIST = [
   { id: 'kitchen', label: 'Kitchen cleaned' },
@@ -124,6 +125,9 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
         type: 'job_completed', link: `/jobs/${job.id}`,
       })));
     }
+
+    // Auto-raise Xero invoice (fire-and-forget — non-blocking)
+    triggerJobAutoInvoice(job.id).catch((err) => console.error('Auto invoice failed:', err));
 
     toast.success('Job completed!');
     setSubmitting(false);

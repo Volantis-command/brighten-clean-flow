@@ -270,7 +270,7 @@ export default function CleanReportPage() {
         <footer className="text-center pt-6 pb-10 border-t border-border">
           <p className="text-xs text-muted-foreground">Cleaned and certified by Brightly</p>
           <p className="text-xs text-muted-foreground mt-1">Gold Coast's trusted short-term rental cleaning service</p>
-          <a href="https://brightly.cleaning" className="text-xs text-[#52B788] font-semibold mt-1 inline-block">brightly.cleaning</a>
+          <a href="https://app.brightly.cleaning" className="text-xs text-[#52B788] font-semibold mt-1 inline-block">app.brightly.cleaning</a>
         </footer>
       </div>
 

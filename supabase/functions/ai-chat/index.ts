@@ -42,9 +42,10 @@ serve(async (req) => {
     const monthStart = today.slice(0, 7) + "-01";
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
-    const [profileRes, kbRes, jobsThisMonthRes, jobsTodayRes, recentFeedbackRes, cleanersRes, propertiesRes] = await Promise.all([
+    const [profileRes, kbRes, sopRes, jobsThisMonthRes, jobsTodayRes, recentFeedbackRes, cleanersRes, propertiesRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       serviceClient.from("knowledge_base").select("code, title, content"),
+      serviceClient.from("sop_documents").select("sop_code, title, category, content"),
       serviceClient.from("jobs").select("id, status, price_ex_gst, cleaner_1_id, cleaner_2_id, scheduled_date, scheduled_time, property_id, properties(property_name, address)").gte("scheduled_date", monthStart),
       serviceClient.from("jobs").select("id, status, scheduled_time, cleaner_1_id, properties(property_name, address)").eq("scheduled_date", today),
       serviceClient.from("job_feedback").select("score, created_at, client_id").gte("created_at", weekAgo).order("created_at", { ascending: false }).limit(20),
@@ -54,6 +55,7 @@ serve(async (req) => {
 
     const firstName = profileRes.data?.full_name?.split(" ")[0] || "there";
     const kbRows = kbRes.data;
+    const sopRows = sopRes.data;
     const monthJobs = jobsThisMonthRes.data || [];
     const todayJobs = jobsTodayRes.data || [];
     const recentFeedback = recentFeedbackRes.data || [];
@@ -66,6 +68,16 @@ serve(async (req) => {
       kbContext = "\n\nKNOWLEDGE BASE:\n";
       for (const row of kbRows) {
         kbContext += `[${row.code || row.title || "GENERAL"}]: ${row.content || ""}\n`;
+      }
+    }
+
+    // Build SOP context — Brightly Standard Operating Procedures
+    let sopContext = "";
+    if (sopRows && sopRows.length > 0) {
+      sopContext = "\n\nBRIGHTLY STANDARD OPERATING PROCEDURES (SOPs):\n";
+      sopContext += "These are the official Brightly SOPs. When a question relates to procedures, training, cleaning standards, QC, chemical safety, linen, or onboarding — quote from these directly.\n\n";
+      for (const row of sopRows) {
+        sopContext += `=== [${row.sop_code || "SOP"}] ${row.title} ${row.category ? `(${row.category})` : ""} ===\n${row.content || ""}\n\n`;
       }
     }
 
@@ -106,7 +118,9 @@ ${allProperties.slice(0, 30).map((p: any) => `- ${p.property_name} (${p.address 
 
 You have access to real-time business data below. Answer questions accurately using this data. If you can't find specific data, say so honestly.
 
-Be concise, practical, and use numbers. Format responses with markdown when helpful (tables, lists, bold numbers).${kbContext}${businessContext}
+You also have access to Brightly's Standard Operating Procedures (SOPs). When asked about cleaning standards, training, QC, chemical safety, linen, or staff procedures, refer to the SOP knowledge base below — quote SOP codes (e.g. B-ABNB-HR-002) when relevant.
+
+Be concise, practical, and use numbers. Format responses with markdown when helpful (tables, lists, bold numbers).${kbContext}${sopContext}${businessContext}
 
 The admin's name is "${firstName}". Address them by name occasionally.`;
 

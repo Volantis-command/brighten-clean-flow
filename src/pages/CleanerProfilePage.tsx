@@ -2,12 +2,27 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, Phone, Mail, Star } from 'lucide-react';
+import { LogOut, Phone, Mail, Star, TrendingUp, DollarSign, Calendar, ChevronRight, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function CleanerProfilePage() {
   const { profile, user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const userId = user?.id;
+
+  const { data: onboarding } = useQuery({
+    queryKey: ['my-onboarding-status', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('cleaner_onboarding')
+        .select('onboarding_complete, director_approved')
+        .eq('user_id', userId!)
+        .maybeSingle();
+      return data;
+    },
+  });
 
   const { data: avgRating } = useQuery({
     queryKey: ['cleaner-avg-rating', userId],
@@ -64,6 +79,42 @@ export default function CleanerProfilePage() {
           </div>
         )}
       </div>
+
+      <div className="bg-card rounded-2xl shadow-md overflow-hidden">
+        {[
+          { label: 'My Brightly Score', icon: TrendingUp, path: '/my-score' },
+          { label: 'My Pay Summary', icon: DollarSign, path: '/my-pay' },
+          { label: 'My Availability', icon: Calendar, path: '/availability' },
+        ].map((item) => (
+          <button
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            className="w-full flex items-center justify-between px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <item.icon className="h-5 w-5 text-primary" />
+              <span className="font-bold text-foreground text-sm">{item.label}</span>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+
+      {onboarding?.onboarding_complete !== true && (
+        <button
+          onClick={() => navigate('/cleaner-onboarding')}
+          className="w-full text-left bg-accent/15 border-2 border-accent rounded-2xl p-4 flex items-center gap-3 hover:bg-accent/25 transition-colors"
+        >
+          <GraduationCap className="h-6 w-6 text-accent-foreground" />
+          <div className="flex-1">
+            <p className="font-bold text-foreground text-sm">Complete your onboarding</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Required before you can be assigned solo jobs.
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+      )}
 
       <div className="bg-card rounded-2xl shadow-md p-6 space-y-3">
         <h3 className="font-bold text-foreground">Need Help?</h3>
