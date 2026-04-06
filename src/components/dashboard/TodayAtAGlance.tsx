@@ -57,7 +57,7 @@ export function TodayAtAGlance({ kpi, clockedInCleaners, alerts }: TodayAtAGlanc
         </div>
 
         {/* Cleaners on the Clock */}
-        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
+        <div className="bg-card rounded-2xl shadow-sm p-5" style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Clock className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">On The Clock</h3>
