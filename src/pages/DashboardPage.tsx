@@ -157,14 +157,17 @@ export default function DashboardPage() {
     );
   }
 
+  // Only admin sees the operations dashboard
+  const showOpsDashboard = role === 'admin';
+
   // Admin / Head Cleaner dashboard
   return (
     <div className="space-y-8">
       <TodayJobsWidget />
       <DashboardGreeting />
 
-      {/* Operations Pipeline */}
-      <OperationsDashboard />
+      {/* Operations Pipeline — admin only */}
+      {showOpsDashboard && <OperationsDashboard />}
 
       {/* Row 1: Top Stats */}
       <TopStatsBar kpi={kpi} />

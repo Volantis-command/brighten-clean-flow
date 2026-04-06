@@ -35,7 +35,6 @@ const EXTRAS = [
 
 const TIME_PREFS = ['Morning (7am–12pm)', 'Afternoon (12pm–5pm)', 'Either'];
 
-// Pricing matrices: [cleanType][linen][beds-baths key] => [min, max] or null for "Call us"
 type PriceRange = [number, number] | null;
 
 const PRICING: Record<string, Record<string, Record<string, PriceRange>>> = {
@@ -84,10 +83,11 @@ function getPrice(cleanType: CleanType, linen: boolean, beds: string, baths: str
   const linenKey = (cleanType === 'eol' ? 'no' : linen ? 'yes' : 'no');
   const matrix = PRICING[cleanType]?.[linenKey];
   if (!matrix) return null;
-  // Try exact, then fallback to closest
   if (matrix[key] !== undefined) return matrix[key];
   return null;
 }
+
+const BTN_YELLOW = { backgroundColor: '#FEDB00', color: '#0C463D' };
 
 function PillButton({ selected, onClick, children, className = '' }: {
   selected: boolean; onClick: () => void; children: React.ReactNode; className?: string;
@@ -106,15 +106,9 @@ function PillButton({ selected, onClick, children, className = '' }: {
   );
 }
 
-function FieldValidation({ valid, error }: { valid?: boolean; error?: string }) {
-  if (error) return <p className="text-destructive text-xs mt-1">{error}</p>;
-  if (valid) return <CheckCircle2 className="text-green-500 w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />;
-  return null;
-}
-
 export default function ResidentialQuotePage() {
   const [step, setStep] = useState(0);
-  const STEPS = ['Clean Type', 'Extras', 'Your Details'];
+  const STEPS = ['Clean Type', 'Extras', 'Your Details', 'Review'];
 
   // Step 1
   const [cleanType, setCleanType] = useState<CleanType>(null);
@@ -135,11 +129,13 @@ export default function ResidentialQuotePage() {
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [accessMethod, setAccessMethod] = useState('');
+  const [accessInstructions, setAccessInstructions] = useState('');
+  const [parking, setParking] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Load from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -158,18 +154,21 @@ export default function ResidentialQuotePage() {
         if (d.mobile) setMobile(d.mobile);
         if (d.email) setEmail(d.email);
         if (d.address) setAddress(d.address);
+        if (d.accessMethod) setAccessMethod(d.accessMethod);
+        if (d.accessInstructions) setAccessInstructions(d.accessInstructions);
+        if (d.parking) setParking(d.parking);
       }
     } catch {}
   }, []);
 
-  // Save to localStorage
   const saveToStorage = useCallback(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        cleanType, propertyType, bedrooms, bathrooms, linen, extras, asap, timePref, notes, fullName, mobile, email, address,
+        cleanType, propertyType, bedrooms, bathrooms, linen, extras, asap, timePref, notes,
+        fullName, mobile, email, address, accessMethod, accessInstructions, parking,
       }));
     } catch {}
-  }, [cleanType, propertyType, bedrooms, bathrooms, linen, extras, asap, timePref, notes, fullName, mobile, email, address]);
+  }, [cleanType, propertyType, bedrooms, bathrooms, linen, extras, asap, timePref, notes, fullName, mobile, email, address, accessMethod, accessInstructions, parking]);
 
   useEffect(() => { saveToStorage(); }, [saveToStorage]);
 
@@ -179,12 +178,13 @@ export default function ResidentialQuotePage() {
   const toggleExtra = (key: string) => setExtras(prev => ({ ...prev, [key]: !prev[key] }));
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const isMobileValid = /^04\d{2}\s?\d{3}\s?\d{3}$/.test(mobile.replace(/\s/g, '').length === 10 ? mobile : '');
+  const isMobileValid = /^04\d{8}$/.test(mobile.replace(/\s/g, ''));
 
   const canNext = () => {
     if (step === 0) return !!cleanType;
     if (step === 1) return true;
     if (step === 2) return !!(fullName.trim() && mobile.trim() && email.trim() && address.trim());
+    if (step === 3) return !!(fullName.trim() && mobile.trim() && email.trim() && address.trim());
     return true;
   };
 
@@ -205,6 +205,7 @@ export default function ResidentialQuotePage() {
         property_type: propertyType, linen, extras: selectedExtras, extras_total: extrasTotal,
         asap, preferred_date: date ? format(date, 'yyyy-MM-dd') : null, time_preference: timePref,
         notes, price_estimate: priceRange ? `$${priceRange[0]}–$${priceRange[1]}` : 'Call us',
+        access_method: accessMethod, access_instructions: accessInstructions, parking,
       };
 
       const { error } = await supabase.from('quote_requests').insert({
@@ -239,12 +240,15 @@ export default function ResidentialQuotePage() {
         <h1 className="text-2xl font-extrabold text-foreground">Quote request received! 🎉</h1>
         <p className="text-muted-foreground mt-3 max-w-sm">We'll send your confirmed quote within 1 hour via SMS and email.</p>
         <p className="text-muted-foreground text-sm mt-2">A Brightly team member will call if we have any questions.</p>
-        <Button className="mt-8 h-14 px-8 rounded-xl font-bold" onClick={() => window.location.href = '/'}>
+        <Button className="mt-8 h-14 px-8 rounded-xl font-bold" style={BTN_YELLOW} onClick={() => window.location.href = '/'}>
           Back to Brightly
         </Button>
       </div>
     );
   }
+
+  const cleanTypeLabel = cleanType === 'house' ? 'House Clean' : cleanType === 'deep' ? 'Deep Clean' : cleanType === 'eol' ? 'End of Lease' : '';
+  const selectedExtras = EXTRAS.filter(e => extras[e.key]);
 
   return (
     <div className="min-h-screen flex flex-col bg-muted">
@@ -262,7 +266,7 @@ export default function ResidentialQuotePage() {
 
       {/* Content */}
       <div className="flex-1 max-w-lg mx-auto w-full px-4 py-6 space-y-6 pb-48">
-        {/* STEP 1 */}
+        {/* STEP 1 — Clean Type + Property */}
         {step === 0 && (
           <>
             <div>
@@ -332,7 +336,7 @@ export default function ResidentialQuotePage() {
           </>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2 — Extras + Timing */}
         {step === 1 && (
           <>
             <div>
@@ -401,16 +405,16 @@ export default function ResidentialQuotePage() {
             <div>
               <h3 className="text-base font-bold text-foreground mb-3">Anything we should know?</h3>
               <Textarea value={notes} onChange={e => setNotes(e.target.value)} maxLength={500}
-                placeholder="Pets, access details, special requests, areas to skip…" className="rounded-xl" />
+                placeholder="Pets, special requests, areas to skip…" className="rounded-xl" />
               <p className="text-xs text-muted-foreground text-right mt-1">{notes.length}/500</p>
             </div>
           </>
         )}
 
-        {/* STEP 3 */}
+        {/* STEP 3 — Your Details + Access */}
         {step === 2 && (
           <>
-            <h2 className="text-xl font-extrabold text-foreground">Almost done — where should we send your quote?</h2>
+            <h2 className="text-xl font-extrabold text-foreground">Almost done — your details & access</h2>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
@@ -452,6 +456,31 @@ export default function ResidentialQuotePage() {
               </div>
             </div>
 
+            <div className="space-y-4 mt-2">
+              <h3 className="text-base font-bold text-foreground">Access & Parking</h3>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-foreground">Access method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Someone home', 'Key provided', 'Lockbox', 'Other'].map(m => (
+                    <PillButton key={m} selected={accessMethod === m} onClick={() => setAccessMethod(m)}>{m}</PillButton>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-foreground">Access instructions</label>
+                <Input value={accessInstructions} onChange={e => setAccessInstructions(e.target.value)}
+                  placeholder="e.g. Lockbox code 1234, side gate" className="h-14 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-foreground">Parking</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Driveway', 'Street parking', 'No parking nearby', 'Other'].map(p => (
+                    <PillButton key={p} selected={parking === p} onClick={() => setParking(p)}>{p}</PillButton>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <p className="text-xs text-muted-foreground">
               By submitting you agree to our <a href="#" className="underline text-primary">Terms & Conditions</a> and <a href="#" className="underline text-primary">Privacy Policy</a>
             </p>
@@ -462,16 +491,94 @@ export default function ResidentialQuotePage() {
             </div>
           </>
         )}
+
+        {/* STEP 4 — Review */}
+        {step === 3 && (
+          <>
+            <h2 className="text-xl font-extrabold text-foreground">Review your quote request</h2>
+
+            <div className="bg-card rounded-xl border border-border p-5 space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Clean type</span>
+                <span className="text-sm font-bold text-foreground">{cleanTypeLabel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Property</span>
+                <span className="text-sm font-bold text-foreground">{propertyType} · {bedrooms} bed · {bathrooms} bath</span>
+              </div>
+              {linen && cleanType !== 'eol' && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Linen</span>
+                  <span className="text-sm font-bold text-foreground">Included</span>
+                </div>
+              )}
+              {selectedExtras.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Extras</span>
+                  <span className="text-sm font-bold text-foreground">{selectedExtras.map(e => e.label).join(', ')} (+${extrasTotal})</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">When</span>
+                <span className="text-sm font-bold text-foreground">{asap ? 'ASAP' : date ? format(date, 'd MMM yyyy') : 'Flexible'} · {timePref}</span>
+              </div>
+              {priceRange && (
+                <div className="flex justify-between border-t border-border pt-3 mt-3">
+                  <span className="text-sm font-bold text-foreground">Estimated quote</span>
+                  <span className="text-sm font-extrabold text-primary">${priceRange[0] + extrasTotal}–${priceRange[1] + extrasTotal} incl. GST</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-5 space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Name</span>
+                <span className="text-sm font-bold text-foreground">{fullName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Mobile</span>
+                <span className="text-sm font-bold text-foreground">{mobile}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <span className="text-sm font-bold text-foreground">{email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Address</span>
+                <span className="text-sm font-bold text-foreground truncate max-w-[200px]">{address}</span>
+              </div>
+              {accessMethod && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Access</span>
+                  <span className="text-sm font-bold text-foreground">{accessMethod}</span>
+                </div>
+              )}
+              {parking && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Parking</span>
+                  <span className="text-sm font-bold text-foreground">{parking}</span>
+                </div>
+              )}
+            </div>
+
+            {notes && (
+              <div className="bg-card rounded-xl border border-border p-5">
+                <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                <p className="text-sm text-foreground">{notes}</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Fixed bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-4 py-4 z-20">
         <div className="max-w-lg mx-auto space-y-3">
-          {/* Price badge on step 0 and 1 */}
-          {step <= 1 && priceRange && (
+          {/* Price badge on step 0 */}
+          {step === 0 && priceRange && (
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
               <p className="text-sm font-bold text-primary">
-                Estimated quote: ${priceRange[0] + extrasTotal}–${priceRange[1] + extrasTotal} incl. GST
+                Estimated quote: ${priceRange[0]}–${priceRange[1]} incl. GST
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Confirmed within 1 hour{linen ? ' · Linen included' : ''}
@@ -479,10 +586,18 @@ export default function ResidentialQuotePage() {
               </p>
             </div>
           )}
-          {step <= 1 && !priceRange && cleanType && parseInt(bedrooms) >= 5 && (
+          {step === 0 && !priceRange && cleanType && parseInt(bedrooms) >= 5 && (
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
-              <p className="text-sm font-bold text-primary">5+ bedrooms — call us for a custom quote</p>
-              <p className="text-xs text-muted-foreground mt-0.5">📞 0418 878 707</p>
+              <p className="text-sm font-bold text-primary">5+ bedrooms — call us for a quote</p>
+            </div>
+          )}
+
+          {/* Extras total on step 1 */}
+          {step === 1 && extrasTotal > 0 && priceRange && (
+            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
+              <p className="text-sm font-bold text-primary">
+                Estimated quote: ${priceRange[0] + extrasTotal}–${priceRange[1] + extrasTotal} incl. GST
+              </p>
             </div>
           )}
 
@@ -492,12 +607,14 @@ export default function ResidentialQuotePage() {
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
             )}
-            {step < 2 ? (
-              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
+            {step < 3 ? (
+              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" style={BTN_YELLOW}
+                onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
                 Next <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
-              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" onClick={handleSubmit} disabled={submitting || !canNext()}>
+              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" style={BTN_YELLOW}
+                onClick={handleSubmit} disabled={submitting || !canNext()}>
                 {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Request My Quote →
               </Button>
