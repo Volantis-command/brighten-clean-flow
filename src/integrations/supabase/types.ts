@@ -88,6 +88,30 @@ export type Database = {
           },
         ]
       }
+      cleaner_availability: {
+        Row: {
+          available: boolean
+          created_at: string
+          date: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          date: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          date?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cleaner_job_tokens: {
         Row: {
           created_at: string | null
@@ -129,6 +153,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cleaner_onboarding: {
+        Row: {
+          abn: string | null
+          abn_confirmed: boolean | null
+          bank_account: string | null
+          bank_bsb: string | null
+          bank_name: string | null
+          chemical_quiz_attempts: number | null
+          chemical_quiz_passed: boolean | null
+          chemical_quiz_score: number | null
+          created_at: string
+          date_of_birth: string | null
+          digital_signature: string | null
+          director_approved: boolean | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          full_name: string | null
+          id: string
+          id_document_type: string | null
+          id_document_url: string | null
+          mobile: string | null
+          onboarding_complete: boolean | null
+          police_check_date: string | null
+          police_check_url: string | null
+          signed_at: string | null
+          sop_acknowledged_at: string | null
+          sop_chemical_acknowledged_at: string | null
+          sop_conduct_acknowledged_at: string | null
+          sop_consumables_acknowledged_at: string | null
+          sop_linen_acknowledged_at: string | null
+          sop_master_acknowledged_at: string | null
+          suburb: string | null
+          user_id: string
+        }
+        Insert: {
+          abn?: string | null
+          abn_confirmed?: boolean | null
+          bank_account?: string | null
+          bank_bsb?: string | null
+          bank_name?: string | null
+          chemical_quiz_attempts?: number | null
+          chemical_quiz_passed?: boolean | null
+          chemical_quiz_score?: number | null
+          created_at?: string
+          date_of_birth?: string | null
+          digital_signature?: string | null
+          director_approved?: boolean | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string | null
+          id?: string
+          id_document_type?: string | null
+          id_document_url?: string | null
+          mobile?: string | null
+          onboarding_complete?: boolean | null
+          police_check_date?: string | null
+          police_check_url?: string | null
+          signed_at?: string | null
+          sop_acknowledged_at?: string | null
+          sop_chemical_acknowledged_at?: string | null
+          sop_conduct_acknowledged_at?: string | null
+          sop_consumables_acknowledged_at?: string | null
+          sop_linen_acknowledged_at?: string | null
+          sop_master_acknowledged_at?: string | null
+          suburb?: string | null
+          user_id: string
+        }
+        Update: {
+          abn?: string | null
+          abn_confirmed?: boolean | null
+          bank_account?: string | null
+          bank_bsb?: string | null
+          bank_name?: string | null
+          chemical_quiz_attempts?: number | null
+          chemical_quiz_passed?: boolean | null
+          chemical_quiz_score?: number | null
+          created_at?: string
+          date_of_birth?: string | null
+          digital_signature?: string | null
+          director_approved?: boolean | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string | null
+          id?: string
+          id_document_type?: string | null
+          id_document_url?: string | null
+          mobile?: string | null
+          onboarding_complete?: boolean | null
+          police_check_date?: string | null
+          police_check_url?: string | null
+          signed_at?: string | null
+          sop_acknowledged_at?: string | null
+          sop_chemical_acknowledged_at?: string | null
+          sop_conduct_acknowledged_at?: string | null
+          sop_consumables_acknowledged_at?: string | null
+          sop_linen_acknowledged_at?: string | null
+          sop_master_acknowledged_at?: string | null
+          suburb?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       client_comms: {
         Row: {
@@ -289,6 +418,56 @@ export type Database = {
           used?: boolean
         }
         Relationships: []
+      }
+      clock_events: {
+        Row: {
+          created_at: string
+          distance_from_property_m: number | null
+          duration_minutes: number | null
+          event_at: string
+          event_type: string
+          geofence_warning: boolean | null
+          id: string
+          job_id: string | null
+          lat: number | null
+          lng: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          distance_from_property_m?: number | null
+          duration_minutes?: number | null
+          event_at?: string
+          event_type: string
+          geofence_warning?: boolean | null
+          id?: string
+          job_id?: string | null
+          lat?: number | null
+          lng?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          distance_from_property_m?: number | null
+          duration_minutes?: number | null
+          event_at?: string
+          event_type?: string
+          geofence_warning?: boolean | null
+          id?: string
+          job_id?: string | null
+          lat?: number | null
+          lng?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clock_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_calendar_config: {
         Row: {
@@ -1596,6 +1775,41 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_audit_rooms: {
+        Row: {
+          audit_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          rating: string | null
+          room_name: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          rating?: string | null
+          room_name: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          rating?: string | null
+          room_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_audit_rooms_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "qc_audits"
             referencedColumns: ["id"]
           },
         ]
