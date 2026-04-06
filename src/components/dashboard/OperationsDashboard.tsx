@@ -36,14 +36,24 @@ export default function OperationsDashboard() {
     queryFn: async () => {
       const alertItems: { type: string; color: string; icon: string; message: string; link?: string }[] = [];
 
-      // Quotes not followed up (>24hrs, still form_submitted)
+      // Quotes not followed up (>24hrs, form_submitted OR quote_sent)
       const { data: staleQuotes } = await supabase
         .from('quote_requests')
-        .select('id, first_name, last_name, form_submitted_at')
-        .eq('status', 'form_submitted');
+        .select('id, first_name, last_name, form_submitted_at, created_at, status')
+        .in('status', ['form_submitted', 'quote_sent']);
       (staleQuotes || []).forEach((q: any) => {
-        if (q.form_submitted_at && differenceInHours(now, new Date(q.form_submitted_at)) > 24) {
-          alertItems.push({ type: 'stale_quote', color: 'bg-destructive', icon: '🔴', message: `Quote not followed up: ${q.first_name} ${q.last_name}` });
+        const refDate = q.form_submitted_at || q.created_at;
+        const hoursWaiting = refDate ? differenceInHours(now, new Date(refDate)) : 0;
+        if (hoursWaiting > 24) {
+          const days = Math.floor(hoursWaiting / 24);
+          const statusLabel = q.status === 'quote_sent' ? 'Quote sent' : 'Quote not followed up';
+          alertItems.push({
+            type: 'stale_quote',
+            color: days >= 2 ? 'bg-destructive' : 'bg-orange-500',
+            icon: days >= 2 ? '🔴' : '🟠',
+            message: `${statusLabel} ${days}d ago — ${q.first_name || ''} ${q.last_name || ''}`.trim(),
+            link: `/quoting`,
+          });
         }
       });
 
@@ -222,7 +232,7 @@ export default function OperationsDashboard() {
         <ScrollArea className="w-full">
           <div className="flex gap-4 pb-4" style={{ minWidth: PIPELINE_COLUMNS.length * 280 }}>
             {PIPELINE_COLUMNS.map(col => (
-              <div key={col.key} className="w-[270px] shrink-0">
+              <div key={col.key} className="min-w-[280px] w-[280px] shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold text-foreground">{col.label}</h3>
                   <Badge variant="secondary" className="text-xs">{(pipeline[col.key] || []).length}</Badge>
@@ -267,7 +277,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
       : 0;
 
     return (
-      <div className={cn('bg-card rounded-xl border p-3 cursor-pointer hover:shadow-md transition-shadow',
+      <div className={cn('bg-card rounded-xl border p-4 cursor-pointer hover:shadow-md transition-shadow',
         column === 'quote_sent' && daysWaiting >= 2 ? 'border-destructive/50' :
         column === 'quote_sent' && daysWaiting >= 1 ? 'border-orange-300' : 'border-border'
       )} onClick={() => navigate('/quoting')}>
@@ -284,7 +294,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
   // Job card
   const propName = (item as any).properties?.property_name || 'Property';
   return (
-    <div className="bg-card rounded-xl border border-border p-3 cursor-pointer hover:shadow-md transition-shadow"
+    <div className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => navigate(`/jobs/${item.id}`)}>
       <p className="text-sm font-bold text-foreground truncate">{propName}</p>
       <p className="text-xs text-muted-foreground">
