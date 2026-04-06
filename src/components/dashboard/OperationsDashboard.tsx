@@ -26,6 +26,7 @@ export default function OperationsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
 
