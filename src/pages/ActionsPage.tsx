@@ -110,7 +110,7 @@ export default function ActionsPage() {
   const visibleCount = visibleGroups.reduce((sum, g) => sum + g.items.length, 0);
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto overflow-x-hidden">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Alerts</h1>
         {visibleCount > 0 && (
