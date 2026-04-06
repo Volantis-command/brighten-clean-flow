@@ -36,10 +36,13 @@ export default function OperationsDashboard() {
 
       const { data: staleQuotes } = await supabase
         .from('quote_requests')
-        .select('id, first_name, last_name, form_submitted_at, created_at, status')
+        .select('id, first_name, last_name, form_submitted_at, quote_sent_at, created_at, status')
         .in('status', ['form_submitted', 'quote_sent']);
       (staleQuotes || []).forEach((q: any) => {
-        const refDate = q.form_submitted_at || q.created_at;
+        // For quote_sent status, use quote_sent_at first; otherwise fall back to form_submitted_at or created_at
+        const refDate = q.status === 'quote_sent'
+          ? (q.quote_sent_at || q.form_submitted_at || q.created_at)
+          : (q.form_submitted_at || q.created_at);
         const hoursWaiting = refDate ? differenceInHours(now, new Date(refDate)) : 0;
         if (hoursWaiting > 24) {
           const days = Math.floor(hoursWaiting / 24);

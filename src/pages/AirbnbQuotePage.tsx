@@ -16,7 +16,6 @@ const BATHROOM_OPTIONS = ['1', '2', '3', '4+'];
 const PLATFORMS = ['Airbnb', 'Stayz', 'Booking.com', 'VRBO', 'Other'];
 const PROPERTY_COUNTS = ['1', '2–3', '4–10', '10+'];
 
-// Same as House Clean pricing
 const PRICING_NO_LINEN: Record<string, [number, number] | null> = {
   '1-1': [135, 170], '2-1': [170, 205], '2-2': [205, 245],
   '3-2': [245, 280], '4-2': [280, 350], '4-3': [315, 390], '5-0': null,
@@ -31,6 +30,8 @@ const CONSUMABLES = [
   { key: 'tea_coffee', icon: '☕', label: 'Tea & Coffee Kit', desc: 'Tea, coffee, sugar, milk portions', price: 6.5 },
   { key: 'wash', icon: '🧺', label: 'Wash Kit', desc: 'Laundry powder, dishwasher tablets', price: 7.5 },
 ];
+
+const BTN_YELLOW = { backgroundColor: '#FEDB00', color: '#0C463D' };
 
 function PillButton({ selected, onClick, children, className = '' }: {
   selected: boolean; onClick: () => void; children: React.ReactNode; className?: string;
@@ -64,7 +65,7 @@ function getPriceKey(beds: string, baths: string): string {
 
 export default function AirbnbQuotePage() {
   const [step, setStep] = useState(0);
-  const STEPS = ['Property', 'Services', 'Your Details'];
+  const STEPS = ['Property', 'Add-ons', 'Your Details'];
 
   // Step 1
   const [propertyType, setPropertyType] = useState('Apartment');
@@ -181,7 +182,7 @@ export default function AirbnbQuotePage() {
         </div>
         <h1 className="text-2xl font-extrabold text-foreground">Welcome to the Brightly Network! 🎉</h1>
         <p className="text-muted-foreground mt-3 max-w-sm">We'll confirm your property setup and send your first quote within 1 hour.</p>
-        <Button className="mt-8 h-14 px-8 rounded-xl font-bold" onClick={() => window.location.href = '/'}>Back to Brightly</Button>
+        <Button className="mt-8 h-14 px-8 rounded-xl font-bold" style={BTN_YELLOW} onClick={() => window.location.href = '/'}>Back to Brightly</Button>
       </div>
     );
   }
@@ -349,8 +350,19 @@ export default function AirbnbQuotePage() {
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
               <p className="text-sm font-bold text-primary">Estimated per turnover: ${priceRange[0]}–${priceRange[1]} incl. GST</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {showVolumeDiscount ? 'Volume discounts applied at quote stage for 3+ properties' : 'Add-ons below'}
+                Volume discounts available for 3+ properties
               </p>
+            </div>
+          )}
+          {step === 0 && !priceRange && parseInt(bedrooms) >= 5 && (
+            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
+              <p className="text-sm font-bold text-primary">5+ bedrooms — call us for a quote</p>
+            </div>
+          )}
+
+          {step === 1 && consumablesTotal > 0 && (
+            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
+              <p className="text-sm font-bold text-primary">Add-ons per clean: ${consumablesTotal.toFixed(2)}</p>
             </div>
           )}
 
@@ -361,11 +373,13 @@ export default function AirbnbQuotePage() {
               </Button>
             )}
             {step < 2 ? (
-              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
+              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" style={BTN_YELLOW}
+                onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
                 Next <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
-              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" onClick={handleSubmit} disabled={submitting || !canNext()}>
+              <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" style={BTN_YELLOW}
+                onClick={handleSubmit} disabled={submitting || !canNext()}>
                 {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Join the Network →
               </Button>
