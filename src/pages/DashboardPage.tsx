@@ -163,6 +163,9 @@ export default function DashboardPage() {
       <TodayJobsWidget />
       <DashboardGreeting />
 
+      {/* Operations Pipeline */}
+      <OperationsDashboard />
+
       {/* Row 1: Top Stats */}
       <TopStatsBar kpi={kpi} />
 
