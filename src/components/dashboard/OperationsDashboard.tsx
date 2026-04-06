@@ -410,7 +410,12 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
   const address = (item as any).properties?.address || '';
   return (
     <div
-      className="glass-card hover-lift p-4 cursor-pointer"
+      className="hover-lift p-4 cursor-pointer"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '12px',
+      }}
       onClick={() => navigate(`/jobs/${item.id}`)}
     >
       <div className="flex items-center justify-between gap-2">

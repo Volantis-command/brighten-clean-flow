@@ -123,7 +123,7 @@ export default function DashboardPage() {
         <DashboardGreeting />
         <CleanerClockCardForToday jobIds={jobCards.map((j) => j.id)} />
         <div>
-          <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
+          <h2 className="text-xl font-bold mb-4" style={{ color: '#FEDB00' }}>Today's Jobs</h2>
           {jobCards.length === 0 ? (
             <div className="bg-card rounded-2xl shadow-md p-8 text-center">
               <p className="text-4xl mb-3">🌴</p>

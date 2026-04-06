@@ -141,21 +141,23 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
               <Sparkline color={card.sparkColor} points={card.points} />
             </div>
 
-            <div className="mt-2 flex items-center gap-1">
-              <Delta
-                className="h-3 w-3"
-                style={{ color: card.delta.up ? '#22C55E' : '#EF4444' }}
-              />
-              <span
-                className="text-[11px] font-bold tabular-nums"
-                style={{ color: card.delta.up ? '#22C55E' : '#EF4444' }}
-              >
-                {card.delta.value}
-              </span>
-              <span className="text-[10px]" style={{ color: '#86EFAC', opacity: 0.6 }}>
-                vs last month
-              </span>
-            </div>
+            {card.value !== '0' && card.value !== '$0' && card.value !== '—' && (
+              <div className="mt-2 flex items-center gap-1">
+                <Delta
+                  className="h-3 w-3"
+                  style={{ color: card.delta.up ? '#22C55E' : '#EF4444' }}
+                />
+                <span
+                  className="text-[11px] font-bold tabular-nums"
+                  style={{ color: card.delta.up ? '#22C55E' : '#EF4444' }}
+                >
+                  {card.delta.value}
+                </span>
+                <span className="text-[10px]" style={{ color: '#86EFAC', opacity: 0.6 }}>
+                  vs last month
+                </span>
+              </div>
+            )}
           </div>
         );
       })}
