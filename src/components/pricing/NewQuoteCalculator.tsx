@@ -49,6 +49,7 @@ type FormState = {
   cleanType: string;
   clientName: string;
   clientPhone: string;
+  clientEmail: string;
   propertyId: string;
   propertyName: string;
   propertyAddress: string;
@@ -85,6 +86,7 @@ const INITIAL: FormState = {
   cleanType: SERVICE_TYPES.AIRBNB_TURNOVER,
   clientName: '',
   clientPhone: '',
+  clientEmail: '',
   propertyId: '',
   propertyName: '',
   propertyAddress: '',
@@ -146,6 +148,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         cleanType: ct,
         clientName: editQuote.client_name || '',
         clientPhone: editQuote.client_phone || '',
+        clientEmail: editQuote.client_email || '',
         propertyId: editQuote.property_id || '',
         propertyName: editQuote.property_name || '',
         propertyAddress: editQuote.property_address || '',
@@ -226,6 +229,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           cleanType: ct,
           clientName,
           clientPhone: qr.phone || '',
+          clientEmail: qr.email || '',
           propertyId: fd.property_id || '',
           propertyName: fd.property_name || qr.address || '',
           propertyAddress: fd.property_address || qr.address || '',
@@ -392,6 +396,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       const payload: any = {
         client_name: form.clientName || null,
         client_phone: form.clientPhone || null,
+        client_email: form.clientEmail || null,
         property_id: form.propertyId || null,
         property_name: form.propertyName || null,
         property_address: form.propertyAddress || null,
@@ -706,6 +711,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
               <Field label="Client Phone">
                 <Input value={form.clientPhone} onChange={(e) => upd('clientPhone', e.target.value)} className="h-12 rounded-xl" />
               </Field>
+              <Field label="Client Email">
+                <Input value={form.clientEmail} onChange={(e) => upd('clientEmail', e.target.value)} type="email" placeholder="client@example.com" className="h-12 rounded-xl" />
+              </Field>
             </>
           )}
 
@@ -944,6 +952,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 <div className="bg-muted rounded-xl p-4 space-y-2 text-foreground">
                   <p><span className="font-semibold">Client:</span> {form.clientName || '—'}</p>
                   <p><span className="font-semibold">Phone:</span> {form.clientPhone || '—'}</p>
+                  {form.clientEmail && <p><span className="font-semibold">Email:</span> {form.clientEmail}</p>}
                   <p><span className="font-semibold">Quote #:</span> {editQuote?.reference || 'New'}</p>
                   <p><span className="font-semibold">Service:</span> {form.cleanType}</p>
                   <p><span className="font-semibold">Total:</span> <span className="font-extrabold text-primary">${result.sellPriceIncGst.toFixed(2)} inc GST</span></p>

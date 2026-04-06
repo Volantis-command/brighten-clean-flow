@@ -1825,6 +1825,7 @@ export type Database = {
           bond_certificate: boolean | null
           builder_name: string | null
           clean_type: string | null
+          client_email: string | null
           client_name: string | null
           client_phone: string | null
           consumables_cost: number | null
@@ -1884,6 +1885,7 @@ export type Database = {
           bond_certificate?: boolean | null
           builder_name?: string | null
           clean_type?: string | null
+          client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
           consumables_cost?: number | null
@@ -1943,6 +1945,7 @@ export type Database = {
           bond_certificate?: boolean | null
           builder_name?: string | null
           clean_type?: string | null
+          client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
           consumables_cost?: number | null
