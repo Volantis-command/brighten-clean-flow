@@ -17,6 +17,7 @@ import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
 import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
+import OperationsDashboard from '@/components/dashboard/OperationsDashboard';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 
