@@ -49,6 +49,7 @@ type FormState = {
   cleanType: string;
   clientName: string;
   clientPhone: string;
+  clientEmail: string;
   propertyId: string;
   propertyName: string;
   propertyAddress: string;
