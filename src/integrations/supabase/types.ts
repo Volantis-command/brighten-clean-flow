@@ -167,6 +167,7 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           digital_signature: string | null
+          director_approved: boolean | null
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -200,6 +201,7 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           digital_signature?: string | null
+          director_approved?: boolean | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -233,6 +235,7 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           digital_signature?: string | null
+          director_approved?: boolean | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -1772,6 +1775,41 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_audit_rooms: {
+        Row: {
+          audit_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          rating: string | null
+          room_name: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          rating?: string | null
+          room_name: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          rating?: string | null
+          room_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_audit_rooms_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "qc_audits"
             referencedColumns: ["id"]
           },
         ]
