@@ -31,7 +31,7 @@ export function TodayAtAGlance({ kpi, clockedInCleaners, alerts }: TodayAtAGlanc
       <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Today at a Glance</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Jobs Today */}
-        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
+        <div className="bg-card rounded-2xl shadow-sm p-5" style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Jobs Today</h3>
@@ -57,7 +57,7 @@ export function TodayAtAGlance({ kpi, clockedInCleaners, alerts }: TodayAtAGlanc
         </div>
 
         {/* Cleaners on the Clock */}
-        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
+        <div className="bg-card rounded-2xl shadow-sm p-5" style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Clock className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">On The Clock</h3>
@@ -80,7 +80,7 @@ export function TodayAtAGlance({ kpi, clockedInCleaners, alerts }: TodayAtAGlanc
         </div>
 
         {/* Alerts */}
-        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
+        <div className="bg-card rounded-2xl shadow-sm p-5" style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <h3 className="text-sm font-bold text-foreground">Alerts</h3>

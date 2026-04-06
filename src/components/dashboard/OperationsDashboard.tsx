@@ -259,7 +259,7 @@ export default function OperationsDashboard() {
 
       {/* Vertical Pipeline */}
       <div>
-        <h2 className="page-heading mb-4">Pipeline</h2>
+        <h2 className="page-heading mb-4" style={{ color: '#FEDB00' }}>Pipeline</h2>
         <div className="space-y-2">
           {PIPELINE_STAGES.map(stage => {
             const items = pipeline[stage.key] || [];
@@ -345,8 +345,13 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
 
     return (
       <div
-        className="glass-card hover-lift p-4 cursor-pointer"
-        style={isOverdue ? { borderLeft: '3px solid #EF4444' } : undefined}
+        className="hover-lift p-4 cursor-pointer"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '12px',
+          ...(isOverdue ? { borderLeft: '3px solid #EF4444' } : {}),
+        }}
         onClick={() => navigate('/quoting')}
       >
         <div className="flex items-center justify-between gap-2">
@@ -405,7 +410,12 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
   const address = (item as any).properties?.address || '';
   return (
     <div
-      className="glass-card hover-lift p-4 cursor-pointer"
+      className="hover-lift p-4 cursor-pointer"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '12px',
+      }}
       onClick={() => navigate(`/jobs/${item.id}`)}
     >
       <div className="flex items-center justify-between gap-2">

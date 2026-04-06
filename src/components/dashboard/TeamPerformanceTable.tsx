@@ -32,8 +32,8 @@ export function TeamPerformanceTable({ data }: TeamPerformanceTableProps) {
               </tr>
             </thead>
             <tbody>
-              {data.map((member) => (
-                <tr key={member.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
+              {data.map((member, idx) => (
+                <tr key={member.id} className="last:border-0 hover:bg-muted/30 transition-colors" style={{ background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <span className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-extrabold shrink-0">
