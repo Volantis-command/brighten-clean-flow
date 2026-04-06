@@ -433,8 +433,8 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         )}
         {column === 'accepted' && (
           <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs">Schedule Clean</Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs">Assign Cleaner</Button>
+            <PipelineBtn primary>Schedule Clean</PipelineBtn>
+            <PipelineBtn>Assign Cleaner</PipelineBtn>
           </div>
         )}
       </div>
