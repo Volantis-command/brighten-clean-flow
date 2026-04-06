@@ -346,23 +346,17 @@ export default function AirbnbQuotePage() {
       {/* Fixed bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-4 py-4 z-20">
         <div className="max-w-lg mx-auto space-y-3">
-          {step === 0 && priceRange && (
+          {(step === 0 || step === 1) && priceRange && (
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
-              <p className="text-sm font-bold text-primary">Estimated per turnover: ${priceRange[0]}–${priceRange[1]} incl. GST</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Volume discounts available for 3+ properties
+              <p className="text-sm font-bold text-primary">
+                Estimated per turnover: ${(priceRange[0] + consumablesTotal).toFixed(0)}–${(priceRange[1] + consumablesTotal).toFixed(0)} incl. GST
               </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Volume discounts available for 3+ properties</p>
             </div>
           )}
-          {step === 0 && !priceRange && parseInt(bedrooms) >= 5 && (
+          {(step === 0 || step === 1) && !priceRange && parseInt(bedrooms) >= 5 && (
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
               <p className="text-sm font-bold text-primary">5+ bedrooms — call us for a quote</p>
-            </div>
-          )}
-
-          {step === 1 && consumablesTotal > 0 && (
-            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
-              <p className="text-sm font-bold text-primary">Add-ons per clean: ${consumablesTotal.toFixed(2)}</p>
             </div>
           )}
 
