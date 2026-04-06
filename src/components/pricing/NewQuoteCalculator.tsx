@@ -148,6 +148,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         cleanType: ct,
         clientName: editQuote.client_name || '',
         clientPhone: editQuote.client_phone || '',
+        clientEmail: editQuote.client_email || '',
         propertyId: editQuote.property_id || '',
         propertyName: editQuote.property_name || '',
         propertyAddress: editQuote.property_address || '',
