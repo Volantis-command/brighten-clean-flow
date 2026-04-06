@@ -224,7 +224,7 @@ export default function OperationsDashboard() {
         <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quoting')}>
           <Plus className="h-4 w-4" /> New Enquiry
         </Button>
-        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quoting')}>
+        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => setSmsModalOpen(true)}>
           <Send className="h-4 w-4" /> Send SMS Quote Link
         </Button>
         <div className="flex-1 min-w-[200px]">
