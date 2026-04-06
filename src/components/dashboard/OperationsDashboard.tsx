@@ -277,7 +277,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
       : 0;
 
     return (
-      <div className={cn('bg-card rounded-xl border p-3 cursor-pointer hover:shadow-md transition-shadow',
+      <div className={cn('bg-card rounded-xl border p-4 cursor-pointer hover:shadow-md transition-shadow',
         column === 'quote_sent' && daysWaiting >= 2 ? 'border-destructive/50' :
         column === 'quote_sent' && daysWaiting >= 1 ? 'border-orange-300' : 'border-border'
       )} onClick={() => navigate('/quoting')}>
