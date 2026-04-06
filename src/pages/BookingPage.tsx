@@ -39,6 +39,7 @@ export default function BookingPage() {
   const [error, setError] = useState('');
 
   const [qrData, setQrData] = useState<any>(null);
+  const [manualFollowUp, setManualFollowUp] = useState(false);
   useEffect(() => {
     if (!leadId) return;
     supabase
@@ -47,7 +48,13 @@ export default function BookingPage() {
       .eq('id', leadId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setQrData(data);
+        if (data) {
+          setQrData(data);
+          const ct = (data.clean_type || '').toLowerCase();
+          if (ct.includes('airbnb') || ct.includes('short-stay') || ct.includes('commercial')) {
+            setManualFollowUp(true);
+          }
+        }
       });
   }, [leadId]);
 

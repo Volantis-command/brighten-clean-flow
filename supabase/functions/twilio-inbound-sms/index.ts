@@ -101,20 +101,29 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
       quote_accepted_at: new Date().toISOString() 
     }).eq('id', matchedQuote.id);
 
-    let bookingLink = APP_URL;
-    const { data: allQr } = await supabase
-      .from('quote_requests')
-      .select('id, phone, status')
-      .eq('status', 'quote_sent');
+    // Determine if this clean type supports self-service booking
+    const cleanType = (matchedQuote.clean_type || '').toLowerCase();
+    const isManualFollowUp = cleanType.includes('airbnb') || cleanType.includes('short-stay') || cleanType.includes('commercial');
 
-    if (allQr?.length) {
-      const matchedQr = allQr.find((qr: any) => qr.phone && phoneMatchesAny(qr.phone, variants, normalizedIncoming));
-      if (matchedQr) {
-        bookingLink = `${APP_URL}/book?lead=${matchedQr.id}`;
+    if (isManualFollowUp) {
+      // No booking link for Airbnb or Commercial — admin follows up manually
+      await sendTwilioSms(from, `Thanks ${firstName}! 🎉 We've received your acceptance. One of our team will be in touch shortly to confirm your first booking.\n\nQuestions? 0418 878 707\n— Brightly Cleaning 🌿`);
+    } else {
+      let bookingLink = APP_URL;
+      const { data: allQr } = await supabase
+        .from('quote_requests')
+        .select('id, phone, status')
+        .eq('status', 'quote_sent');
+
+      if (allQr?.length) {
+        const matchedQr = allQr.find((qr: any) => qr.phone && phoneMatchesAny(qr.phone, variants, normalizedIncoming));
+        if (matchedQr) {
+          bookingLink = `${APP_URL}/book?lead=${matchedQr.id}`;
+        }
       }
-    }
 
-    await sendTwilioSms(from, `Great! 🎉 To confirm your booking, please select your preferred date and time here: ${bookingLink}`);
+      await sendTwilioSms(from, `Great! 🎉 To confirm your booking, please select your preferred date and time here: ${bookingLink}`);
+    }
 
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     for (const admin of (admins || [])) {
