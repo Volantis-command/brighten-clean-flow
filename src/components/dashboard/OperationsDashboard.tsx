@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronRight, ChevronDown, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { SendQuoteLinkModal } from './SendQuoteLinkModal';
 
 type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'scheduled' | 'in_progress' | 'complete';
 
