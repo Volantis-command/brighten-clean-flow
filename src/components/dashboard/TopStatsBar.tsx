@@ -100,7 +100,7 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
         return (
           <div
             key={card.label}
-            className="glass-card hover-lift count-up relative overflow-hidden p-5"
+            className="glass-card hover-lift count-up relative overflow-hidden p-4 sm:p-5 min-w-0"
             style={{ animationDelay: `${idx * 60}ms` }}
           >
             {/* Gradient left border */}
