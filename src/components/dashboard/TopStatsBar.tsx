@@ -94,7 +94,7 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-full">
       {cards.map((card, idx) => {
         const Delta = card.delta.up ? TrendingUp : TrendingDown;
         return (

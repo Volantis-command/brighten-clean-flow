@@ -12,7 +12,7 @@ export function DashboardGreeting() {
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl noise-overlay shimmer fade-in"
+      className="relative overflow-hidden rounded-2xl noise-overlay shimmer fade-in w-full max-w-full"
       style={{
         background: 'linear-gradient(135deg, #163D35 0%, #0C463D 40%, #1A6B5E 100%)',
         border: '1px solid rgba(255, 255, 255, 0.08)',

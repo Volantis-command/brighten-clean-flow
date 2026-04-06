@@ -118,7 +118,7 @@ export default function DashboardPage() {
     });
 
     return (
-      <div className="space-y-6 max-w-lg mx-auto">
+      <div className="space-y-6 max-w-lg mx-auto overflow-x-hidden w-full max-w-full">
         <TodayJobsWidget />
         <DashboardGreeting />
         <CleanerClockCardForToday jobIds={jobCards.map((j) => j.id)} />
