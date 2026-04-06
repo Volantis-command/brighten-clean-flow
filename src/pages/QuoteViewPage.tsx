@@ -226,6 +226,7 @@ export default function QuoteViewPage() {
               <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Prepared for</p>
               <p className="font-semibold text-foreground">{quote.client_name || 'Client'}</p>
               {quote.client_phone && <p className="text-muted-foreground">{quote.client_phone}</p>}
+              {quote.client_email && <p className="text-muted-foreground">{quote.client_email}</p>}
             </div>
             <div>
               <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Property</p>

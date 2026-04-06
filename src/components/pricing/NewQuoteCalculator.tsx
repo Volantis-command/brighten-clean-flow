@@ -951,6 +951,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 <div className="bg-muted rounded-xl p-4 space-y-2 text-foreground">
                   <p><span className="font-semibold">Client:</span> {form.clientName || '—'}</p>
                   <p><span className="font-semibold">Phone:</span> {form.clientPhone || '—'}</p>
+                  {form.clientEmail && <p><span className="font-semibold">Email:</span> {form.clientEmail}</p>}
                   <p><span className="font-semibold">Quote #:</span> {editQuote?.reference || 'New'}</p>
                   <p><span className="font-semibold">Service:</span> {form.cleanType}</p>
                   <p><span className="font-semibold">Total:</span> <span className="font-extrabold text-primary">${result.sellPriceIncGst.toFixed(2)} inc GST</span></p>
