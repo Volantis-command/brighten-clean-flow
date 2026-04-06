@@ -199,12 +199,12 @@ export default function AirbnbQuotePage() {
           <CheckCircle2 className="w-10 h-10 text-primary" />
         </div>
         <h1 className="text-2xl font-extrabold text-foreground">
-          {isHighVolume ? 'We'll call you shortly! 📞' : 'Welcome to the Brightly Network! 🎉'}
+          {isHighVolume ? "We'll call you shortly! 📞" : 'Welcome to the Brightly Network! 🎉'}
         </h1>
         <p className="text-muted-foreground mt-3 max-w-sm">
           {isHighVolume
             ? 'For portfolios of 4+ properties, a Brightly team member will call you to set up a custom cleaning plan and pricing.'
-            : 'We'll confirm your property setup and send your first quote within 1 hour.'}
+            : "We'll confirm your property setup and send your first quote within 1 hour."}
         </p>
         <Button className="mt-8 h-14 px-8 rounded-xl font-bold" style={BTN_YELLOW} onClick={() => window.location.href = '/'}>Back to Brightly</Button>
       </div>
