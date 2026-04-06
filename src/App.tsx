@@ -62,7 +62,6 @@ import LiveTrackerPage from "./pages/LiveTrackerPage";
 import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
-import NotFound from "./pages/NotFound";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
 import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
