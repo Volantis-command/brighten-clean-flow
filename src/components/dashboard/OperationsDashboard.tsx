@@ -282,6 +282,7 @@ export default function OperationsDashboard() {
           })}
         </div>
       </div>
+      <SendQuoteLinkModal open={smsModalOpen} onOpenChange={setSmsModalOpen} />
     </div>
   );
 }
@@ -292,8 +293,6 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
       <div className="flex items-center gap-2 text-primary">{icon}</div>
       <p className="text-xl font-extrabold text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-      <SendQuoteLinkModal open={smsModalOpen} onOpenChange={setSmsModalOpen} />
     </div>
   );
 }
