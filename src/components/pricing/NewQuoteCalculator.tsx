@@ -1026,9 +1026,11 @@ function NumField({ label, value, onChange, step = 1, min = 0, max }: {
         type="number"
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        onFocus={(e) => e.target.select()}
         step={step}
         min={min}
         max={max}
+        inputMode="decimal"
         className="h-12 rounded-xl font-semibold"
       />
     </Field>
