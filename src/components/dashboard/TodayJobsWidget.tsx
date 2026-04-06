@@ -36,14 +36,14 @@ export function TodayJobsWidget() {
   const nextJob = jobs.find((j: any) => j.status === 'scheduled' || j.status === 'confirmed' || j.status === 'in_progress');
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
+    <Card className="border-primary/20 bg-primary/5 w-full max-w-full overflow-hidden">
       <CardContent className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-primary" />
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <CalendarDays className="h-5 w-5 text-primary shrink-0" />
             <h2 className="text-lg font-extrabold text-foreground">Today's Jobs</h2>
           </div>
-          <span className="text-xs font-bold text-muted-foreground">{format(new Date(), 'EEEE, d MMMM')}</span>
+          <span className="text-xs font-bold text-muted-foreground shrink-0">{format(new Date(), 'EEEE, d MMMM')}</span>
         </div>
 
         <p className="text-sm font-semibold text-foreground">

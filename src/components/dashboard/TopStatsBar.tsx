@@ -94,13 +94,13 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-full">
       {cards.map((card, idx) => {
         const Delta = card.delta.up ? TrendingUp : TrendingDown;
         return (
           <div
             key={card.label}
-            className="glass-card hover-lift count-up relative overflow-hidden p-5"
+            className="glass-card hover-lift count-up relative overflow-hidden p-4 sm:p-5 min-w-0"
             style={{ animationDelay: `${idx * 60}ms` }}
           >
             {/* Gradient left border */}
