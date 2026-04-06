@@ -259,7 +259,7 @@ export default function OperationsDashboard() {
 
       {/* Vertical Pipeline */}
       <div>
-        <h2 className="page-heading mb-4">Pipeline</h2>
+        <h2 className="page-heading mb-4" style={{ color: '#FEDB00' }}>Pipeline</h2>
         <div className="space-y-2">
           {PIPELINE_STAGES.map(stage => {
             const items = pipeline[stage.key] || [];
