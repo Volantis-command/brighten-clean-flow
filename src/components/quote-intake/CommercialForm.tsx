@@ -8,7 +8,7 @@ import { Loader2, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   FormCard, SectionHeader, QuestionLabel, OptionGrid, YesNo,
-  FormShell, FormNavButtons,
+  FormShell, FormNavButtons, darkInputClass, darkTextareaClass,
 } from './FormUI';
 
 interface Props { onComplete: () => void; onBack: () => void; }
@@ -111,16 +111,16 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
         <SectionHeader icon="🏢" label="Business Details" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Business Name</QuestionLabel><Input value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Acme Pty Ltd" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Contact Name *</QuestionLabel><Input value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Jane Smith" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Mobile Number *</QuestionLabel><Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="0412 345 678" type="tel" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Email Address *</QuestionLabel><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@acme.com.au" type="email" className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Business Name</QuestionLabel><Input value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Acme Pty Ltd" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Contact Name *</QuestionLabel><Input value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Jane Smith" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Mobile Number *</QuestionLabel><Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="0412 345 678" type="tel" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Email Address *</QuestionLabel><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@acme.com.au" type="email" className={darkInputClass} /></div>
           </div>
         </FormCard>
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel sub="Optional">ABN</QuestionLabel><Input value={abn} onChange={e => setAbn(e.target.value)} placeholder="12 345 678 901" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel sub="If different from contact email">Preferred invoice email</QuestionLabel><Input value={invoiceEmail} onChange={e => setInvoiceEmail(e.target.value)} placeholder="accounts@acme.com.au" type="email" className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel sub="Optional">ABN</QuestionLabel><Input value={abn} onChange={e => setAbn(e.target.value)} placeholder="12 345 678 901" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel sub="If different from contact email">Preferred invoice email</QuestionLabel><Input value={invoiceEmail} onChange={e => setInvoiceEmail(e.target.value)} placeholder="accounts@acme.com.au" type="email" className={darkInputClass} /></div>
           </div>
         </FormCard>
       </>
@@ -131,7 +131,7 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
         <SectionHeader icon="📐" label="Space Details" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Property Address *</QuestionLabel><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="456 Collins St, Melbourne VIC 3000" className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Property Address *</QuestionLabel><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="456 Collins St, Melbourne VIC 3000" className={darkInputClass} /></div>
             <div className="space-y-2"><QuestionLabel>Type of space</QuestionLabel><OptionGrid options={['Office', 'Retail', 'Restaurant / Café', 'Medical', 'Gym', 'Warehouse', 'Other']} value={spaceType} onChange={setSpaceType} cols={3} /></div>
           </div>
         </FormCard>
@@ -154,7 +154,7 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
             <div className="space-y-2"><QuestionLabel>After-hours access required?</QuestionLabel><YesNo value={afterHours} onChange={setAfterHours} /></div>
             <div className="space-y-2">
               <QuestionLabel>Security system or alarm?</QuestionLabel><YesNo value={securityAlarm} onChange={setSecurityAlarm} />
-              {securityAlarm && <p className="text-xs text-muted-foreground mt-1">Instructions will be provided separately</p>}
+              {securityAlarm && <p className="text-xs mt-1" style={{ color: 'rgba(240,253,244,0.5)' }}>Instructions will be provided separately</p>}
             </div>
           </div>
         </FormCard>
@@ -182,23 +182,23 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
             <div className="space-y-2">
               <QuestionLabel sub="Up to 3 images">Upload photos (optional)</QuestionLabel>
               {photos.length > 0 && <div className="flex gap-2 flex-wrap">{photos.map((p, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border">
+                <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
                   <img src={p.url} className="w-full h-full object-cover" />
                   <button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5"><X className="w-3 h-3" /></button>
                 </div>))}</div>}
               {photos.length < 3 && (<>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-                <Button type="button" variant="outline" className="w-full h-12 rounded-xl gap-2 border-dashed" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Button type="button" variant="outline" className="w-full h-12 rounded-xl gap-2 border-dashed border-[rgba(255,255,255,0.2)] bg-transparent text-[#F0FDF4] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#F0FDF4]" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />} {uploading ? 'Uploading...' : `Upload (${photos.length}/3)`}
                 </Button></>)}
             </div>
-            <div className="space-y-2"><QuestionLabel>Any areas requiring special attention? (optional)</QuestionLabel><Textarea value={specialAttention} onChange={e => setSpecialAttention(e.target.value)} placeholder="e.g. Reception area needs daily vacuuming..." className="rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Any areas requiring special attention? (optional)</QuestionLabel><Textarea value={specialAttention} onChange={e => setSpecialAttention(e.target.value)} placeholder="e.g. Reception area needs daily vacuuming..." className={darkTextareaClass} /></div>
           </div>
         </FormCard>
         <FormCard>
           <div className="flex items-start gap-3">
-            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5" />
-            <label htmlFor="tcs" className="text-sm text-foreground">I agree to Brightly's{' '}<button type="button" onClick={() => setTermsOpen(true)} className="text-primary underline font-medium">Terms & Conditions</button></label>
+            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5 border-[rgba(255,255,255,0.3)] data-[state=checked]:bg-[#FEDB00] data-[state=checked]:border-[#FEDB00] data-[state=checked]:text-[#0C463D]" />
+            <label htmlFor="tcs" className="text-sm" style={{ color: '#F0FDF4' }}>I agree to Brightly's{' '}<button type="button" onClick={() => setTermsOpen(true)} className="underline font-medium" style={{ color: '#FEDB00' }}>Terms & Conditions</button></label>
           </div>
         </FormCard>
       </>

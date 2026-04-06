@@ -8,7 +8,7 @@ import { Loader2, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   FormCard, SectionHeader, QuestionLabel, OptionGrid, YesNo,
-  FormShell, FormNavButtons,
+  FormShell, FormNavButtons, darkInputClass, darkTextareaClass,
 } from './FormUI';
 
 interface Props { onComplete: () => void; onBack: () => void; }
@@ -139,9 +139,9 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         <SectionHeader icon="👤" label="About You" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Full Name *</QuestionLabel><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Mobile Number *</QuestionLabel><Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="0412 345 678" type="tel" className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Email Address *</QuestionLabel><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" type="email" className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Full Name *</QuestionLabel><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Mobile Number *</QuestionLabel><Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="0412 345 678" type="tel" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Email Address *</QuestionLabel><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" type="email" className={darkInputClass} /></div>
           </div>
         </FormCard>
       </>
@@ -152,7 +152,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         <SectionHeader icon="🏠" label="Property Details" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Property Address *</QuestionLabel><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Smith St, Richmond VIC 3121" className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Property Address *</QuestionLabel><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Smith St, Richmond VIC 3121" className={darkInputClass} /></div>
             <div className="space-y-2"><QuestionLabel>Property Type</QuestionLabel><OptionGrid options={['House', 'Apartment', 'Townhouse', 'Unit']} value={propertyType} onChange={setPropertyType} cols={4} /></div>
           </div>
         </FormCard>
@@ -176,7 +176,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             <QuestionLabel sub="Select the bed type for each bedroom">Bed configuration</QuestionLabel>
             {Array.from({ length: Math.min(parseInt(bedrooms) || 1, 5) }, (_, i) => (
               <div key={i} className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Bedroom {i + 1}</p>
+                <p className="text-sm font-semibold" style={{ color: '#F0FDF4' }}>Bedroom {i + 1}</p>
                 <OptionGrid options={['King', 'Queen', 'Double', 'King Single', 'Single', 'Bunk Beds']} value={bedTypes[i] || ''} onChange={(v) => setBedTypes(prev => ({ ...prev, [i]: v }))} cols={3} />
               </div>
             ))}
@@ -201,7 +201,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
               <QuestionLabel sub={kit.desc}>
                 {kit.name} — {kit.price}
               </QuestionLabel>
-              <p className="text-sm text-muted-foreground">Would you like this included?</p>
+              <p className="text-sm" style={{ color: 'rgba(240,253,244,0.5)' }}>Would you like this included?</p>
               <YesNo
                 value={kit.key === 'amenities_kit' ? amenitiesKit : kit.key === 'wash_kit' ? washKit : teaCoffeeKit}
                 onChange={(v) => {
@@ -216,8 +216,8 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
 
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Typical guest checkout time</QuestionLabel><Input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className="h-12 rounded-xl" /></div>
-            <div className="space-y-2"><QuestionLabel>Typical next check-in time</QuestionLabel><Input type="time" value={checkinTime} onChange={e => setCheckinTime(e.target.value)} className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Typical guest checkout time</QuestionLabel><Input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Typical next check-in time</QuestionLabel><Input type="time" value={checkinTime} onChange={e => setCheckinTime(e.target.value)} className={darkInputClass} /></div>
           </div>
         </FormCard>
       </>
@@ -229,7 +229,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel>Property access</QuestionLabel><OptionGrid options={['Lockbox', 'Key safe', 'Host present', 'Other']} value={accessMethod} onChange={setAccessMethod} cols={2} /></div>
-            <div className="space-y-2"><QuestionLabel sub="Code, location, etc.">Access instructions</QuestionLabel><Input value={accessInstructions} onChange={e => setAccessInstructions(e.target.value)} placeholder="e.g. Lockbox code 5678, behind the mailbox" className="h-12 rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel sub="Code, location, etc.">Access instructions</QuestionLabel><Input value={accessInstructions} onChange={e => setAccessInstructions(e.target.value)} placeholder="e.g. Lockbox code 5678, behind the mailbox" className={darkInputClass} /></div>
           </div>
         </FormCard>
         <FormCard>
@@ -255,23 +255,23 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             <div className="space-y-2">
               <QuestionLabel sub="Up to 3 images">Upload photos (optional)</QuestionLabel>
               {photos.length > 0 && <div className="flex gap-2 flex-wrap">{photos.map((p, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border">
+                <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
                   <img src={p.url} className="w-full h-full object-cover" />
                   <button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5"><X className="w-3 h-3" /></button>
                 </div>))}</div>}
               {photos.length < 3 && (<>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-                <Button type="button" variant="outline" className="w-full h-12 rounded-xl gap-2 border-dashed" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Button type="button" variant="outline" className="w-full h-12 rounded-xl gap-2 border-dashed border-[rgba(255,255,255,0.2)] bg-transparent text-[#F0FDF4] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#F0FDF4]" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />} {uploading ? 'Uploading...' : `Upload (${photos.length}/3)`}
                 </Button></>)}
             </div>
-            <div className="space-y-2"><QuestionLabel>Any special hosting notes for our cleaners? (optional)</QuestionLabel><Textarea value={hostingNotes} onChange={e => setHostingNotes(e.target.value)} placeholder="e.g. Guest left late, priority areas..." className="rounded-xl" /></div>
+            <div className="space-y-2"><QuestionLabel>Any special hosting notes for our cleaners? (optional)</QuestionLabel><Textarea value={hostingNotes} onChange={e => setHostingNotes(e.target.value)} placeholder="e.g. Guest left late, priority areas..." className={darkTextareaClass} /></div>
           </div>
         </FormCard>
         <FormCard>
           <div className="flex items-start gap-3">
-            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5" />
-            <label htmlFor="tcs" className="text-sm text-foreground">I agree to Brightly's{' '}<button type="button" onClick={() => setTermsOpen(true)} className="text-primary underline font-medium">Terms & Conditions</button></label>
+            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5 border-[rgba(255,255,255,0.3)] data-[state=checked]:bg-[#FEDB00] data-[state=checked]:border-[#FEDB00] data-[state=checked]:text-[#0C463D]" />
+            <label htmlFor="tcs" className="text-sm" style={{ color: '#F0FDF4' }}>I agree to Brightly's{' '}<button type="button" onClick={() => setTermsOpen(true)} className="underline font-medium" style={{ color: '#FEDB00' }}>Terms & Conditions</button></label>
           </div>
         </FormCard>
       </>
