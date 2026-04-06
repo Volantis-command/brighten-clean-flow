@@ -232,7 +232,7 @@ export default function OperationsDashboard() {
         <ScrollArea className="w-full">
           <div className="flex gap-4 pb-4" style={{ minWidth: PIPELINE_COLUMNS.length * 280 }}>
             {PIPELINE_COLUMNS.map(col => (
-              <div key={col.key} className="w-[270px] shrink-0">
+              <div key={col.key} className="min-w-[280px] w-[280px] shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold text-foreground">{col.label}</h3>
                   <Badge variant="secondary" className="text-xs">{(pipeline[col.key] || []).length}</Badge>
