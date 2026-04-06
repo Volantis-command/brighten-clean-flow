@@ -39,6 +39,7 @@ export default function BookingPage() {
   const [error, setError] = useState('');
 
   const [qrData, setQrData] = useState<any>(null);
+  const [manualFollowUp, setManualFollowUp] = useState(false);
   useEffect(() => {
     if (!leadId) return;
     supabase
@@ -47,7 +48,13 @@ export default function BookingPage() {
       .eq('id', leadId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setQrData(data);
+        if (data) {
+          setQrData(data);
+          const ct = (data.clean_type || '').toLowerCase();
+          if (ct.includes('airbnb') || ct.includes('short-stay') || ct.includes('commercial')) {
+            setManualFollowUp(true);
+          }
+        }
       });
   }, [leadId]);
 
@@ -143,6 +150,23 @@ export default function BookingPage() {
       </div>
     );
   }
+
+  if (manualFollowUp) return (
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
+      <div className="bg-card rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle2 className="h-8 w-8 text-primary" />
+        </div>
+        <h1 className="text-2xl font-extrabold text-foreground">Thanks for accepting your quote!</h1>
+        <p className="text-muted-foreground">
+          We'll be in touch shortly to confirm your first booking.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
