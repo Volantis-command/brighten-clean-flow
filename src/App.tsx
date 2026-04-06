@@ -205,6 +205,11 @@ function AppRoutes() {
       <Route path="/enquire" element={<EnquiryPage />} />
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
+      <Route path="/residential-quote" element={<ResidentialQuotePage />} />
+      <Route path="/airbnb" element={<AirbnbQuotePage />} />
+      <Route path="/track/:jobId" element={<LiveTrackerPage />} />
+      <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
+      <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
       <Route path="/client-portal" element={<ClientPortalLoginPage />} />
       <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
       <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
