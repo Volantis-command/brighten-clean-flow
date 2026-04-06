@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     }
 
     const formattedPhone = formatAuPhone(phone);
-    const appUrl = 'https://app.brightly.cleaning';
+    const appUrl = 'https://brightly.cleaning';
 
     let message: string;
     if (form_type === 'residential') {
