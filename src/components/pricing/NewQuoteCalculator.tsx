@@ -86,6 +86,7 @@ const INITIAL: FormState = {
   cleanType: SERVICE_TYPES.AIRBNB_TURNOVER,
   clientName: '',
   clientPhone: '',
+  clientEmail: '',
   propertyId: '',
   propertyName: '',
   propertyAddress: '',
