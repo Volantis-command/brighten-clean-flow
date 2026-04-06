@@ -427,8 +427,8 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         )}
         {column === 'quote_sent' && (
           <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs">Follow Up</Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs">Mark Accepted</Button>
+            <PipelineBtn primary>Follow Up</PipelineBtn>
+            <PipelineBtn>Mark Accepted</PipelineBtn>
           </div>
         )}
         {column === 'accepted' && (
