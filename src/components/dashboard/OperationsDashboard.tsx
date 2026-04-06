@@ -422,7 +422,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         </div>
         {column === 'new_enquiry' && (
           <div className="mt-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs">Send Quote</Button>
+            <PipelineBtn primary>Send Quote</PipelineBtn>
           </div>
         )}
         {column === 'quote_sent' && (
