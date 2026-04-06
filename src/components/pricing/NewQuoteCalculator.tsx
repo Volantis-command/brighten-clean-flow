@@ -97,7 +97,7 @@ const INITIAL: FormState = {
   balconies: 0,
   sofaBeds: 0,
   outdoorAreas: false,
-  hours: DEFAULT_HOURS[SERVICE_TYPES.AIRBNB_TURNOVER],
+  hours: DEFAULT_HOURS[SERVICE_TYPES.STANDARD_CLEAN],
   bedTypes: ['Queen'],
   deepCleanMultiplier: 1.5,
   projectName: '',
@@ -113,11 +113,11 @@ const INITIAL: FormState = {
   discountGp: '',
   notes: '',
   residentialAddons: [
-    { name: 'Oven clean', price: 45, enabled: false },
-    { name: 'Fridge clean', price: 25, enabled: false },
-    { name: 'Window cleaning', price: 35, enabled: false },
-    { name: 'Garage sweep', price: 20, enabled: false },
-    { name: 'Wall spot cleaning', price: 20, enabled: false },
+    { name: 'Oven clean', price: 40, enabled: false },
+    { name: 'Fridge clean', price: 35, enabled: false },
+    { name: 'Window cleaning', price: 25, enabled: false },
+    { name: 'Garage sweep', price: 60, enabled: false },
+    { name: 'Balcony / Outdoor', price: 40, enabled: false },
   ],
   consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false } as ConsumableSelection,
   includePhotoReport: false,
@@ -153,7 +153,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   useEffect(() => {
     if (editQuote) {
       const bt = Array.isArray(editQuote.bed_types) ? editQuote.bed_types : [];
-      const ct = normaliseLegacyServiceType(editQuote.clean_type || editQuote.service_type || SERVICE_TYPES.AIRBNB_TURNOVER);
+      const ct = normaliseLegacyServiceType(editQuote.clean_type || editQuote.service_type || SERVICE_TYPES.STANDARD_CLEAN);
       setForm({
         cleanType: ct,
         clientName: editQuote.client_name || '',
@@ -222,7 +222,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       if (qr) {
         const fd = (qr.form_data || {}) as Record<string, any>;
         const storedConsumables = fd.consumables && typeof fd.consumables === 'object' ? fd.consumables as Record<string, boolean> : {};
-        const ct = normaliseLegacyServiceType(qr.clean_type || SERVICE_TYPES.AIRBNB_TURNOVER);
+        const ct = normaliseLegacyServiceType(qr.clean_type || SERVICE_TYPES.STANDARD_CLEAN);
         const clientName = [qr.first_name, qr.last_name].filter(Boolean).join(' ');
         const bedroomCount = qr.bedrooms || 1;
         const parsedBedTypes = normaliseStoredBedTypes(fd.bed_types, bedroomCount);

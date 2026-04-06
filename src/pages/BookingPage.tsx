@@ -38,6 +38,8 @@ export default function BookingPage() {
   const [confirmedDate, setConfirmedDate] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   const [qrData, setQrData] = useState<any>(null);
   useEffect(() => {
     if (!leadId) return;

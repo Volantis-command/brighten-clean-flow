@@ -103,7 +103,7 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
 
     // Determine if this clean type supports self-service booking
     const cleanType = (matchedQuote.clean_type || '').toLowerCase();
-    const isManualFollowUp = cleanType.includes('airbnb') || cleanType.includes('short-stay') || cleanType.includes('commercial');
+    const isManualFollowUp = cleanType.includes('airbnb') || cleanType.includes('short-stay') || cleanType.includes('short stay') || cleanType.includes('turnover') || cleanType.includes('commercial');
 
     if (isManualFollowUp) {
       // No booking link for Airbnb or Commercial — admin follows up manually

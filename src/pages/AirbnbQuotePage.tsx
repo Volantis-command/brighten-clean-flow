@@ -14,7 +14,7 @@ const PROPERTY_TYPES = ['House', 'Apartment', 'Townhouse', 'Unit'];
 const BEDROOM_OPTIONS = ['1', '2', '3', '4', '5+'];
 const BATHROOM_OPTIONS = ['1', '2', '3', '4+'];
 const PLATFORMS = ['Airbnb', 'Stayz', 'Booking.com', 'VRBO', 'Other'];
-const PROPERTY_COUNTS = ['1', '2', '3', '4+'];
+const PROPERTY_COUNTS = ['1', '2-3', '4-10', '10+'];
 
 const PRICING_NO_LINEN: Record<string, [number, number] | null> = {
   '1-1': [135, 170], '2-1': [170, 205], '2-2': [205, 245],
@@ -120,7 +120,8 @@ export default function AirbnbQuotePage() {
   const priceKey = getPriceKey(bedrooms, bathrooms);
   const priceRange = linen ? PRICING_LINEN[priceKey] : PRICING_NO_LINEN[priceKey];
   const consumablesTotal = CONSUMABLES.reduce((sum, c) => sum + (consumables[c.key] ? c.price : 0), 0);
-  const showVolumeDiscount = ['3', '4+'].includes(propCount);
+  const showVolumeDiscount = ['2-3', '4-10', '10+'].includes(propCount);
+  const isHighVolume = ['4-10', '10+'].includes(propCount);
 
   const togglePlatform = (p: string) => {
     setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
@@ -149,6 +150,7 @@ export default function AirbnbQuotePage() {
         property_type: propertyType, linen, platforms, property_count: propCount,
         consumables: selectedConsumables, consumables_total: consumablesTotal,
         volume_discount_eligible: showVolumeDiscount,
+        high_volume: isHighVolume,
       };
 
       const { error } = await supabase.from('quote_requests').insert({
@@ -165,6 +167,22 @@ export default function AirbnbQuotePage() {
         body: { type: 'intake_submitted', client_phone: mobile, client_name: firstName, clean_type: 'Airbnb / Short-Stay Turnover', address: suburb },
       });
 
+      // High-volume portfolio — create admin alert
+      if (isHighVolume) {
+        const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+        if (admins?.length) {
+          await supabase.from('notifications').insert(
+            admins.map((a: any) => ({
+              user_id: a.user_id,
+              title: `🏢 High-volume Airbnb enquiry — ${propCount} properties`,
+              message: `${firstName} ${lastName} (${mobile}) — ${propCount} properties in ${suburb}. Call to set up custom plan.`,
+              type: 'alert',
+              link: '/dashboard',
+            }))
+          );
+        }
+      }
+
       localStorage.removeItem(STORAGE_KEY);
       setSubmitted(true);
     } catch (err: any) {
@@ -177,11 +195,17 @@ export default function AirbnbQuotePage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <CheckCircle2 className="w-10 h-10 text-primary" />
         </div>
-        <h1 className="text-2xl font-extrabold text-foreground">Welcome to the Brightly Network! 🎉</h1>
-        <p className="text-muted-foreground mt-3 max-w-sm">We'll confirm your property setup and send your first quote within 1 hour.</p>
+        <h1 className="text-2xl font-extrabold text-foreground">
+          {isHighVolume ? 'We'll call you shortly! 📞' : 'Welcome to the Brightly Network! 🎉'}
+        </h1>
+        <p className="text-muted-foreground mt-3 max-w-sm">
+          {isHighVolume
+            ? 'For portfolios of 4+ properties, a Brightly team member will call you to set up a custom cleaning plan and pricing.'
+            : 'We'll confirm your property setup and send your first quote within 1 hour.'}
+        </p>
         <Button className="mt-8 h-14 px-8 rounded-xl font-bold" style={BTN_YELLOW} onClick={() => window.location.href = '/'}>Back to Brightly</Button>
       </div>
     );
@@ -259,10 +283,18 @@ export default function AirbnbQuotePage() {
                   <PillButton key={c} selected={propCount === c} onClick={() => setPropCount(c)}>{c}</PillButton>
                 ))}
               </div>
-              {showVolumeDiscount && (
+              {showVolumeDiscount && !isHighVolume && (
                 <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5"
                   style={{ backgroundColor: '#FEDB00', color: '#0C463D' }}>
-                  <span className="text-sm font-extrabold">🎉 Volume discount unlocked — 3+ properties</span>
+                  <span className="text-sm font-extrabold">🎉 Volume discount unlocked — 2+ properties</span>
+                </div>
+              )}
+              {isHighVolume && (
+                <div className="mt-3 rounded-xl border-2 border-primary p-4 text-center space-y-2"
+                  style={{ background: 'rgba(12, 70, 61, 0.2)' }}>
+                  <p className="text-base font-extrabold text-foreground">We'll call you to set up a custom plan</p>
+                  <p className="text-sm text-muted-foreground">For portfolios of 4+ properties, we create a tailored pricing and scheduling package.</p>
+                  <p className="text-sm font-bold text-primary">📞 0418 878 707</p>
                 </div>
               )}
             </div>
@@ -349,12 +381,17 @@ export default function AirbnbQuotePage() {
       {/* Fixed bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-4 py-4 z-20">
         <div className="max-w-lg mx-auto space-y-3">
-          {(step === 0 || step === 1) && priceRange && (
+          {(step === 0 || step === 1) && priceRange && !isHighVolume && (
             <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
               <p className="text-sm font-bold text-primary">
                 Estimated per turnover: ${(priceRange[0] + consumablesTotal).toFixed(0)}–${(priceRange[1] + consumablesTotal).toFixed(0)} incl. GST
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Volume discounts available for 3+ properties</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Volume discounts available for 2+ properties</p>
+            </div>
+          )}
+          {(step === 0 || step === 1) && isHighVolume && (
+            <div className="bg-primary/10 rounded-xl px-4 py-3 text-center">
+              <p className="text-sm font-bold text-primary">Custom pricing — we'll call you</p>
             </div>
           )}
           {(step === 0 || step === 1) && !priceRange && parseInt(bedrooms) >= 5 && (

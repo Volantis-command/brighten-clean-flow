@@ -198,7 +198,7 @@ export default function ResidentialQuotePage() {
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ');
-      const cleanTypeLabel = cleanType === 'house' ? 'Standard House Clean' : cleanType === 'deep' ? 'Deep Clean' : 'End of Lease / Bond Clean';
+      const cleanTypeLabel = cleanType === 'house' ? 'Standard Clean' : cleanType === 'deep' ? 'Deep Clean' : 'Bond / End of Lease Clean';
       const selectedExtras = EXTRAS.filter(e => extras[e.key]).map(e => e.label);
 
       const formData = {
@@ -234,8 +234,8 @@ export default function ResidentialQuotePage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6 animate-[scale-in_0.3s_ease-out]">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-[scale-in_0.3s_ease-out]">
+          <CheckCircle2 className="w-10 h-10 text-primary" />
         </div>
         <h1 className="text-2xl font-extrabold text-foreground">Quote request received! 🎉</h1>
         <p className="text-muted-foreground mt-3 max-w-sm">We'll send your confirmed quote within 1 hour via SMS and email.</p>

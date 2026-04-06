@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInHours } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronDown, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SendQuoteLinkModal } from './SendQuoteLinkModal';
+import { toast } from 'sonner';
 
 type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'scheduled' | 'in_progress' | 'complete';
 
@@ -23,6 +24,7 @@ const PIPELINE_STAGES: { key: PipelineStatus; label: string }[] = [
 export default function OperationsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [smsModalOpen, setSmsModalOpen] = useState(false);
   const now = new Date();
@@ -297,7 +299,7 @@ export default function OperationsDashboard() {
                       </div>
                     ) : (
                       items.map((item: any) => (
-                        <PipelineCard key={item.id} item={item} column={stage.key} navigate={navigate} />
+                        <PipelineCard key={item.id} item={item} column={stage.key} navigate={navigate} queryClient={queryClient} />
                       ))
                     )}
                   </div>
@@ -368,9 +370,58 @@ function PipelineBtn({ children, primary, onClick }: { children: React.ReactNode
   );
 }
 
-function PipelineCard({ item, column, navigate }: { item: any; column: PipelineStatus; navigate: (path: string) => void }) {
+function PipelineCard({ item, column, navigate, queryClient }: { item: any; column: PipelineStatus; navigate: (path: string) => void; queryClient: any }) {
   const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted'].includes(column);
   const pill = STAGE_PILL[column];
+
+  const invalidatePipeline = () => queryClient.invalidateQueries({ queryKey: ['ops-pipeline'] });
+
+  const handleFollowUp = async () => {
+    try {
+      const firstName = item.first_name || 'there';
+      const phone = item.phone;
+      if (!phone) { toast.error('No phone number on file'); return; }
+      const digits = phone.replace(/\D/g, '');
+      const formatted = digits.startsWith('61') ? '+' + digits : digits.startsWith('0') ? '+61' + digits.slice(1) : '+61' + digits;
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: formatted,
+          message: `Hi ${firstName}, just following up on your Brightly Cleaning quote. Reply YES to accept or NO to decline. Questions? Call 0418 878 707 — Brightly Cleaning 🌿`,
+        }),
+      });
+      if (!res.ok) throw new Error('SMS failed');
+      toast.success(`Follow-up SMS sent to ${firstName}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send follow-up');
+    }
+  };
+
+  const handleMarkAccepted = async () => {
+    try {
+      const { error } = await supabase
+        .from('quote_requests')
+        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+        .eq('id', item.id);
+      if (error) throw error;
+      toast.success('Marked as accepted');
+      invalidatePipeline();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update status');
+    }
+  };
+
+  const handleScheduleClean = () => {
+    navigate(`/schedule?lead=${item.id}`);
+    window.scrollTo(0, 0);
+  };
+
+  const handleAssignCleaner = () => {
+    navigate(`/schedule?lead=${item.id}&assign=true`);
+    window.scrollTo(0, 0);
+  };
 
   if (isQuoteRequest) {
     const name = [item.first_name, item.last_name].filter(Boolean).join(' ');
@@ -427,14 +478,14 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         )}
         {column === 'quote_sent' && (
           <div className="mt-2 flex gap-2">
-            <PipelineBtn primary>Follow Up</PipelineBtn>
-            <PipelineBtn>Mark Accepted</PipelineBtn>
+            <PipelineBtn primary onClick={(e) => { e.stopPropagation(); handleFollowUp(); }}>Follow Up</PipelineBtn>
+            <PipelineBtn onClick={(e) => { e.stopPropagation(); handleMarkAccepted(); }}>Mark Accepted</PipelineBtn>
           </div>
         )}
         {column === 'accepted' && (
           <div className="mt-2 flex gap-2">
-            <PipelineBtn primary>Schedule Clean</PipelineBtn>
-            <PipelineBtn>Assign Cleaner</PipelineBtn>
+            <PipelineBtn primary onClick={(e) => { e.stopPropagation(); handleScheduleClean(); }}>Schedule Clean</PipelineBtn>
+            <PipelineBtn onClick={(e) => { e.stopPropagation(); handleAssignCleaner(); }}>Assign Cleaner</PipelineBtn>
           </div>
         )}
       </div>
@@ -444,6 +495,52 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
   // Job card
   const propName = (item as any).properties?.property_name || 'Property';
   const address = (item as any).properties?.address || '';
+
+  const handleViewJob = () => {
+    navigate(`/jobs/${item.id}`);
+    window.scrollTo(0, 0);
+  };
+
+  const handleSendTrackerLink = async () => {
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/send-client-booking-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: item.id, type: 'tracker' }),
+      });
+      if (!res.ok) throw new Error('Failed to send tracker link');
+      toast.success('Tracker link sent');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send tracker link');
+    }
+  };
+
+  const handleSendInvoice = () => {
+    navigate(`/jobs/${item.id}?action=invoice`);
+    window.scrollTo(0, 0);
+  };
+
+  const handleRequestReview = async () => {
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/job-completed-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: item.id }),
+      });
+      if (!res.ok) throw new Error('Failed to send review request');
+      toast.success('Review request sent');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to request review');
+    }
+  };
+
+  const handleRebook = () => {
+    navigate(`/schedule?rebook=${item.id}`);
+    window.scrollTo(0, 0);
+  };
+
   return (
     <div
       className="hover-lift p-4 cursor-pointer"
@@ -452,7 +549,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '12px',
       }}
-      onClick={() => navigate(`/jobs/${item.id}`)}
+      onClick={() => { navigate(`/jobs/${item.id}`); window.scrollTo(0, 0); }}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -491,15 +588,15 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
       </div>
       {column === 'scheduled' && (
         <div className="mt-2 flex gap-2">
-          <PipelineBtn primary>View Job</PipelineBtn>
-          <PipelineBtn>Send Tracker Link</PipelineBtn>
+          <PipelineBtn primary onClick={(e) => { e.stopPropagation(); handleViewJob(); }}>View Job</PipelineBtn>
+          <PipelineBtn onClick={(e) => { e.stopPropagation(); handleSendTrackerLink(); }}>Send Tracker Link</PipelineBtn>
         </div>
       )}
       {column === 'complete' && (
         <div className="mt-2 flex gap-2">
-          <PipelineBtn primary>Send Invoice</PipelineBtn>
-          <PipelineBtn>Request Review</PipelineBtn>
-          <PipelineBtn>Rebook</PipelineBtn>
+          <PipelineBtn primary onClick={(e) => { e.stopPropagation(); handleSendInvoice(); }}>Send Invoice</PipelineBtn>
+          <PipelineBtn onClick={(e) => { e.stopPropagation(); handleRequestReview(); }}>Request Review</PipelineBtn>
+          <PipelineBtn onClick={(e) => { e.stopPropagation(); handleRebook(); }}>Rebook</PipelineBtn>
         </div>
       )}
     </div>

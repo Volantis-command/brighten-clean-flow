@@ -77,19 +77,41 @@ export const PHOTO_REPORTING_FEE = 20; // $20 + GST per clean (optional)
 // Helper: map legacy names to new names
 export function normaliseLegacyServiceType(name: string): string {
   const map: Record<string, string> = {
-    'House Clean': SERVICE_TYPES.STANDARD_CLEAN,
-    'Turnover Clean': SERVICE_TYPES.AIRBNB_TURNOVER,
-    'End of Lease': SERVICE_TYPES.BOND_END_OF_LEASE,
-    'End of Lease Clean': SERVICE_TYPES.BOND_END_OF_LEASE,
-    'Post-Build': SERVICE_TYPES.POST_RENOVATION,
-    'Post-Build Clean': SERVICE_TYPES.POST_RENOVATION,
-    'Residential One-Off': SERVICE_TYPES.STANDARD_CLEAN,
-    'Deep Clean': SERVICE_TYPES.DEEP_CLEAN,
+    // Exact official names
     'Standard Clean': SERVICE_TYPES.STANDARD_CLEAN,
+    'Deep Clean': SERVICE_TYPES.DEEP_CLEAN,
     'Bond / End of Lease Clean': SERVICE_TYPES.BOND_END_OF_LEASE,
     'Airbnb / Short-Stay Turnover': SERVICE_TYPES.AIRBNB_TURNOVER,
     'Post-Renovation Clean': SERVICE_TYPES.POST_RENOVATION,
     'Office / Commercial Clean': SERVICE_TYPES.OFFICE_COMMERCIAL,
+    // Legacy display names
+    'House Clean': SERVICE_TYPES.STANDARD_CLEAN,
+    'Standard House Clean': SERVICE_TYPES.STANDARD_CLEAN,
+    'Residential One-Off': SERVICE_TYPES.STANDARD_CLEAN,
+    'Turnover Clean': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'Airbnb Turnover': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'Airbnb': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'Short Stay': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'Short-Stay': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'End of Lease': SERVICE_TYPES.BOND_END_OF_LEASE,
+    'End of Lease Clean': SERVICE_TYPES.BOND_END_OF_LEASE,
+    'End of Lease / Bond Clean': SERVICE_TYPES.BOND_END_OF_LEASE,
+    'Bond Clean': SERVICE_TYPES.BOND_END_OF_LEASE,
+    'Post-Build': SERVICE_TYPES.POST_RENOVATION,
+    'Post-Build Clean': SERVICE_TYPES.POST_RENOVATION,
+    'Post Renovation': SERVICE_TYPES.POST_RENOVATION,
+    // Snake_case form keys (from lead/portal forms)
+    'standard_clean': SERVICE_TYPES.STANDARD_CLEAN,
+    'house_clean': SERVICE_TYPES.STANDARD_CLEAN,
+    'deep_clean': SERVICE_TYPES.DEEP_CLEAN,
+    'end_of_lease': SERVICE_TYPES.BOND_END_OF_LEASE,
+    'bond_clean': SERVICE_TYPES.BOND_END_OF_LEASE,
+    'airbnb': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'airbnb_turnover': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'short_stay': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'short-stay': SERVICE_TYPES.AIRBNB_TURNOVER,
+    'post_renovation': SERVICE_TYPES.POST_RENOVATION,
+    'office_commercial': SERVICE_TYPES.OFFICE_COMMERCIAL,
   };
   return map[name] || name;
 }
