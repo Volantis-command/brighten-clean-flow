@@ -293,6 +293,8 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
       <p className="text-xl font-extrabold text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
+      <SendQuoteLinkModal open={smsModalOpen} onOpenChange={setSmsModalOpen} />
+    </div>
   );
 }
 
