@@ -332,6 +332,42 @@ const STAGE_PILL: Record<PipelineStatus, { bg: string; color: string; label: str
   complete: { bg: 'rgba(34,197,94,0.20)', color: '#22C55E', label: 'Complete' },
 };
 
+const pipelineBtnBase: React.CSSProperties = {
+  background: 'transparent',
+  border: '1px solid rgba(255,255,255,0.15)',
+  color: '#F0FDF4',
+  borderRadius: '8px',
+  padding: '6px 12px',
+  fontSize: '13px',
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+};
+const pipelineBtnPrimary: React.CSSProperties = {
+  ...pipelineBtnBase,
+  background: 'rgba(254,219,0,0.15)',
+  borderColor: '#FEDB00',
+  color: '#FEDB00',
+};
+
+function PipelineBtn({ children, primary, onClick }: { children: React.ReactNode; primary?: boolean; onClick?: (e: React.MouseEvent) => void }) {
+  const [hovered, setHovered] = useState(false);
+  const base = primary ? pipelineBtnPrimary : pipelineBtnBase;
+  const style: React.CSSProperties = hovered && !primary
+    ? { ...base, background: 'rgba(254,219,0,0.10)', borderColor: '#FEDB00', color: '#FEDB00' }
+    : base;
+  return (
+    <button
+      style={style}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function PipelineCard({ item, column, navigate }: { item: any; column: PipelineStatus; navigate: (path: string) => void }) {
   const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted'].includes(column);
   const pill = STAGE_PILL[column];
