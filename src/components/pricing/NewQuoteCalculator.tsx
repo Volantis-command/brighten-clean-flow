@@ -710,6 +710,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
               <Field label="Client Phone">
                 <Input value={form.clientPhone} onChange={(e) => upd('clientPhone', e.target.value)} className="h-12 rounded-xl" />
               </Field>
+              <Field label="Client Email">
+                <Input value={form.clientEmail} onChange={(e) => upd('clientEmail', e.target.value)} type="email" placeholder="client@example.com" className="h-12 rounded-xl" />
+              </Field>
             </>
           )}
 
