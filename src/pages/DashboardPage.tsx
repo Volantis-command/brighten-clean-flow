@@ -183,7 +183,7 @@ export default function DashboardPage() {
 
   // Admin / Head Cleaner dashboard
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 overflow-x-hidden w-full max-w-full">
       <TodayJobsWidget />
       <DashboardGreeting />
 
