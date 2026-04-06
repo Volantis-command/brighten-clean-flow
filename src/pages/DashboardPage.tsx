@@ -205,7 +205,7 @@ export default function DashboardPage() {
 
       {/* Today's Jobs */}
       <div>
-        <h2 className="text-xl font-bold text-primary mb-4">Today's Jobs</h2>
+        <h2 className="text-xl font-bold mb-4" style={{ color: '#FEDB00' }}>Today's Jobs</h2>
         {jobCards.length === 0 ? (
           <div className="bg-card rounded-2xl shadow-md p-6">
             <p className="text-muted-foreground">No jobs scheduled for today.</p>
