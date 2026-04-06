@@ -491,8 +491,8 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
       </div>
       {column === 'scheduled' && (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 text-xs">View Job</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs">Send Tracker Link</Button>
+          <PipelineBtn primary>View Job</PipelineBtn>
+          <PipelineBtn>Send Tracker Link</PipelineBtn>
         </div>
       )}
       {column === 'complete' && (
