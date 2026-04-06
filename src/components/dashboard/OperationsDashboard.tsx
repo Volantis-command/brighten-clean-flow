@@ -388,7 +388,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
           borderRadius: '12px',
           ...(isOverdue ? { borderLeft: '3px solid #EF4444' } : {}),
         }}
-        onClick={() => navigate('/quoting')}
+        onClick={() => { navigate(`/quoting?lead=${item.id}&clean_type=${encodeURIComponent(item.clean_type || '')}`); window.scrollTo(0,0); }}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -422,7 +422,7 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
         </div>
         {column === 'new_enquiry' && (
           <div className="mt-2">
-            <PipelineBtn primary>Send Quote</PipelineBtn>
+            <PipelineBtn primary onClick={(e) => { e.stopPropagation(); navigate(`/quoting?lead=${item.id}&clean_type=${encodeURIComponent(item.clean_type || '')}`); window.scrollTo(0,0); }}>Send Quote</PipelineBtn>
           </div>
         )}
         {column === 'quote_sent' && (

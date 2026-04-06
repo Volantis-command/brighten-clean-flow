@@ -83,7 +83,7 @@ type FormState = {
 };
 
 const INITIAL: FormState = {
-  cleanType: SERVICE_TYPES.AIRBNB_TURNOVER,
+  cleanType: SERVICE_TYPES.STANDARD_CLEAN,
   clientName: '',
   clientPhone: '',
   clientEmail: '',
@@ -131,6 +131,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const { data: pricing } = usePricingSettings();
   const [searchParams] = useSearchParams();
   const leadId = searchParams.get('lead');
+  const urlCleanType = searchParams.get('clean_type');
   const [showConfirm, setShowConfirm] = useState(false);
   const rates = pricing?.map || {};
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
@@ -138,7 +139,16 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const [leadStatus, setLeadStatus] = useState<string | null>(null);
   const [leadFormData, setLeadFormData] = useState<Record<string, any>>({});
 
-  const [form, setForm] = useState<FormState>(() => ({ ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false }));
+  const [form, setForm] = useState<FormState>(() => {
+    const base = { ...INITIAL, consumables: { amenities_kit: false, wash_kit: false, tea_coffee_kit: false }, includePhotoReport: false };
+    const urlCt = new URLSearchParams(window.location.search).get('clean_type');
+    if (urlCt) {
+      const ct = normaliseLegacyServiceType(urlCt);
+      base.cleanType = ct;
+      base.hours = DEFAULT_HOURS[ct] || 2;
+    }
+    return base;
+  });
 
   useEffect(() => {
     if (editQuote) {

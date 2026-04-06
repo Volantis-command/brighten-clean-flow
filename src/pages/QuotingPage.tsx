@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function QuotingPage() {
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const quoteRequestId = (location.state as any)?.quoteRequestId || searchParams.get('lead');
