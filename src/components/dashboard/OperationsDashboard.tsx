@@ -497,9 +497,9 @@ function PipelineCard({ item, column, navigate }: { item: any; column: PipelineS
       )}
       {column === 'complete' && (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 text-xs">Send Invoice</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs">Request Review</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs">Rebook</Button>
+          <PipelineBtn primary>Send Invoice</PipelineBtn>
+          <PipelineBtn>Request Review</PipelineBtn>
+          <PipelineBtn>Rebook</PipelineBtn>
         </div>
       )}
     </div>
