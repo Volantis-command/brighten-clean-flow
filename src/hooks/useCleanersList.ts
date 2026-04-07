@@ -17,12 +17,11 @@ export function useCleanersList() {
       const userIds = roleData.map((r) => r.user_id);
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, email, director_approved')
+        .select('id, full_name, email')
         .in('id', userIds);
 
       if (profileError) throw profileError;
-      // Only return cleaners approved by director
-      return (profiles || []).filter((p: any) => p.director_approved !== false);
+      return profiles || [];
     },
   });
 }
