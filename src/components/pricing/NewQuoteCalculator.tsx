@@ -996,6 +996,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         quoteId={editQuote?.id || savedQuoteId || ''}
         clientName={form.clientName}
         clientPhone={form.clientPhone}
+        clientEmail={form.clientEmail}
         propertyAddress={form.propertyAddress || form.propertyName}
         cleanType={form.cleanType}
         priceIncGst={result.sellPriceIncGst}

@@ -35,6 +35,7 @@ interface ScheduleAfterAcceptModalProps {
   quoteId: string;
   clientName: string;
   clientPhone: string;
+  clientEmail?: string;
   propertyAddress: string;
   cleanType: string;
   priceIncGst: number;
@@ -48,7 +49,7 @@ interface ScheduleAfterAcceptModalProps {
 type StepResult = { step: string; ok: boolean; error?: string };
 
 export default function ScheduleAfterAcceptModal({
-  open, onOpenChange, quoteId, clientName, clientPhone, propertyAddress,
+  open, onOpenChange, quoteId, clientName, clientPhone, clientEmail, propertyAddress,
   cleanType, priceIncGst, priceExGst, propertyId, estimatedHours, leadId, onComplete,
 }: ScheduleAfterAcceptModalProps) {
   const queryClient = useQueryClient();
@@ -108,6 +109,68 @@ export default function ScheduleAfterAcceptModal({
       } catch (e: any) {
         stepResults.push({ step: 'Lead status → accepted', ok: false, error: e.message });
       }
+    }
+
+
+    // 2b. Create/upsert client profile
+    let clientProfileId: string | null = null;
+    try {
+      const nameParts = (clientName || '').trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Check if client already exists by phone or email
+      let existing = null;
+      if (clientPhone) {
+        const { data } = await supabase.from('profiles').select('id').eq('phone', clientPhone).maybeSingle();
+        existing = data;
+      }
+      if (!existing && clientEmail) {
+        const { data } = await supabase.from('profiles').select('id').eq('email', clientEmail).maybeSingle();
+        existing = data;
+      }
+
+      if (existing) {
+        clientProfileId = existing.id;
+        // Update with latest info
+        await supabase.from('profiles').update({
+          full_name: clientName || undefined,
+          phone: clientPhone || undefined,
+          email: clientEmail || undefined,
+        }).eq('id', existing.id);
+        stepResults.push({ step: 'Client profile updated', ok: true });
+      } else {
+        // Create new profile
+        const { data: newProfile, error: profileError } = await supabase.from('profiles').insert({
+          full_name: clientName || null,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          phone: clientPhone || null,
+          email: clientEmail || null,
+          role: 'client',
+        } as any).select('id').single();
+        if (profileError) throw profileError;
+        clientProfileId = newProfile.id;
+
+        // Add client role
+        await supabase.from('user_roles').insert({
+          user_id: clientProfileId,
+          role: 'client',
+        } as any).select().maybeSingle();
+
+        stepResults.push({ step: 'Client profile created', ok: true });
+      }
+
+      // Link property address to client if no property_id
+      if (clientProfileId && !propertyId && propertyAddress) {
+        await supabase.from('client_properties').insert({
+          client_id: clientProfileId,
+          property_address: propertyAddress,
+          property_name: clientName ? `${clientName.split(' ')[0]}'s Property` : propertyAddress,
+        } as any).select().maybeSingle();
+      }
+    } catch (e: any) {
+      stepResults.push({ step: 'Client profile created', ok: false, error: e.message });
     }
 
     // 3. Create job
