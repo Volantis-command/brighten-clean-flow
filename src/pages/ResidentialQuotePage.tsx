@@ -241,7 +241,7 @@ export default function ResidentialQuotePage() {
         </div>
         <h1 className="text-2xl font-extrabold" style={{ color: '#F0FDF4' }}>Thanks {submittedFirst}!</h1>
         <p className="text-lg font-semibold mt-2" style={{ color: '#86EFAC' }}>We've received your quote request.</p>
-        <p className="mt-4 max-w-sm" style={{ color: '#86EFAC' }}>Our team will be in touch within 1 hour.</p>
+        <p className="mt-4 max-w-sm" style={{ color: '#86EFAC' }}>Our team will be in touch within 24 hours.</p>
         <p className="mt-6 font-bold" style={{ color: '#FEDB00' }}>Questions? Call Brendan on 0418 878 707</p>
         <div className="mt-8">
           <span className="text-2xl font-extrabold tracking-tight" style={{ color: '#F0FDF4', fontFamily: 'Nunito, sans-serif' }}>
@@ -573,7 +573,7 @@ export default function ResidentialQuotePage() {
               <p className="text-sm font-bold text-primary">
                 Estimated quote: ${priceRange[0] + extrasTotal}–${priceRange[1] + extrasTotal} incl. GST
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Confirmed within 1 hour</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Confirmed within 24 hours</p>
             </div>
           )}
           {(step === 0 || step === 1) && !priceRange && cleanType && parseInt(bedrooms) >= 5 && (

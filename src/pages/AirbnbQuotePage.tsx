@@ -208,7 +208,7 @@ export default function AirbnbQuotePage() {
         <p className="mt-4 max-w-sm" style={{ color: '#86EFAC' }}>
           {isHighVolume
             ? 'For portfolios of 4+ properties, a Brightly team member will call you to set up a custom cleaning plan and pricing.'
-            : 'Our team will be in touch within 1 hour.'}
+            : 'Our team will be in touch within 24 hours.'}
         </p>
         <p className="mt-6 font-bold" style={{ color: '#FEDB00' }}>Questions? Call Brendan on 0418 878 707</p>
         <div className="mt-8">

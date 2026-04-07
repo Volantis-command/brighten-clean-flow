@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     let message: string;
     if (form_type === 'residential') {
-      message = `Hi 👋 It's Brightly Cleaning. Get your instant quote here: ${appUrl}/residential-quote — We'll confirm your price within 1 hour.`;
+      message = `Hi 👋 It's Brightly Cleaning. Get your instant quote here: ${appUrl}/residential-quote — We'll confirm your price within 24 hours.`;
     } else if (form_type === 'airbnb') {
       message = `Hi 👋 It's Brightly. Set up your short-stay property here: ${appUrl}/airbnb — Photo verified after every clean.`;
     } else {

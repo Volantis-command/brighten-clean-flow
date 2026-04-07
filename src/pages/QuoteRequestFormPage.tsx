@@ -298,7 +298,7 @@ export default function QuoteRequestFormPage() {
         {/* Note */}
         <div className="bg-[#FEDB00]/20 rounded-2xl p-4 text-center">
           <p className="text-sm font-semibold text-[#0C463D]">
-            💡 We'll text you a firm quote within 1 hour based on your details.
+            💡 We'll text you a firm quote within 24 hours based on your details.
           </p>
           <p className="text-xs text-gray-500 mt-1">No linen or consumables — this is an hourly-rate clean.</p>
         </div>
