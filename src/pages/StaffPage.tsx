@@ -194,12 +194,12 @@ export default function StaffPage() {
 
   const setPasswordMutation = useMutation({
     mutationFn: async ({ userId, pw }: { userId: string; pw: string }) => {
-      const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-      if (!serviceRoleKey) {
-        throw new Error('Password reset requires admin setup — add VITE_SUPABASE_SERVICE_ROLE_KEY to .env, or use Send Reset Email instead');
-      }
-      const adminClient = createClient(import.meta.env.VITE_SUPABASE_URL, serviceRoleKey);
-      const { error } = await adminClient.auth.admin.updateUserById(userId, { password: pw });
+      // Service role key not available on free plan — send reset email instead
+      const member = staffMembers?.find(m => m.id === userId);
+      if (!member?.email) throw new Error('No email address on file for this staff member');
+      const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -545,24 +545,21 @@ export default function StaffPage() {
       <Dialog open={!!passwordMember} onOpenChange={(o) => { if (!o) { setPasswordMember(null); setTempPassword(''); } }}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Set Temporary Password</DialogTitle>
-            <DialogDescription>Set a new temporary password for {passwordMember?.full_name}. Share it with them securely.</DialogDescription>
+            <DialogTitle>Send Password Reset</DialogTitle>
+            <DialogDescription>Sends {passwordMember?.full_name} an email to set their own password.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>New Password *</Label>
-              <Input type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} placeholder="Min 6 characters" />
-            </div>
+          <div className="text-sm text-muted-foreground py-2">
+            Reset email will be sent to: <strong className="text-foreground">{passwordMember?.email || 'No email on file'}</strong>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPasswordMember(null); setTempPassword(''); }}>Cancel</Button>
             <Button
-              onClick={() => passwordMember && setPasswordMutation.mutate({ userId: passwordMember.id, pw: tempPassword })}
-              disabled={tempPassword.length < 6 || setPasswordMutation.isPending}
+              onClick={() => passwordMember && setPasswordMutation.mutate({ userId: passwordMember.id, pw: '' })}
+              disabled={!passwordMember?.email || setPasswordMutation.isPending}
               className="bg-primary text-primary-foreground font-bold gap-2"
             >
               {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Set Password
+              Send Reset Email
             </Button>
           </DialogFooter>
         </DialogContent>
