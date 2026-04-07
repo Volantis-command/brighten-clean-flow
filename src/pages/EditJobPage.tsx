@@ -256,8 +256,12 @@ export default function EditJobPage() {
       <div className="space-y-6">
         <Section title="Property">
           <div className="bg-secondary rounded-2xl px-4 py-3">
-            <p className="font-bold text-foreground text-sm">{property?.property_name}</p>
-            <p className="text-xs text-muted-foreground">{[property?.address, property?.suburb].filter(Boolean).join(', ')}</p>
+            <p className="font-bold text-foreground text-sm">
+              {property?.property_name || (job as any)?.client_name || (job as any)?.property_address || 'No property linked'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {[property?.address, property?.suburb].filter(Boolean).join(', ') || (job as any)?.property_address || ''}
+            </p>
           </div>
         </Section>
 

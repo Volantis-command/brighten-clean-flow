@@ -119,6 +119,8 @@ export default function ScheduleAfterAcceptModal({
       const { data: job, error } = await supabase.from('jobs').insert({
         property_id: propertyId,
         linked_quote_id: quoteId,
+        client_name: clientName || null,
+        property_address: propertyAddress || null,
         scheduled_date: format(date, 'yyyy-MM-dd'),
         scheduled_time: scheduledTime,
         cleaner_1_id: cleanerId || null,

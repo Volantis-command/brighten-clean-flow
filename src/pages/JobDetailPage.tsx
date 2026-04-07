@@ -307,7 +307,8 @@ export default function JobDetailPage() {
 
   const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
   const property = job.properties as any;
-  const address = [property?.address, property?.suburb].filter(Boolean).join(', ');
+  const address = [property?.address, property?.suburb].filter(Boolean).join(', ')
+    || (job as any).property_address || '';
   const jobDate = job.scheduled_date ? format(new Date(job.scheduled_date + 'T00:00:00'), 'EEEE, d MMMM yyyy') : 'No date';
   const scheduledTime = job.scheduled_time?.slice(0, 5) || null;
   const durationHrs = job.estimated_duration ? job.estimated_duration / 60 : null;
@@ -325,7 +326,7 @@ export default function JobDetailPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-xl">{property?.property_name || 'Unknown Property'}</CardTitle>
+            <CardTitle className="text-xl">{property?.property_name || (job as any).client_name || (job as any).property_address || 'Unknown Property'}</CardTitle>
             <div className="flex items-center gap-2">
               <InvoiceBadge status={job.invoice_status} />
               <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>
