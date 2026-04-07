@@ -16,6 +16,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
   quote_sent: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
   awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
+  accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
   client_accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
   awaiting_schedule_approval: { label: '✅ Accepted', className: 'bg-emerald-100 text-emerald-800' },
   scheduled: { label: '📅 Scheduled', className: 'bg-primary/10 text-primary' },
@@ -40,7 +41,7 @@ const FILTER_OPTIONS = [
 const FILTER_GROUP: Record<string, string[]> = {
   pending_form: ['pending_form', 'form_submitted', 'awaiting_quote'],
   quote_sent: ['quote_sent', 'awaiting_client_response'],
-  client_accepted: ['client_accepted', 'awaiting_schedule_approval'],
+  client_accepted: ['accepted', 'client_accepted', 'awaiting_schedule_approval'],
   quote_declined: ['quote_declined', 'declined'],
 };
 
@@ -63,7 +64,7 @@ export default function LeadsTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'client_accepted', 'awaiting_schedule_approval', 'quote_declined', 'declined'];
+  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'accepted', 'client_accepted', 'awaiting_schedule_approval', 'quote_declined', 'declined'];
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['quote-requests-leads'],
@@ -90,7 +91,7 @@ export default function LeadsTab() {
     if (['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response'].includes(s)) {
       return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
     }
-    if (['client_accepted', 'awaiting_schedule_approval'].includes(s)) {
+    if (['accepted', 'client_accepted', 'awaiting_schedule_approval'].includes(s)) {
       return { pathname: '/actions' };
     }
     if (['scheduled', 'in_progress', 'completed'].includes(s)) {

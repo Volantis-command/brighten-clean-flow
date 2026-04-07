@@ -30,6 +30,7 @@ export default function QuotingPage() {
         setEditQuote({
           client_name: [qrData.first_name, qrData.last_name].filter(Boolean).join(' '),
           client_phone: qrData.phone || '',
+          client_email: qrData.email || '',
           property_address: qrData.address || '',
           bedrooms: qrData.bedrooms || 1,
           bathrooms: qrData.bathrooms || 1,
@@ -64,6 +65,7 @@ export default function QuotingPage() {
         setEditQuote({
           client_name: [leadData.first_name, leadData.last_name].filter(Boolean).join(' '),
           client_phone: leadData.phone || '',
+          client_email: leadData.email || '',
           property_address: [leadData.address, leadData.suburb].filter(Boolean).join(', '),
           bedrooms: parseInt(leadData.bedrooms, 10) || 1,
           bathrooms: parseInt(leadData.bathrooms, 10) || 1,

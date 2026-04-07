@@ -289,6 +289,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           cleanType: ct,
           clientName: [lead.first_name, lead.last_name].filter(Boolean).join(' '),
           clientPhone: lead.phone || '',
+          clientEmail: lead.email || '',
           propertyName: lead.address || '',
           propertyAddress: [lead.address, lead.suburb].filter(Boolean).join(', '),
           bedrooms: parseInt(lead.bedrooms || '1') || 1,

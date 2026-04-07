@@ -98,6 +98,15 @@ export default function CleanWorkflowPage() {
       geo_override: !lat,
     });
 
+    // Record clock_in event
+    supabase.from('clock_events').insert({
+      user_id: user!.id,
+      job_id: job!.id,
+      event_type: 'clock_in',
+      lat,
+      lng,
+    } as any).then(() => {}).catch(() => {});
+
     // SMS to admin
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user!.id).maybeSingle();
     const cleanerName = profile?.full_name || 'A cleaner';

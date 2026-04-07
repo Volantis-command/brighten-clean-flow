@@ -37,32 +37,56 @@ function useClientDetail(clientId: string) {
   });
 }
 
-function useClientJobs(propertyIds: string[]) {
+function useClientJobs(propertyIds: string[], clientName: string | null) {
   return useQuery({
-    queryKey: ['client-jobs', propertyIds],
+    queryKey: ['client-jobs', propertyIds, clientName],
     queryFn: async () => {
-      if (!propertyIds.length) return [];
-      const { data } = await supabase
-        .from('jobs')
-        .select('id, scheduled_date, scheduled_time, status, invoice_status, property_id, cleaner_1_id, notes')
-        .in('property_id', propertyIds)
-        .order('scheduled_date', { ascending: false });
-      const { data: props } = await supabase.from('properties').select('id, property_name').in('id', propertyIds);
+      const validPropIds = propertyIds.filter(Boolean);
+      let allJobs: any[] = [];
+
+      // Query by property_id
+      if (validPropIds.length > 0) {
+        const { data } = await supabase
+          .from('jobs')
+          .select('id, scheduled_date, scheduled_time, status, invoice_status, property_id, cleaner_1_id, notes')
+          .in('property_id', validPropIds)
+          .order('scheduled_date', { ascending: false });
+        allJobs = data || [];
+      }
+
+      // Also query by client_name to catch jobs without property_id
+      if (clientName) {
+        const { data: nameJobs } = await supabase
+          .from('jobs')
+          .select('id, scheduled_date, scheduled_time, status, invoice_status, property_id, cleaner_1_id, notes')
+          .eq('client_name', clientName)
+          .order('scheduled_date', { ascending: false });
+        const existingIds = new Set(allJobs.map(j => j.id));
+        (nameJobs || []).forEach(j => { if (!existingIds.has(j.id)) allJobs.push(j); });
+      }
+
+      if (allJobs.length === 0) return [];
+
+      const jobPropIds = [...new Set(allJobs.map(j => j.property_id).filter(Boolean))] as string[];
+      const { data: props } = jobPropIds.length
+        ? await supabase.from('properties').select('id, property_name').in('id', jobPropIds)
+        : { data: [] };
       const propMap: Record<string, string> = {};
       (props || []).forEach(p => { propMap[p.id] = p.property_name; });
-      const cleanerIds = [...new Set((data || []).map(j => j.cleaner_1_id).filter(Boolean))] as string[];
+
+      const cleanerIds = [...new Set(allJobs.map(j => j.cleaner_1_id).filter(Boolean))] as string[];
       const { data: cleaners } = cleanerIds.length
         ? await supabase.from('profiles').select('id, full_name').in('id', cleanerIds)
         : { data: [] };
       const cleanerMap: Record<string, string> = {};
       (cleaners || []).forEach(c => { cleanerMap[c.id] = c.full_name || ''; });
-      return (data || []).map(j => ({
+      return allJobs.map(j => ({
         ...j,
         property_name: propMap[j.property_id || ''] || '',
         cleaner_name: cleanerMap[j.cleaner_1_id || ''] || '—',
       }));
     },
-    enabled: propertyIds.length > 0,
+    enabled: propertyIds.length > 0 || !!clientName,
   });
 }
 
@@ -118,7 +142,7 @@ export default function ClientDetailPage() {
   const { data, isLoading } = useClientDetail(id!);
   const propertyIds = (data?.links || []).map(l => l.property_id);
 
-  const { data: jobs = [] } = useClientJobs(propertyIds);
+  const { data: jobs = [] } = useClientJobs(propertyIds, data?.profile?.full_name || null);
   const { data: feedback = [] } = useClientFeedback(propertyIds);
   const { data: requests = [] } = useClientRequests(id!);
   const { data: messages = [] } = useClientMessages(id!);
@@ -270,7 +294,18 @@ export default function ClientDetailPage() {
           <div className="bg-card rounded-2xl border border-border p-5">
             <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
-            <p className="text-xs text-muted-foreground mt-1">Notes are saved locally for reference.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={async () => {
+                const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', id!);
+                if (error) { toast.error('Failed to save notes'); return; }
+                toast.success('Notes saved');
+              }}
+            >
+              Save Notes
+            </Button>
           </div>
         </TabsContent>
 

@@ -114,6 +114,7 @@ export default function ScheduleAfterAcceptModal({
 
     // 2b. Create/upsert client profile
     let clientProfileId: string | null = null;
+    let resolvedPropertyId = propertyId;
     try {
       const nameParts = (clientName || '').trim().split(' ');
       const firstName = nameParts[0] || '';
@@ -161,13 +162,35 @@ export default function ScheduleAfterAcceptModal({
         stepResults.push({ step: 'Client profile created', ok: true });
       }
 
-      // Link property address to client if no property_id
-      if (clientProfileId && !propertyId && propertyAddress) {
-        await supabase.from('client_properties').insert({
-          client_id: clientProfileId,
-          property_address: propertyAddress,
-          property_name: clientName ? `${clientName.split(' ')[0]}'s Property` : propertyAddress,
-        } as any).select().maybeSingle();
+      // Link property to client — auto-create in properties table if needed
+      if (clientProfileId && propertyAddress) {
+        if (!resolvedPropertyId) {
+          // Auto-create a property record so schedule/detail pages work
+          const propName = clientName ? `${clientName.split(' ')[0]}'s Property` : propertyAddress;
+          const { data: newProp } = await supabase.from('properties').insert({
+            property_name: propName,
+            address: propertyAddress,
+            client_name: clientName || null,
+            client_type: cleanType?.toLowerCase().includes('airbnb') ? 'airbnb' : 'residential',
+          } as any).select('id').maybeSingle();
+          if (newProp?.id) resolvedPropertyId = newProp.id;
+        }
+        if (resolvedPropertyId) {
+          // Check if link already exists
+          const { data: existingLink } = await supabase.from('client_properties')
+            .select('id')
+            .eq('client_id', clientProfileId)
+            .eq('property_id', resolvedPropertyId)
+            .maybeSingle();
+          if (!existingLink) {
+            await supabase.from('client_properties').insert({
+              client_id: clientProfileId,
+              property_id: resolvedPropertyId,
+              property_address: propertyAddress,
+              property_name: clientName ? `${clientName.split(' ')[0]}'s Property` : propertyAddress,
+            } as any).select().maybeSingle();
+          }
+        }
       }
     } catch (e: any) {
       stepResults.push({ step: 'Client profile created', ok: false, error: e.message });
@@ -180,7 +203,7 @@ export default function ScheduleAfterAcceptModal({
 
     try {
       const { data: job, error } = await supabase.from('jobs').insert({
-        property_id: propertyId,
+        property_id: resolvedPropertyId || null,
         linked_quote_id: quoteId,
         client_name: clientName || null,
         property_address: propertyAddress || null,
