@@ -24,7 +24,7 @@ export default function PropertiesSection() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-primary">Properties</h2>
-        <Button onClick={() => navigate('/properties/new')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+        <Button onClick={() => navigate('/onboard')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
           <Plus className="w-5 h-5" />
           Add Property
         </Button>

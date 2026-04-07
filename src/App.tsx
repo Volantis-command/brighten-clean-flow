@@ -198,6 +198,7 @@ function AppRoutes() {
       <Route path="/client/:token/property/:id" element={<MagicLinkPropertyPage />} />
       <Route path="/feedback/:token" element={<FeedbackPage />} />
       <Route path="/onboard/:token" element={<OnboardingPage />} />
+      <Route path="/onboard" element={<OnboardingPage />} />
       <Route path="/quote/:token" element={<QuoteRequestFormPage />} />
       <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
@@ -257,6 +258,7 @@ function AppRoutes() {
         <Route path="/my-pay" element={<MyPaySummaryPage />} />
         <Route path="/qc" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCPage /></ProtectedRoute>} />
         <Route path="/qc/:jobId" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCAuditPage /></ProtectedRoute>} />
+        <Route path="/onboard" element={<ProtectedRoute allowedRoles={['admin']}><OnboardingPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

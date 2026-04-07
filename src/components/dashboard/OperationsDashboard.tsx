@@ -7,7 +7,6 @@ import { format, differenceInHours } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronDown, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { SendQuoteLinkModal } from './SendQuoteLinkModal';
 import { toast } from 'sonner';
 
 type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'declined' | 'scheduled' | 'in_progress' | 'complete';
@@ -27,7 +26,6 @@ export default function OperationsDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [smsModalOpen, setSmsModalOpen] = useState(false);
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
 
@@ -246,10 +244,10 @@ export default function OperationsDashboard() {
 
       {/* Quick Actions */}
       <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quoting')}>
+        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/onboard')}>
           <Plus className="h-4 w-4" /> New Enquiry
         </Button>
-        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => setSmsModalOpen(true)}>
+        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/onboard')}>
           <Send className="h-4 w-4" /> Send SMS Quote Link
         </Button>
         <div className="flex-1 min-w-[200px]">
@@ -311,7 +309,6 @@ export default function OperationsDashboard() {
           })}
         </div>
       </div>
-      <SendQuoteLinkModal open={smsModalOpen} onOpenChange={setSmsModalOpen} />
     </div>
   );
 }

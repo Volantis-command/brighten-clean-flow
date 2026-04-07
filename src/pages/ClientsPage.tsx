@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import SendQuoteRequestModal from '@/components/clients/SendQuoteRequestModal';
 import LeadsTab from '@/components/clients/LeadsTab';
 import { getAppBaseUrl } from '@/lib/appUrl';
 
@@ -127,6 +126,34 @@ function useClientsList(currentUserId?: string) {
         }
       });
 
+      // Fallback: show accepted/client_accepted quote_requests that have no matching profile
+      const { data: acceptedQuotes } = await supabase
+        .from('quote_requests')
+        .select('id, first_name, last_name, phone, email, address, status')
+        .in('status', ['accepted', 'client_accepted', 'form_submitted', 'quote_sent']);
+
+      (acceptedQuotes || []).forEach((qr) => {
+        const qrPhone = qr.phone?.replace(/\s/g, '');
+        const qrEmail = qr.email?.toLowerCase();
+        // Check if already in the map by phone or email
+        const alreadyPresent = [...clientsMap.values()].some(c =>
+          (qrPhone && c.phone?.replace(/\s/g, '') === qrPhone) ||
+          (qrEmail && c.email?.toLowerCase() === qrEmail)
+        );
+        if (alreadyPresent) return;
+
+        const key = `qr-${qr.id}`;
+        if (!clientsMap.has(key)) {
+          clientsMap.set(key, {
+            id: key,
+            full_name: [qr.first_name, qr.last_name].filter(Boolean).join(' ') || null,
+            email: qr.email,
+            phone: qr.phone,
+            linked_properties: [],
+          });
+        }
+      });
+
       return Array.from(clientsMap.values());
     },
   });
@@ -144,7 +171,6 @@ export default function ClientsPage() {
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
   const [deleteClient, setDeleteClient] = useState<ClientMember | null>(null);
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
-  const [quoteRequestOpen, setQuoteRequestOpen] = useState(false);
 
   // Create form state
   const [createEmail, setCreateEmail] = useState('');
@@ -283,10 +309,10 @@ export default function ClientsPage() {
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setQuoteRequestOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
+          <Button onClick={() => navigate('/onboard')} variant="outline" className="font-bold rounded-xl gap-2">
             <FileText className="w-5 h-5" /> Send Quote Request
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+          <Button onClick={() => navigate('/onboard')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
             <UserPlus className="w-5 h-5" /> Add Client
           </Button>
         </div>
@@ -400,7 +426,6 @@ export default function ClientsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <SendQuoteRequestModal open={quoteRequestOpen} onOpenChange={setQuoteRequestOpen} />
 
       {/* Send Onboarding Modal */}
       <Dialog open={onboardOpen} onOpenChange={setOnboardOpen}>

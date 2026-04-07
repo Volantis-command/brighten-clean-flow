@@ -103,7 +103,7 @@ export default function PropertiesPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Properties</h1>
         {role === 'admin' && (
-          <Button variant="accent" size="default" onClick={() => navigate('/properties/new')} className="gap-2">
+          <Button variant="accent" size="default" onClick={() => navigate('/onboard')} className="gap-2">
             <Plus className="h-5 w-5" />
             Add Property
           </Button>

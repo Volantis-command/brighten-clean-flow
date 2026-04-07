@@ -1,167 +1,271 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Loader2, CheckCircle2, CalendarIcon } from 'lucide-react';
+import { Loader2, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAppBaseUrl } from '@/lib/appUrl';
 
-interface PropertyForm {
+/* ────────────── Types ────────────── */
+type CleanType = 'standard' | 'airbnb' | 'deep_clean' | 'end_of_lease';
+
+interface FormData {
+  // Step 1
+  clean_type: CleanType | '';
+  // Step 2 — property
   property_name: string;
   address: string;
   suburb: string;
   state: string;
   bedrooms: number;
   bathrooms: number;
-  toilets: number;
-  has_laundry: boolean;
-  outdoor_areas: boolean;
-  outdoor_notes: string;
-  pool_spa: boolean;
+  preferred_date: string;
+  preferred_time: string;
+  notes: string;
   access_method: string;
-  access_notes: string;
-  parking_instructions: string;
-  alarm_code: string;
-  extra_attention: string;
-  areas_to_avoid: string;
-  preferred_products: string;
-  pet: boolean;
-  pet_type: string;
-  hazard_notes: string;
-  own_linen: boolean;
-  linen_sets: number;
-  consumables_needed: boolean;
+  access_instructions: string;
+  // Airbnb extras
+  bed_types: string[];
+  total_beds: number;
+  linen_provided: string;
+  guest_checkout_time: string;
+  guest_checkin_time: string;
+  turnaround_window: string;
+  // Deep clean extras
+  last_cleaned: string;
+  is_occupied: string;
+  // End of lease extras
+  lease_end_date: string;
+  carpets_required: string;
+  oven_required: string;
+  bond_clean_required: string;
+  agent_name: string;
+  // Step 3 — client
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  referral_source: string;
 }
 
-const emptyProperty: PropertyForm = {
+const EMPTY: FormData = {
+  clean_type: '',
   property_name: '', address: '', suburb: '', state: 'QLD',
-  bedrooms: 1, bathrooms: 1, toilets: 1,
-  has_laundry: false, outdoor_areas: false, outdoor_notes: '',
-  pool_spa: false, access_method: '', access_notes: '',
-  parking_instructions: '', alarm_code: '',
-  extra_attention: '', areas_to_avoid: '', preferred_products: '',
-  pet: false, pet_type: '', hazard_notes: '',
-  own_linen: true, linen_sets: 1, consumables_needed: false,
+  bedrooms: 2, bathrooms: 1,
+  preferred_date: '', preferred_time: 'Either',
+  notes: '', access_method: '', access_instructions: '',
+  bed_types: [], total_beds: 1, linen_provided: 'No',
+  guest_checkout_time: '10:00', guest_checkin_time: '14:00', turnaround_window: '4',
+  last_cleaned: '', is_occupied: 'Yes',
+  lease_end_date: '', carpets_required: 'No', oven_required: 'No',
+  bond_clean_required: 'No', agent_name: '',
+  first_name: '', last_name: '', phone: '', email: '', referral_source: '',
 };
 
+const CLEAN_TYPES: { value: CleanType; label: string; icon: string }[] = [
+  { value: 'standard', label: 'Standard House Clean', icon: '🏠' },
+  { value: 'airbnb', label: 'Airbnb / Short Stay Turnover', icon: '🏨' },
+  { value: 'deep_clean', label: 'Deep Clean', icon: '🧹' },
+  { value: 'end_of_lease', label: 'End of Lease Clean', icon: '🔑' },
+];
+
+const STATES = ['QLD', 'NSW', 'VIC', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+const ACCESS_METHODS = ['Key safe', 'Leave unlocked', 'Meet at property', 'Other'];
+const TIME_OPTIONS = ['Morning', 'Afternoon', 'Either'];
+const BED_TYPE_OPTIONS = ['King', 'Queen', 'Double', 'Single', 'Bunk'];
+const LAST_CLEANED_OPTIONS = ['Less than 3 months', '3-6 months', '6-12 months', '1+ year', 'Never'];
+const REFERRAL_OPTIONS = ['Google', 'Facebook', 'Instagram', 'Referral', 'Signage', 'Other'];
+
+/* ────────────── Component ────────────── */
 export default function OnboardingPage() {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isAdminMode = !token;
+  const presetType = searchParams.get('type') as CleanType | null;
+
   const [step, setStep] = useState(1);
-  const [property, setProperty] = useState<PropertyForm>({ ...emptyProperty });
-
-  // Clean request fields
-  const [requestDate, setRequestDate] = useState('');
-  const [cleanType, setCleanType] = useState('Standard Clean');
-  const [preferredTime, setPreferredTime] = useState('Flexible');
-  const [cleanNotes, setCleanNotes] = useState('');
-
+  const [form, setForm] = useState<FormData>({ ...EMPTY });
   const [submitted, setSubmitted] = useState(false);
 
-  // Check if already submitted first
-  const { data: alreadyUsed } = useQuery({
-    queryKey: ['onboard-token-used', token],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('client_properties')
-        .select('id, portal_token')
-        .eq('onboard_token', token!)
-        .eq('onboard_used', true)
-        .maybeSingle();
-      return data as any;
-    },
-    enabled: !!token,
-  });
+  useEffect(() => {
+    if (presetType && CLEAN_TYPES.some(ct => ct.value === presetType)) {
+      setForm(f => ({ ...f, clean_type: presetType }));
+      setStep(2);
+    }
+  }, [presetType]);
 
-  const { data: tokenData, isLoading } = useQuery({
-    queryKey: ['onboard-token', token],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_properties')
-        .select('*, properties(property_name, address, suburb, state, bedrooms, bathrooms)')
-        .eq('onboard_token', token!)
-        .eq('onboard_used', false)
-        .maybeSingle();
-      if (error) throw error;
-      return data as any;
-    },
-    enabled: !!token && !alreadyUsed,
-  });
+  const u = (field: keyof FormData, value: any) => setForm(f => ({ ...f, [field]: value }));
 
-  // Pre-fill property from linked data
-  const prefilled = tokenData?.properties;
-  if (prefilled && !property.property_name && prefilled.property_name) {
-    setProperty(prev => ({
-      ...prev,
-      property_name: prefilled.property_name || '',
-      address: prefilled.address || '',
-      suburb: prefilled.suburb || '',
-      state: prefilled.state || 'QLD',
-      bedrooms: prefilled.bedrooms || 1,
-      bathrooms: prefilled.bathrooms || 1,
-    }));
-  }
+  const goNext = () => { setStep(s => s + 1); window.scrollTo(0, 0); };
+  const goBack = () => { setStep(s => s - 1); window.scrollTo(0, 0); };
 
-  const updateField = (field: keyof PropertyForm, value: any) => {
-    setProperty(prev => ({ ...prev, [field]: value }));
-  };
-
+  /* ────── Submit — auto-create everything ────── */
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!tokenData) throw new Error('Invalid token');
-      const propertyId = tokenData.property_id;
-      const clientId = tokenData.client_id;
+      const fullName = `${form.first_name} ${form.last_name}`.trim();
+      const cleanTypeLabel = CLEAN_TYPES.find(c => c.value === form.clean_type)?.label || form.clean_type;
+      const propType = form.clean_type === 'airbnb' ? 'airbnb' : 'residential';
+      const propName = form.clean_type === 'airbnb' && form.property_name
+        ? form.property_name
+        : `${form.first_name}'s ${form.address || 'Property'}`;
 
-      // Update property with all form data
-      await supabase.from('properties').update({
-        property_name: property.property_name,
-        address: property.address,
-        suburb: property.suburb,
-        state: property.state,
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
-        access_method: property.access_method,
-        access_notes: property.access_notes,
-        access_code: property.alarm_code,
-        host_preferences: [
-          property.extra_attention && `Extra attention: ${property.extra_attention}`,
-          property.areas_to_avoid && `Avoid: ${property.areas_to_avoid}`,
-          property.preferred_products && `Products: ${property.preferred_products}`,
-          property.pet && `Pet: ${property.pet_type || 'Yes'}`,
-          property.hazard_notes && `Hazards: ${property.hazard_notes}`,
-          property.has_laundry && 'Has laundry',
-          property.outdoor_areas && `Outdoor: ${property.outdoor_notes || 'Yes'}`,
-          property.pool_spa && 'Pool/Spa on property',
-          `Toilets: ${property.toilets}`,
-          property.own_linen ? 'Client supplies linen' : `Linen sets needed: ${property.linen_sets}`,
-          property.consumables_needed && 'Consumables needed',
-          property.parking_instructions && `Parking: ${property.parking_instructions}`,
-        ].filter(Boolean).join('\n'),
-      }).eq('id', propertyId);
+      // 1. Insert into quote_requests
+      const { error: qrErr } = await supabase.from('quote_requests').insert({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        phone: form.phone,
+        email: form.email,
+        address: form.address,
+        clean_type: cleanTypeLabel,
+        bedrooms: form.bedrooms,
+        bathrooms: form.bathrooms,
+        preferred_date: form.preferred_date || null,
+        preferred_time: form.preferred_time || null,
+        extra_notes: form.notes || null,
+        referral_source: form.referral_source || null,
+        property_type: propType,
+        status: 'form_submitted',
+        form_submitted_at: new Date().toISOString(),
+        form_data: {
+          clean_type: form.clean_type,
+          suburb: form.suburb,
+          state: form.state,
+          access_method: form.access_method,
+          access_instructions: form.access_instructions,
+          ...(form.clean_type === 'airbnb' ? {
+            bed_types: form.bed_types,
+            total_beds: form.total_beds,
+            linen_provided: form.linen_provided,
+            guest_checkout_time: form.guest_checkout_time,
+            guest_checkin_time: form.guest_checkin_time,
+            turnaround_window: form.turnaround_window,
+          } : {}),
+          ...(form.clean_type === 'deep_clean' ? {
+            last_cleaned: form.last_cleaned,
+            is_occupied: form.is_occupied,
+          } : {}),
+          ...(form.clean_type === 'end_of_lease' ? {
+            lease_end_date: form.lease_end_date,
+            carpets_required: form.carpets_required,
+            oven_required: form.oven_required,
+            bond_clean_required: form.bond_clean_required,
+            agent_name: form.agent_name,
+          } : {}),
+        } as any,
+      });
+      if (qrErr) throw qrErr;
 
-      // Do NOT create a job yet — only create once admin sends a quote
-      // Just mark as onboarded and notify admins
+      // 2. Insert into properties (ON CONFLICT DO NOTHING via upsert-like check)
+      const { data: existingProp } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('address', form.address)
+        .maybeSingle();
 
-      // Mark onboard token as used
-      await supabase.from('client_properties').update({ onboard_used: true } as any).eq('id', tokenData.id);
+      let propertyId: string;
+      if (existingProp) {
+        propertyId = existingProp.id;
+      } else {
+        const { data: newProp, error: propErr } = await supabase.from('properties').insert({
+          property_name: propName,
+          address: form.address,
+          suburb: form.suburb,
+          state: form.state,
+          client_name: fullName,
+          client_phone: form.phone,
+          billing_email: form.email,
+          bedrooms: form.bedrooms,
+          bathrooms: form.bathrooms,
+          property_type: propType,
+          status: 'active',
+          access_method: form.access_method,
+          access_notes: form.access_instructions,
+          ...(form.clean_type === 'airbnb' ? {
+            checkout_time: form.guest_checkout_time,
+            checkin_time: form.guest_checkin_time,
+            turnaround_window: form.turnaround_window,
+            linen_supply: form.linen_provided === 'Yes' ? 'brightly' : 'client',
+          } : {}),
+        }).select('id').single();
+        if (propErr) throw propErr;
+        propertyId = newProp.id;
+      }
 
-      // Notify admins — link to quoting page with property context
+      // 3. Upsert into profiles — match on phone first, then email
+      let profileId: string | null = null;
+      if (form.phone) {
+        const { data: byPhone } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone', form.phone)
+          .maybeSingle();
+        if (byPhone) profileId = byPhone.id;
+      }
+      if (!profileId && form.email) {
+        const { data: byEmail } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', form.email)
+          .maybeSingle();
+        if (byEmail) profileId = byEmail.id;
+      }
+
+      if (profileId) {
+        // Update existing
+        await supabase.from('profiles').update({
+          full_name: fullName,
+          phone: form.phone,
+          email: form.email,
+        }).eq('id', profileId);
+      } else {
+        // Create new profile
+        const newId = crypto.randomUUID();
+        const { error: profErr } = await supabase.from('profiles').insert({
+          id: newId,
+          full_name: fullName,
+          phone: form.phone,
+          email: form.email,
+          role: 'client',
+        });
+        if (profErr) throw profErr;
+        profileId = newId;
+      }
+
+      // 4. Upsert into user_roles
+      await supabase.from('user_roles').upsert(
+        { user_id: profileId, role: 'client' },
+        { onConflict: 'user_id' }
+      ).then(() => {});
+
+      // 5. Insert into client_properties (link table)
+      const { data: existingLink } = await supabase
+        .from('client_properties')
+        .select('id')
+        .eq('client_id', profileId)
+        .eq('property_id', propertyId)
+        .maybeSingle();
+      if (!existingLink) {
+        await supabase.from('client_properties').insert({
+          client_id: profileId,
+          property_id: propertyId,
+        });
+      }
+
+      // 6. Create admin notification
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
-        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', clientId).single();
-        const name = profile?.full_name || 'A client';
         await supabase.from('notifications').insert(
-          admins.map((a: any) => ({
+          admins.map(a => ({
             user_id: a.user_id,
-            title: `New Enquiry — ${name}`,
-            message: `${property.address || property.property_name} · ${cleanType}`,
-            type: 'new_lead',
-            link: `/quoting?lead=${propertyId}`,
+            title: `New enquiry — ${fullName}`,
+            message: `${cleanTypeLabel} — ${form.address || 'No address'}`,
+            type: 'new_enquiry',
+            link: '/clients',
           }))
         );
       }
@@ -170,209 +274,413 @@ export default function OnboardingPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#FDFDFC]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-
-  // Already submitted — show friendly message
-  if (alreadyUsed) {
+  /* ────── Submitted state ────── */
+  if (submitted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4 text-center">
-        <CheckCircle2 className="w-16 h-16 text-primary mb-4" />
-        <h2 className="text-2xl font-extrabold text-primary mb-2">Already Submitted</h2>
-        <p className="text-muted-foreground max-w-sm mb-4">
-          You've already submitted your details. We'll be in touch shortly with your quote.
-        </p>
-        {alreadyUsed.portal_token && (
-          <a href={`${getAppBaseUrl()}/client/${alreadyUsed.portal_token}`} className="text-primary font-bold underline">
-            View your portal →
-          </a>
-        )}
-...
-        {tokenData.portal_token && (
-          <a href={`${getAppBaseUrl()}/client/${tokenData.portal_token}`} className="text-primary font-bold underline">
-            View your portal →
-          </a>
-        )}
-        <p className="text-sm text-muted-foreground mt-6">Powered by Brightly</p>
-      </div>
+      <Shell>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <CheckCircle2 className="w-16 h-16 text-[#22C55E] mb-4" />
+          <h2 className="text-2xl font-extrabold mb-2" style={{ color: '#F0FDF4' }}>
+            {isAdminMode ? 'Client Added' : 'Thank You!'}
+          </h2>
+          <p className="text-sm mb-6" style={{ color: '#86EFAC' }}>
+            {isAdminMode
+              ? `${form.first_name} ${form.last_name} has been added as a client with their property.`
+              : "We'll be in touch within 24 hours with your quote."}
+          </p>
+          {isAdminMode && (
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate('/clients')}
+                className="bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl"
+              >
+                View Clients
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/quoting')}
+                className="rounded-xl font-bold"
+              >
+                Open Quote Calculator
+              </Button>
+            </div>
+          )}
+        </div>
+      </Shell>
     );
   }
 
-  const totalSteps = 2;
+  const totalSteps = 4;
 
   return (
-    <div className="min-h-screen bg-[#FDFDFC]">
-      <header className="bg-white border-b border-border/50 sticky top-0 z-40">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>Brightly<span className="text-accent">.</span></h1>
-          <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Setup</span>
+    <Shell>
+      {/* Progress indicator */}
+      <div className="flex gap-1.5 mb-6">
+        {Array.from({ length: totalSteps }, (_, i) => (
+          <div
+            key={i}
+            className="h-1.5 flex-1 rounded-full transition-colors"
+            style={{ background: i < step ? '#FEDB00' : 'rgba(255,255,255,0.1)' }}
+          />
+        ))}
+      </div>
+      <p className="text-xs font-semibold mb-6" style={{ color: '#86EFAC' }}>
+        Step {step} of {totalSteps}
+      </p>
+
+      {/* Step 1 — Clean Type */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>What type of clean?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {CLEAN_TYPES.map(ct => (
+              <button
+                key={ct.value}
+                onClick={() => { u('clean_type', ct.value); goNext(); }}
+                className="text-left rounded-2xl p-5 border-2 transition-all active:scale-[0.98]"
+                style={{
+                  background: form.clean_type === ct.value ? 'rgba(254,219,0,0.12)' : 'rgba(255,255,255,0.04)',
+                  borderColor: form.clean_type === ct.value ? '#FEDB00' : 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <span className="text-2xl">{ct.icon}</span>
+                <p className="font-bold mt-2" style={{ color: '#F0FDF4' }}>{ct.label}</p>
+              </button>
+            ))}
+          </div>
         </div>
-      </header>
+      )}
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6 pb-20">
-        {/* Progress */}
-        <div className="flex gap-1">
-          {Array.from({ length: totalSteps }, (_, i) => i + 1).map(s => (
-            <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-primary' : 'bg-muted'}`} />
-          ))}
-        </div>
+      {/* Step 2 — Property Details */}
+      {step === 2 && (
+        <div className="space-y-5">
+          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Property Details</h2>
 
-        {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-extrabold text-primary">Property Requirements</h2>
+          {/* Airbnb nickname */}
+          {form.clean_type === 'airbnb' && (
+            <Field label="Property Name / Nickname *">
+              <Input value={form.property_name} onChange={e => u('property_name', e.target.value)} placeholder="Beach House" className="input-dark" />
+            </Field>
+          )}
 
-            {/* Property Details */}
-            <div className="bg-white rounded-2xl shadow-sm border border-border/50 p-5 space-y-4">
-              <h3 className="font-bold text-primary text-sm uppercase tracking-wide">Property Details</h3>
-              <div><Label>Property Name / Address *</Label><Input value={property.property_name} onChange={e => updateField('property_name', e.target.value)} placeholder="Palm Beach Apartment" className="rounded-xl" /></div>
-              <div><Label>Street Address</Label><Input value={property.address} onChange={e => updateField('address', e.target.value)} className="rounded-xl" /></div>
+          <Field label="Address *">
+            <Input value={form.address} onChange={e => u('address', e.target.value)} placeholder="123 Example Street" className="input-dark" />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Suburb">
+              <Input value={form.suburb} onChange={e => u('suburb', e.target.value)} className="input-dark" />
+            </Field>
+            <Field label="State">
+              <Select value={form.state} onValueChange={v => u('state', v)}>
+                <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                <SelectContent>{STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Bedrooms">
+              <Select value={String(form.bedrooms)} onValueChange={v => u('bedrooms', +v)}>
+                <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                <SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{n}{n===5?'+':''}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+            <Field label="Bathrooms">
+              <Select value={String(form.bathrooms)} onValueChange={v => u('bathrooms', +v)}>
+                <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                <SelectContent>{[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}{n===4?'+':''}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          {/* Standard / Deep / EOL — date & time */}
+          {form.clean_type !== 'airbnb' && (
+            <>
+              <Field label="Preferred Date">
+                <Input type="date" value={form.preferred_date} onChange={e => u('preferred_date', e.target.value)} min={new Date().toISOString().split('T')[0]} className="input-dark" />
+              </Field>
+              <Field label="Preferred Time">
+                <div className="flex gap-2">
+                  {TIME_OPTIONS.map(t => (
+                    <button key={t} onClick={() => u('preferred_time', t)}
+                      className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                      style={{
+                        background: form.preferred_time === t ? 'rgba(254,219,0,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${form.preferred_time === t ? '#FEDB00' : 'rgba(255,255,255,0.1)'}`,
+                        color: form.preferred_time === t ? '#FEDB00' : '#86EFAC',
+                      }}
+                    >{t}</button>
+                  ))}
+                </div>
+              </Field>
+            </>
+          )}
+
+          {/* Airbnb extras */}
+          {form.clean_type === 'airbnb' && (
+            <>
+              <Field label="Bed Types">
+                <div className="flex flex-wrap gap-2">
+                  {BED_TYPE_OPTIONS.map(bt => (
+                    <button key={bt} onClick={() => {
+                      const next = form.bed_types.includes(bt) ? form.bed_types.filter(b => b !== bt) : [...form.bed_types, bt];
+                      u('bed_types', next);
+                    }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                      style={{
+                        background: form.bed_types.includes(bt) ? 'rgba(254,219,0,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${form.bed_types.includes(bt) ? '#FEDB00' : 'rgba(255,255,255,0.1)'}`,
+                        color: form.bed_types.includes(bt) ? '#FEDB00' : '#86EFAC',
+                      }}
+                    >{bt}</button>
+                  ))}
+                </div>
+              </Field>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Suburb</Label><Input value={property.suburb} onChange={e => updateField('suburb', e.target.value)} className="rounded-xl" /></div>
-                <div>
-                  <Label>State</Label>
-                  <Select value={property.state} onValueChange={v => updateField('state', v)}>
-                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {['QLD', 'NSW', 'VIC', 'SA', 'WA', 'TAS', 'NT', 'ACT'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
+                <Field label="Total Beds">
+                  <Input type="number" min={1} value={form.total_beds} onChange={e => u('total_beds', +e.target.value)} className="input-dark" />
+                </Field>
+                <Field label="Linen Provided by Brightly?">
+                  <Select value={form.linen_provided} onValueChange={v => u('linen_provided', v)}>
+                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
                   </Select>
-                </div>
+                </Field>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><Label>Bedrooms</Label><Input type="number" min={0} value={property.bedrooms} onChange={e => updateField('bedrooms', +e.target.value)} className="rounded-xl" /></div>
-                <div><Label>Bathrooms</Label><Input type="number" min={0} value={property.bathrooms} onChange={e => updateField('bathrooms', +e.target.value)} className="rounded-xl" /></div>
-                <div><Label>Toilets</Label><Input type="number" min={0} value={property.toilets} onChange={e => updateField('toilets', +e.target.value)} className="rounded-xl" /></div>
+                <Field label="Guest Check-out">
+                  <Input type="time" value={form.guest_checkout_time} onChange={e => u('guest_checkout_time', e.target.value)} className="input-dark" />
+                </Field>
+                <Field label="Guest Check-in">
+                  <Input type="time" value={form.guest_checkin_time} onChange={e => u('guest_checkin_time', e.target.value)} className="input-dark" />
+                </Field>
+                <Field label="Turnaround (hrs)">
+                  <Input type="number" min={1} value={form.turnaround_window} onChange={e => u('turnaround_window', e.target.value)} className="input-dark" />
+                </Field>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <Label className="mb-0">Laundry?</Label>
-                  <Switch checked={property.has_laundry} onCheckedChange={v => updateField('has_laundry', v)} />
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <Label className="mb-0">Outdoor?</Label>
-                  <Switch checked={property.outdoor_areas} onCheckedChange={v => updateField('outdoor_areas', v)} />
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <Label className="mb-0">Pool/Spa?</Label>
-                  <Switch checked={property.pool_spa} onCheckedChange={v => updateField('pool_spa', v)} />
-                </div>
-              </div>
-              {property.outdoor_areas && (
-                <div><Label>Outdoor area details</Label><Input value={property.outdoor_notes} onChange={e => updateField('outdoor_notes', e.target.value)} placeholder="Balcony, patio, courtyard..." className="rounded-xl" /></div>
-              )}
-            </div>
+            </>
+          )}
 
-            {/* Access & Entry */}
-            <div className="bg-white rounded-2xl shadow-sm border border-border/50 p-5 space-y-4">
-              <h3 className="font-bold text-primary text-sm uppercase tracking-wide">Access & Entry</h3>
-              <div>
-                <Label>Access Method</Label>
-                <Select value={property.access_method} onValueChange={v => updateField('access_method', v)}>
-                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select method" /></SelectTrigger>
-                  <SelectContent>
-                    {['Key in lockbox', 'Keypad/code', 'Smart lock', 'Key with neighbour', 'Agent access', 'Other'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
+          {/* Deep clean extras */}
+          {form.clean_type === 'deep_clean' && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Last Professionally Cleaned">
+                <Select value={form.last_cleaned} onValueChange={v => u('last_cleaned', v)}>
+                  <SelectTrigger className="input-dark"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>{LAST_CLEANED_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                 </Select>
-              </div>
-              <div><Label>Access Instructions</Label><Textarea value={property.access_notes} onChange={e => updateField('access_notes', e.target.value)} placeholder="Lockbox code, where to find the key..." className="rounded-xl" /></div>
-              <div><Label>Parking Instructions</Label><Input value={property.parking_instructions} onChange={e => updateField('parking_instructions', e.target.value)} placeholder="Visitor bay #3, street parking..." className="rounded-xl" /></div>
-              <div><Label>Alarm Code (kept confidential)</Label><Input type="password" value={property.alarm_code} onChange={e => updateField('alarm_code', e.target.value)} placeholder="••••" className="rounded-xl" /></div>
+              </Field>
+              <Field label="Currently Occupied?">
+                <Select value={form.is_occupied} onValueChange={v => u('is_occupied', v)}>
+                  <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                </Select>
+              </Field>
             </div>
+          )}
 
-            {/* Cleaning Preferences */}
-            <div className="bg-white rounded-2xl shadow-sm border border-border/50 p-5 space-y-4">
-              <h3 className="font-bold text-primary text-sm uppercase tracking-wide">Cleaning Preferences</h3>
-              <div><Label>Areas needing extra attention</Label><Textarea value={property.extra_attention} onChange={e => updateField('extra_attention', e.target.value)} placeholder="Kitchen bench tops, shower glass..." className="rounded-xl" /></div>
-              <div><Label>Areas to avoid</Label><Textarea value={property.areas_to_avoid} onChange={e => updateField('areas_to_avoid', e.target.value)} placeholder="Owner's cupboard, garage..." className="rounded-xl" /></div>
-              <div><Label>Preferred products</Label><Textarea value={property.preferred_products} onChange={e => updateField('preferred_products', e.target.value)} placeholder="Fragrance-free, specific brands..." className="rounded-xl" /></div>
-              <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                <Label className="mb-0">Pets on property?</Label>
-                <Switch checked={property.pet} onCheckedChange={v => updateField('pet', v)} />
+          {/* End of lease extras */}
+          {form.clean_type === 'end_of_lease' && (
+            <>
+              <Field label="Lease End Date">
+                <Input type="date" value={form.lease_end_date} onChange={e => u('lease_end_date', e.target.value)} className="input-dark" />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Carpets Required?">
+                  <Select value={form.carpets_required} onValueChange={v => u('carpets_required', v)}>
+                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Oven Required?">
+                  <Select value={form.oven_required} onValueChange={v => u('oven_required', v)}>
+                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                  </Select>
+                </Field>
               </div>
-              {property.pet && (
-                <div><Label>Pet type & details</Label><Input value={property.pet_type} onChange={e => updateField('pet_type', e.target.value)} placeholder="Indoor cat, dog in backyard..." className="rounded-xl" /></div>
-              )}
-              <div><Label>Hazards or notes for cleaners</Label><Textarea value={property.hazard_notes} onChange={e => updateField('hazard_notes', e.target.value)} placeholder="Steep stairs, low doorway..." className="rounded-xl" /></div>
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Bond Clean Required?">
+                  <Select value={form.bond_clean_required} onValueChange={v => u('bond_clean_required', v)}>
+                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Agent Name">
+                  <Input value={form.agent_name} onChange={e => u('agent_name', e.target.value)} placeholder="Optional" className="input-dark" />
+                </Field>
+              </div>
+            </>
+          )}
 
-            {/* Linen & Consumables */}
-            <div className="bg-white rounded-2xl shadow-sm border border-border/50 p-5 space-y-4">
-              <h3 className="font-bold text-primary text-sm uppercase tracking-wide">Linen & Consumables</h3>
-              <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                <Label className="mb-0">Do you supply your own linen?</Label>
-                <Switch checked={property.own_linen} onCheckedChange={v => updateField('own_linen', v)} />
-              </div>
-              {!property.own_linen && (
-                <div><Label>Number of linen sets needed</Label><Input type="number" min={1} value={property.linen_sets} onChange={e => updateField('linen_sets', +e.target.value)} className="rounded-xl" /></div>
-              )}
-              <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                <Label className="mb-0">Consumables needed? (soap, toilet paper etc.)</Label>
-                <Switch checked={property.consumables_needed} onCheckedChange={v => updateField('consumables_needed', v)} />
-              </div>
-            </div>
+          {/* Common: notes + access */}
+          <Field label="Special Notes">
+            <Textarea value={form.notes} onChange={e => u('notes', e.target.value)} placeholder="Anything we should know..." className="input-dark" rows={3} />
+          </Field>
+          <Field label="Access Method">
+            <Select value={form.access_method} onValueChange={v => u('access_method', v)}>
+              <SelectTrigger className="input-dark"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>{ACCESS_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          <Field label="Access Instructions">
+            <Input value={form.access_instructions} onChange={e => u('access_instructions', e.target.value)} placeholder="Lockbox code, where to find key..." className="input-dark" />
+          </Field>
 
-            <Button onClick={() => setStep(2)} disabled={!property.property_name} className="w-full font-bold">
-              Next — Request Your First Clean
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={goBack} className="flex-1 rounded-xl font-bold gap-2">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <Button onClick={goNext} disabled={!form.address}
+              className="flex-1 bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl gap-2">
+              Next <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
-        )}
+        </div>
+      )}
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-extrabold text-primary">Request Your First Clean</h2>
-            <p className="text-sm text-muted-foreground">Optional — you can skip this and request a clean later from your portal.</p>
+      {/* Step 3 — Client Details */}
+      {step === 3 && (
+        <div className="space-y-5">
+          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Your Details</h2>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-border/50 p-5 space-y-4">
-              <div>
-                <Label>Preferred Clean Date</Label>
-                <Input
-                  type="date"
-                  value={requestDate}
-                  onChange={e => setRequestDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="rounded-xl"
-                />
-              </div>
-              <div>
-                <Label>Clean Type</Label>
-                <Select value={cleanType} onValueChange={setCleanType}>
-                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['Standard Clean', 'Deep Clean', 'Bond / End of Lease Clean', 'Office / Commercial Clean', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Preferred Time</Label>
-                <Select value={preferredTime} onValueChange={setPreferredTime}>
-                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['Morning (8am-12pm)', 'Afternoon (12pm-4pm)', 'Flexible'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>Notes for this clean</Label><Textarea value={cleanNotes} onChange={e => setCleanNotes(e.target.value)} placeholder="Guest checked out late, focus on bathrooms..." className="rounded-xl" /></div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
-              <Button
-                onClick={() => submitMutation.mutate()}
-                disabled={submitMutation.isPending}
-                className="flex-1 bg-primary text-primary-foreground font-bold gap-2"
-              >
-                {submitMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                {requestDate ? 'Submit & Request Clean' : 'Save Property Details'}
-              </Button>
-            </div>
-
-            {!requestDate && (
-              <p className="text-center text-xs text-muted-foreground">No date selected — property details will be saved without a clean request.</p>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First Name *">
+              <Input value={form.first_name} onChange={e => u('first_name', e.target.value)} className="input-dark" />
+            </Field>
+            <Field label="Last Name *">
+              <Input value={form.last_name} onChange={e => u('last_name', e.target.value)} className="input-dark" />
+            </Field>
           </div>
-        )}
+          <Field label="Mobile Phone *">
+            <Input value={form.phone} onChange={e => u('phone', e.target.value)} placeholder="0412 345 678" className="input-dark" />
+          </Field>
+          <Field label="Email Address *">
+            <Input type="email" value={form.email} onChange={e => u('email', e.target.value)} placeholder="you@example.com" className="input-dark" />
+          </Field>
+          <Field label="How did you hear about us?">
+            <Select value={form.referral_source} onValueChange={v => u('referral_source', v)}>
+              <SelectTrigger className="input-dark"><SelectValue placeholder="Optional" /></SelectTrigger>
+              <SelectContent>{REFERRAL_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
 
-        <p className="text-center text-muted-foreground text-xs pt-4">Powered by Brightly</p>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={goBack} className="flex-1 rounded-xl font-bold gap-2">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <Button onClick={goNext} disabled={!form.first_name || !form.last_name || !form.phone || !form.email}
+              className="flex-1 bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl gap-2">
+              Review <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4 — Summary & Submit */}
+      {step === 4 && (
+        <div className="space-y-5">
+          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Review & Submit</h2>
+
+          <SummaryCard title="Clean Type">
+            <p>{CLEAN_TYPES.find(c => c.value === form.clean_type)?.icon} {CLEAN_TYPES.find(c => c.value === form.clean_type)?.label}</p>
+          </SummaryCard>
+
+          <SummaryCard title="Property">
+            {form.clean_type === 'airbnb' && form.property_name && <Row label="Name" value={form.property_name} />}
+            <Row label="Address" value={form.address} />
+            {form.suburb && <Row label="Suburb" value={`${form.suburb}, ${form.state}`} />}
+            <Row label="Bedrooms" value={String(form.bedrooms)} />
+            <Row label="Bathrooms" value={String(form.bathrooms)} />
+            {form.preferred_date && <Row label="Preferred Date" value={form.preferred_date} />}
+            {form.preferred_time && <Row label="Preferred Time" value={form.preferred_time} />}
+            {form.access_method && <Row label="Access" value={form.access_method} />}
+            {form.notes && <Row label="Notes" value={form.notes} />}
+            {form.clean_type === 'airbnb' && (
+              <>
+                {form.bed_types.length > 0 && <Row label="Bed Types" value={form.bed_types.join(', ')} />}
+                <Row label="Linen by Brightly" value={form.linen_provided} />
+                <Row label="Checkout / Checkin" value={`${form.guest_checkout_time} / ${form.guest_checkin_time}`} />
+              </>
+            )}
+            {form.clean_type === 'deep_clean' && form.last_cleaned && <Row label="Last Cleaned" value={form.last_cleaned} />}
+            {form.clean_type === 'end_of_lease' && form.lease_end_date && <Row label="Lease End" value={form.lease_end_date} />}
+          </SummaryCard>
+
+          <SummaryCard title="Contact">
+            <Row label="Name" value={`${form.first_name} ${form.last_name}`} />
+            <Row label="Phone" value={form.phone} />
+            <Row label="Email" value={form.email} />
+            {form.referral_source && <Row label="Referral" value={form.referral_source} />}
+          </SummaryCard>
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={goBack} className="flex-1 rounded-xl font-bold gap-2">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <Button
+              onClick={() => submitMutation.mutate()}
+              disabled={submitMutation.isPending}
+              className="flex-1 bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl gap-2"
+            >
+              {submitMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Submit & Book
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <p className="text-center text-xs pt-6" style={{ color: 'rgba(255,255,255,0.25)' }}>Powered by Brightly</p>
+    </Shell>
+  );
+}
+
+/* ────── Layout shell ────── */
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen" style={{ background: '#0A0F0E' }}>
+      <header className="sticky top-0 z-40 border-b" style={{ background: '#0A0F0E', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <h1 className="text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#F0FDF4' }}>
+            Brightly<span style={{ color: '#FEDB00' }}>.</span>
+          </h1>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(254,219,0,0.12)', color: '#FEDB00' }}>
+            New Enquiry
+          </span>
+        </div>
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-20">
+        {children}
       </main>
+    </div>
+  );
+}
+
+/* ────── Helpers ────── */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-xs font-bold mb-1.5 block" style={{ color: '#86EFAC' }}>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: '#FEDB00' }}>{title}</h3>
+      <div className="space-y-1 text-sm" style={{ color: '#F0FDF4' }}>{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span style={{ color: '#86EFAC' }}>{label}</span>
+      <span className="font-semibold text-right">{value}</span>
     </div>
   );
 }
