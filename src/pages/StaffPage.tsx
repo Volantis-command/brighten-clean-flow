@@ -218,16 +218,47 @@ export default function StaffPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const approveDeploymentMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('staff_onboarding')
+        .update({ director_approved: true } as any)
+        .eq('user_id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Cleaner approved for deployment!');
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const ensureOnboardingMutation = useMutation({
-    mutationFn: (m: StaffMember) =>
-      invokeFn({ action: 'ensure_onboarding', user_id: m.id, full_name: m.full_name, email: m.email }),
-    onSuccess: (data: any) => {
+    mutationFn: async (m: StaffMember) => {
+      const data = await invokeFn({ action: 'ensure_onboarding', user_id: m.id, full_name: m.full_name, email: m.email });
+      return { ...data, phone: m.phone, full_name: m.full_name };
+    },
+    onSuccess: async (data: any) => {
       if (data?.token) {
         const link = `${getAppBaseUrl()}/staff-onboarding/${data.token}`;
         navigator.clipboard.writeText(link);
         setOnboardingLinkCopied(data.token);
-        toast.success('Onboarding link copied to clipboard!');
         queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
+        // Send SMS with onboarding link if phone available
+        if (data.phone) {
+          try {
+            const firstName = (data.full_name || 'there').split(' ')[0];
+            await supabase.functions.invoke('send-job-sms', {
+              body: { to: data.phone, message: `Hi ${firstName}, welcome to Brightly! 🌿 Complete your onboarding here: ${link}` },
+            });
+            toast.success('Onboarding link sent via SMS and copied!');
+          } catch {
+            toast.success('Onboarding link copied! (SMS send failed)');
+          }
+        } else {
+          toast.success('Onboarding link copied to clipboard!');
+        }
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -321,6 +352,17 @@ export default function StaffPage() {
                   {markReviewedMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                   Mark as Reviewed
                 </Button>
+              )}
+              {obStatus?.reviewed && !obStatus.directorApproved && (
+                <Button size="sm" className="gap-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                  disabled={approveDeploymentMutation.isPending}
+                  onClick={() => approveDeploymentMutation.mutate(selectedStaff.id)}>
+                  {approveDeploymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Approve for Deployment
+                </Button>
+              )}
+              {obStatus?.directorApproved && (
+                <Badge className="bg-green-100 text-green-800">Approved for deployment</Badge>
               )}
             </div>
           )}

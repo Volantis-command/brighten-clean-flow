@@ -131,7 +131,7 @@ export default function ClientDetailPage() {
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
 
   if (data?.profile && !notesLoaded) {
-    setNotes(data.profile.avatar_url || '');
+    setNotes((data.profile as any).internal_notes || '');
     setNotesLoaded(true);
   }
 

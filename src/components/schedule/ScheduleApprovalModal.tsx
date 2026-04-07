@@ -74,6 +74,9 @@ export function ScheduleApprovalModal({ open, onOpenChange, item }: ScheduleAppr
 
       if (jobErr) throw jobErr;
 
+      // 1b. Fire Google Calendar event (non-blocking)
+      supabase.functions.invoke('create-calendar-event', { body: { job_id: meta.jobId } }).catch(() => {});
+
       // 2. Update linked quote status
       if (meta.linkedQuoteId) {
         await supabase.from('quotes').update({ status: 'confirmed' }).eq('id', meta.linkedQuoteId);

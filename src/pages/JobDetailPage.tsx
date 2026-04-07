@@ -40,6 +40,8 @@ export default function JobDetailPage() {
   const [sendingRebookSms, setSendingRebookSms] = useState(false);
   const [showExtraPhotos, setShowExtraPhotos] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [sendingTrackerLink, setSendingTrackerLink] = useState(false);
+  const [markingComplete, setMarkingComplete] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -245,6 +247,56 @@ export default function JobDetailPage() {
     } else {
       doPushInvoice();
     }
+  };
+
+  const handleSendTrackerLink = async () => {
+    if (!job) return;
+    setSendingTrackerLink(true);
+    try {
+      const property = job.properties as any;
+      // Find client phone from client_properties
+      const { data: cpRows } = await supabase
+        .from('client_properties')
+        .select('client_id')
+        .eq('property_id', job.property_id)
+        .limit(1);
+      const clientId = cpRows?.[0]?.client_id;
+      if (!clientId) { toast.error('No client linked to this property'); setSendingTrackerLink(false); return; }
+      const { data: clientProfile } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', clientId)
+        .single();
+      if (!clientProfile?.phone) { toast.error('Client has no phone number'); setSendingTrackerLink(false); return; }
+      const firstName = (clientProfile.full_name || 'there').split(' ')[0];
+      const trackerUrl = `https://app.brightly.cleaning/track/${job.id}`;
+      const sms = `Hi ${firstName}, track your clean live here: ${trackerUrl} — Brightly Cleaning 🌿`;
+      await supabase.functions.invoke('send-job-sms', { body: { to: clientProfile.phone, message: sms } });
+      toast.success('Tracker link sent to client!');
+    } catch (err: any) {
+      toast.error('Failed to send tracker link: ' + err.message);
+    }
+    setSendingTrackerLink(false);
+  };
+
+  const handleMarkComplete = async () => {
+    if (!job) return;
+    setMarkingComplete(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('jobs').update({
+        status: 'completed',
+        clock_off: now,
+        clock_off_at: now,
+        check_out_time: now,
+      }).eq('id', job.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+      toast.success('Job marked as complete');
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message);
+    }
+    setMarkingComplete(false);
   };
 
   const handleSyncInvoiceStatus = async () => {
@@ -1333,6 +1385,29 @@ export default function JobDetailPage() {
           >
             <ClipboardList className="h-5 w-5" />
             Open Checklist
+          </Button>
+        )}
+
+        {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
+          <Button
+            variant="outline"
+            className="w-full gap-2 h-12 text-base font-bold"
+            onClick={handleSendTrackerLink}
+            disabled={sendingTrackerLink}
+          >
+            {sendingTrackerLink ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            Send Tracker Link to Client
+          </Button>
+        )}
+
+        {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
+          <Button
+            className="w-full gap-2 h-12 text-base font-bold bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleMarkComplete}
+            disabled={markingComplete}
+          >
+            {markingComplete ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+            Mark Complete
           </Button>
         )}
 

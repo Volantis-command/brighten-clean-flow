@@ -350,6 +350,13 @@ export default function CompletionFormPage() {
       }).eq('job_id', job.id).eq('user_id', job.cleaner_2_id).is('clock_out_time', null);
     }
 
+    // 2b. Record clock_out event
+    await supabase.from('clock_events').insert({
+      user_id: user.id,
+      job_id: job.id,
+      event_type: 'clock_out',
+    } as any).catch(() => {});
+
     // 3. Save completion photos to job_photos
     if (formData) {
       for (const [sectionId, fields] of Object.entries(formData)) {

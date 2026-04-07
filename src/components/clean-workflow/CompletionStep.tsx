@@ -94,6 +94,13 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
       .eq('user_id', userId)
       .is('clock_out_time', null);
 
+    // Record clock_out event
+    await supabase.from('clock_events').insert({
+      user_id: userId,
+      job_id: job.id,
+      event_type: 'clock_out',
+    } as any).catch(() => {});
+
     for (const url of photos) {
       const storagePath = url.split('/job-photos/')[1] ?? '';
       await supabase.from('job_photos').insert({

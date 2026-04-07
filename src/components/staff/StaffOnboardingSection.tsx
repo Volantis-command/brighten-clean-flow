@@ -199,16 +199,17 @@ export function useStaffOnboardingStatuses(staffIds: string[]) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('staff_onboarding')
-        .select('user_id, status, submitted_at, admin_reviewed_at, onboarding_token')
+        .select('user_id, status, submitted_at, admin_reviewed_at, onboarding_token, director_approved')
         .in('user_id', staffIds);
       if (error) throw error;
-      const map: Record<string, { status: string; submitted: boolean; reviewed: boolean; token: string }> = {};
+      const map: Record<string, { status: string; submitted: boolean; reviewed: boolean; token: string; directorApproved: boolean }> = {};
       (data || []).forEach((r: any) => {
         map[r.user_id] = {
           status: r.status,
           submitted: !!r.submitted_at,
           reviewed: !!r.admin_reviewed_at,
           token: r.onboarding_token,
+          directorApproved: !!r.director_approved,
         };
       });
       return map;

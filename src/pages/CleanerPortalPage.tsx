@@ -109,6 +109,13 @@ export default function CleanerPortalPage() {
       return;
     }
 
+    // 1b. Record clock_events entry (non-blocking)
+    supabase.from("clock_events").insert({
+      user_id: staff.id,
+      job_id: job.id,
+      event_type: "clock_in",
+    } as any).then(() => {}).catch(() => {});
+
     // 2. Reveal lockbox code
     const lockbox = property?.lockbox_code ?? null;
 

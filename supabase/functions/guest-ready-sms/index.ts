@@ -6,6 +6,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function formatAuPhone(phone: string): string {
+  const cleaned = phone.replace(/[\s\-()]/g, "");
+  if (cleaned.startsWith("+61")) return cleaned;
+  if (cleaned.startsWith("61") && cleaned.length >= 11) return "+" + cleaned;
+  if (cleaned.startsWith("0")) return "+61" + cleaned.slice(1);
+  return "+61" + cleaned;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -53,7 +61,7 @@ Deno.serve(async (req) => {
           Authorization: "Basic " + btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`),
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({ To: profile.phone, From: TWILIO_PHONE, Body: body }),
+        body: new URLSearchParams({ To: formatAuPhone(profile.phone), From: TWILIO_PHONE, Body: body }),
       });
 
       const data = await resp.json();

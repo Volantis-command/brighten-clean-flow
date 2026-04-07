@@ -109,6 +109,11 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
 
       if (error) throw error;
 
+      // Fire Google Calendar event (non-blocking)
+      if (jobData?.id) {
+        supabase.functions.invoke('create-calendar-event', { body: { job_id: jobData.id } }).catch(() => {});
+      }
+
       if (hasPrice && jobData?.id) {
         // Fire client SMS, cleaner SMS, Xero invoice in parallel
         const promises: Promise<any>[] = [];

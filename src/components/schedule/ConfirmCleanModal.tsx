@@ -144,6 +144,21 @@ export function ConfirmCleanModal({ open, onOpenChange, item }: ConfirmCleanModa
       });
       if (jobErr) throw jobErr;
 
+      // 4a. Fire Google Calendar event (non-blocking)
+      // Retrieve the new job ID for the calendar event
+      const { data: newJob } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('scheduled_date', dateStr)
+        .eq('scheduled_time', timeStr)
+        .eq('cleaner_1_id', cleanerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (newJob?.id) {
+        supabase.functions.invoke('create-calendar-event', { body: { job_id: newJob.id } }).catch(() => {});
+      }
+
       // 4. Send SMS to assigned cleaner
       const { data: cleanerProfile } = await supabase
         .from('profiles')
