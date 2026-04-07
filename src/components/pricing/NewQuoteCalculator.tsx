@@ -441,6 +441,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         discount_gp_percent: form.discountGp ? parseFloat(form.discountGp) : null,
         discounted_price: result.discountedPrice,
         notes: form.notes || null,
+        quote_token: crypto.randomUUID(),
         status,
         reference,
         created_by: user?.id || null,
@@ -613,20 +614,56 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       // STEP 1 — Save quote first and await completion
       await saveMutation.mutateAsync('quote_sent');
 
-      // STEP 2 — Send SMS (direct mode — no job_id needed)
+      // STEP 2 — Send visual quote link SMS
       const formattedPhone = formatAUPhone(phone);
-      const smsMessage = buildSmsMessage();
+      const firstName = (form.clientName || 'there').split(' ')[0];
+
+      // Get the quote token from the saved quote
+      const { data: savedQuote } = await supabase
+        .from('quotes')
+        .select('quote_token, id')
+        .eq('client_phone', phone)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const quoteToken = savedQuote?.quote_token;
+      const quoteUrl = quoteToken
+        ? `${window.location.origin}/quote/${quoteToken}`
+        : null;
 
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const smsRes = await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: formattedPhone, message: smsMessage }),
-      });
 
-      if (!smsRes.ok) {
-        const err = await smsRes.json().catch(() => ({}));
-        throw new Error(err.error || 'SMS sending failed');
+      if (quoteUrl) {
+        // Send the stunning visual quote link
+        const smsRes = await fetch(`https://${projectId}.supabase.co/functions/v1/send-quote-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({
+            type: 'send_quote_link_sms',
+            to: formattedPhone,
+            first_name: firstName,
+            property_address: form.propertyAddress || form.propertyName || '',
+            clean_type: form.cleanType || 'Clean',
+            quote_url: quoteUrl,
+          }),
+        });
+        if (!smsRes.ok) {
+          const err = await smsRes.json().catch(() => ({}));
+          throw new Error(err.error || 'SMS sending failed');
+        }
+      } else {
+        // Fallback: plain SMS if no token
+        const smsMessage = buildSmsMessage();
+        const smsRes = await fetch(`https://${projectId}.supabase.co/functions/v1/send-job-sms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: formattedPhone, message: smsMessage }),
+        });
+        if (!smsRes.ok) {
+          const err = await smsRes.json().catch(() => ({}));
+          throw new Error(err.error || 'SMS sending failed');
+        }
       }
 
       // STEP 3 — Update lead/quote_request status to quote_sent
