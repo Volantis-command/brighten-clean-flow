@@ -111,9 +111,8 @@ export default function ScheduleAfterAcceptModal({
     }
 
     // 3. Create job
-    const scheduledTime = timeWindow === 'custom' ? customTime : TIME_WINDOWS[timeWindow];
-    const windowLabel = TIME_WINDOW_LABELS[timeWindow] || '';
-    const jobNotes = [windowLabel, notes].filter(Boolean).join(' — ');
+    const scheduledTime = customTime; // specific time e.g. "09:00"
+    const jobNotes = notes || null;
     let jobId: string | null = null;
 
     try {
@@ -163,7 +162,12 @@ export default function ScheduleAfterAcceptModal({
     if (sendSms && clientPhone) {
       try {
         const firstName = (clientName || 'there').split(' ')[0];
-        const message = `Hi ${firstName}, great news! Your ${cleanType} quote has been accepted. We'll confirm your schedule shortly. — Brightly 🌿`;
+        const dateStr = format(date, 'EEEE d MMMM yyyy');
+        const [hh, mm] = customTime.split(':').map(Number);
+        const ampm = hh >= 12 ? 'pm' : 'am';
+        const h12 = hh % 12 || 12;
+        const timeStr = mm === 0 ? `${h12}${ampm}` : `${h12}:${String(mm).padStart(2,'0')}${ampm}`;
+        const message = `Hi ${firstName}, your ${cleanType} is booked in for ${timeStr} on ${dateStr}. See you then! 🌿 — Brightly Cleaning`;
         const { error } = await supabase.functions.invoke('send-job-sms', { body: { to: clientPhone, message } });
         if (error) throw error;
         stepResults.push({ step: 'Client confirmation SMS sent', ok: true });
@@ -242,34 +246,16 @@ export default function ScheduleAfterAcceptModal({
                 </Popover>
               </div>
 
-              {/* Time Window */}
+              {/* Specific Time */}
               <div className="space-y-1">
-                <Label className="text-xs text-gray-400">Time Window</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['morning', 'midday', 'afternoon', 'custom'] as const).map((tw) => (
-                    <button
-                      key={tw}
-                      type="button"
-                      onClick={() => setTimeWindow(tw)}
-                      className={cn(
-                        'rounded-lg border px-3 py-2 text-sm transition-colors',
-                        timeWindow === tw
-                          ? 'border-[#FEDB00] bg-[#FEDB00]/10 text-[#FEDB00]'
-                          : 'border-[#1a2e2a] text-gray-400 hover:border-gray-600'
-                      )}
-                    >
-                      {TIME_WINDOW_LABELS[tw]}
-                    </button>
-                  ))}
-                </div>
-                {timeWindow === 'custom' && (
-                  <Input
-                    type="time"
-                    value={customTime}
-                    onChange={(e) => setCustomTime(e.target.value)}
-                    className="mt-2 bg-[#0A0F0E] border-[#1a2e2a]"
-                  />
-                )}
+                <Label className="text-xs text-gray-400">Start Time</Label>
+                <Input
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                  className="bg-[#0A0F0E] border-[#1a2e2a] text-[#F0FDF4] h-12 rounded-xl focus:border-[#FEDB00]"
+                />
+                <p className="text-xs text-gray-500">Calendar event will be created for {customTime} with duration based on estimated hours</p>
               </div>
 
               {/* Cleaner */}
