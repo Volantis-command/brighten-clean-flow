@@ -779,7 +779,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 {!isBondClean && (
                   <>
                     <NumField label="Balconies" value={form.balconies} onChange={(v) => upd('balconies', v)} />
-                    <NumField label="Sofa Beds" value={form.sofaBeds} onChange={(v) => upd('sofaBeds', v)} />
+
                   </>
                 )}
               </div>
