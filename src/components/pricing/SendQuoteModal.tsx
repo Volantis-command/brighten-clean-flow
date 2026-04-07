@@ -53,18 +53,16 @@ export default function SendQuoteModal({ open, onClose, quote, onSent }: Props) 
           .eq('id', quote.lead_id);
       }
 
-      // 2. Send detailed SMS via edge function
+      // 2. Send SMS with quote link via edge function
       const firstName = (clientName || quote.client_name || 'there').split(' ')[0];
       const res = await supabase.functions.invoke('send-quote-notification', {
         body: {
-          type: 'send_quote_detail_sms',
+          type: 'send_quote_link_sms',
           to: clientPhone,
           first_name: firstName,
           property_address: quote.property_address || quote.property_name || '',
           clean_type: quote.clean_type || quote.service_type || 'Clean',
-          bedrooms: quote.bedrooms || 0,
-          bathrooms: quote.bathrooms || 0,
-          total_inc_gst: quote.sell_price_inc_gst || quote.price || 0,
+          quote_url: quoteUrl,
         },
       });
 
@@ -124,12 +122,11 @@ export default function SendQuoteModal({ open, onClose, quote, onSent }: Props) 
 
           <div className="bg-muted/50 rounded-xl p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-bold text-foreground">SMS Preview:</p>
-            <p>Hi {(clientName || 'there').split(' ')[0]}, here's your quote from Brightly Cleaning ✨</p>
-            <p>📍 {quote?.property_address || quote?.property_name || '[Address]'}</p>
-            <p>🧹 {quote?.clean_type || quote?.service_type || '[Clean Type]'}</p>
-            <p>🛏 {quote?.bedrooms || 0} bed · {quote?.bathrooms || 0} bath</p>
-            <p>💰 Estimated total: ${Number(quote?.sell_price_inc_gst || quote?.price || 0).toFixed(2)}</p>
-            <p>Reply YES to accept or NO to decline.</p>
+            <p>Hi {(clientName || 'there').split(' ')[0]}! Your Brightly quote is ready 🌿</p>
+            <p>{quote?.clean_type || quote?.service_type || '[Clean Type]'} at {quote?.property_address || quote?.property_name || '[Address]'}</p>
+            <p>Tap to view your quote, accept or ask us anything:</p>
+            <p className="font-mono text-[10px] break-all">{quoteUrl || '[quote link]'}</p>
+            <p>Questions? Call 0418 878 707</p>
           </div>
         </div>
 

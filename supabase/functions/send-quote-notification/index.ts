@@ -60,13 +60,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Send detailed quote SMS with line items ───
+    // ─── Send detailed quote SMS with line items (legacy) ───
     if (type === 'send_quote_detail_sms') {
       const { to, first_name, property_address, clean_type, bedrooms, bathrooms, total_inc_gst } = body;
       const totalFormatted = Number(total_inc_gst || 0).toFixed(2);
       const message = `Hi ${first_name}, here's your quote from Brightly Cleaning ✨\n\n📍 ${property_address || 'Property'}\n🧹 ${clean_type || 'Clean'}\n🛏 ${bedrooms || 0} bed · ${bathrooms || 0} bath\n💰 Estimated total: $${totalFormatted}\n\nReply YES to accept or NO to decline.\n\nQuestions? Call us on 0418 878 707.`;
       const result = await sendTwilioSms(formatAuPhone(to), message);
       return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── Send quote link SMS (new — links to visual quote page) ───
+    if (type === 'send_quote_link_sms') {
+      const { to, first_name, property_address, clean_type, quote_url } = body;
+      const message = `Hi ${first_name}! Your Brightly quote is ready 🌿\n\n${clean_type || 'Clean'} at ${property_address || 'your property'}\n\nTap to view your quote, accept or ask us anything:\n${quote_url}\n\nQuestions? Call 0418 878 707`;
+      const result = await sendTwilioSms(formatAuPhone(to), message);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── Client question from quote page ───
+    if (type === 'quote_question') {
+      const { client_name, client_phone, message: clientMsg, address } = body;
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+
+      for (const admin of (admins || [])) {
+        await supabase.from('notifications').insert({
+          user_id: admin.user_id,
+          type: 'quote',
+          title: 'Client Question',
+          message: `💬 Question from ${client_name || 'A client'}: ${(clientMsg || '').slice(0, 120)}`,
+          link: '/quoting',
+        });
+
+        const { data: profile } = await supabase.from('profiles').select('phone').eq('id', admin.user_id).single();
+        if (profile?.phone) {
+          await sendTwilioSms(formatAuPhone(profile.phone), `💬 Question from ${client_name || 'client'}${address ? ` (${address})` : ''}:\n${clientMsg}`);
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

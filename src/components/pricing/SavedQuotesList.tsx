@@ -14,6 +14,8 @@ import SendQuoteModal from './SendQuoteModal';
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   quote_sent: 'bg-[hsl(200,80%,50%)]/20 text-[hsl(200,80%,50%)] border border-[hsl(200,80%,50%)]',
+  quote_viewed: 'bg-[hsl(270,70%,60%)]/20 text-[hsl(270,70%,60%)] border border-[hsl(270,70%,60%)]',
+  question_received: 'bg-[hsl(45,100%,50%)]/20 text-[hsl(45,100%,50%)] border border-[hsl(45,100%,50%)]',
   accepted: 'bg-primary/10 text-primary',
   client_accepted: 'bg-primary/10 text-primary',
   declined: 'bg-destructive/10 text-destructive',
@@ -22,11 +24,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
-  quote_sent: 'Sent',
-  accepted: 'Accepted',
-  client_accepted: 'Accepted',
-  declined: 'Declined',
-  quote_declined: 'Declined',
+  quote_sent: '📤 Sent',
+  quote_viewed: '👁 Viewed',
+  question_received: '💬 Question',
+  accepted: '✅ Accepted',
+  client_accepted: '✅ Accepted',
+  declined: '❌ Declined',
+  quote_declined: '❌ Declined',
 };
 
 const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Declined'];
@@ -64,10 +68,17 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
 
   const filterMap: Record<string, string[]> = {
     Draft: ['draft'],
-    Sent: ['sent', 'quote_sent'],
+    Sent: ['sent', 'quote_sent', 'quote_viewed', 'question_received'],
     Accepted: ['accepted', 'client_accepted'],
     Declined: ['declined', 'quote_declined'],
   };
+
+  // Derive display status: if quote_sent but has quote_viewed_at, show as viewed
+  function getDisplayStatus(q: any): string {
+    const base = (q.status || 'draft').toLowerCase();
+    if (base === 'quote_sent' && q.quote_viewed_at) return 'quote_viewed';
+    return base;
+  }
 
   const filtered = filter === 'All'
     ? quotes
@@ -134,8 +145,8 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
                       ? `$${Number(q.sell_price_inc_gst).toFixed(0)}`
                       : q.price != null ? `$${Number(q.price).toFixed(0)}` : '—'}
                   </span>
-                  <Badge className={cn('capitalize', STATUS_COLORS[(q.status || 'draft').toLowerCase()])}>
-                    {STATUS_LABELS[(q.status || 'draft').toLowerCase()] || q.status || 'draft'}
+                  <Badge className={cn('capitalize', STATUS_COLORS[getDisplayStatus(q)])}>
+                    {STATUS_LABELS[getDisplayStatus(q)] || q.status || 'draft'}
                   </Badge>
                 </div>
               </button>

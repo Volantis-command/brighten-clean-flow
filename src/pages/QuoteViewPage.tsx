@@ -1,58 +1,312 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { TermsModal } from '@/components/quote/TermsModal';
+import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { CONSUMABLE_KITS, PHOTO_REPORTING_FEE } from '@/lib/serviceTypes';
-import { getAppBaseUrl } from '@/lib/appUrl';
+
+/* ─── What's Included by clean type ─── */
+const INCLUSIONS: Record<string, string[]> = {
+  'Standard Clean': [
+    'Kitchen deep wipe-down',
+    'All bathrooms cleaned',
+    '{bedrooms} bedrooms',
+    'Vacuuming & mopping all floors',
+    'Surface wipe-downs throughout',
+    'Bin emptying',
+    'Mirrors & glass polished',
+  ],
+  'Deep Clean': [
+    'Everything in a Standard Clean',
+    'Inside oven cleaning',
+    'Inside fridge cleaning',
+    'Window sills & tracks',
+    'Skirting boards wiped',
+    'Light switches & door handles',
+    'Inside cupboards wiped',
+  ],
+  'End of Lease': [
+    'Everything in a Deep Clean',
+    'Wall spot cleaning',
+    'Carpet steam clean (if selected)',
+    'Full garage (if applicable)',
+    'Bond clean standard',
+  ],
+  'Airbnb Turnover': [
+    'Fresh linen made up',
+    'Towel folds',
+    'Bathroom stock replenishment',
+    'Kitchen reset',
+    'Rubbish removal',
+    'Property inspection check',
+  ],
+};
+
+function getInclusions(cleanType: string, bedrooms: number): string[] {
+  // Find best match
+  const key = Object.keys(INCLUSIONS).find((k) =>
+    cleanType?.toLowerCase().includes(k.toLowerCase())
+  );
+  const items = INCLUSIONS[key || 'Standard Clean'] || INCLUSIONS['Standard Clean'];
+  return items.map((item) => item.replace('{bedrooms}', String(bedrooms || 0)));
+}
+
+/* ─── Animated checkmark item ─── */
+function CheckItem({ text, delay }: { text: string; delay: number }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <div
+      className="flex items-start gap-3 transition-all duration-500"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateX(0)' : 'translateX(-12px)',
+      }}
+    >
+      <div className="mt-0.5 shrink-0">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="9" stroke="#22C55E" strokeWidth="1.5" opacity="0.3" />
+          <path
+            d="M6 10.5L9 13.5L14 7.5"
+            stroke="#22C55E"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              strokeDasharray: 20,
+              strokeDashoffset: visible ? 0 : 20,
+              transition: `stroke-dashoffset 0.5s ease ${delay + 200}ms`,
+            }}
+          />
+        </svg>
+      </div>
+      <span className="text-sm text-white/80">{text}</span>
+    </div>
+  );
+}
+
+/* ─── Success screen after accept ─── */
+function SuccessScreen({ name }: { name: string }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
+      style={{ background: '#0A0F0E' }}>
+      <div className="text-center space-y-6 max-w-sm">
+        {/* Animated green tick */}
+        <div className="relative mx-auto w-24 h-24">
+          <svg viewBox="0 0 96 96" className="w-24 h-24">
+            <circle
+              cx="48" cy="48" r="44"
+              fill="none" stroke="#22C55E" strokeWidth="3"
+              strokeDasharray="276"
+              strokeDashoffset="276"
+              style={{ animation: 'drawCircle 0.8s ease forwards' }}
+            />
+            <path
+              d="M28 50L42 64L68 34"
+              fill="none" stroke="#22C55E" strokeWidth="4"
+              strokeLinecap="round" strokeLinejoin="round"
+              className="animate-draw-tick"
+            />
+          </svg>
+          <div className="absolute inset-0 rounded-full"
+            style={{ boxShadow: '0 0 40px rgba(34, 197, 94, 0.3)' }} />
+        </div>
+
+        <h1 className="text-3xl font-extrabold text-white animate-slide-up"
+          style={{ fontFamily: 'Nunito, sans-serif' }}>
+          Booking Confirmed!
+        </h1>
+        <p className="text-white/60 text-base animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          We'll be in touch within 24 hours to confirm your clean date.
+        </p>
+        <div className="pt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+          <a href="tel:0418878707"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#FEDB00' }}>
+            <Phone className="w-4 h-4" />
+            Questions? 0418 878 707
+          </a>
+        </div>
+        <p className="text-white/30 text-sm pt-4" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          — Brightly Cleaning 🌿
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Declined screen ─── */
+function DeclinedScreen({ name }: { name: string }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
+      style={{ background: '#0A0F0E' }}>
+      <div className="text-center space-y-5 max-w-sm">
+        <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <XCircle className="w-8 h-8 text-white/40" />
+        </div>
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          No worries at all{name ? `, ${name}` : ''}.
+        </h1>
+        <p className="text-white/50 text-sm">
+          If you change your mind, just call us on <strong className="text-white/70">0418 878 707</strong>.
+        </p>
+        <p className="text-white/50 text-sm">
+          We hope to work with you in the future. 🌿
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Already accepted screen ─── */
+function AlreadyAcceptedScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
+      style={{ background: '#0A0F0E' }}>
+      <div className="text-center space-y-5 max-w-sm">
+        <CheckCircle2 className="w-16 h-16 mx-auto text-[#22C55E]" />
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          This quote has already been accepted.
+        </h1>
+        <p className="text-white/50">We'll see you soon!</p>
+        <a href="tel:0418878707" className="text-[#FEDB00] font-bold text-sm">
+          Questions? 0418 878 707
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Already declined screen ─── */
+function AlreadyDeclinedScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
+      style={{ background: '#0A0F0E' }}>
+      <div className="text-center space-y-5 max-w-sm">
+        <XCircle className="w-16 h-16 mx-auto text-white/30" />
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          This quote is no longer active.
+        </h1>
+        <p className="text-white/50 text-sm">
+          Call <strong className="text-white/70">0418 878 707</strong> if you'd like a new quote.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Not found / expired screen ─── */
+function NotFoundScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
+      style={{ background: '#0A0F0E' }}>
+      <div className="text-center space-y-5 max-w-sm">
+        <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <span className="text-2xl">🔗</span>
+        </div>
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          Quote link expired or invalid
+        </h1>
+        <p className="text-white/50 text-sm">
+          Call <strong className="text-white/70">0418 878 707</strong> for assistance.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Loading screen ─── */
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center"
+      style={{ background: '#0A0F0E' }}>
+      <h1 className="text-3xl font-extrabold tracking-tight mb-4"
+        style={{ fontFamily: 'Nunito, sans-serif', color: '#FEDB00' }}>
+        Brightly<span className="text-white/40">.</span>
+      </h1>
+      <Loader2 className="w-6 h-6 animate-spin text-white/30" />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════ */
 
 export default function QuoteViewPage() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
-  const [tcsAccepted, setTcsAccepted] = useState(false);
-  const [termsOpen, setTermsOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [declining, setDeclining] = useState(false);
-  const [accepted, setAccepted] = useState(false);
-  const [declined, setDeclined] = useState(false);
 
+  // Flow states
+  const [confirming, setConfirming] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [declined, setDeclined] = useState(false);
+  const [showMessagePanel, setShowMessagePanel] = useState(false);
+  const [message, setMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
+
+  // Load quote
   useEffect(() => {
     async function load() {
+      if (!token) { setNotFound(true); setLoading(false); return; }
       const { data, error } = await (supabase as any)
         .from('quotes')
         .select('*')
         .eq('quote_token', token)
         .single();
+
       if (error || !data) { setNotFound(true); setLoading(false); return; }
-      if (data.quote_accepted_at) setAccepted(true);
-      if (data.quote_declined_at) setDeclined(true);
+
       setQuote(data);
       setLoading(false);
+
+      // Fire-and-forget: mark as viewed
+      (supabase as any).from('quotes')
+        .update({ quote_viewed_at: new Date().toISOString() })
+        .eq('quote_token', token)
+        .is('quote_viewed_at', null)
+        .then(() => {});
     }
     load();
   }, [token]);
 
-  const handleAccept = async () => {
-    if (!quote || !tcsAccepted) return;
+  // ─── Accept flow ───
+  const handleAccept = useCallback(async () => {
+    if (!quote) return;
     setConfirming(true);
     try {
-      // Update quote
+      // 1. Update quote status
       await (supabase as any).from('quotes').update({
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
-        tcs_accepted: true,
-        tcs_accepted_at: new Date().toISOString(),
-        acceptance_method: 'client_portal',
+        acceptance_method: 'quote_page',
       }).eq('quote_token', token);
 
-      // Create job
-      const { data: jobData, error: jobErr } = await supabase.from('jobs').insert({
+      // 2. Update quote_requests if linked
+      if (quote.lead_id) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+          .eq('id', quote.lead_id);
+      }
+      if (quote.client_phone) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+          .eq('phone', quote.client_phone)
+          .in('status', ['quote_sent', 'form_submitted', 'awaiting_quote', 'new_enquiry']);
+      }
+
+      // 3. Create job
+      const { data: jobData } = await supabase.from('jobs').insert({
         scheduled_date: new Date().toISOString().split('T')[0],
         status: 'awaiting_quote',
         price_ex_gst: quote.sell_price_ex_gst,
@@ -62,29 +316,28 @@ export default function QuoteViewPage() {
         notes: `Quote accepted by ${quote.client_name || 'client'}\n${quote.clean_type || ''}\n${quote.property_address || ''}`.trim(),
         source: 'quote_accepted',
       }).select('id').single();
-      if (jobErr) throw jobErr;
 
-      // Notify admin
-      try {
-        await supabase.functions.invoke('send-quote-notification', {
-          body: {
-            type: 'quote_accepted',
-            client_name: quote.client_name,
-            clean_type: quote.clean_type,
-            address: quote.property_address,
-            job_id: jobData?.id,
-          },
-        });
-      } catch { /* non-blocking */ }
+      // 4. Notify admin (non-blocking)
+      supabase.functions.invoke('send-quote-notification', {
+        body: {
+          type: 'quote_accepted',
+          client_name: quote.client_name,
+          clean_type: quote.clean_type,
+          address: quote.property_address,
+          total_inc_gst: quote.sell_price_inc_gst,
+          job_id: jobData?.id,
+        },
+      }).catch(() => {});
 
       setAccepted(true);
     } catch (e: any) {
-      toast.error(e.message || 'Failed to accept quote');
+      toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  };
+  }, [quote, token]);
 
-  const handleDecline = async () => {
+  // ─── Decline flow ───
+  const handleDecline = useCallback(async () => {
     if (!quote) return;
     setDeclining(true);
     try {
@@ -93,273 +346,359 @@ export default function QuoteViewPage() {
         quote_declined_at: new Date().toISOString(),
       }).eq('quote_token', token);
 
-      // Notify admin
-      try {
-        await supabase.functions.invoke('send-quote-notification', {
-          body: {
-            type: 'quote_declined',
-            client_name: quote.client_name,
-            clean_type: quote.clean_type,
-          },
-        });
-      } catch { /* non-blocking */ }
+      if (quote.lead_id) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'declined' })
+          .eq('id', quote.lead_id);
+      }
+
+      // Notify admin (non-blocking)
+      supabase.functions.invoke('send-quote-notification', {
+        body: {
+          type: 'quote_declined',
+          client_name: quote.client_name,
+          clean_type: quote.clean_type,
+          address: quote.property_address,
+        },
+      }).catch(() => {});
 
       setDeclined(true);
     } catch (e: any) {
-      toast.error(e.message || 'Failed');
+      toast.error(e.message || 'Something went wrong.');
     }
     setDeclining(false);
-  };
+  }, [quote, token]);
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <Loader2 className="w-8 h-8 animate-spin text-[#0C463D]" />
-    </div>
-  );
+  // ─── Send message flow ───
+  const handleSendMessage = useCallback(async () => {
+    if (!quote || !message.trim()) return;
+    setSendingMessage(true);
+    try {
+      // Insert into quote_messages
+      await (supabase as any).from('quote_messages').insert({
+        quote_id: quote.id,
+        quote_token: token,
+        client_name: quote.client_name,
+        client_phone: quote.client_phone,
+        message: message.trim(),
+        direction: 'inbound',
+      });
 
-  if (notFound) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0C463D] p-6">
-      <h1 className="text-2xl font-bold text-white mb-2">Quote Not Found</h1>
-      <p className="text-white/70">This quote link is invalid or has expired.</p>
-      <p className="text-white/50 text-sm mt-4">📞 0418 878 707</p>
-    </div>
-  );
+      // Notify admin (non-blocking)
+      supabase.functions.invoke('send-quote-notification', {
+        body: {
+          type: 'quote_question',
+          client_name: quote.client_name,
+          client_phone: quote.client_phone,
+          message: message.trim(),
+          address: quote.property_address,
+        },
+      }).catch(() => {});
 
-  if (declined) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6">
-      <XCircle className="w-16 h-16 text-muted-foreground mb-4" />
-      <h1 className="text-2xl font-bold text-foreground mb-2">Quote Declined</h1>
-      <p className="text-muted-foreground text-center max-w-md">
-        No problem. Feel free to reach out if you'd like to reschedule.
-      </p>
-      <p className="text-muted-foreground font-bold mt-4">📞 0418 878 707</p>
-    </div>
-  );
-
-  if (accepted) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6">
-      <CheckCircle2 className="w-20 h-20 text-[#0C463D] mb-4" />
-      <h1 className="text-2xl font-bold text-[#0C463D] mb-2">Booking request received! ✓</h1>
-      <p className="text-muted-foreground text-center max-w-md">
-        Brendan will confirm your date and cleaner shortly. You'll receive a text when it's locked in.
-      </p>
-      <p className="text-[#0C463D] font-bold mt-6">— Brightly Cleaning 🌿</p>
-    </div>
-  );
-
-  // Format dates
-  const issuedDate = quote.created_at ? format(new Date(quote.created_at), 'd MMMM yyyy') : 'N/A';
-  const validUntil = quote.created_at
-    ? format(new Date(new Date(quote.created_at).getTime() + 48 * 60 * 60 * 1000), 'd MMMM yyyy, h:mm a')
-    : '48 hours';
-  const ref = quote.reference || `BCQ-${new Date().getFullYear()}-001`;
-
-  // Build line items
-  const lineItems: { label: string; detail: string; amount: number }[] = [];
-  const cs = quote.consumables_selection && typeof quote.consumables_selection === 'object' ? quote.consumables_selection : {};
-
-  // Labour
-  if (quote.labour_cost && quote.labour_cost > 0) {
-    const hrs = quote.hours || 0;
-    lineItems.push({
-      label: 'Labour',
-      detail: hrs > 0 ? `${hrs} hrs` : '',
-      amount: Number(quote.labour_cost),
-    });
-  }
-
-  // Linen
-  if (quote.linen_cost && quote.linen_cost > 0) {
-    lineItems.push({
-      label: 'Linen Pack',
-      detail: `${quote.bedrooms || 0} bed${(quote.bedrooms || 0) !== 1 ? 's' : ''}`,
-      amount: Number(quote.linen_cost),
-    });
-  }
-
-  // Consumable kits from consumables_selection
-  CONSUMABLE_KITS.forEach(kit => {
-    if (cs[kit.key] === true) {
-      lineItems.push({ label: kit.name, detail: '', amount: kit.price });
+      setMessageSent(true);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to send message.');
     }
-  });
+    setSendingMessage(false);
+  }, [quote, message, token]);
 
-  // Photo report from consumables_selection
-  if (cs.include_photo_report === true) {
-    lineItems.push({ label: 'Photo Reporting', detail: 'Per clean', amount: PHOTO_REPORTING_FEE });
-  }
+  // ─── State screens ───
+  if (loading) return <LoadingScreen />;
+  if (notFound) return <NotFoundScreen />;
+  if (accepted) return <SuccessScreen name={(quote?.client_name || '').split(' ')[0]} />;
+  if (declined) return <DeclinedScreen name={(quote?.client_name || '').split(' ')[0]} />;
+  if (quote?.quote_accepted_at && quote?.status === 'accepted') return <AlreadyAcceptedScreen />;
+  if (quote?.quote_declined_at || quote?.status === 'declined') return <AlreadyDeclinedScreen />;
 
-  const subtotalExGst = Number(quote.sell_price_ex_gst || 0);
-  const gst = Number(quote.gst || 0);
-  const totalIncGst = Number(quote.sell_price_inc_gst || 0);
+  const firstName = (quote.client_name || '').split(' ')[0];
+  const price = Number(quote.sell_price_inc_gst || quote.price || 0);
+  const hours = quote.estimated_hours || quote.hours || null;
+  const cleanType = quote.clean_type || quote.service_type || 'Clean';
+  const inclusions = getInclusions(cleanType, quote.bedrooms || 0);
 
   return (
-    <div className="min-h-screen bg-[#f5f5f3]">
-      {/* Header bar */}
-      <div className="bg-[#0C463D] text-white">
-        <div className="max-w-2xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-extrabold tracking-tight">
-              Brightly<span className="text-[#FEDB00]">.</span>
+    <div className="min-h-screen" style={{
+      background: '#0A0F0E',
+      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(254, 219, 0, 0.04) 0%, transparent 50%)',
+    }}>
+      {/* ─── Header ─── */}
+      <header className="pt-8 pb-2 px-6 text-center fade-in">
+        <h1 className="text-2xl font-extrabold tracking-tight"
+          style={{ fontFamily: 'Nunito, sans-serif', color: '#FEDB00' }}>
+          Brightly<span className="text-white/30">.</span>
+        </h1>
+        <div className="mt-6 space-y-1">
+          <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Your Quote is Ready</p>
+          <p className="text-white text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            Hi {firstName || 'there'} 👋
+          </p>
+        </div>
+      </header>
+
+      <div className="max-w-md mx-auto px-5 pb-12 space-y-6 mt-6">
+        {/* ═══ GLASS PRICE CARD ═══ */}
+        <div
+          className="relative overflow-hidden rounded-3xl p-6 fade-in"
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            boxShadow: '0 0 40px rgba(254, 219, 0, 0.12), 0 8px 32px rgba(0, 0, 0, 0.4)',
+            animationDelay: '0.15s',
+          }}
+        >
+          {/* Shimmer overlay */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 6s ease-in-out infinite',
+          }} />
+
+          {/* Service badge */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="px-3 py-1 rounded-full text-xs font-bold"
+              style={{ background: 'rgba(254, 219, 0, 0.15)', color: '#FEDB00' }}>
+              {cleanType}
             </span>
           </div>
-          <span className="text-xs font-semibold text-white/60">QUOTE</span>
-        </div>
-      </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
-        {/* Quote header */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-extrabold text-[#0C463D]">QUOTE</h1>
-              <p className="text-sm font-mono text-muted-foreground mt-1">{ref}</p>
-            </div>
-            <div className="text-right text-sm text-muted-foreground space-y-1">
-              <p>Date issued: <strong className="text-foreground">{issuedDate}</strong></p>
-              <p>Valid for 48 hours</p>
-            </div>
+          {/* Address */}
+          {(quote.property_address || quote.property_name) && (
+            <p className="text-white/60 text-sm mb-5">
+              📍 {quote.property_address || quote.property_name}
+            </p>
+          )}
+
+          {/* THE PRICE */}
+          <div className="text-center py-4">
+            <p className="text-5xl font-extrabold text-white tracking-tight count-up"
+              style={{ fontFamily: 'Nunito, sans-serif' }}>
+              ${price.toFixed(2)}
+            </p>
+            <p className="text-white/40 text-sm mt-1">inc GST</p>
           </div>
 
-          <div className="border-t pt-4 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Prepared for</p>
-              <p className="font-semibold text-foreground">{quote.client_name || 'Client'}</p>
-              {quote.client_phone && <p className="text-muted-foreground">{quote.client_phone}</p>}
-              {quote.client_email && <p className="text-muted-foreground">{quote.client_email}</p>}
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Property</p>
-              <p className="font-semibold text-foreground">{quote.property_name || quote.property_address || '—'}</p>
-              {quote.property_address && quote.property_name && (
-                <p className="text-muted-foreground">{quote.property_address}</p>
+          {/* Meta row */}
+          <div className="flex items-center justify-center gap-6 mt-4 pt-4"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            {hours && (
+              <div className="flex items-center gap-1.5 text-white/50 text-sm">
+                <Clock className="w-4 h-4" />
+                <span>~{hours} hrs</span>
+              </div>
+            )}
+            {(quote.bedrooms > 0 || quote.bathrooms > 0) && (
+              <div className="text-white/50 text-sm">
+                {quote.bedrooms || 0}BR / {quote.bathrooms || 0}BA
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ═══ WHAT'S INCLUDED ═══ */}
+        <div className="space-y-3 fade-in" style={{ animationDelay: '0.3s' }}>
+          <h2 className="text-sm font-bold text-white/40 uppercase tracking-widest flex items-center gap-2 px-1">
+            <span style={{ color: '#FEDB00' }}>✨</span> What's Included
+          </h2>
+          <div className="rounded-2xl p-5 space-y-3" style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            {inclusions.map((item, i) => (
+              <CheckItem key={i} text={item} delay={400 + i * 120} />
+            ))}
+          </div>
+        </div>
+
+        {/* ═══ SPECIAL NOTES ═══ */}
+        {quote.notes && (
+          <div className="rounded-2xl p-5 fade-in" style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            animationDelay: '0.4s',
+          }}>
+            <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
+              Special notes from your request
+            </p>
+            <p className="text-sm text-white/70 whitespace-pre-wrap">{quote.notes}</p>
+          </div>
+        )}
+
+        {/* ═══ TRUST BADGES ═══ */}
+        <div className="flex items-center justify-center gap-6 py-2 fade-in"
+          style={{ animationDelay: '0.5s' }}>
+          <div className="flex items-center gap-1.5 text-white/40 text-xs">
+            <Shield className="w-4 h-4" />
+            <span>Fully Insured</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-white/40 text-xs">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Police Checked</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-white/40 text-xs">
+            <Star className="w-4 h-4" />
+            <span>5-Star Quality</span>
+          </div>
+        </div>
+
+        {/* ═══ ACTION BUTTONS ═══ */}
+        <div className="space-y-3 pt-2 fade-in" style={{ animationDelay: '0.6s' }}>
+          {/* ACCEPT */}
+          <button
+            onClick={handleAccept}
+            disabled={confirming}
+            className="w-full py-4 rounded-2xl text-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2"
+            style={{
+              background: confirming ? '#166534' : '#22C55E',
+              color: '#fff',
+              boxShadow: '0 0 24px rgba(34, 197, 94, 0.3)',
+              fontFamily: 'Nunito, sans-serif',
+            }}
+            onMouseEnter={(e) => {
+              if (!confirming) e.currentTarget.style.boxShadow = '0 0 40px rgba(34, 197, 94, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(34, 197, 94, 0.3)';
+            }}
+          >
+            {confirming ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                Accept This Quote
+              </>
+            )}
+          </button>
+
+          {/* MORE INFO */}
+          <button
+            onClick={() => { setShowMessagePanel(!showMessagePanel); setShowDeclineConfirm(false); }}
+            className="w-full py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2"
+            style={{
+              background: 'transparent',
+              color: '#FEDB00',
+              border: '1.5px solid rgba(254, 219, 0, 0.4)',
+            }}
+          >
+            💬 I Have a Question
+          </button>
+
+          {/* Message Panel (inline expand) */}
+          {showMessagePanel && (
+            <div className="rounded-2xl p-5 space-y-3 slide-down" style={{
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              {messageSent ? (
+                <div className="text-center py-4 space-y-2">
+                  <CheckCircle2 className="w-10 h-10 mx-auto text-[#22C55E]" />
+                  <p className="text-white font-bold">Thanks! We'll get back to you shortly.</p>
+                  <p className="text-white/40 text-sm">Usually within a few hours.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-white/60 text-sm">What would you like to know?</p>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type your question here..."
+                    rows={3}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2"
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      focusRingColor: '#FEDB00',
+                    }}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={sendingMessage || !message.trim()}
+                    className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                    style={{
+                      background: '#FEDB00',
+                      color: '#0C463D',
+                    }}
+                  >
+                    {sendingMessage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Send Message
+                      </>
+                    )}
+                  </button>
+                </>
               )}
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Clean type</p>
-              <p className="font-semibold text-foreground">{quote.clean_type || quote.service_type || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Rooms</p>
-              <p className="font-semibold text-foreground">
-                {quote.bedrooms || 0} bed · {quote.bathrooms || 0} bath
-                {quote.sofa_beds > 0 && ` · ${quote.sofa_beds} sofa bed${quote.sofa_beds > 1 ? 's' : ''}`}
-                {quote.balconies > 0 && ` · ${quote.balconies} balcon${quote.balconies > 1 ? 'ies' : 'y'}`}
+          {/* DECLINE */}
+          {!showDeclineConfirm ? (
+            <button
+              onClick={() => { setShowDeclineConfirm(true); setShowMessagePanel(false); }}
+              className="w-full py-3 rounded-2xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2"
+              style={{
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.3)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <XCircle className="w-4 h-4" />
+              No Thanks
+            </button>
+          ) : (
+            <div className="rounded-2xl p-5 space-y-4 slide-down" style={{
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+            }}>
+              <p className="text-white text-sm font-bold text-center">
+                Are you sure? We'd hate to lose you.
               </p>
-              {quote.outdoor_areas && <p className="text-muted-foreground">+ Outdoor areas</p>}
-            </div>
-          </div>
-
-          {/* Bed Types */}
-          {Array.isArray(quote.bed_types) && quote.bed_types.length > 0 && (
-            <div className="text-sm">
-              <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Bed Configuration</p>
-              <div className="flex flex-wrap gap-2">
-                {(quote.bed_types as string[]).map((bt, i) => (
-                  <span key={i} className="bg-[#0C463D]/5 px-2 py-1 rounded text-xs font-semibold">
-                    Bed {i + 1}: {bt}
-                  </span>
-                ))}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeclineConfirm(false)}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.6)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={handleDecline}
+                  disabled={declining}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                  }}
+                >
+                  {declining ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Decline'}
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Line items table */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#0C463D]/5 border-b">
-                <th className="text-left px-6 py-3 font-bold text-[#0C463D]">Description</th>
-                <th className="text-right px-6 py-3 font-bold text-[#0C463D]">Detail</th>
-                <th className="text-right px-6 py-3 font-bold text-[#0C463D]">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.map((item, i) => (
-                <tr key={i} className="border-b last:border-0">
-                  <td className="px-6 py-3 font-semibold text-foreground">{item.label}</td>
-                  <td className="px-6 py-3 text-right text-muted-foreground">{item.detail}</td>
-                  <td className="px-6 py-3 text-right font-semibold text-foreground">${item.amount.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t">
-                <td colSpan={2} className="px-6 py-2 text-right text-sm text-muted-foreground">Subtotal ex GST</td>
-                <td className="px-6 py-2 text-right font-semibold">${subtotalExGst.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td colSpan={2} className="px-6 py-2 text-right text-sm text-muted-foreground">GST (10%)</td>
-                <td className="px-6 py-2 text-right font-semibold">${gst.toFixed(2)}</td>
-              </tr>
-              <tr className="bg-[#0C463D]/5">
-                <td colSpan={2} className="px-6 py-4 text-right text-lg font-extrabold text-[#0C463D]">TOTAL inc GST</td>
-                <td className="px-6 py-4 text-right text-2xl font-extrabold text-[#0C463D]">${totalIncGst.toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {/* Notes */}
-        {quote.notes && (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Notes</p>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{quote.notes}</p>
-          </div>
-        )}
-
-        {/* T&Cs + Actions */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="tcs"
-              checked={tcsAccepted}
-              onCheckedChange={(v) => setTcsAccepted(v === true)}
-              className="mt-0.5"
-            />
-            <label htmlFor="tcs" className="text-sm text-muted-foreground cursor-pointer">
-              I have read and agree to{' '}
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); setTermsOpen(true); }}
-                className="text-[#0C463D] font-bold underline"
-              >
-                Brightly Cleaning's Terms & Conditions
-              </button>
-            </label>
-          </div>
-
-          <Button
-            onClick={handleAccept}
-            disabled={!tcsAccepted || confirming}
-            className="w-full h-14 rounded-2xl text-lg font-extrabold bg-[#0C463D] hover:bg-[#0C463D]/90 text-white"
-          >
-            {confirming ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
-            ACCEPT QUOTE
-          </Button>
-
-          <button
-            onClick={handleDecline}
-            disabled={declining}
-            className="w-full text-center text-sm font-semibold text-muted-foreground hover:text-destructive transition-colors py-2"
-          >
-            {declining ? 'Declining...' : 'Decline this quote'}
-          </button>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-xs text-muted-foreground pb-8 space-y-1">
-          <p className="font-semibold">Brightly Cleaning</p>
-          <p>brendan@brightly.cleaning | 0418 878 707</p>
-          <p>Quote valid for 48 hours</p>
+        {/* ═══ FOOTER ═══ */}
+        <div className="text-center pt-6 pb-4 space-y-2 fade-in" style={{ animationDelay: '0.7s' }}>
+          <a href="tel:0418878707"
+            className="inline-flex items-center gap-2 text-sm font-bold"
+            style={{ color: '#FEDB00' }}>
+            <Phone className="w-4 h-4" />
+            Questions? 0418 878 707
+          </a>
+          <p className="text-white/20 text-xs" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            Brightly Cleaning — Premium Cleaning Services
+          </p>
         </div>
       </div>
-
-      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
     </div>
   );
 }
