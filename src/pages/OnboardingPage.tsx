@@ -26,8 +26,10 @@ interface FormData {
   access_instructions: string;
   extras: string[];
   bed_types: string[];
+  bed_config: Record<number, string>; // per-bedroom bed type: { 1: 'King', 2: 'Queen' }
   total_beds: number;
   linen_provided: string;
+  consumables_needed: string;
   guest_checkout_time: string;
   guest_checkin_time: string;
   turnaround_window: string;
@@ -52,7 +54,7 @@ const EMPTY: FormData = {
   preferred_date: '', preferred_time: '', date_mode: '',
   notes: '', access_method: '', access_instructions: '',
   extras: [],
-  bed_types: [], total_beds: 1, linen_provided: '',
+  bed_types: [], bed_config: {}, total_beds: 1, linen_provided: '', consumables_needed: '',
   guest_checkout_time: '10:00', guest_checkin_time: '14:00', turnaround_window: '4',
   last_cleaned: '', is_occupied: '',
   lease_end_date: '', carpets_required: 'No', oven_required: 'No',
@@ -146,12 +148,10 @@ export default function OnboardingPage() {
           access_instructions: form.access_instructions,
           extras: form.extras,
           ...(form.clean_type === 'airbnb' ? {
-            bed_types: form.bed_types,
-            total_beds: form.total_beds,
+            bed_config: form.bed_config,
+            bed_types: Object.values(form.bed_config),
             linen_provided: form.linen_provided,
-            guest_checkout_time: form.guest_checkout_time,
-            guest_checkin_time: form.guest_checkin_time,
-            turnaround_window: form.turnaround_window,
+            consumables_needed: form.consumables_needed,
           } : {}),
           ...(form.clean_type === 'deep_clean' ? {
             last_cleaned: form.last_cleaned,
@@ -286,7 +286,7 @@ export default function OnboardingPage() {
     switch (currentStep) {
       case 'clean_type': return !!form.clean_type;
       case 'property': return !!form.address.trim() && form.bedrooms > 0 && form.bathrooms > 0;
-      case 'airbnb_extras': return !!form.linen_provided;
+      case 'airbnb_extras': return !!form.linen_provided && !!form.consumables_needed;
       case 'extras': return true;
       case 'access': return !!form.access_method;
       case 'contact': return !!form.first_name && !!form.last_name && !!form.phone && !!form.email;
@@ -437,15 +437,70 @@ export default function OnboardingPage() {
 
       {/* ═══════ STEP: Airbnb extras ═══════ */}
       {currentStep === 'airbnb_extras' && (
-        <StepContainer heading="Airbnb details" sub="Just a couple of quick questions.">
-          <p className="text-base font-semibold mb-3" style={{ color: '#F0FDF4' }}>Linen provided by Brightly?</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Pill selected={form.linen_provided === 'Yes'} onClick={() => u('linen_provided', 'Yes')}>
-              <span className="text-[13px] font-bold">Yes</span>
-            </Pill>
-            <Pill selected={form.linen_provided === 'No'} onClick={() => u('linen_provided', 'No')}>
-              <span className="text-[13px] font-bold">No</span>
-            </Pill>
+        <StepContainer heading="Airbnb details" sub="Tell us about beds, linen and consumables.">
+          <div className="space-y-6">
+            {/* Bed type per bedroom */}
+            <div>
+              <p className="text-sm font-bold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>BED TYPE PER BEDROOM</p>
+              <div className="space-y-3">
+                {Array.from({ length: form.bedrooms }, (_, i) => i + 1).map(roomNum => (
+                  <div key={roomNum}>
+                    <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Bedroom {roomNum}</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {['King', 'Queen', 'Double', 'Single', 'Bunk'].map(bt => (
+                        <button
+                          key={bt}
+                          type="button"
+                          onClick={() => {
+                            const next = { ...form.bed_config, [roomNum]: bt };
+                            u('bed_config', next);
+                          }}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: '12px',
+                            border: form.bed_config[roomNum] === bt ? '2px solid #FEDB00' : '1px solid rgba(255,255,255,0.15)',
+                            background: form.bed_config[roomNum] === bt ? '#FEDB00' : 'rgba(255,255,255,0.04)',
+                            color: form.bed_config[roomNum] === bt ? '#0C463D' : '#F0FDF4',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {bt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Linen */}
+            <div>
+              <p className="text-sm font-bold mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>LINEN PROVIDED BY BRIGHTLY?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Pill selected={form.linen_provided === 'Yes'} onClick={() => u('linen_provided', 'Yes')}>
+                  <span className="text-[13px] font-bold">✓ Yes please</span>
+                </Pill>
+                <Pill selected={form.linen_provided === 'No'} onClick={() => u('linen_provided', 'No')}>
+                  <span className="text-[13px] font-bold">✗ No thanks</span>
+                </Pill>
+              </div>
+            </div>
+
+            {/* Consumables */}
+            <div>
+              <p className="text-sm font-bold mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>CONSUMABLES RESTOCKING?</p>
+              <p className="text-xs mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>Coffee, soaps, shampoos, toilet paper etc.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Pill selected={form.consumables_needed === 'Yes'} onClick={() => u('consumables_needed', 'Yes')}>
+                  <span className="text-[13px] font-bold">✓ Yes please</span>
+                </Pill>
+                <Pill selected={form.consumables_needed === 'No'} onClick={() => u('consumables_needed', 'No')}>
+                  <span className="text-[13px] font-bold">✗ No thanks</span>
+                </Pill>
+              </div>
+            </div>
           </div>
           <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
         </StepContainer>
