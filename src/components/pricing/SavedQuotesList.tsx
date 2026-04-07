@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { FileText, Send, Copy, Link2 } from 'lucide-react';
+import { FileText, Send, Copy, Link2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAppBaseUrl } from '@/lib/appUrl';
 import SendQuoteModal from './SendQuoteModal';
@@ -33,6 +34,20 @@ const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Declined'];
 export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void }) {
   const [filter, setFilter] = useState('All');
   const [sendQuote, setSendQuote] = useState<any>(null);
+  const [deleteQuote, setDeleteQuote] = useState<any>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (q: any) => {
+      const { error } = await supabase.from('quotes').delete().eq('id', q.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Quote deleted');
+      setDeleteQuote(null);
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const queryClient = useQueryClient();
 
   const { data: quotes = [], isLoading } = useQuery({
@@ -146,6 +161,14 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
                 >
                   <Link2 className="w-3 h-3" /> Copy Link
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs text-destructive hover:text-destructive px-2"
+                  onClick={(e) => { e.stopPropagation(); setDeleteQuote(q); }}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
               </div>
             </div>
           ))}
@@ -163,3 +186,24 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
     </div>
   );
 }
+
+      <AlertDialog open={!!deleteQuote} onOpenChange={(o) => { if (!o) setDeleteQuote(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently delete quote for <strong>{deleteQuote?.client_name || 'this client'}</strong> ({deleteQuote?.reference})? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteQuote && deleteMutation.mutate(deleteQuote)}
+              disabled={deleteMutation.isPending}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
