@@ -355,7 +355,7 @@ export default function CompletionFormPage() {
       user_id: user.id,
       job_id: job.id,
       event_type: 'clock_out',
-    } as any).catch(() => {});
+    } as any).then(() => {}, () => {});
 
     // 3. Save completion photos to job_photos
     if (formData) {

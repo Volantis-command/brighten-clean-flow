@@ -122,7 +122,7 @@ export default function CleanWorkflowPage() {
       event_type: 'clock_in',
       lat,
       lng,
-    } as any).then(() => {}).catch(() => {});
+    } as any).then(() => {}, () => {});
 
     // SMS to admin
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user!.id).maybeSingle();

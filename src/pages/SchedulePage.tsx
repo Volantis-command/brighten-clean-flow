@@ -95,7 +95,7 @@ export default function SchedulePage() {
     const update: Record<string, any> = { scheduled_date: newDate };
     if (newTime) update.scheduled_time = newTime;
 
-    const { error } = await supabase.from('jobs').update(update).eq('id', job.id);
+    const { error } = await supabase.from('jobs').update(update as any).eq('id', job.id);
     if (error) {
       toast.error(`Failed to move job: ${error.message}`);
       return;

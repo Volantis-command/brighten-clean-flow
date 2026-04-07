@@ -114,7 +114,7 @@ export default function CleanerPortalPage() {
       user_id: staff.id,
       job_id: job.id,
       event_type: "clock_in",
-    } as any).then(() => {}).catch(() => {});
+    } as any).then(() => {}, () => {});
 
     // 2. Reveal lockbox code
     const lockbox = property?.lockbox_code ?? null;

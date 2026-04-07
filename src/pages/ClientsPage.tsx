@@ -263,7 +263,7 @@ export default function ClientsPage() {
       // Remove from user_roles
       await supabase.from('user_roles').delete().eq('user_id', c.id);
       // Remove from quote_requests
-      await supabase.from('quote_requests').delete().eq('client_id', c.id);
+      await (supabase.from('quote_requests').delete() as any).eq('client_id', c.id);
       // Remove from profiles
       await supabase.from('profiles').delete().eq('id', c.id);
     },

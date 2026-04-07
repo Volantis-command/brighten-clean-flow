@@ -183,9 +183,6 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
           onSent={() => queryClient.invalidateQueries({ queryKey: ['quotes'] })}
         />
       )}
-    </div>
-  );
-}
 
       <AlertDialog open={!!deleteQuote} onOpenChange={(o) => { if (!o) setDeleteQuote(null); }}>
         <AlertDialogContent>
@@ -207,3 +204,6 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}

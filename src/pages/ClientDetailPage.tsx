@@ -56,9 +56,9 @@ function useClientJobs(propertyIds: string[], clientName: string | null) {
 
       // Also query by client_name to catch jobs without property_id
       if (clientName) {
-        const { data: nameJobs } = await supabase
+        const { data: nameJobs } = await (supabase
           .from('jobs')
-          .select('id, scheduled_date, scheduled_time, status, invoice_status, property_id, cleaner_1_id, notes')
+          .select('id, scheduled_date, scheduled_time, status, invoice_status, property_id, cleaner_1_id, notes') as any)
           .eq('client_name', clientName)
           .order('scheduled_date', { ascending: false });
         const existingIds = new Set(allJobs.map(j => j.id));
