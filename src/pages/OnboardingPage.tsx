@@ -230,7 +230,6 @@ export default function OnboardingPage() {
           full_name: fullName,
           phone: form.phone,
           email: form.email,
-          role: 'client',
         });
         if (profErr) throw profErr;
         profileId = newId;
