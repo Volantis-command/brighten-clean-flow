@@ -64,7 +64,7 @@ export default function LeadsTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'accepted', 'client_accepted', 'awaiting_schedule_approval', 'quote_declined', 'declined'];
+  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'quote_declined', 'declined'];
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['quote-requests-leads'],
