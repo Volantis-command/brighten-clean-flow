@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
@@ -27,6 +28,7 @@ interface StaffMember {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  employment_type: string | null;
   role: AppRole;
 }
 
@@ -56,7 +58,7 @@ function useStaffList() {
       const userIds = roles.map((r) => r.user_id);
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone')
+        .select('id, full_name, email, phone, employment_type')
         .in('id', userIds);
       if (profErr) throw profErr;
 
@@ -100,8 +102,10 @@ export default function StaffPage() {
 
   // Edit form
   const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState<AppRole>('cleaner');
+  const [editEmploymentType, setEditEmploymentType] = useState('employee');
 
   const invokeFn = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('invite-staff', { body });
@@ -136,8 +140,15 @@ export default function StaffPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      invokeFn({ action: 'update_role', user_id: editMember!.id, role: editRole, full_name: editName, phone: editPhone }),
+    mutationFn: async () => {
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .update({ full_name: editName, email: editEmail, phone: editPhone, employment_type: editEmploymentType })
+        .eq('id', editMember!.id);
+      if (profileErr) throw profileErr;
+      // Update role via edge function (has admin privileges for user_roles)
+      await invokeFn({ action: 'update_role', user_id: editMember!.id, role: editRole });
+    },
     onSuccess: () => {
       toast.success('Staff member updated');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
@@ -161,20 +172,33 @@ export default function StaffPage() {
   const openEdit = (m: StaffMember) => {
     setEditMember(m);
     setEditName(m.full_name || '');
+    setEditEmail(m.email || '');
     setEditPhone(m.phone || '');
     setEditRole(m.role);
+    setEditEmploymentType(m.employment_type || 'employee');
   };
 
   const resetPasswordMutation = useMutation({
-    mutationFn: (email: string) =>
-      invokeFn({ action: 'reset_password', email }),
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+    },
     onSuccess: () => toast.success('Password reset email sent!'),
     onError: (e: Error) => toast.error(e.message),
   });
 
   const setPasswordMutation = useMutation({
-    mutationFn: ({ userId, pw }: { userId: string; pw: string }) =>
-      invokeFn({ action: 'set_password', user_id: userId, password: pw }),
+    mutationFn: async ({ userId, pw }: { userId: string; pw: string }) => {
+      const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+      if (!serviceRoleKey) {
+        throw new Error('Password reset requires admin setup — add VITE_SUPABASE_SERVICE_ROLE_KEY to .env, or use Send Reset Email instead');
+      }
+      const adminClient = createClient(import.meta.env.VITE_SUPABASE_URL, serviceRoleKey);
+      const { error } = await adminClient.auth.admin.updateUserById(userId, { password: pw });
+      if (error) throw error;
+    },
     onSuccess: () => {
       toast.success('Password updated!');
       setPasswordMember(null);
@@ -493,6 +517,10 @@ export default function StaffPage() {
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
             </div>
             <div>
+              <Label>Email</Label>
+              <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+            </div>
+            <div>
               <Label>Phone</Label>
               <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
             </div>
@@ -504,6 +532,16 @@ export default function StaffPage() {
                   <SelectItem value="cleaner">Cleaner</SelectItem>
                   <SelectItem value="head_cleaner">Head Cleaner</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Employment Type</Label>
+              <Select value={editEmploymentType} onValueChange={setEditEmploymentType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">Employee</SelectItem>
+                  <SelectItem value="contractor">Contractor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
