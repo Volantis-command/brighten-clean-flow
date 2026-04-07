@@ -167,7 +167,10 @@ export default function ScheduleAfterAcceptModal({
         const ampm = hh >= 12 ? 'pm' : 'am';
         const h12 = hh % 12 || 12;
         const timeStr = mm === 0 ? `${h12}${ampm}` : `${h12}:${String(mm).padStart(2,'0')}${ampm}`;
-        const message = `Hi ${firstName}, your ${cleanType} is booked in for ${timeStr} on ${dateStr}. See you then! 🌿 — Brightly Cleaning`;
+        const cleanerName = cleaners.find((c: any) => c.id === cleanerId);
+        const cleanerFirst = cleanerName ? (cleanerName.first_name || cleanerName.full_name?.split(' ')[0] || '') : '';
+        const cleanerLine = cleanerFirst ? ` ${cleanerFirst} will be your cleaner.` : '';
+        const message = `Hi ${firstName}, your ${cleanType} is booked in for ${timeStr} on ${dateStr}.${cleanerLine} See you then! 🌿 — Brightly Cleaning`;
         const { error } = await supabase.functions.invoke('send-job-sms', { body: { to: clientPhone, message } });
         if (error) throw error;
         stepResults.push({ step: 'Client confirmation SMS sent', ok: true });
