@@ -629,22 +629,28 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         throw new Error(err.error || 'SMS sending failed');
       }
 
-      // STEP 3 — If opened from /quoting?lead=<id>, move lead out of Quotes Needed
-      if (leadId) {
-        // Try updating quote_requests first
-        const { data: qrUpdated } = await supabase
-          .from('quote_requests')
-          .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
-          .eq('id', leadId)
-          .select('id');
+      // STEP 3 — Update lead/quote_request status to quote_sent
+      // Try by leadId first, then fall back to phone match
+      const { data: qrById } = leadId ? await supabase
+        .from('quote_requests')
+        .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
+        .eq('id', leadId)
+        .select('id') : { data: null };
 
-        // If no quote_requests row matched, try the leads table
-        if (!qrUpdated?.length) {
+      if (!qrById?.length) {
+        // Fallback: match by phone number
+        const phone = form.clientPhone?.trim();
+        if (phone) {
           await supabase
-            .from('leads')
-            .update({ status: 'quote_sent' })
-            .eq('id', leadId);
+            .from('quote_requests')
+            .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
+            .eq('phone', phone)
+            .in('status', ['new_enquiry', 'form_submitted', 'awaiting_quote', 'pending_form']);
         }
+      }
+
+      if (leadId) {
+        await supabase.from('leads').update({ status: 'quote_sent' }).eq('id', leadId);
       }
 
       // STEP 4 — Create admin notification

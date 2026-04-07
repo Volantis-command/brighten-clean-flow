@@ -39,6 +39,20 @@ export default function SendQuoteModal({ open, onClose, quote, onSent }: Props) 
         quote_sent_at: new Date().toISOString(),
       }).eq('id', quote.id);
 
+      // 1b. Also update quote_requests status so pipeline reflects correctly
+      const phone = clientPhone || quote.client_phone;
+      if (phone) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
+          .eq('phone', phone)
+          .in('status', ['new_enquiry', 'form_submitted', 'awaiting_quote', 'pending_form']);
+      }
+      if (quote.lead_id) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'quote_sent', quote_sent_at: new Date().toISOString() })
+          .eq('id', quote.lead_id);
+      }
+
       // 2. Send detailed SMS via edge function
       const firstName = (clientName || quote.client_name || 'there').split(' ')[0];
       const res = await supabase.functions.invoke('send-quote-notification', {
