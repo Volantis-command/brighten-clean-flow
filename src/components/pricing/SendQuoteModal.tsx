@@ -123,7 +123,7 @@ export default function SendQuoteModal({ open, onClose, quote, onSent }: Props) 
           <Button variant="outline" onClick={handleCopyLink} className="gap-2">
             <Copy className="w-4 h-4" /> Copy Link
           </Button>
-          <Button onClick={handleSend} disabled={sending} className="gap-2 bg-primary hover:bg-primary/90">
+          <Button onClick={handleSend} disabled={sending} className="gap-2 bg-primary hover:bg-primary/90 text-[#0C463D] font-bold">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Send via SMS
           </Button>
