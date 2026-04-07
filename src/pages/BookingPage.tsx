@@ -45,11 +45,30 @@ export default function BookingPage() {
     if (!leadId) return;
     supabase
       .from('quote_requests')
-      .select('first_name, last_name, phone, address, clean_type')
+      .select('first_name, last_name, phone, address, clean_type, preferred_date, time_preference')
       .eq('id', leadId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setQrData(data);
+        if (data) {
+          setQrData(data);
+          // Pre-fill date/time from what client already submitted in the quote form
+          if (data.preferred_date) {
+            const parsed = new Date(data.preferred_date + 'T00:00:00');
+            if (!isNaN(parsed.getTime())) setDate(parsed);
+          }
+          if (data.time_preference) {
+            const timemap: Record<string, string> = {
+              'Morning (7am-12pm)': '09:00',
+              'Morning': '09:00',
+              'Afternoon (12pm-5pm)': '13:00',
+              'Afternoon': '13:00',
+              'Either': '09:00',
+            };
+            setTime(timemap[data.time_preference] || '09:00');
+          } else {
+            setTime('09:00');
+          }
+        }
       });
   }, [leadId]);
 
@@ -154,7 +173,10 @@ export default function BookingPage() {
             Brightly<span className="text-accent">.</span>
           </h1>
           <h2 className="text-xl font-bold text-foreground">Book Your Clean</h2>
-          {displayName ? <p className="text-muted-foreground">Hi {displayName.split(' ')[0]}, choose your preferred clean date and time.</p> : null}
+          {displayName ? <p className="text-muted-foreground">Hi {displayName.split(' ')[0]}, confirm your booking details below.</p> : null}
+          {qrData?.preferred_date && (
+            <p className="text-xs text-muted-foreground">We've pre-filled your preferred date from your quote request.</p>
+          )}
           {displayService ? (
             <p className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{displayService}</p>
           ) : null}
