@@ -14,11 +14,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { getAppBaseUrl } from '@/lib/appUrl';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
@@ -284,97 +287,21 @@ export default function StaffPage() {
 
   // Selected staff detail view
   if (selectedStaff) {
-    const obStatus = onboardingStatuses[selectedStaff.id];
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedStaff(null)} className="gap-1">
-            <ArrowLeft className="h-4 w-4" /> Back to Staff
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-2xl">
-            {(selectedStaff.full_name || '?')[0].toUpperCase()}
-          </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-primary">{selectedStaff.full_name || 'No name'}</h1>
-            <Badge className={roleBadgeStyles[selectedStaff.role]}>{roleLabels[selectedStaff.role]}</Badge>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-          {selectedStaff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {selectedStaff.email}</p>}
-          {selectedStaff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {selectedStaff.phone}</p>}
-
-          {/* Login & Password Management */}
-          {isAdmin && (
-            <div className="border-t pt-3 mt-3 space-y-2">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Key className="w-4 h-4" /> Login Management</h3>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
-                  onClick={() => setPasswordMember(selectedStaff)}>
-                  <Key className="w-3.5 h-3.5" /> Set Temp Password
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
-                  disabled={resetPasswordMutation.isPending}
-                  onClick={() => selectedStaff.email && resetPasswordMutation.mutate(selectedStaff.email)}>
-                  {resetPasswordMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                  Send Reset Email
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Onboarding Link */}
-          {isAdmin && (
-            <div className="border-t pt-3 mt-3 space-y-2">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Link2 className="w-4 h-4" /> Onboarding Link</h3>
-              {obStatus?.token ? (
-                <div className="flex items-center gap-2">
-                  <Input readOnly value={getOnboardingLink(selectedStaff.id) || ''} className="text-xs h-8 font-mono" />
-                  <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(selectedStaff.id)} className="shrink-0 gap-1">
-                    {onboardingLinkCopied === selectedStaff.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="outline" size="sm" className="gap-1 rounded-xl"
-                  disabled={ensureOnboardingMutation.isPending}
-                  onClick={() => ensureOnboardingMutation.mutate(selectedStaff)}>
-                  {ensureOnboardingMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                  Generate Onboarding Link
-                </Button>
-              )}
-              {obStatus?.submitted && !obStatus.reviewed && (
-                <Button size="sm" className="gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
-                  disabled={markReviewedMutation.isPending}
-                  onClick={() => markReviewedMutation.mutate(selectedStaff.id)}>
-                  {markReviewedMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  Mark as Reviewed
-                </Button>
-              )}
-              {obStatus?.reviewed && !obStatus.directorApproved && (
-                <Button size="sm" className="gap-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
-                  disabled={approveDeploymentMutation.isPending}
-                  onClick={() => approveDeploymentMutation.mutate(selectedStaff.id)}>
-                  {approveDeploymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  Approve for Deployment
-                </Button>
-              )}
-              {obStatus?.directorApproved && (
-                <Badge className="bg-green-100 text-green-800">Approved for deployment</Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        <CleanerScorecard staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
-        <StaffOnboardingSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
-        <StaffPaySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
-        <StaffPayRatesSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
-        <StaffPerformanceSection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
-        <StaffAvailabilitySection staffId={selectedStaff.id} staffName={selectedStaff.full_name || 'Staff'} />
-      </div>
+      <StaffDetailView
+        staff={selectedStaff}
+        isAdmin={isAdmin}
+        onBack={() => setSelectedStaff(null)}
+        onboardingStatuses={onboardingStatuses}
+        getOnboardingLink={getOnboardingLink}
+        onboardingLinkCopied={onboardingLinkCopied}
+        copyOnboardingLink={copyOnboardingLink}
+        ensureOnboardingMutation={ensureOnboardingMutation}
+        markReviewedMutation={markReviewedMutation}
+        approveDeploymentMutation={approveDeploymentMutation}
+        setPasswordMember={setPasswordMember}
+        resetPasswordMutation={resetPasswordMutation}
+      />
     );
   }
 
@@ -640,6 +567,364 @@ export default function StaffPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ─── Paperwork Checklist Items ───
+const PAPERWORK_ITEMS = [
+  { key: 'police_check', label: 'Police Check' },
+  { key: 'tax_file_number', label: 'Tax File Number' },
+  { key: 'bank_details', label: 'Bank Details' },
+  { key: 'signed_contract', label: 'Signed Employment Contract' },
+  { key: 'wwcc', label: 'Working With Children Check' },
+];
+
+// ─── Staff Detail View (tabbed) ───
+function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboardingLink, onboardingLinkCopied, copyOnboardingLink, ensureOnboardingMutation, markReviewedMutation, approveDeploymentMutation, setPasswordMember, resetPasswordMutation }: {
+  staff: StaffMember;
+  isAdmin: boolean;
+  onBack: () => void;
+  onboardingStatuses: any;
+  getOnboardingLink: (id: string) => string | null;
+  onboardingLinkCopied: string;
+  copyOnboardingLink: (id: string) => void;
+  ensureOnboardingMutation: any;
+  markReviewedMutation: any;
+  approveDeploymentMutation: any;
+  setPasswordMember: (m: StaffMember) => void;
+  resetPasswordMutation: any;
+}) {
+  const queryClient = useQueryClient();
+  const obStatus = onboardingStatuses[staff.id];
+  const staffName = staff.full_name || 'Staff';
+
+  // Fetch jobs for clean history
+  const { data: staffJobs = [] } = useQuery({
+    queryKey: ['staff-jobs', staff.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, scheduled_time, status, clean_type, property_id, feedback_score, clock_on, clock_off, properties(property_name, address)')
+        .or(`cleaner_1_id.eq.${staff.id},cleaner_2_id.eq.${staff.id}`)
+        .order('scheduled_date', { ascending: false });
+      return data || [];
+    },
+  });
+
+  // Performance stats
+  const completedCleans = staffJobs.filter((j: any) => j.status === 'complete' || j.status === 'completed');
+  const scores = completedCleans.map((j: any) => j.feedback_score).filter(Boolean) as number[];
+  const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
+
+  // Total hours from clock_on/clock_off
+  const totalMinutes = completedCleans.reduce((sum: number, j: any) => {
+    if (j.clock_on && j.clock_off) {
+      const diff = (new Date(j.clock_off).getTime() - new Date(j.clock_on).getTime()) / 60000;
+      return sum + Math.max(0, diff);
+    }
+    return sum;
+  }, 0);
+  const totalHours = (totalMinutes / 60).toFixed(1);
+
+  // SOPs for inductions
+  const { data: sops = [] } = useQuery({
+    queryKey: ['sop-documents'],
+    queryFn: async () => {
+      const { data } = await supabase.from('sop_documents' as any).select('*').order('name');
+      return (data as any[]) || [];
+    },
+  });
+
+  // Paperwork status
+  const { data: staffProfile } = useQuery({
+    queryKey: ['staff-profile-detail', staff.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('*').eq('id', staff.id).single();
+      return data;
+    },
+  });
+
+  const paperworkStatus: Record<string, boolean> = (staffProfile as any)?.paperwork_status || {};
+
+  const savePaperworkMutation = useMutation({
+    mutationFn: async (updated: Record<string, boolean>) => {
+      const { error } = await supabase.from('profiles').update({ paperwork_status: updated } as any).eq('id', staff.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Paperwork updated');
+      queryClient.invalidateQueries({ queryKey: ['staff-profile-detail', staff.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const togglePaperwork = (key: string) => {
+    const updated = { ...paperworkStatus, [key]: !paperworkStatus[key] };
+    savePaperworkMutation.mutate(updated);
+  };
+
+  // Hourly rate and pay
+  const hourlyRate = (staffProfile as any)?.hourly_rate || 45;
+
+  // Current pay period hours (this fortnight)
+  const now = new Date();
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000);
+  const payPeriodJobs = completedCleans.filter((j: any) => new Date(j.scheduled_date + 'T00:00:00') >= twoWeeksAgo);
+  const payPeriodMinutes = payPeriodJobs.reduce((sum: number, j: any) => {
+    if (j.clock_on && j.clock_off) {
+      const diff = (new Date(j.clock_off).getTime() - new Date(j.clock_on).getTime()) / 60000;
+      return sum + Math.max(0, diff);
+    }
+    return sum;
+  }, 0);
+  const payPeriodHours = (payPeriodMinutes / 60).toFixed(1);
+  const estimatedPay = (parseFloat(payPeriodHours) * hourlyRate).toFixed(2);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back to Staff
+        </Button>
+      </div>
+
+      {/* Profile header */}
+      <div className="flex items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-2xl">
+          {(staff.full_name || '?')[0].toUpperCase()}
+        </div>
+        <div>
+          <h1 className="text-2xl font-extrabold text-primary">{staff.full_name || 'No name'}</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge className={roleBadgeStyles[staff.role]}>{roleLabels[staff.role]}</Badge>
+            {obStatus?.directorApproved && <Badge className="bg-green-100 text-green-800">Director Approved</Badge>}
+          </div>
+        </div>
+      </div>
+
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="w-full grid grid-cols-6 bg-muted rounded-xl">
+          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Overview</TabsTrigger>
+          <TabsTrigger value="inductions" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Inductions</TabsTrigger>
+          <TabsTrigger value="paperwork" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Paperwork</TabsTrigger>
+          <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">History</TabsTrigger>
+          <TabsTrigger value="availability" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Availability</TabsTrigger>
+          <TabsTrigger value="pay" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Pay</TabsTrigger>
+        </TabsList>
+
+        {/* OVERVIEW TAB */}
+        <TabsContent value="overview" className="space-y-4 mt-4">
+          <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
+            {staff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {staff.email}</p>}
+            {staff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {staff.phone}</p>}
+
+            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+              <div>
+                <span className="text-xs text-muted-foreground">Avg QC Score</span>
+                <p className="font-bold text-lg text-primary">{avgScore}</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Total Cleans</span>
+                <p className="font-bold text-lg text-foreground">{completedCleans.length}</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Total Hours</span>
+                <p className="font-bold text-lg text-foreground">{totalHours}h</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Status</span>
+                <p className="font-bold text-lg text-foreground">
+                  {obStatus?.directorApproved ? 'Active' : obStatus?.submitted ? 'Pending Approval' : 'Onboarding'}
+                </p>
+              </div>
+            </div>
+
+            {/* Login & Password Management */}
+            {isAdmin && (
+              <div className="border-t pt-3 mt-3 space-y-2">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Key className="w-4 h-4" /> Login Management</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" className="gap-1 rounded-xl" onClick={() => setPasswordMember(staff)}>
+                    <Key className="w-3.5 h-3.5" /> Set Temp Password
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                    disabled={resetPasswordMutation.isPending}
+                    onClick={() => staff.email && resetPasswordMutation.mutate(staff.email)}>
+                    {resetPasswordMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                    Send Reset Email
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Onboarding Link */}
+            {isAdmin && (
+              <div className="border-t pt-3 mt-3 space-y-2">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Link2 className="w-4 h-4" /> Onboarding Link</h3>
+                {obStatus?.token ? (
+                  <div className="flex items-center gap-2">
+                    <Input readOnly value={getOnboardingLink(staff.id) || ''} className="text-xs h-8 font-mono" />
+                    <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(staff.id)} className="shrink-0 gap-1">
+                      {onboardingLinkCopied === staff.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" size="sm" className="gap-1 rounded-xl"
+                    disabled={ensureOnboardingMutation.isPending}
+                    onClick={() => ensureOnboardingMutation.mutate(staff)}>
+                    {ensureOnboardingMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                    Generate Onboarding Link
+                  </Button>
+                )}
+                {obStatus?.submitted && !obStatus.reviewed && (
+                  <Button size="sm" className="gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
+                    disabled={markReviewedMutation.isPending}
+                    onClick={() => markReviewedMutation.mutate(staff.id)}>
+                    {markReviewedMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    Mark as Reviewed
+                  </Button>
+                )}
+                {obStatus?.reviewed && !obStatus.directorApproved && (
+                  <Button size="sm" className="gap-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                    disabled={approveDeploymentMutation.isPending}
+                    onClick={() => approveDeploymentMutation.mutate(staff.id)}>
+                    {approveDeploymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    Approve for Deployment
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <CleanerScorecard staffId={staff.id} staffName={staffName} />
+        </TabsContent>
+
+        {/* INDUCTIONS TAB */}
+        <TabsContent value="inductions" className="space-y-4 mt-4">
+          <StaffOnboardingSection staffId={staff.id} staffName={staffName} />
+          {sops.length > 0 && (
+            <div className="bg-card rounded-2xl shadow-md p-5">
+              <h3 className="font-bold text-foreground mb-3 flex items-center gap-2"><FileCheck className="w-4 h-4" /> SOPs</h3>
+              <div className="space-y-2">
+                {sops.map((sop: any) => (
+                  <div key={sop.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{sop.name}</p>
+                      <p className="text-xs text-muted-foreground">v{sop.version || '1.0'}</p>
+                    </div>
+                    <span className="text-muted-foreground text-xs">—</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* PAPERWORK TAB */}
+        <TabsContent value="paperwork" className="space-y-4 mt-4">
+          <div className="bg-card rounded-2xl shadow-md p-5">
+            <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><FileCheck className="w-4 h-4" /> Required Documents</h3>
+            <div className="space-y-3">
+              {PAPERWORK_ITEMS.map(item => (
+                <div key={item.key} className="flex items-center gap-3">
+                  <Checkbox
+                    checked={!!paperworkStatus[item.key]}
+                    onCheckedChange={() => isAdmin && togglePaperwork(item.key)}
+                    disabled={!isAdmin}
+                  />
+                  <span className={`text-sm ${paperworkStatus[item.key] ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {item.label}
+                  </span>
+                  {paperworkStatus[item.key] && <CheckCircle2 className="w-4 h-4 text-green-600 ml-auto" />}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              {Object.values(paperworkStatus).filter(Boolean).length}/{PAPERWORK_ITEMS.length} documents received
+            </p>
+          </div>
+        </TabsContent>
+
+        {/* CLEAN HISTORY TAB */}
+        <TabsContent value="history" className="space-y-4 mt-4">
+          <div className="bg-card rounded-2xl shadow-md p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-foreground flex items-center gap-2"><Clock className="w-4 h-4" /> Clean History</h3>
+              <Badge className="bg-primary/10 text-primary">Avg QC: {avgScore}</Badge>
+            </div>
+            {staffJobs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No cleans recorded.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {staffJobs.slice(0, 50).map((job: any) => {
+                  const propName = (job as any).properties?.property_name || 'Property';
+                  const duration = job.clock_on && job.clock_off
+                    ? ((new Date(job.clock_off).getTime() - new Date(job.clock_on).getTime()) / 3600000).toFixed(1)
+                    : null;
+                  return (
+                    <div key={job.id} className="flex items-center justify-between py-2 border-b border-border last:border-0 text-sm">
+                      <div>
+                        <p className="font-semibold text-foreground">{format(new Date(job.scheduled_date + 'T00:00:00'), 'dd MMM yyyy')}</p>
+                        <p className="text-xs text-muted-foreground">{propName} — {job.clean_type || 'Clean'}</p>
+                      </div>
+                      <div className="flex items-center gap-3 text-right">
+                        {duration && <span className="text-xs text-muted-foreground">{duration}h</span>}
+                        {job.feedback_score && (
+                          <span className={`text-xs font-bold ${job.feedback_score >= 4 ? 'text-primary' : job.feedback_score >= 3 ? 'text-orange-500' : 'text-destructive'}`}>
+                            {job.feedback_score}/5
+                          </span>
+                        )}
+                        <Badge className={`text-[10px] ${
+                          job.status === 'complete' || job.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {job.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">Total hours: {totalHours}h across {completedCleans.length} cleans</p>
+          </div>
+        </TabsContent>
+
+        {/* AVAILABILITY TAB */}
+        <TabsContent value="availability" className="space-y-4 mt-4">
+          <StaffAvailabilitySection staffId={staff.id} staffName={staffName} />
+        </TabsContent>
+
+        {/* PAY TAB */}
+        <TabsContent value="pay" className="space-y-4 mt-4">
+          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
+            <h3 className="font-bold text-foreground flex items-center gap-2"><DollarSign className="w-4 h-4" /> Pay Summary</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-muted-foreground">Hours This Period</span>
+                <p className="font-bold text-lg text-foreground">{payPeriodHours}h</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Hourly Rate</span>
+                <p className="font-bold text-lg text-foreground">${hourlyRate}/hr</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Estimated Pay</span>
+                <p className="font-bold text-lg text-primary">${estimatedPay}</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Pay Period</span>
+                <p className="font-bold text-sm text-muted-foreground">Last 14 days</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground italic">Payroll processed via external system</p>
+          </div>
+          <StaffPaySection staffId={staff.id} staffName={staffName} />
+          <StaffPayRatesSection staffId={staff.id} staffName={staffName} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

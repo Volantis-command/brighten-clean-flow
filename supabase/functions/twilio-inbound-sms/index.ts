@@ -82,6 +82,12 @@ function phoneMatchesAny(storedPhone: string, variants: string[], normalizedInco
   });
 }
 
+const DECLINE_KEYWORDS = ['NO', 'N', 'NO THANKS', 'NOT INTERESTED', 'CANCEL', 'NOPE'];
+
+function isDeclineMessage(body: string): boolean {
+  return DECLINE_KEYWORDS.includes(body.trim());
+}
+
 async function handleQuoteReply(supabase: any, from: string, body: string, variants: string[], normalizedIncoming: string): Promise<Response | null> {
   const { data: allQuotes } = await supabase
     .from('quotes')
@@ -140,21 +146,33 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
     return twimlResponse('');
   }
 
-  if (body === 'NO' || body === 'N') {
-    await supabase.from('quotes').update({ 
-      status: 'quote_declined', 
-      quote_declined_at: new Date().toISOString() 
+  if (isDeclineMessage(body)) {
+    await supabase.from('quotes').update({
+      status: 'quote_declined',
+      quote_declined_at: new Date().toISOString()
     }).eq('id', matchedQuote.id);
 
-    await sendTwilioSms(from, `No worries ${firstName}! If you change your mind, we're here. — Brightly Cleaning 🌿`);
+    // Also update matching quote_requests to 'declined'
+    const { data: allQr } = await supabase
+      .from('quote_requests')
+      .select('id, phone, status')
+      .in('status', ['quote_sent', 'awaiting_client_response']);
+    if (allQr?.length) {
+      const matchedQr = allQr.find((qr: any) => qr.phone && phoneMatchesAny(qr.phone, variants, normalizedIncoming));
+      if (matchedQr) {
+        await supabase.from('quote_requests').update({ status: 'declined' }).eq('id', matchedQr.id);
+      }
+    }
+
+    await sendTwilioSms(from, `No worries! If you change your mind, we're here. — Brightly 🌿`);
 
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     for (const admin of (admins || [])) {
       await supabase.from('notifications').insert({
         user_id: admin.user_id,
         type: 'quote',
-        title: 'Quote Declined',
-        message: `${matchedQuote.client_name || 'Client'} declined their quote for ${matchedQuote.property_address || matchedQuote.property_name || 'property'}.`,
+        title: 'Client Declined Quote',
+        message: `Client declined quote — ${matchedQuote.client_name || 'Client'} — ${matchedQuote.property_address || matchedQuote.property_name || 'property'}`,
         link: '/quoting',
       });
     }
@@ -393,7 +411,7 @@ Deno.serve(async (req) => {
     }
 
     // ─── 3. CLIENT flow: check for quote replies ───
-    if (body === 'YES' || body === 'Y' || body === 'NO' || body === 'N') {
+    if (body === 'YES' || body === 'Y' || isDeclineMessage(body)) {
       const quoteResult = await handleQuoteReply(supabase, from, body, variants, normalizedIncoming);
       if (quoteResult) return quoteResult;
     }

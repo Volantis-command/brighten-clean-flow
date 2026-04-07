@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { SendQuoteLinkModal } from './SendQuoteLinkModal';
 import { toast } from 'sonner';
 
-type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'scheduled' | 'in_progress' | 'complete';
+type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'declined' | 'scheduled' | 'in_progress' | 'complete';
 
 const PIPELINE_STAGES: { key: PipelineStatus; label: string }[] = [
   { key: 'new_enquiry', label: 'New Enquiry' },
   { key: 'quote_sent', label: 'Quote Sent' },
   { key: 'accepted', label: 'Accepted' },
+  { key: 'declined', label: 'Declined' },
   { key: 'scheduled', label: 'Scheduled' },
   { key: 'in_progress', label: 'In Progress' },
   { key: 'complete', label: 'Complete' },
@@ -141,19 +142,20 @@ export default function OperationsDashboard() {
     queryKey: ['ops-pipeline'],
     queryFn: async () => {
       const result: Record<PipelineStatus, any[]> = {
-        new_enquiry: [], quote_sent: [], accepted: [], scheduled: [], in_progress: [], complete: [],
+        new_enquiry: [], quote_sent: [], accepted: [], declined: [], scheduled: [], in_progress: [], complete: [],
       };
 
       const { data: qrs } = await supabase
         .from('quote_requests')
         .select('*')
-        .in('status', ['form_submitted', 'quote_sent', 'accepted', 'booking_requested'])
+        .in('status', ['form_submitted', 'quote_sent', 'accepted', 'booking_requested', 'quote_declined', 'declined'])
         .order('created_at', { ascending: false });
 
       (qrs || []).forEach((q: any) => {
         if (q.status === 'form_submitted') result.new_enquiry.push(q);
         else if (q.status === 'quote_sent') result.quote_sent.push(q);
         else if (['accepted', 'booking_requested'].includes(q.status)) result.accepted.push(q);
+        else if (['quote_declined', 'declined'].includes(q.status)) result.declined.push(q);
       });
 
       const { data: jobs } = await supabase
@@ -329,6 +331,7 @@ const STAGE_PILL: Record<PipelineStatus, { bg: string; color: string; label: str
   new_enquiry: { bg: 'rgba(59,130,246,0.15)', color: '#93C5FD', label: 'New Enquiry' },
   quote_sent: { bg: 'rgba(251,191,36,0.15)', color: '#FCD34D', label: 'Quote Sent' },
   accepted: { bg: 'rgba(34,197,94,0.15)', color: '#86EFAC', label: 'Accepted' },
+  declined: { bg: 'rgba(239,68,68,0.15)', color: '#FCA5A5', label: 'Declined' },
   scheduled: { bg: 'rgba(139,92,246,0.15)', color: '#C4B5FD', label: 'Scheduled' },
   in_progress: { bg: 'rgba(254,219,0,0.15)', color: '#FEDB00', label: 'In Progress' },
   complete: { bg: 'rgba(34,197,94,0.20)', color: '#22C55E', label: 'Complete' },
@@ -371,7 +374,7 @@ function PipelineBtn({ children, primary, onClick }: { children: React.ReactNode
 }
 
 function PipelineCard({ item, column, navigate, queryClient }: { item: any; column: PipelineStatus; navigate: (path: string) => void; queryClient: any }) {
-  const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted'].includes(column);
+  const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted', 'declined'].includes(column);
   const pill = STAGE_PILL[column];
 
   const invalidatePipeline = () => queryClient.invalidateQueries({ queryKey: ['ops-pipeline'] });

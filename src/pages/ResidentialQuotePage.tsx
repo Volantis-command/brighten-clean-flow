@@ -232,14 +232,21 @@ export default function ResidentialQuotePage() {
   };
 
   if (submitted) {
+    const submittedFirst = fullName.trim().split(/\s+/)[0] || 'there';
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-[scale-in_0.3s_ease-out]">
-          <CheckCircle2 className="w-10 h-10 text-primary" />
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0C463D' }}>
+        <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6 animate-[scale-in_0.4s_ease-out]" style={{ background: 'rgba(254,219,0,0.15)' }}>
+          <CheckCircle2 className="w-14 h-14" style={{ color: '#22C55E' }} />
         </div>
-        <h1 className="text-2xl font-extrabold text-foreground">Quote request received! 🎉</h1>
-        <p className="text-muted-foreground mt-3 max-w-sm">We'll send your confirmed quote within 1 hour via SMS and email.</p>
-        <p className="text-muted-foreground text-sm mt-2">A Brightly team member will call if we have any questions.</p>
+        <h1 className="text-2xl font-extrabold" style={{ color: '#F0FDF4' }}>Thanks {submittedFirst}!</h1>
+        <p className="text-lg font-semibold mt-2" style={{ color: '#86EFAC' }}>We've received your quote request.</p>
+        <p className="mt-4 max-w-sm" style={{ color: '#86EFAC' }}>Our team will be in touch within 1 hour.</p>
+        <p className="mt-6 font-bold" style={{ color: '#FEDB00' }}>Questions? Call Brendan on 0418 878 707</p>
+        <div className="mt-8">
+          <span className="text-2xl font-extrabold tracking-tight" style={{ color: '#F0FDF4', fontFamily: 'Nunito, sans-serif' }}>
+            Brightly<span style={{ color: '#FEDB00' }}>.</span>
+          </span>
+        </div>
         <Button className="mt-8 h-14 px-8 rounded-xl font-bold" style={BTN_YELLOW} onClick={() => window.location.href = '/'}>
           Back to Brightly
         </Button>

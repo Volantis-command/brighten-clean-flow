@@ -247,25 +247,10 @@ export default function HeadCleanerQCAuditPage() {
               .select('client_id')
               .eq('property_id', job.property_id)
               .limit(1);
-            const clientId = cpRows?.[0]?.client_id;
-            if (clientId) {
-              const { data: clientProfile } = await supabase
-                .from('profiles')
-                .select('full_name, phone')
-                .eq('id', clientId)
-                .maybeSingle();
-              if (clientProfile?.phone) {
-                const clientFirst = (clientProfile.full_name || 'there').split(' ')[0];
-                await supabase.functions.invoke('send-job-sms', {
-                  body: {
-                    to: clientProfile.phone,
-                    message: `Hi ${clientFirst}, our quality check found a couple of areas that didn't meet our standard. We've scheduled a complimentary revisit to make it right. Sorry for the inconvenience! — Brightly Cleaning`,
-                  },
-                });
-              }
-            }
+            // QC fail: internal only — no client SMS notification
+            // Revisit is handled silently by admin
           } catch (e) {
-            console.error('Client QC fail notification failed:', e);
+            console.error('QC fail processing error:', e);
           }
         }
 

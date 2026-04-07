@@ -7,9 +7,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
-import { MapPin, Navigation, Key, Pause, Play, Plus, Camera, Loader2, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { MapPin, Navigation, Key, Pause, Play, Plus, Camera, Loader2, X, ChevronDown, ChevronUp, AlertTriangle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCurrentPosition } from '@/lib/geo';
+import PropertyPassportSection from '@/components/property/PropertyPassportSection';
 
 interface Props {
   job: any;
@@ -34,6 +35,7 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
   const [isPaused, setIsPaused] = useState(!!job.paused_at);
   const [pausing, setPausing] = useState(false);
   const [accessOpen, setAccessOpen] = useState(true);
+  const [passportOpen, setPassportOpen] = useState(false);
 
   // SOS state
   const [sosOpen, setSosOpen] = useState(false);
@@ -274,6 +276,32 @@ export default function ActiveJobView({ job, property, userId, onRefresh }: Prop
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Property Info — passport */}
+        {job.property_id && (
+          <Collapsible open={passportOpen} onOpenChange={setPassportOpen}>
+            <Card className="border-border bg-blue-50 dark:bg-blue-500/10">
+              <CollapsibleTrigger className="w-full">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <span className="font-bold text-foreground flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Property Info
+                  </span>
+                  {passportOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </CardContent>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 pb-4">
+                  <PropertyPassportSection
+                    propertyId={job.property_id}
+                    readOnly
+                    requireClockIn
+                    isClockedIn={!!job.clock_on}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         {/* Cleaner Notes — yellow card */}
         {(property as any)?.property_notes && (

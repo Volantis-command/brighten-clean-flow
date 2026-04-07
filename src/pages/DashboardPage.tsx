@@ -38,6 +38,7 @@ import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
 import OperationsDashboard from '@/components/dashboard/OperationsDashboard';
+import { useProcessScheduledSms } from '@/hooks/useProcessScheduledSms';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 
@@ -57,6 +58,9 @@ export default function DashboardPage() {
     revenueTrend,
     recentFeedback,
   } = useDashboardData();
+
+  // Process any pending scheduled SMS on dashboard load
+  useProcessScheduledSms();
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
 
