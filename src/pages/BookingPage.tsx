@@ -45,7 +45,7 @@ export default function BookingPage() {
     if (!leadId) return;
     supabase
       .from('quote_requests')
-      .select('first_name, last_name, phone, address, clean_type, preferred_date, time_preference')
+      .select('first_name, last_name, phone, address, clean_type, preferred_date, preferred_time')
       .eq('id', leadId)
       .maybeSingle()
       .then(({ data }) => {
@@ -56,7 +56,7 @@ export default function BookingPage() {
             const parsed = new Date(data.preferred_date + 'T00:00:00');
             if (!isNaN(parsed.getTime())) setDate(parsed);
           }
-          if (data.time_preference) {
+          if ((data as any).preferred_time) {
             const timemap: Record<string, string> = {
               'Morning (7am-12pm)': '09:00',
               'Morning': '09:00',
@@ -64,7 +64,7 @@ export default function BookingPage() {
               'Afternoon': '13:00',
               'Either': '09:00',
             };
-            setTime(timemap[data.time_preference] || '09:00');
+            setTime(timemap[(data as any).preferred_time] || '09:00');
           } else {
             setTime('09:00');
           }

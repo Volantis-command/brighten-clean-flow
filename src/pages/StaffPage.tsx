@@ -201,7 +201,7 @@ export default function StaffPage() {
   const setPasswordMutation = useMutation({
     mutationFn: async ({ userId, pw }: { userId: string; pw: string }) => {
       // Service role key not available on free plan — send reset email instead
-      const member = staffMembers?.find(m => m.id === userId);
+      const member = staff?.find((m: any) => m.id === userId);
       if (!member?.email) throw new Error('No email address on file for this staff member');
       const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
         redirectTo: `${window.location.origin}/reset-password`,
