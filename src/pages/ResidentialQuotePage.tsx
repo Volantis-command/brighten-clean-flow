@@ -108,6 +108,7 @@ function PillButton({ selected, onClick, children, className = '' }: {
 
 export default function ResidentialQuotePage() {
   const [step, setStep] = useState(0);
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
   const STEPS = ['Clean Type', 'Extras', 'Your Details', 'Review'];
 
   // Step 1
@@ -583,13 +584,13 @@ export default function ResidentialQuotePage() {
 
           <div className="flex gap-3">
             {step > 0 && (
-              <Button variant="outline" className="rounded-xl h-[60px] px-5 font-semibold" onClick={() => setStep(s => s - 1)}>
+              <Button variant="outline" className="rounded-xl h-[60px] px-5 font-semibold" onClick={() => { setStep(s => s - 1); scrollToTop(); }}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
             )}
             {step < 3 ? (
               <Button className="flex-1 rounded-xl h-[60px] font-bold text-base" style={BTN_YELLOW}
-                onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
+                onClick={() => { setStep(s => s + 1); scrollToTop(); }} disabled={!canNext()}>
                 Next <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
