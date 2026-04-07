@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -14,9 +11,7 @@ import { toast } from 'sonner';
 type CleanType = 'standard' | 'airbnb' | 'deep_clean' | 'end_of_lease';
 
 interface FormData {
-  // Step 1
   clean_type: CleanType | '';
-  // Step 2 — property
   property_name: string;
   address: string;
   suburb: string;
@@ -25,26 +20,24 @@ interface FormData {
   bathrooms: number;
   preferred_date: string;
   preferred_time: string;
+  date_mode: 'asap' | 'pick' | '';
   notes: string;
   access_method: string;
   access_instructions: string;
-  // Airbnb extras
+  extras: string[];
   bed_types: string[];
   total_beds: number;
   linen_provided: string;
   guest_checkout_time: string;
   guest_checkin_time: string;
   turnaround_window: string;
-  // Deep clean extras
   last_cleaned: string;
   is_occupied: string;
-  // End of lease extras
   lease_end_date: string;
   carpets_required: string;
   oven_required: string;
   bond_clean_required: string;
   agent_name: string;
-  // Step 3 — client
   first_name: string;
   last_name: string;
   phone: string;
@@ -56,11 +49,12 @@ const EMPTY: FormData = {
   clean_type: '',
   property_name: '', address: '', suburb: '', state: 'QLD',
   bedrooms: 2, bathrooms: 1,
-  preferred_date: '', preferred_time: 'Either',
+  preferred_date: '', preferred_time: '', date_mode: '',
   notes: '', access_method: '', access_instructions: '',
-  bed_types: [], total_beds: 1, linen_provided: 'No',
+  extras: [],
+  bed_types: [], total_beds: 1, linen_provided: '',
   guest_checkout_time: '10:00', guest_checkin_time: '14:00', turnaround_window: '4',
-  last_cleaned: '', is_occupied: 'Yes',
+  last_cleaned: '', is_occupied: '',
   lease_end_date: '', carpets_required: 'No', oven_required: 'No',
   bond_clean_required: 'No', agent_name: '',
   first_name: '', last_name: '', phone: '', email: '', referral_source: '',
@@ -68,17 +62,29 @@ const EMPTY: FormData = {
 
 const CLEAN_TYPES: { value: CleanType; label: string; icon: string }[] = [
   { value: 'standard', label: 'Standard House Clean', icon: '🏠' },
-  { value: 'airbnb', label: 'Airbnb / Short Stay Turnover', icon: '🏨' },
   { value: 'deep_clean', label: 'Deep Clean', icon: '🧹' },
-  { value: 'end_of_lease', label: 'End of Lease Clean', icon: '🔑' },
+  { value: 'end_of_lease', label: 'End of Lease', icon: '🔑' },
+  { value: 'airbnb', label: 'Airbnb / Short Stay', icon: '🏨' },
 ];
 
-const STATES = ['QLD', 'NSW', 'VIC', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
 const ACCESS_METHODS = ['Key safe', 'Leave unlocked', 'Meet at property', 'Other'];
-const TIME_OPTIONS = ['Morning', 'Afternoon', 'Either'];
 const BED_TYPE_OPTIONS = ['King', 'Queen', 'Double', 'Single', 'Bunk'];
-const LAST_CLEANED_OPTIONS = ['Less than 3 months', '3-6 months', '6-12 months', '1+ year', 'Never'];
 const REFERRAL_OPTIONS = ['Google', 'Facebook', 'Instagram', 'Referral', 'Signage', 'Other'];
+
+const EXTRAS_BY_TYPE: Record<string, string[]> = {
+  standard: ['Oven', 'Fridge', 'Windows', 'Balcony', 'Garage'],
+  deep_clean: ['Oven', 'Fridge', 'Windows', 'Balcony', 'Garage', 'Walls', 'Blinds'],
+  end_of_lease: ['Oven', 'Fridge', 'Windows', 'Balcony', 'Garage', 'Carpet Steam'],
+  airbnb: ['Oven', 'Fridge', 'Windows', 'Balcony'],
+};
+
+/* ────── Step definitions ────── */
+function getSteps(cleanType: CleanType | ''): string[] {
+  const base = ['clean_type', 'address', 'bedrooms', 'bathrooms'];
+  if (cleanType === 'airbnb') base.push('airbnb_extras');
+  base.push('when', 'time', 'extras', 'access', 'notes', 'contact', 'summary');
+  return base;
+}
 
 /* ────────────── Component ────────────── */
 export default function OnboardingPage() {
@@ -88,23 +94,25 @@ export default function OnboardingPage() {
   const isAdminMode = !token;
   const presetType = searchParams.get('type') as CleanType | null;
 
-  const [step, setStep] = useState(1);
+  const [stepIdx, setStepIdx] = useState(0);
   const [form, setForm] = useState<FormData>({ ...EMPTY });
   const [submitted, setSubmitted] = useState(false);
+
+  const steps = getSteps(form.clean_type);
+  const currentStep = steps[stepIdx] || 'clean_type';
 
   useEffect(() => {
     if (presetType && CLEAN_TYPES.some(ct => ct.value === presetType)) {
       setForm(f => ({ ...f, clean_type: presetType }));
-      setStep(2);
+      setStepIdx(1);
     }
   }, [presetType]);
 
   const u = (field: keyof FormData, value: any) => setForm(f => ({ ...f, [field]: value }));
+  const goNext = () => { setStepIdx(s => Math.min(s + 1, steps.length - 1)); window.scrollTo(0, 0); };
+  const goBack = () => { setStepIdx(s => Math.max(s - 1, 0)); window.scrollTo(0, 0); };
 
-  const goNext = () => { setStep(s => s + 1); window.scrollTo(0, 0); };
-  const goBack = () => { setStep(s => s - 1); window.scrollTo(0, 0); };
-
-  /* ────── Submit — auto-create everything ────── */
+  /* ────── Submit — auto-create everything (UNCHANGED LOGIC) ────── */
   const submitMutation = useMutation({
     mutationFn: async () => {
       const fullName = `${form.first_name} ${form.last_name}`.trim();
@@ -114,7 +122,6 @@ export default function OnboardingPage() {
         ? form.property_name
         : `${form.first_name}'s ${form.address || 'Property'}`;
 
-      // 1. Insert into quote_requests
       const { error: qrErr } = await supabase.from('quote_requests').insert({
         first_name: form.first_name,
         last_name: form.last_name,
@@ -137,6 +144,7 @@ export default function OnboardingPage() {
           state: form.state,
           access_method: form.access_method,
           access_instructions: form.access_instructions,
+          extras: form.extras,
           ...(form.clean_type === 'airbnb' ? {
             bed_types: form.bed_types,
             total_beds: form.total_beds,
@@ -160,12 +168,8 @@ export default function OnboardingPage() {
       });
       if (qrErr) throw qrErr;
 
-      // 2. Insert into properties (ON CONFLICT DO NOTHING via upsert-like check)
       const { data: existingProp } = await supabase
-        .from('properties')
-        .select('id')
-        .eq('address', form.address)
-        .maybeSingle();
+        .from('properties').select('id').eq('address', form.address).maybeSingle();
 
       let propertyId: string;
       if (existingProp) {
@@ -196,66 +200,41 @@ export default function OnboardingPage() {
         propertyId = newProp.id;
       }
 
-      // 3. Upsert into profiles — match on phone first, then email
       let profileId: string | null = null;
       if (form.phone) {
-        const { data: byPhone } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('phone', form.phone)
-          .maybeSingle();
+        const { data: byPhone } = await supabase.from('profiles').select('id').eq('phone', form.phone).maybeSingle();
         if (byPhone) profileId = byPhone.id;
       }
       if (!profileId && form.email) {
-        const { data: byEmail } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', form.email)
-          .maybeSingle();
+        const { data: byEmail } = await supabase.from('profiles').select('id').eq('email', form.email).maybeSingle();
         if (byEmail) profileId = byEmail.id;
       }
 
       if (profileId) {
-        // Update existing
         await supabase.from('profiles').update({
-          full_name: fullName,
-          phone: form.phone,
-          email: form.email,
+          full_name: fullName, phone: form.phone, email: form.email,
         }).eq('id', profileId);
       } else {
-        // Create new profile
         const newId = crypto.randomUUID();
         const { error: profErr } = await supabase.from('profiles').insert({
-          id: newId,
-          full_name: fullName,
-          phone: form.phone,
-          email: form.email,
+          id: newId, full_name: fullName, phone: form.phone, email: form.email,
         });
         if (profErr) throw profErr;
         profileId = newId;
       }
 
-      // 4. Upsert into user_roles
       await supabase.from('user_roles').upsert(
         { user_id: profileId, role: 'client' },
         { onConflict: 'user_id' }
       ).then(() => {});
 
-      // 5. Insert into client_properties (link table)
       const { data: existingLink } = await supabase
-        .from('client_properties')
-        .select('id')
-        .eq('client_id', profileId)
-        .eq('property_id', propertyId)
-        .maybeSingle();
+        .from('client_properties').select('id')
+        .eq('client_id', profileId).eq('property_id', propertyId).maybeSingle();
       if (!existingLink) {
-        await supabase.from('client_properties').insert({
-          client_id: profileId,
-          property_id: propertyId,
-        });
+        await supabase.from('client_properties').insert({ client_id: profileId, property_id: propertyId });
       }
 
-      // 6. Create admin notification
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
         await supabase.from('notifications').insert(
@@ -289,19 +268,12 @@ export default function OnboardingPage() {
           </p>
           {isAdminMode && (
             <div className="flex gap-3">
-              <Button
-                onClick={() => navigate('/clients')}
-                className="bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl"
-              >
+              <button onClick={() => navigate('/clients')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: '#FEDB00', color: '#0C463D' }}>
                 View Clients
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/quoting')}
-                className="rounded-xl font-bold"
-              >
+              </button>
+              <button onClick={() => navigate('/quoting')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: 'transparent', color: '#F0FDF4', border: '1px solid rgba(255,255,255,0.2)' }}>
                 Open Quote Calculator
-              </Button>
+              </button>
             </div>
           )}
         </div>
@@ -309,303 +281,313 @@ export default function OnboardingPage() {
     );
   }
 
-  const totalSteps = 4;
+  /* ────── canNext per step ────── */
+  const canNext = (() => {
+    switch (currentStep) {
+      case 'clean_type': return !!form.clean_type;
+      case 'address': return !!form.address.trim();
+      case 'bedrooms': return form.bedrooms > 0;
+      case 'bathrooms': return form.bathrooms > 0;
+      case 'airbnb_extras': return form.bed_types.length > 0 && !!form.linen_provided;
+      case 'when': return !!form.date_mode && (form.date_mode === 'asap' || !!form.preferred_date);
+      case 'time': return !!form.preferred_time;
+      case 'extras': return true;
+      case 'access': return !!form.access_method;
+      case 'notes': return true;
+      case 'contact': return !!form.first_name && !!form.last_name && !!form.phone && !!form.email;
+      default: return true;
+    }
+  })();
 
   return (
     <Shell>
-      {/* Progress indicator */}
-      <div className="flex gap-1.5 mb-6">
-        {Array.from({ length: totalSteps }, (_, i) => (
+      {/* ── Progress dots ── */}
+      <div className="flex items-center justify-center gap-2 mb-2">
+        {steps.map((_, i) => (
           <div
             key={i}
-            className="h-1.5 flex-1 rounded-full transition-colors"
-            style={{ background: i < step ? '#FEDB00' : 'rgba(255,255,255,0.1)' }}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width: i === stepIdx ? 24 : 8,
+              height: 8,
+              background: i <= stepIdx ? '#FEDB00' : 'rgba(255,255,255,0.12)',
+            }}
           />
         ))}
       </div>
-      <p className="text-xs font-semibold mb-6" style={{ color: '#86EFAC' }}>
-        Step {step} of {totalSteps}
+      <p className="text-center text-[11px] font-semibold mb-8" style={{ color: 'rgba(254,219,0,0.6)' }}>
+        Step {stepIdx + 1} of {steps.length}
       </p>
 
-      {/* Step 1 — Clean Type */}
-      {step === 1 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>What type of clean?</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* ═══════ STEP: Clean Type ═══════ */}
+      {currentStep === 'clean_type' && (
+        <StepContainer heading="What type of clean do you need?" sub="Choose the service that best fits your space.">
+          <div className="grid grid-cols-2 gap-3">
             {CLEAN_TYPES.map(ct => (
-              <button
-                key={ct.value}
-                onClick={() => { u('clean_type', ct.value); goNext(); }}
-                className="text-left rounded-2xl p-5 border-2 transition-all active:scale-[0.98]"
-                style={{
-                  background: form.clean_type === ct.value ? 'rgba(254,219,0,0.12)' : 'rgba(255,255,255,0.04)',
-                  borderColor: form.clean_type === ct.value ? '#FEDB00' : 'rgba(255,255,255,0.1)',
-                }}
-              >
-                <span className="text-2xl">{ct.icon}</span>
-                <p className="font-bold mt-2" style={{ color: '#F0FDF4' }}>{ct.label}</p>
-              </button>
+              <Pill key={ct.value} selected={form.clean_type === ct.value}
+                onClick={() => { u('clean_type', ct.value); setTimeout(goNext, 150); }}>
+                <span className="text-2xl mb-1">{ct.icon}</span>
+                <span className="text-[13px] font-bold leading-tight">{ct.label}</span>
+              </Pill>
             ))}
           </div>
-        </div>
+        </StepContainer>
       )}
 
-      {/* Step 2 — Property Details */}
-      {step === 2 && (
-        <div className="space-y-5">
-          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Property Details</h2>
-
-          {/* Airbnb nickname */}
+      {/* ═══════ STEP: Address ═══════ */}
+      {currentStep === 'address' && (
+        <StepContainer heading="What's the property address?" sub="We'll use this to prepare your quote.">
+          <Input
+            value={form.address}
+            onChange={e => u('address', e.target.value)}
+            placeholder="123 Example Street, Suburb"
+            className="h-14 rounded-2xl text-base px-5"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+          />
           {form.clean_type === 'airbnb' && (
-            <Field label="Property Name / Nickname *">
-              <Input value={form.property_name} onChange={e => u('property_name', e.target.value)} placeholder="Beach House" className="input-dark" />
-            </Field>
-          )}
-
-          <Field label="Address *">
-            <Input value={form.address} onChange={e => u('address', e.target.value)} placeholder="123 Example Street" className="input-dark" />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Suburb">
-              <Input value={form.suburb} onChange={e => u('suburb', e.target.value)} className="input-dark" />
-            </Field>
-            <Field label="State">
-              <Select value={form.state} onValueChange={v => u('state', v)}>
-                <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                <SelectContent>{STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Bedrooms">
-              <Select value={String(form.bedrooms)} onValueChange={v => u('bedrooms', +v)}>
-                <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                <SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{n}{n===5?'+':''}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Bathrooms">
-              <Select value={String(form.bathrooms)} onValueChange={v => u('bathrooms', +v)}>
-                <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                <SelectContent>{[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}{n===4?'+':''}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-          </div>
-
-          {/* Standard / Deep / EOL — date & time */}
-          {form.clean_type !== 'airbnb' && (
-            <>
-              <Field label="Preferred Date">
-                <Input type="date" value={form.preferred_date} onChange={e => u('preferred_date', e.target.value)} min={new Date().toISOString().split('T')[0]} className="input-dark" />
-              </Field>
-              <Field label="Preferred Time">
-                <div className="flex gap-2">
-                  {TIME_OPTIONS.map(t => (
-                    <button key={t} onClick={() => u('preferred_time', t)}
-                      className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
-                      style={{
-                        background: form.preferred_time === t ? 'rgba(254,219,0,0.15)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${form.preferred_time === t ? '#FEDB00' : 'rgba(255,255,255,0.1)'}`,
-                        color: form.preferred_time === t ? '#FEDB00' : '#86EFAC',
-                      }}
-                    >{t}</button>
-                  ))}
-                </div>
-              </Field>
-            </>
-          )}
-
-          {/* Airbnb extras */}
-          {form.clean_type === 'airbnb' && (
-            <>
-              <Field label="Bed Types">
-                <div className="flex flex-wrap gap-2">
-                  {BED_TYPE_OPTIONS.map(bt => (
-                    <button key={bt} onClick={() => {
-                      const next = form.bed_types.includes(bt) ? form.bed_types.filter(b => b !== bt) : [...form.bed_types, bt];
-                      u('bed_types', next);
-                    }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
-                      style={{
-                        background: form.bed_types.includes(bt) ? 'rgba(254,219,0,0.15)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${form.bed_types.includes(bt) ? '#FEDB00' : 'rgba(255,255,255,0.1)'}`,
-                        color: form.bed_types.includes(bt) ? '#FEDB00' : '#86EFAC',
-                      }}
-                    >{bt}</button>
-                  ))}
-                </div>
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Total Beds">
-                  <Input type="number" min={1} value={form.total_beds} onChange={e => u('total_beds', +e.target.value)} className="input-dark" />
-                </Field>
-                <Field label="Linen Provided by Brightly?">
-                  <Select value={form.linen_provided} onValueChange={v => u('linen_provided', v)}>
-                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Guest Check-out">
-                  <Input type="time" value={form.guest_checkout_time} onChange={e => u('guest_checkout_time', e.target.value)} className="input-dark" />
-                </Field>
-                <Field label="Guest Check-in">
-                  <Input type="time" value={form.guest_checkin_time} onChange={e => u('guest_checkin_time', e.target.value)} className="input-dark" />
-                </Field>
-                <Field label="Turnaround (hrs)">
-                  <Input type="number" min={1} value={form.turnaround_window} onChange={e => u('turnaround_window', e.target.value)} className="input-dark" />
-                </Field>
-              </div>
-            </>
-          )}
-
-          {/* Deep clean extras */}
-          {form.clean_type === 'deep_clean' && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Last Professionally Cleaned">
-                <Select value={form.last_cleaned} onValueChange={v => u('last_cleaned', v)}>
-                  <SelectTrigger className="input-dark"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{LAST_CLEANED_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                </Select>
-              </Field>
-              <Field label="Currently Occupied?">
-                <Select value={form.is_occupied} onValueChange={v => u('is_occupied', v)}>
-                  <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                </Select>
-              </Field>
+            <div className="mt-4">
+              <p className="text-xs font-bold mb-2" style={{ color: '#86EFAC' }}>Property nickname (optional)</p>
+              <Input
+                value={form.property_name}
+                onChange={e => u('property_name', e.target.value)}
+                placeholder="e.g. Beach House"
+                className="h-14 rounded-2xl text-base px-5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+              />
             </div>
           )}
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack={stepIdx > 0} />
+        </StepContainer>
+      )}
 
-          {/* End of lease extras */}
-          {form.clean_type === 'end_of_lease' && (
-            <>
-              <Field label="Lease End Date">
-                <Input type="date" value={form.lease_end_date} onChange={e => u('lease_end_date', e.target.value)} className="input-dark" />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Carpets Required?">
-                  <Select value={form.carpets_required} onValueChange={v => u('carpets_required', v)}>
-                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Oven Required?">
-                  <Select value={form.oven_required} onValueChange={v => u('oven_required', v)}>
-                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Bond Clean Required?">
-                  <Select value={form.bond_clean_required} onValueChange={v => u('bond_clean_required', v)}>
-                    <SelectTrigger className="input-dark"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Agent Name">
-                  <Input value={form.agent_name} onChange={e => u('agent_name', e.target.value)} placeholder="Optional" className="input-dark" />
-                </Field>
-              </div>
-            </>
+      {/* ═══════ STEP: Bedrooms ═══════ */}
+      {currentStep === 'bedrooms' && (
+        <StepContainer heading="How many bedrooms?" sub="Include all bedrooms in the property.">
+          <div className="grid grid-cols-5 gap-3">
+            {[1, 2, 3, 4, 5].map(n => (
+              <Pill key={n} selected={form.bedrooms === n} onClick={() => u('bedrooms', n)}>
+                <span className="text-lg font-extrabold">{n}{n === 5 ? '+' : ''}</span>
+              </Pill>
+            ))}
+          </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
+        </StepContainer>
+      )}
+
+      {/* ═══════ STEP: Bathrooms ═══════ */}
+      {currentStep === 'bathrooms' && (
+        <StepContainer heading="How many bathrooms?" sub="Include ensuites and powder rooms.">
+          <div className="grid grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(n => (
+              <Pill key={n} selected={form.bathrooms === n} onClick={() => u('bathrooms', n)}>
+                <span className="text-lg font-extrabold">{n}{n === 4 ? '+' : ''}</span>
+              </Pill>
+            ))}
+          </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
+        </StepContainer>
+      )}
+
+      {/* ═══════ STEP: Airbnb extras ═══════ */}
+      {currentStep === 'airbnb_extras' && (
+        <StepContainer heading="Tell us about the beds" sub="Select all bed types in this property.">
+          <div className="grid grid-cols-3 gap-3">
+            {BED_TYPE_OPTIONS.map(bt => (
+              <Pill key={bt} selected={form.bed_types.includes(bt)}
+                onClick={() => {
+                  const next = form.bed_types.includes(bt) ? form.bed_types.filter(b => b !== bt) : [...form.bed_types, bt];
+                  u('bed_types', next);
+                }}>
+                <span className="text-[13px] font-bold">{bt}</span>
+              </Pill>
+            ))}
+          </div>
+          <div className="mt-6">
+            <p className="text-base font-semibold mb-3" style={{ color: '#F0FDF4' }}>Linen provided by Brightly?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Pill selected={form.linen_provided === 'Yes'} onClick={() => u('linen_provided', 'Yes')}>
+                <span className="text-[13px] font-bold">Yes</span>
+              </Pill>
+              <Pill selected={form.linen_provided === 'No'} onClick={() => u('linen_provided', 'No')}>
+                <span className="text-[13px] font-bold">No</span>
+              </Pill>
+            </div>
+          </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
+        </StepContainer>
+      )}
+
+      {/* ═══════ STEP: When ═══════ */}
+      {currentStep === 'when' && (
+        <StepContainer heading="When do you need it?" sub="We'll do our best to match your preferred date.">
+          <div className="grid grid-cols-1 gap-3">
+            <Pill selected={form.date_mode === 'asap'} onClick={() => { u('date_mode', 'asap'); u('preferred_date', ''); }}>
+              <span className="text-base font-bold">⚡ As Soon As Possible</span>
+            </Pill>
+            <Pill selected={form.date_mode === 'pick'} onClick={() => u('date_mode', 'pick')}>
+              <span className="text-base font-bold">📅 Pick a Date</span>
+            </Pill>
+          </div>
+          {form.date_mode === 'pick' && (
+            <div className="mt-4">
+              <Input
+                type="date"
+                value={form.preferred_date}
+                onChange={e => u('preferred_date', e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="h-14 rounded-2xl text-base px-5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+              />
+            </div>
           )}
-
-          {/* Common: notes + access */}
-          <Field label="Special Notes">
-            <Textarea value={form.notes} onChange={e => u('notes', e.target.value)} placeholder="Anything we should know..." className="input-dark" rows={3} />
-          </Field>
-          <Field label="Access Method">
-            <Select value={form.access_method} onValueChange={v => u('access_method', v)}>
-              <SelectTrigger className="input-dark"><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{ACCESS_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-            </Select>
-          </Field>
-          <Field label="Access Instructions">
-            <Input value={form.access_instructions} onChange={e => u('access_instructions', e.target.value)} placeholder="Lockbox code, where to find key..." className="input-dark" />
-          </Field>
-
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={goBack} className="flex-1 rounded-xl font-bold gap-2">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </Button>
-            <Button onClick={goNext} disabled={!form.address}
-              className="flex-1 bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl gap-2">
-              Next <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
+        </StepContainer>
       )}
 
-      {/* Step 3 — Client Details */}
-      {step === 3 && (
-        <div className="space-y-5">
-          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Your Details</h2>
+      {/* ═══════ STEP: Time ═══════ */}
+      {currentStep === 'time' && (
+        <StepContainer heading="What time works best?" sub="We'll schedule within your preferred window.">
+          <div className="grid grid-cols-1 gap-3">
+            {[
+              { v: 'Morning', label: '🌅 Morning', sub: '7am – 12pm' },
+              { v: 'Afternoon', label: '☀️ Afternoon', sub: '12pm – 5pm' },
+              { v: 'Either', label: '🕐 Either', sub: 'Whatever works!' },
+            ].map(t => (
+              <Pill key={t.v} selected={form.preferred_time === t.v} onClick={() => u('preferred_time', t.v)}>
+                <span className="text-base font-bold">{t.label}</span>
+                <span className="text-xs mt-0.5" style={{ color: form.preferred_time === t.v ? '#0C463D' : 'rgba(240,253,244,0.5)' }}>{t.sub}</span>
+              </Pill>
+            ))}
+          </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
+        </StepContainer>
+      )}
 
+      {/* ═══════ STEP: Extras ═══════ */}
+      {currentStep === 'extras' && (
+        <StepContainer heading="Any extras?" sub="Select anything that applies — all optional.">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="First Name *">
-              <Input value={form.first_name} onChange={e => u('first_name', e.target.value)} className="input-dark" />
-            </Field>
-            <Field label="Last Name *">
-              <Input value={form.last_name} onChange={e => u('last_name', e.target.value)} className="input-dark" />
-            </Field>
+            {(EXTRAS_BY_TYPE[form.clean_type || 'standard'] || []).map(ex => (
+              <Pill key={ex} selected={form.extras.includes(ex)}
+                onClick={() => {
+                  const next = form.extras.includes(ex) ? form.extras.filter(e => e !== ex) : [...form.extras, ex];
+                  u('extras', next);
+                }}>
+                <span className="text-[13px] font-bold">{ex}</span>
+              </Pill>
+            ))}
           </div>
-          <Field label="Mobile Phone *">
-            <Input value={form.phone} onChange={e => u('phone', e.target.value)} placeholder="0412 345 678" className="input-dark" />
-          </Field>
-          <Field label="Email Address *">
-            <Input type="email" value={form.email} onChange={e => u('email', e.target.value)} placeholder="you@example.com" className="input-dark" />
-          </Field>
-          <Field label="How did you hear about us?">
-            <Select value={form.referral_source} onValueChange={v => u('referral_source', v)}>
-              <SelectTrigger className="input-dark"><SelectValue placeholder="Optional" /></SelectTrigger>
-              <SelectContent>{REFERRAL_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-            </Select>
-          </Field>
-
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={goBack} className="flex-1 rounded-xl font-bold gap-2">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </Button>
-            <Button onClick={goNext} disabled={!form.first_name || !form.last_name || !form.phone || !form.email}
-              className="flex-1 bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl gap-2">
-              Review <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext showBack label="Next" />
+        </StepContainer>
       )}
 
-      {/* Step 4 — Summary & Submit */}
-      {step === 4 && (
-        <div className="space-y-5">
-          <h2 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Review & Submit</h2>
+      {/* ═══════ STEP: Access ═══════ */}
+      {currentStep === 'access' && (
+        <StepContainer heading="How do we get in?" sub="Select the access method for your property.">
+          <div className="grid grid-cols-2 gap-3">
+            {ACCESS_METHODS.map(m => (
+              <Pill key={m} selected={form.access_method === m} onClick={() => u('access_method', m)}>
+                <span className="text-[13px] font-bold">{m}</span>
+              </Pill>
+            ))}
+          </div>
+          {form.access_method === 'Key safe' && (
+            <div className="mt-4">
+              <p className="text-xs font-bold mb-2" style={{ color: '#86EFAC' }}>Key safe code</p>
+              <Input
+                value={form.access_instructions}
+                onChange={e => u('access_instructions', e.target.value)}
+                placeholder="e.g. 1234"
+                className="h-14 rounded-2xl text-base px-5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+              />
+            </div>
+          )}
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
+        </StepContainer>
+      )}
 
+      {/* ═══════ STEP: Notes ═══════ */}
+      {currentStep === 'notes' && (
+        <StepContainer heading="Anything we should know?" sub="Pets, fragile items, special instructions — totally optional.">
+          <Textarea
+            value={form.notes}
+            onChange={e => u('notes', e.target.value)}
+            placeholder="Pets, fragile items, specific instructions..."
+            rows={5}
+            className="rounded-2xl text-base p-5"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+          />
+          <NavButtons onBack={goBack} onNext={goNext} canNext showBack label="Next" />
+        </StepContainer>
+      )}
+
+      {/* ═══════ STEP: Contact ═══════ */}
+      {currentStep === 'contact' && (
+        <StepContainer heading="Your details" sub="We'll use these to send your quote.">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <DarkInput label="First Name" value={form.first_name} onChange={v => u('first_name', v)} placeholder="Jane" />
+              <DarkInput label="Last Name" value={form.last_name} onChange={v => u('last_name', v)} placeholder="Smith" />
+            </div>
+            <DarkInput label="Mobile" value={form.phone} onChange={v => u('phone', v)} placeholder="0412 345 678" />
+            <DarkInput label="Email" value={form.email} onChange={v => u('email', v)} placeholder="you@example.com" type="email" />
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: '#86EFAC' }}>How did you hear about us?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {REFERRAL_OPTIONS.map(r => (
+                  <Pill key={r} selected={form.referral_source === r} onClick={() => u('referral_source', r)} small>
+                    <span className="text-[11px] font-bold">{r}</span>
+                  </Pill>
+                ))}
+              </div>
+            </div>
+          </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack label="Review →" />
+        </StepContainer>
+      )}
+
+      {/* ═══════ STEP: Summary ═══════ */}
+      {currentStep === 'summary' && (
+        <StepContainer heading="Review your request" sub="Check everything looks right before submitting.">
           <SummaryCard title="Clean Type">
-            <p>{CLEAN_TYPES.find(c => c.value === form.clean_type)?.icon} {CLEAN_TYPES.find(c => c.value === form.clean_type)?.label}</p>
+            <SummaryPill>{CLEAN_TYPES.find(c => c.value === form.clean_type)?.icon} {CLEAN_TYPES.find(c => c.value === form.clean_type)?.label}</SummaryPill>
           </SummaryCard>
 
           <SummaryCard title="Property">
-            {form.clean_type === 'airbnb' && form.property_name && <Row label="Name" value={form.property_name} />}
             <Row label="Address" value={form.address} />
-            {form.suburb && <Row label="Suburb" value={`${form.suburb}, ${form.state}`} />}
+            {form.property_name && <Row label="Name" value={form.property_name} />}
             <Row label="Bedrooms" value={String(form.bedrooms)} />
             <Row label="Bathrooms" value={String(form.bathrooms)} />
-            {form.preferred_date && <Row label="Preferred Date" value={form.preferred_date} />}
-            {form.preferred_time && <Row label="Preferred Time" value={form.preferred_time} />}
-            {form.access_method && <Row label="Access" value={form.access_method} />}
-            {form.notes && <Row label="Notes" value={form.notes} />}
-            {form.clean_type === 'airbnb' && (
-              <>
-                {form.bed_types.length > 0 && <Row label="Bed Types" value={form.bed_types.join(', ')} />}
-                <Row label="Linen by Brightly" value={form.linen_provided} />
-                <Row label="Checkout / Checkin" value={`${form.guest_checkout_time} / ${form.guest_checkin_time}`} />
-              </>
+            {form.clean_type === 'airbnb' && form.bed_types.length > 0 && (
+              <Row label="Bed Types" value={form.bed_types.join(', ')} />
             )}
-            {form.clean_type === 'deep_clean' && form.last_cleaned && <Row label="Last Cleaned" value={form.last_cleaned} />}
-            {form.clean_type === 'end_of_lease' && form.lease_end_date && <Row label="Lease End" value={form.lease_end_date} />}
+            {form.clean_type === 'airbnb' && <Row label="Linen by Brightly" value={form.linen_provided} />}
           </SummaryCard>
+
+          <SummaryCard title="Schedule">
+            <Row label="When" value={form.date_mode === 'asap' ? 'ASAP' : form.preferred_date || '—'} />
+            <Row label="Time" value={form.preferred_time || '—'} />
+          </SummaryCard>
+
+          {form.extras.length > 0 && (
+            <SummaryCard title="Extras">
+              <div className="flex flex-wrap gap-2">
+                {form.extras.map(e => <SummaryPill key={e}>{e}</SummaryPill>)}
+              </div>
+            </SummaryCard>
+          )}
+
+          <SummaryCard title="Access">
+            <Row label="Method" value={form.access_method} />
+            {form.access_instructions && <Row label="Details" value={form.access_instructions} />}
+          </SummaryCard>
+
+          {form.notes && (
+            <SummaryCard title="Notes">
+              <p className="text-sm" style={{ color: '#F0FDF4' }}>{form.notes}</p>
+            </SummaryCard>
+          )}
 
           <SummaryCard title="Contact">
             <Row label="Name" value={`${form.first_name} ${form.last_name}`} />
@@ -614,72 +596,146 @@ export default function OnboardingPage() {
             {form.referral_source && <Row label="Referral" value={form.referral_source} />}
           </SummaryCard>
 
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={goBack} className="flex-1 rounded-xl font-bold gap-2">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </Button>
-            <Button
+          <div className="space-y-3 pt-4 pb-10">
+            <button
               onClick={() => submitMutation.mutate()}
               disabled={submitMutation.isPending}
-              className="flex-1 bg-[#FEDB00] text-[#0C463D] hover:bg-[#FEDB00]/90 font-bold rounded-xl gap-2"
+              className="w-full h-14 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              style={{ background: '#FEDB00', color: '#0C463D' }}
             >
-              {submitMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitMutation.isPending && <Loader2 className="w-5 h-5 animate-spin" />}
               Submit & Book
-            </Button>
+            </button>
+            <button
+              onClick={goBack}
+              className="w-full h-14 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+              style={{ background: 'transparent', color: '#F0FDF4', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              <ArrowLeft className="w-4 h-4" /> Go Back & Edit
+            </button>
           </div>
-        </div>
+        </StepContainer>
       )}
 
-      <p className="text-center text-xs pt-6" style={{ color: 'rgba(255,255,255,0.25)' }}>Powered by Brightly</p>
+      <p className="text-center text-xs pt-6 pb-4" style={{ color: 'rgba(255,255,255,0.2)' }}>Brightly Cleaning 🌿</p>
     </Shell>
   );
 }
 
-/* ────── Layout shell ────── */
+/* ══════════════════════════════════════════════════════════════════
+   Sub-components
+   ══════════════════════════════════════════════════════════════════ */
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen" style={{ background: '#0A0F0E' }}>
-      <header className="sticky top-0 z-40 border-b" style={{ background: '#0A0F0E', borderColor: 'rgba(255,255,255,0.08)' }}>
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b" style={{ background: 'rgba(10,15,14,0.9)', backdropFilter: 'blur(16px)', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="max-w-[480px] mx-auto px-5 py-3 flex items-center justify-between">
           <h1 className="text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#F0FDF4' }}>
             Brightly<span style={{ color: '#FEDB00' }}>.</span>
           </h1>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(254,219,0,0.12)', color: '#FEDB00' }}>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(254,219,0,0.12)', color: '#FEDB00' }}>
             New Enquiry
           </span>
         </div>
       </header>
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-20">
+      <main className="max-w-[480px] mx-auto px-5 py-6 pb-20">
         {children}
       </main>
     </div>
   );
 }
 
-/* ────── Helpers ────── */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function StepContainer({ heading, sub, children }: { heading: string; sub: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-extrabold leading-tight" style={{ color: '#F0FDF4' }}>{heading}</h2>
+        <p className="text-sm mt-1.5" style={{ color: 'rgba(240,253,244,0.5)' }}>{sub}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Pill({ children, selected, onClick, small }: { children: React.ReactNode; selected: boolean; onClick: () => void; small?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center rounded-2xl transition-all duration-150 active:scale-[0.97] ${small ? 'py-2.5 px-2' : 'py-4 px-3'}`}
+      style={{
+        background: selected ? '#FEDB00' : 'rgba(255,255,255,0.04)',
+        color: selected ? '#0C463D' : '#F0FDF4',
+        border: selected ? '2px solid #FEDB00' : '2px solid rgba(255,255,255,0.1)',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function NavButtons({ onBack, onNext, canNext, showBack, label }: {
+  onBack: () => void; onNext: () => void; canNext: boolean; showBack?: boolean; label?: string;
+}) {
+  return (
+    <div className="flex gap-3 pt-4">
+      {showBack && (
+        <button onClick={onBack}
+          className="h-14 px-5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all"
+          style={{ background: 'transparent', color: '#F0FDF4', border: '1px solid rgba(255,255,255,0.15)' }}>
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+      )}
+      <button onClick={onNext} disabled={!canNext}
+        className="flex-1 h-14 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40"
+        style={{ background: '#FEDB00', color: '#0C463D' }}>
+        {label || 'Next'} <ArrowRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function DarkInput({ label, value, onChange, placeholder, type }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) {
   return (
     <div>
-      <Label className="text-xs font-bold mb-1.5 block" style={{ color: '#86EFAC' }}>{label}</Label>
-      {children}
+      <p className="text-xs font-bold mb-2" style={{ color: '#86EFAC' }}>{label}</p>
+      <Input
+        type={type || 'text'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-14 rounded-2xl text-base px-5"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+      />
     </div>
   );
 }
 
 function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: '#FEDB00' }}>{title}</h3>
-      <div className="space-y-1 text-sm" style={{ color: '#F0FDF4' }}>{children}</div>
+    <div className="rounded-2xl p-4 space-y-2 mt-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <h3 className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#FEDB00' }}>{title}</h3>
+      <div className="space-y-1.5 text-sm" style={{ color: '#F0FDF4' }}>{children}</div>
     </div>
+  );
+}
+
+function SummaryPill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: 'rgba(254,219,0,0.12)', color: '#FEDB00' }}>
+      {children}
+    </span>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
-      <span style={{ color: '#86EFAC' }}>{label}</span>
-      <span className="font-semibold text-right">{value}</span>
+      <span className="text-xs" style={{ color: '#86EFAC' }}>{label}</span>
+      <span className="font-semibold text-right text-sm">{value}</span>
     </div>
   );
 }
