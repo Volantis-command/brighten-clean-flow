@@ -34,6 +34,22 @@ export function useProcessScheduledSms() {
             continue;
           }
 
+          // Skip SMS for cancelled jobs
+          if (sms.job_id) {
+            const { data: jobRow } = await supabase
+              .from('jobs')
+              .select('status')
+              .eq('id', sms.job_id)
+              .maybeSingle();
+            if (jobRow?.status === 'cancelled') {
+              await supabase
+                .from('scheduled_sms' as any)
+                .update({ status: 'cancelled', error: 'Job was cancelled' } as any)
+                .eq('id', sms.id);
+              continue;
+            }
+          }
+
           try {
             const { error: sendError } = await supabase.functions.invoke('send-job-sms', {
               body: { to: sms.recipient_phone, message: sms.message },

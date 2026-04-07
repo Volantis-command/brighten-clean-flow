@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-  import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CheckCircle2, Phone } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
@@ -22,6 +22,7 @@ import { AcceptanceBadge } from '@/components/AcceptanceBadge';
 import { useJobAcceptances } from '@/hooks/useJobAcceptances';
 import { ExtraTimePhotosModal } from '@/components/job-detail/ExtraTimePhotosModal';
 import { CancelJobModal } from '@/components/job-detail/CancelJobModal';
+import { RescheduleJobModal } from '@/components/job-detail/RescheduleJobModal';
 import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
 
 export default function JobDetailPage() {
@@ -40,6 +41,7 @@ export default function JobDetailPage() {
   const [sendingRebookSms, setSendingRebookSms] = useState(false);
   const [showExtraPhotos, setShowExtraPhotos] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [sendingTrackerLink, setSendingTrackerLink] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
 
@@ -83,6 +85,29 @@ export default function JobDetailPage() {
   });
 
   const { data: acceptances = [], refetch: refetchAcceptances } = useJobAcceptances(jobId);
+
+  // Client phone lookup for SMS and click-to-call
+  const { data: clientInfo } = useQuery({
+    queryKey: ['job-client-info', job?.property_id],
+    queryFn: async () => {
+      const { data: cpRows } = await supabase
+        .from('client_properties')
+        .select('client_id, clients(id, full_name, phone, email)')
+        .eq('property_id', job!.property_id)
+        .limit(1);
+      const row = cpRows?.[0] as any;
+      if (row?.clients) {
+        return { phone: row.clients.phone, name: row.clients.full_name, email: row.clients.email };
+      }
+      // Fallback: check profiles table via client_properties.client_id
+      if (row?.client_id) {
+        const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', row.client_id).maybeSingle();
+        return { phone: profile?.phone || null, name: profile?.full_name || null, email: null };
+      }
+      return { phone: null, name: null, email: null };
+    },
+    enabled: !!job?.property_id,
+  });
 
   // Cleaner job tokens for this job
   const { data: jobTokens = [], refetch: refetchJobTokens } = useQuery({
@@ -415,17 +440,34 @@ export default function JobDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Cleaner-specific: Open in Maps */}
-      {(role === 'cleaner' || role === 'head_cleaner') && address && (
-        <Button
-          variant="accent"
-          size="lg"
-          className="w-full gap-2 h-14 text-base font-bold rounded-2xl"
-          onClick={() => setMapsOpen(true)}
-        >
-          <Navigation className="h-5 w-5" />
-          Open in Maps
-        </Button>
+      {/* Cleaner-specific: Open in Maps + Call Client */}
+      {(role === 'cleaner' || role === 'head_cleaner') && (
+        <div className="flex gap-2">
+          {address && (
+            <Button
+              variant="accent"
+              size="lg"
+              className="flex-1 gap-2 h-14 text-base font-bold rounded-2xl"
+              onClick={() => setMapsOpen(true)}
+            >
+              <Navigation className="h-5 w-5" />
+              Open in Maps
+            </Button>
+          )}
+          {clientInfo?.phone && (
+            <Button
+              variant="outline"
+              size="lg"
+              className="gap-2 h-14 text-base font-bold rounded-2xl shrink-0"
+              asChild
+            >
+              <a href={`tel:${clientInfo.phone}`}>
+                <Phone className="h-5 w-5" />
+                Call Client
+              </a>
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Access Instructions */}
@@ -1425,6 +1467,17 @@ export default function JobDetailPage() {
         {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
           <Button
             variant="outline"
+            className="w-full gap-2 h-12 text-base font-bold"
+            onClick={() => setRescheduleOpen(true)}
+          >
+            <CalendarDays className="h-5 w-5" />
+            Reschedule Job
+          </Button>
+        )}
+
+        {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
+          <Button
+            variant="outline"
             className="w-full gap-2 h-12 text-base font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
             onClick={() => setCancelOpen(true)}
           >
@@ -1519,6 +1572,16 @@ export default function JobDetailPage() {
       </div>
 
       <CancelJobModal open={cancelOpen} onOpenChange={setCancelOpen} jobId={jobId!} onCancelled={() => navigate('/schedule')} />
+      <RescheduleJobModal
+        open={rescheduleOpen}
+        onOpenChange={setRescheduleOpen}
+        jobId={jobId!}
+        currentDate={job.scheduled_date}
+        currentTime={job.scheduled_time}
+        clientPhone={clientInfo?.phone}
+        clientName={clientInfo?.name || (job.properties as any)?.client_name}
+        propertyName={(job.properties as any)?.property_name}
+      />
 
       {/* Client Messages for this Job */}
       {role === 'admin' && jobId && (

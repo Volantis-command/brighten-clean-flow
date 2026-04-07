@@ -58,6 +58,23 @@ export default function CleanWorkflowPage() {
     },
   });
 
+  // Client phone for click-to-call
+  const { data: clientPhone } = useQuery({
+    queryKey: ['clean-workflow-client-phone', job?.property_id],
+    enabled: !!job?.property_id,
+    queryFn: async () => {
+      const { data: cpRows } = await supabase
+        .from('client_properties')
+        .select('client_id')
+        .eq('property_id', job!.property_id)
+        .limit(1);
+      const clientId = (cpRows as any)?.[0]?.client_id;
+      if (!clientId) return null;
+      const { data: profile } = await supabase.from('profiles').select('phone').eq('id', clientId).maybeSingle();
+      return profile?.phone || null;
+    },
+  });
+
   const refreshJob = useCallback(async () => {
     await refetch();
     queryClient.invalidateQueries({ queryKey: ['my-cleans'] });
@@ -167,6 +184,7 @@ export default function CleanWorkflowPage() {
         profiles={profiles}
         onClockOn={() => {}}
         clockingOn={false}
+        clientPhone={clientPhone}
       />
     );
   }
@@ -180,6 +198,7 @@ export default function CleanWorkflowPage() {
           profiles={profiles}
           onClockOn={handleClockOn}
           clockingOn={clockingOn}
+          clientPhone={clientPhone}
         />
         {/* Geofence dialogs */}
         <AlertDialog open={geoDialog?.type === 'failed'} onOpenChange={() => setGeoDialog(null)}>

@@ -39,12 +39,17 @@ export function CancelJobModal({ open, onOpenChange, jobId, onCancelled }: Props
       } as any).eq('id', jobId);
       if (error) throw error;
 
+      // Clean up pending scheduled SMS for this job
+      await supabase
+        .from('scheduled_sms' as any)
+        .update({ status: 'cancelled' } as any)
+        .eq('job_id', jobId)
+        .eq('status', 'pending');
+
       if (sendSms) {
         try {
-          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-client-booking-sms`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ job_id: jobId, is_cancellation: true }),
+          await supabase.functions.invoke('send-client-booking-sms', {
+            body: { job_id: jobId, is_cancellation: true },
           });
         } catch { /* best effort */ }
       }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
   profiles: { id: string; full_name: string; role?: string }[];
   onClockOn: () => void;
   clockingOn: boolean;
+  clientPhone?: string | null;
 }
 
 function openMaps(address: string) {
@@ -23,7 +24,7 @@ function openMaps(address: string) {
   );
 }
 
-export default function PreClockOnView({ job, property, profiles, onClockOn, clockingOn }: Props) {
+export default function PreClockOnView({ job, property, profiles, onClockOn, clockingOn, clientPhone }: Props) {
   const navigate = useNavigate();
   const [accessOpen, setAccessOpen] = useState(true);
   const [instructionsOpen, setInstructionsOpen] = useState(true);
@@ -109,15 +110,24 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
           <CardContent className="p-4 space-y-3">
             <p className="font-bold text-foreground">{property?.property_name}</p>
             {address && <p className="text-sm text-muted-foreground">{address}</p>}
-            {address && (
-              <Button
-                variant="outline"
-                className="w-full h-12 rounded-xl gap-2 font-bold"
-                onClick={() => openMaps(address)}
-              >
-                <Navigation className="h-4 w-4" /> 📍 Open in Maps
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {address && (
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl gap-2 font-bold"
+                  onClick={() => openMaps(address)}
+                >
+                  <Navigation className="h-4 w-4" /> Open in Maps
+                </Button>
+              )}
+              {clientPhone && (
+                <Button variant="outline" className="h-12 rounded-xl gap-2 font-bold shrink-0" asChild>
+                  <a href={`tel:${clientPhone}`}>
+                    <Phone className="h-4 w-4" /> Call Client
+                  </a>
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 

@@ -121,13 +121,43 @@ export default function SchedulePage() {
       }
     }
 
+    // Cancel old scheduled SMS and reschedule
+    await supabase
+      .from('scheduled_sms' as any)
+      .update({ status: 'cancelled' } as any)
+      .eq('job_id', job.id)
+      .eq('status', 'pending');
+
     toast.success(`Job moved to ${formattedDate}${timeLabel} ✓`, {
       action: {
-        label: 'Notify cleaner',
+        label: 'Notify all',
         onClick: async () => {
           try {
+            // Notify cleaner
             await supabase.functions.invoke('send-job-sms', { body: { job_id: job.id } });
-            toast.success('Cleaner notified ✓');
+            // Notify client
+            const { data: cpRows } = await supabase
+              .from('client_properties')
+              .select('client_id')
+              .eq('property_id', job.property_id)
+              .limit(1);
+            const clientId = (cpRows as any)?.[0]?.client_id;
+            if (clientId) {
+              const { data: clientProfile } = await supabase
+                .from('profiles')
+                .select('full_name, phone')
+                .eq('id', clientId)
+                .maybeSingle();
+              if (clientProfile?.phone) {
+                const firstName = (clientProfile.full_name || 'there').split(' ')[0];
+                const propName = job.properties?.property_name || 'your property';
+                const msg = `Hi ${firstName}, your clean at ${propName} has been rescheduled to ${formattedDate}${timeLabel}. — Brightly 🌿`;
+                await supabase.functions.invoke('send-job-sms', {
+                  body: { to: clientProfile.phone, message: msg },
+                });
+              }
+            }
+            toast.success('Cleaner & client notified ✓');
           } catch (e: any) {
             toast.error(`SMS failed: ${e.message}`);
           }
