@@ -1427,11 +1427,14 @@ export type Database = {
           active: boolean | null
           address: string | null
           alarm_code: string | null
+          amenities_list: string | null
           amenities_notes: string | null
+          amenities_restock: boolean | null
           assigned_cleaner_ids: Json | null
           avg_nightly_rate: number | null
           backup_cleaner_id: string | null
           bathrooms: number | null
+          bed_config: Json | null
           bedrooms: number | null
           billing_email: string | null
           bin_details: string | null
@@ -1440,14 +1443,20 @@ export type Database = {
           checkout_time: string | null
           clean_frequency: string | null
           clean_standard: string | null
+          client_email: string | null
+          client_id: string | null
           client_name: string | null
           client_phone: string | null
           client_type: string | null
           consumables_config: Json | null
           created_at: string
           default_cleaner_id: string | null
+          estimated_hours: number | null
           fragrance_preference: string | null
+          garage_code: string | null
+          guest_access_notes: string | null
           guest_checkin_at: string | null
+          guest_wifi: string | null
           guesty_listing_id: string | null
           has_glass_screens: boolean | null
           has_outdoor_area: boolean | null
@@ -1455,20 +1464,26 @@ export type Database = {
           has_pool: boolean | null
           host_preferences: string | null
           id: string
+          is_occupied: boolean | null
           lat: number | null
           linen_changeover: string | null
           linen_config: Json | null
           linen_fold_style: string | null
+          linen_provided: boolean | null
+          linen_sets: number | null
           linen_storage: string | null
           linen_supply: string | null
           lng: number | null
+          locked_price_inc_gst: number | null
           lockbox_code: string | null
           max_guests: number | null
           min_notice: string | null
           neighbour_notes: string | null
+          occupant_count: number | null
           outdoor_description: string | null
           override_price: boolean | null
           pain_points: string | null
+          parking_notes: string | null
           parking_instructions: string | null
           payment_terms: string | null
           pet_situation: string | null
@@ -1483,9 +1498,11 @@ export type Database = {
           pricing_notes: string | null
           product_restrictions: string | null
           property_name: string
+          room_notes: Json | null
           property_notes: string | null
           property_type: string | null
           skip_areas: string | null
+          sofa_beds: number | null
           spare_linen: string | null
           special_instructions: string | null
           state: string | null
@@ -1503,11 +1520,14 @@ export type Database = {
           active?: boolean | null
           address?: string | null
           alarm_code?: string | null
+          amenities_list?: string | null
           amenities_notes?: string | null
+          amenities_restock?: boolean | null
           assigned_cleaner_ids?: Json | null
           avg_nightly_rate?: number | null
           backup_cleaner_id?: string | null
           bathrooms?: number | null
+          bed_config?: Json | null
           bedrooms?: number | null
           billing_email?: string | null
           bin_details?: string | null
@@ -1516,14 +1536,20 @@ export type Database = {
           checkout_time?: string | null
           clean_frequency?: string | null
           clean_standard?: string | null
+          client_email?: string | null
+          client_id?: string | null
           client_name?: string | null
           client_phone?: string | null
           client_type?: string | null
           consumables_config?: Json | null
           created_at?: string
           default_cleaner_id?: string | null
+          estimated_hours?: number | null
           fragrance_preference?: string | null
+          garage_code?: string | null
+          guest_access_notes?: string | null
           guest_checkin_at?: string | null
+          guest_wifi?: string | null
           guesty_listing_id?: string | null
           has_glass_screens?: boolean | null
           has_outdoor_area?: boolean | null
@@ -1531,20 +1557,26 @@ export type Database = {
           has_pool?: boolean | null
           host_preferences?: string | null
           id?: string
+          is_occupied?: boolean | null
           lat?: number | null
           linen_changeover?: string | null
           linen_config?: Json | null
           linen_fold_style?: string | null
+          linen_provided?: boolean | null
+          linen_sets?: number | null
           linen_storage?: string | null
           linen_supply?: string | null
           lng?: number | null
+          locked_price_inc_gst?: number | null
           lockbox_code?: string | null
           max_guests?: number | null
           min_notice?: string | null
           neighbour_notes?: string | null
+          occupant_count?: number | null
           outdoor_description?: string | null
           override_price?: boolean | null
           pain_points?: string | null
+          parking_notes?: string | null
           parking_instructions?: string | null
           payment_terms?: string | null
           pet_situation?: string | null
@@ -1561,7 +1593,9 @@ export type Database = {
           property_name: string
           property_notes?: string | null
           property_type?: string | null
+          room_notes?: Json | null
           skip_areas?: string | null
+          sofa_beds?: number | null
           spare_linen?: string | null
           special_instructions?: string | null
           state?: string | null
@@ -1579,11 +1613,14 @@ export type Database = {
           active?: boolean | null
           address?: string | null
           alarm_code?: string | null
+          amenities_list?: string | null
           amenities_notes?: string | null
+          amenities_restock?: boolean | null
           assigned_cleaner_ids?: Json | null
           avg_nightly_rate?: number | null
           backup_cleaner_id?: string | null
           bathrooms?: number | null
+          bed_config?: Json | null
           bedrooms?: number | null
           billing_email?: string | null
           bin_details?: string | null
@@ -1592,14 +1629,20 @@ export type Database = {
           checkout_time?: string | null
           clean_frequency?: string | null
           clean_standard?: string | null
+          client_email?: string | null
+          client_id?: string | null
           client_name?: string | null
           client_phone?: string | null
           client_type?: string | null
           consumables_config?: Json | null
           created_at?: string
           default_cleaner_id?: string | null
+          estimated_hours?: number | null
           fragrance_preference?: string | null
+          garage_code?: string | null
+          guest_access_notes?: string | null
           guest_checkin_at?: string | null
+          guest_wifi?: string | null
           guesty_listing_id?: string | null
           has_glass_screens?: boolean | null
           has_outdoor_area?: boolean | null
@@ -1607,20 +1650,26 @@ export type Database = {
           has_pool?: boolean | null
           host_preferences?: string | null
           id?: string
+          is_occupied?: boolean | null
           lat?: number | null
           linen_changeover?: string | null
           linen_config?: Json | null
           linen_fold_style?: string | null
+          linen_provided?: boolean | null
+          linen_sets?: number | null
           linen_storage?: string | null
           linen_supply?: string | null
           lng?: number | null
+          locked_price_inc_gst?: number | null
           lockbox_code?: string | null
           max_guests?: number | null
           min_notice?: string | null
           neighbour_notes?: string | null
+          occupant_count?: number | null
           outdoor_description?: string | null
           override_price?: boolean | null
           pain_points?: string | null
+          parking_notes?: string | null
           parking_instructions?: string | null
           payment_terms?: string | null
           pet_situation?: string | null
@@ -1637,7 +1686,9 @@ export type Database = {
           property_name?: string
           property_notes?: string | null
           property_type?: string | null
+          room_notes?: Json | null
           skip_areas?: string | null
+          sofa_beds?: number | null
           spare_linen?: string | null
           special_instructions?: string | null
           state?: string | null
