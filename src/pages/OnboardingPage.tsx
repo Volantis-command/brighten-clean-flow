@@ -80,10 +80,10 @@ const EXTRAS_BY_TYPE: Record<string, string[]> = {
 
 /* ────── Step definitions ────── */
 function getSteps(cleanType: CleanType | ''): string[] {
-  const base = ['clean_type', 'address', 'bedrooms', 'bathrooms'];
-  if (cleanType === 'airbnb') base.push('airbnb_extras');
-  base.push('when', 'time', 'extras', 'access', 'notes', 'contact', 'summary');
-  return base;
+  if (cleanType === 'airbnb') {
+    return ['clean_type', 'property', 'airbnb_extras', 'access', 'contact'];
+  }
+  return ['clean_type', 'property', 'extras', 'access', 'contact'];
 }
 
 /* ────────────── Component ────────────── */
@@ -285,15 +285,10 @@ export default function OnboardingPage() {
   const canNext = (() => {
     switch (currentStep) {
       case 'clean_type': return !!form.clean_type;
-      case 'address': return !!form.address.trim();
-      case 'bedrooms': return form.bedrooms > 0;
-      case 'bathrooms': return form.bathrooms > 0;
-      case 'airbnb_extras': return form.bed_types.length > 0 && !!form.linen_provided;
-      case 'when': return !!form.date_mode && (form.date_mode === 'asap' || !!form.preferred_date);
-      case 'time': return !!form.preferred_time;
+      case 'property': return !!form.address.trim() && form.bedrooms > 0 && form.bathrooms > 0;
+      case 'airbnb_extras': return !!form.linen_provided;
       case 'extras': return true;
       case 'access': return !!form.access_method;
-      case 'notes': return true;
       case 'contact': return !!form.first_name && !!form.last_name && !!form.phone && !!form.email;
       default: return true;
     }
@@ -334,7 +329,59 @@ export default function OnboardingPage() {
         </StepContainer>
       )}
 
-      {/* ═══════ STEP: Address ═══════ */}
+
+      {/* ═══════ STEP: Property (combined address + beds + baths) ═══════ */}
+      {currentStep === 'property' && (
+        <StepContainer heading="Tell us about the property" sub="We'll use this to prepare your quote.">
+          <div className="space-y-5">
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Property address *</p>
+              <Input
+                value={form.address}
+                onChange={e => u('address', e.target.value)}
+                placeholder="123 Example Street, Suburb"
+                className="h-14 rounded-2xl text-base px-5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+              />
+            </div>
+            {form.clean_type === 'airbnb' && (
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Property nickname (optional)</p>
+                <Input
+                  value={form.property_name}
+                  onChange={e => u('property_name', e.target.value)}
+                  placeholder="e.g. Beach House"
+                  className="h-14 rounded-2xl text-base px-5"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#F0FDF4' }}
+                />
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Bedrooms *</p>
+              <div className="flex gap-3">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <Pill key={n} selected={form.bedrooms === n} onClick={() => u('bedrooms', n)} className="flex-1 !min-h-[48px]">
+                    <span className="text-base font-extrabold">{n}{n === 5 ? '+' : ''}</span>
+                  </Pill>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Bathrooms *</p>
+              <div className="flex gap-3">
+                {[1, 2, 3, 4].map(n => (
+                  <Pill key={n} selected={form.bathrooms === n} onClick={() => u('bathrooms', n)} className="flex-1 !min-h-[48px]">
+                    <span className="text-base font-extrabold">{n}{n === 4 ? '+' : ''}</span>
+                  </Pill>
+                ))}
+              </div>
+            </div>
+          </div>
+          <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack={stepIdx > 0} />
+        </StepContainer>
+      )}
+
+      {/* ═══════ STEP: Address (legacy - not used) ═══════ */}
       {currentStep === 'address' && (
         <StepContainer heading="What's the property address?" sub="We'll use this to prepare your quote.">
           <Input
@@ -390,28 +437,15 @@ export default function OnboardingPage() {
 
       {/* ═══════ STEP: Airbnb extras ═══════ */}
       {currentStep === 'airbnb_extras' && (
-        <StepContainer heading="Tell us about the beds" sub="Select all bed types in this property.">
-          <div className="grid grid-cols-3 gap-3">
-            {BED_TYPE_OPTIONS.map(bt => (
-              <Pill key={bt} selected={form.bed_types.includes(bt)}
-                onClick={() => {
-                  const next = form.bed_types.includes(bt) ? form.bed_types.filter(b => b !== bt) : [...form.bed_types, bt];
-                  u('bed_types', next);
-                }}>
-                <span className="text-[13px] font-bold">{bt}</span>
-              </Pill>
-            ))}
-          </div>
-          <div className="mt-6">
-            <p className="text-base font-semibold mb-3" style={{ color: '#F0FDF4' }}>Linen provided by Brightly?</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Pill selected={form.linen_provided === 'Yes'} onClick={() => u('linen_provided', 'Yes')}>
-                <span className="text-[13px] font-bold">Yes</span>
-              </Pill>
-              <Pill selected={form.linen_provided === 'No'} onClick={() => u('linen_provided', 'No')}>
-                <span className="text-[13px] font-bold">No</span>
-              </Pill>
-            </div>
+        <StepContainer heading="Airbnb details" sub="Just a couple of quick questions.">
+          <p className="text-base font-semibold mb-3" style={{ color: '#F0FDF4' }}>Linen provided by Brightly?</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Pill selected={form.linen_provided === 'Yes'} onClick={() => u('linen_provided', 'Yes')}>
+              <span className="text-[13px] font-bold">Yes</span>
+            </Pill>
+            <Pill selected={form.linen_provided === 'No'} onClick={() => u('linen_provided', 'No')}>
+              <span className="text-[13px] font-bold">No</span>
+            </Pill>
           </div>
           <NavButtons onBack={goBack} onNext={goNext} canNext={canNext} showBack />
         </StepContainer>
