@@ -59,7 +59,7 @@ function useClientJobs(propertyIds: string[], clientName: string | null) {
         const { data: nameJobs } = await supabase
           .from('jobs')
           .select('id, scheduled_date, scheduled_time, status, invoice_status, property_id, cleaner_1_id, notes')
-          .eq('client_name', clientName)
+          .eq('client_name' as any, clientName)
           .order('scheduled_date', { ascending: false });
         const existingIds = new Set(allJobs.map(j => j.id));
         (nameJobs || []).forEach(j => { if (!existingIds.has(j.id)) allJobs.push(j); });

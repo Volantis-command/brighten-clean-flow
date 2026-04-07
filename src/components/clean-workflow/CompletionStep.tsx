@@ -99,7 +99,7 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
       user_id: userId,
       job_id: job.id,
       event_type: 'clock_out',
-    } as any).catch(() => {});
+    } as any).then(() => {}, () => {});
 
     for (const url of photos) {
       const storagePath = url.split('/job-photos/')[1] ?? '';
