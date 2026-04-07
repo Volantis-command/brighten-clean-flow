@@ -42,7 +42,7 @@ export default function ClientPortalPage() {
   // Cleans expand
   const [expandedClean, setExpandedClean] = useState<string | null>(null);
 
-  // Properties data
+  // Properties data — match via client_properties link OR client_id/client_name/client_phone
   const { data: clientProps = [], isLoading: loadingLinks } = useQuery({
     queryKey: ['client-properties', user?.id],
     queryFn: async () => {
@@ -57,18 +57,43 @@ export default function ClientPortalPage() {
     enabled: !!user,
   });
 
-  const propertyIds = clientProps.map((cp: any) => cp.property_id);
+  const linkedPropertyIds = clientProps.map((cp: any) => cp.property_id);
 
-  const { data: properties = [], isLoading: loadingProps } = useQuery({
-    queryKey: ['client-property-details', propertyIds],
+  // Also fetch properties where client_id, client_name or client_phone matches the profile
+  const { data: directProperties = [] } = useQuery({
+    queryKey: ['client-direct-properties', user?.id, profile?.full_name, (profile as any)?.phone],
     queryFn: async () => {
-      if (!propertyIds.length) return [];
-      const { data, error } = await supabase.from('properties').select('*').in('id', propertyIds);
+      const conditions: string[] = [];
+      if (user?.id) conditions.push(`client_id.eq.${user.id}`);
+      if (profile?.full_name) conditions.push(`client_name.eq.${profile.full_name}`);
+      if ((profile as any)?.phone) conditions.push(`client_phone.eq.${(profile as any).phone}`);
+      if (conditions.length === 0) return [];
+      const { data } = await supabase.from('properties').select('*').or(conditions.join(','));
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Merge linked + direct, dedup by id
+  const propertyIds = [...new Set([...linkedPropertyIds, ...directProperties.map((p: any) => p.id)])];
+
+  const { data: linkedDetails = [], isLoading: loadingProps } = useQuery({
+    queryKey: ['client-property-details', linkedPropertyIds],
+    queryFn: async () => {
+      if (!linkedPropertyIds.length) return [];
+      const { data, error } = await supabase.from('properties').select('*').in('id', linkedPropertyIds);
       if (error) throw error;
       return data || [];
     },
-    enabled: propertyIds.length > 0,
+    enabled: linkedPropertyIds.length > 0,
   });
+
+  // Merge linked details with direct properties, dedup
+  const properties = (() => {
+    const map = new Map<string, any>();
+    [...linkedDetails, ...directProperties].forEach(p => { if (!map.has(p.id)) map.set(p.id, p); });
+    return Array.from(map.values());
+  })();
 
   // Jobs across all properties
   const { data: jobs = [] } = useQuery({
@@ -248,6 +273,10 @@ export default function ClientPortalPage() {
                           <div className={`w-2 h-2 rounded-full ${statusInfo.dot}`} />
                           {statusInfo.label}
                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                        <span>{prop.bedrooms || 0} bed / {prop.bathrooms || 0} bath</span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 text-sm">

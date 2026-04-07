@@ -2,38 +2,39 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useCleanersList } from '@/hooks/useCleanersList';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { JobHistoryTab } from '@/components/property/JobHistoryTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
+import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 const ROOMS = ['Kitchen', 'Bathroom', 'Bedroom', 'Lounge', 'Balcony', 'Entry', 'Other'];
 
 const DEFAULT_RESTOCKING = [
-  { emoji: '☕', item_name: 'Coffee Pods' },
-  { emoji: '🧻', item_name: 'Toilet Paper' },
-  { emoji: '🛏', item_name: 'Fresh Linen' },
-  { emoji: '🛁', item_name: 'Towels' },
-  { emoji: '🧴', item_name: 'Soap' },
-  { emoji: '🍽', item_name: 'Dishwashing Tabs' },
+  { emoji: '\u2615', item_name: 'Coffee Pods' },
+  { emoji: '\uD83E\uDDFB', item_name: 'Toilet Paper' },
+  { emoji: '\uD83D\uDECF', item_name: 'Fresh Linen' },
+  { emoji: '\uD83D\uDEC1', item_name: 'Towels' },
+  { emoji: '\uD83E\uDDF4', item_name: 'Soap' },
+  { emoji: '\uD83C\uDF7D', item_name: 'Dishwashing Tabs' },
 ];
 
 export default function PropertyProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: cleaners = [] } = useCleanersList();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [profileMode, setProfileMode] = useState<'view' | 'edit'>('view');
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -56,7 +57,7 @@ export default function PropertyProfilePage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading…</p></div>;
+    return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading\u2026</p></div>;
   }
 
   if (!property) {
@@ -74,21 +75,37 @@ export default function PropertyProfilePage() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/properties')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5">
-          <Trash2 className="h-4 w-4" /> Delete
-        </Button>
+        <div className="flex gap-2">
+          {isAdmin && profileMode === 'view' && (
+            <Button variant="outline" size="sm" onClick={() => setProfileMode('edit')} className="gap-1.5">
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5">
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          )}
+        </div>
       </div>
       <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
 
-      <Tabs defaultValue="details" className="w-full">
+      <Tabs defaultValue="profile" className="w-full">
         <TabsList className="w-full">
-          <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
+          <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
           <TabsTrigger value="passport" className="flex-1">Passport</TabsTrigger>
-          <TabsTrigger value="sop" className="flex-1">SOP & Restocking</TabsTrigger>
-          <TabsTrigger value="history" className="flex-1">Job History</TabsTrigger>
+          <TabsTrigger value="sop" className="flex-1">SOP</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1">History</TabsTrigger>
         </TabsList>
-        <TabsContent value="details">
-          <DetailsTab property={property} cleaners={cleaners} />
+        <TabsContent value="profile">
+          <div className="bg-card rounded-2xl shadow-md p-5 mt-4">
+            <PropertyProfileForm
+              property={property}
+              mode={profileMode}
+              isAdmin={isAdmin}
+              onSaved={() => setProfileMode('view')}
+            />
+          </div>
         </TabsContent>
         <TabsContent value="passport">
           <div className="bg-card rounded-2xl border border-border p-5 mt-4">
@@ -104,7 +121,7 @@ export default function PropertyProfilePage() {
         </TabsContent>
       </Tabs>
 
-      {/* Notes for Next Clean — auto-save watchlist */}
+      {/* Notes for Next Clean */}
       <WatchlistNotes propertyId={property.id} initialNotes={(property as any).property_notes || ''} />
 
       {/* Delete Confirmation Modal */}
@@ -117,7 +134,7 @@ export default function PropertyProfilePage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? 'Deleting\u2026' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -126,147 +143,12 @@ export default function PropertyProfilePage() {
   );
 }
 
-/* ═══════ DETAILS TAB ═══════ */
-
-function DetailsTab({ property, cleaners }: { property: any; cleaners: any[] }) {
-  const queryClient = useQueryClient();
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    property_name: '',
-    address: '',
-    suburb: '',
-    client_type: 'residential',
-    bedrooms: 1,
-    bathrooms: 1,
-    client_name: '',
-    preferred_cleaner_id: '',
-    access_notes: '',
-    lockbox_code: '',
-    status: 'active',
-    special_instructions: '',
-    property_notes: '',
-  });
-
-  useEffect(() => {
-    if (property) {
-      setForm({
-        property_name: property.property_name || '',
-        address: property.address || '',
-        suburb: property.suburb || '',
-        client_type: property.client_type || 'residential',
-        bedrooms: property.bedrooms || 1,
-        bathrooms: property.bathrooms || 1,
-        client_name: property.client_name || '',
-        preferred_cleaner_id: property.preferred_cleaner_id || '',
-        access_notes: property.access_notes || '',
-        lockbox_code: property.lockbox_code || '',
-        status: property.status || 'active',
-        special_instructions: (property as any).special_instructions || '',
-        property_notes: (property as any).property_notes || '',
-      });
-    }
-  }, [property]);
-
-  const u = (field: string, value: any) => setForm((f) => ({ ...f, [field]: value }));
-
-  const handleSave = async () => {
-    if (!form.property_name.trim()) { toast.error('Property name is required'); return; }
-    setSaving(true);
-    const { error } = await supabase.from('properties').update({
-      property_name: form.property_name,
-      address: form.address || null,
-      suburb: form.suburb || null,
-      client_type: form.client_type,
-      bedrooms: form.bedrooms,
-      bathrooms: form.bathrooms,
-      client_name: form.client_name || null,
-      preferred_cleaner_id: form.preferred_cleaner_id || null,
-      access_notes: form.access_notes || null,
-      lockbox_code: form.lockbox_code || null,
-      status: form.status,
-      special_instructions: form.special_instructions || null,
-      property_notes: form.property_notes || null,
-    } as any).eq('id', property.id);
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Property saved');
-    queryClient.invalidateQueries({ queryKey: ['property', property.id] });
-    queryClient.invalidateQueries({ queryKey: ['properties'] });
-  };
-
-  return (
-    <div className="bg-card rounded-2xl shadow-md p-5 space-y-5 mt-4">
-      <Field label="Property Name">
-        <Input value={form.property_name} onChange={(e) => u('property_name', e.target.value)} className="h-12 rounded-xl" />
-      </Field>
-      <Field label="Address">
-        <Input value={form.address} onChange={(e) => u('address', e.target.value)} className="h-12 rounded-xl" />
-      </Field>
-      <Field label="Suburb">
-        <Input value={form.suburb} onChange={(e) => u('suburb', e.target.value)} className="h-12 rounded-xl" />
-      </Field>
-      <Field label="Type">
-        <div className="flex gap-2">
-          {[{ v: 'residential', l: 'House Clean' }, { v: 'airbnb', l: 'Airbnb' }].map(({ v, l }) => (
-            <button key={v} type="button" onClick={() => u('client_type', v)}
-              className={cn('flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all',
-                form.client_type === v ? 'border-primary bg-secondary text-primary' : 'border-border text-muted-foreground'
-              )}
-            >{l}</button>
-          ))}
-        </div>
-      </Field>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Bedrooms">
-          <Input type="number" min={0} value={form.bedrooms} onChange={(e) => u('bedrooms', Number(e.target.value))} className="h-12 rounded-xl" />
-        </Field>
-        <Field label="Bathrooms">
-          <Input type="number" min={0} value={form.bathrooms} onChange={(e) => u('bathrooms', Number(e.target.value))} className="h-12 rounded-xl" />
-        </Field>
-      </div>
-      <Field label="Client / Host Name">
-        <Input value={form.client_name} onChange={(e) => u('client_name', e.target.value)} className="h-12 rounded-xl" />
-      </Field>
-      <Field label="Preferred Cleaner">
-        <select value={form.preferred_cleaner_id} onChange={(e) => u('preferred_cleaner_id', e.target.value)}
-          className="w-full h-12 rounded-xl border border-border bg-background px-3 text-sm"
-        >
-          <option value="">— None —</option>
-          {cleaners.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-        </select>
-      </Field>
-      <Field label="Property Access">
-        <p className="text-xs text-muted-foreground mb-1">Key safe codes, gate codes, parking — visible to cleaners</p>
-        <Textarea value={form.access_notes} onChange={(e) => u('access_notes', e.target.value)} rows={3} className="rounded-xl" />
-      </Field>
-      <Field label="Cleaning Instructions">
-        <p className="text-xs text-muted-foreground mb-1">Client preferences and special requirements</p>
-        <Textarea value={form.special_instructions} onChange={(e) => u('special_instructions', e.target.value)} rows={3} className="rounded-xl" />
-      </Field>
-      <Field label="🔑 Lockbox Code (only shown to cleaner after check-in)">
-        <Input value={form.lockbox_code} onChange={(e) => u('lockbox_code', e.target.value)} className="h-12 rounded-xl" />
-      </Field>
-      <Field label="📝 Cleaner Notes (visible to cleaners during active jobs)">
-        <Textarea value={form.property_notes} onChange={(e) => u('property_notes', e.target.value)} rows={3} className="rounded-xl" placeholder="e.g. Use back entrance, bins go out Tuesdays" />
-      </Field>
-      <div className="flex items-center justify-between py-2">
-        <Label className="font-semibold">Active</Label>
-        <Switch checked={form.status === 'active'} onCheckedChange={(v) => u('status', v ? 'active' : 'inactive')} />
-      </div>
-      <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="lg">
-        <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
-      </Button>
-    </div>
-  );
-}
-
-/* ═══════ SOP & RESTOCKING TAB ═══════ */
+/* ======= SOP & RESTOCKING TAB ======= */
 
 function SOPTab({ property }: { property: any }) {
   const queryClient = useQueryClient();
   const isAirbnb = property.client_type === 'airbnb' || property.client_type === 'short_term_rental';
 
-  // SOP items
   const { data: sopItems = [], isLoading: sopLoading } = useQuery({
     queryKey: ['sop-items', property.id],
     queryFn: async () => {
@@ -280,7 +162,6 @@ function SOPTab({ property }: { property: any }) {
     },
   });
 
-  // Restocking items
   const { data: restockItems = [], isLoading: restockLoading } = useQuery({
     queryKey: ['restock-items', property.id],
     queryFn: async () => {
@@ -298,7 +179,7 @@ function SOPTab({ property }: { property: any }) {
     <div className="space-y-6 mt-4">
       {!isAirbnb && (
         <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground font-medium">
-          ℹ️ House Clean properties use the standard default checklist. You can still add custom SOP items below if needed.
+          House Clean properties use the standard default checklist. You can still add custom SOP items below if needed.
         </div>
       )}
       <SOPSection propertyId={property.id} items={sopItems} loading={sopLoading} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['sop-items', property.id] })} />
@@ -352,7 +233,7 @@ function SOPSection({ propertyId, items, loading, onRefresh }: { propertyId: str
     onRefresh();
   };
 
-  if (loading) return <p className="text-muted-foreground text-sm">Loading SOP…</p>;
+  if (loading) return <p className="text-muted-foreground text-sm">Loading SOP\u2026</p>;
 
   return (
     <section>
@@ -378,7 +259,7 @@ function SOPSection({ propertyId, items, loading, onRefresh }: { propertyId: str
                     </div>
                   ))}
                   <div className="flex gap-2">
-                    <Input placeholder="New task…" value={newTask[room] || ''} onChange={(e) => setNewTask(n => ({ ...n, [room]: e.target.value }))}
+                    <Input placeholder="New task\u2026" value={newTask[room] || ''} onChange={(e) => setNewTask(n => ({ ...n, [room]: e.target.value }))}
                       className="h-10 rounded-lg text-sm flex-1"
                       onKeyDown={(e) => { if (e.key === 'Enter') addTask(room); }}
                     />
@@ -397,12 +278,11 @@ function SOPSection({ propertyId, items, loading, onRefresh }: { propertyId: str
 }
 
 function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: { propertyId: string; items: any[]; loading: boolean; isAirbnb: boolean; onRefresh: () => void }) {
-  const [newEmoji, setNewEmoji] = useState('📦');
+  const [newEmoji, setNewEmoji] = useState('\uD83D\uDCE6');
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
-  // Auto-seed defaults for new airbnb properties with no restocking items
   useEffect(() => {
     if (!loading && isAirbnb && items.length === 0 && !initialized) {
       setInitialized(true);
@@ -428,7 +308,7 @@ function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: 
       property_id: propertyId, emoji: newEmoji, item_name: name, sort_order: maxOrder + 1,
     } as any);
     setNewName('');
-    setNewEmoji('📦');
+    setNewEmoji('\uD83D\uDCE6');
     setSaving(false);
     onRefresh();
   };
@@ -438,7 +318,7 @@ function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: 
     onRefresh();
   };
 
-  if (loading) return <p className="text-muted-foreground text-sm">Loading restocking…</p>;
+  if (loading) return <p className="text-muted-foreground text-sm">Loading restocking\u2026</p>;
 
   return (
     <section>
@@ -446,7 +326,7 @@ function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
         {items.map((item: any) => (
           <div key={item.id} className="relative bg-card border border-border rounded-xl p-3 text-center">
-            <span className="text-2xl">{item.emoji || '📦'}</span>
+            <span className="text-2xl">{item.emoji || '\uD83D\uDCE6'}</span>
             <p className="text-xs font-semibold mt-1 text-foreground">{item.item_name}</p>
             <button onClick={() => deleteItem(item.id)} className="absolute top-1 right-1 text-destructive hover:text-destructive/80">
               <Trash2 className="h-3.5 w-3.5" />
@@ -473,15 +353,6 @@ function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: 
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-sm font-semibold text-foreground">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
 function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; initialNotes: string }) {
   const [notes, setNotes] = useState(initialNotes);
   const [saving, setSaving] = useState(false);
@@ -496,7 +367,7 @@ function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; init
 
   return (
     <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
-      <h3 className="text-lg font-bold text-foreground">🔧 Notes for Next Clean</h3>
+      <h3 className="text-lg font-bold text-foreground">Notes for Next Clean</h3>
       <p className="text-xs text-muted-foreground">Visible to cleaners before and during the job.</p>
       <Textarea
         value={notes}
@@ -508,7 +379,7 @@ function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; init
       />
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{notes.length} / 500 characters</span>
-        {saving && <span className="text-xs text-primary font-semibold">Saving…</span>}
+        {saving && <span className="text-xs text-primary font-semibold">Saving\u2026</span>}
       </div>
     </div>
   );
