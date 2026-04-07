@@ -241,3 +241,32 @@ Add route in App.tsx: `<Route path="/quote/:token" element={<QuoteViewPage />} /
 2. Commit: "feat: stunning visual quote page /quote/:token with accept/decline/more-info flow"
 3. Save QUOTE_PAGE_REPORT.md
 4. Run: openclaw system event --text 'Claude Code done: Visual quote page complete' --mode now
+
+---
+
+## CRITICAL ADDITION — Date/Time Picker After Accept
+
+After client hits Accept and the quote is marked accepted, DO NOT go straight to the confirmation screen.
+
+Instead, show an inline date/time step on the same page:
+
+```
+✅ Quote accepted!
+
+When would you like your clean?
+
+[Date picker — calendar]
+[Time preference: Morning (7am-12pm) / Afternoon (12pm-5pm) / Either]
+
+Pre-fill with preferred_date from the quote_request if it exists.
+
+[Confirm Booking →] (green button)
+```
+
+On confirm:
+- Update quote_request: preferred_date, preferred_time, status = 'accepted'
+- Update quotes: preferred_date, preferred_time, status = 'accepted'
+- Send admin SMS: "✅ Booking confirmed! [name] — [address] — [clean type] — [date] at [time] — $[price]"
+- THEN show the final confirmation screen
+
+This keeps everything in one flow without navigating away.
