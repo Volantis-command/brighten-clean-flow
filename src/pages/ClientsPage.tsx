@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText } from 'lucide-react';
+import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import SendQuoteRequestModal from '@/components/clients/SendQuoteRequestModal';
@@ -141,6 +142,7 @@ export default function ClientsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
+  const [deleteClient, setDeleteClient] = useState<ClientMember | null>(null);
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
   const [quoteRequestOpen, setQuoteRequestOpen] = useState(false);
 
@@ -255,6 +257,24 @@ export default function ClientsPage() {
     return name ? name : (client.email || '—');
   };
 
+
+  const deleteMutation = useMutation({
+    mutationFn: async (c: ClientMember) => {
+      // Remove from user_roles
+      await supabase.from('user_roles').delete().eq('user_id', c.id);
+      // Remove from quote_requests
+      await supabase.from('quote_requests').delete().eq('client_id', c.id);
+      // Remove from profiles
+      await supabase.from('profiles').delete().eq('id', c.id);
+    },
+    onSuccess: () => {
+      toast.success('Client deleted');
+      setDeleteClient(null);
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -340,6 +360,9 @@ export default function ClientsPage() {
                       <Button variant="ghost" size="sm" onClick={() => openOnboardModal(c)} title="Send Onboarding Form">
                         <Send className="w-4 h-4" />
                       </Button>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteClient(c); }} title="Delete Client">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -354,6 +377,28 @@ export default function ClientsPage() {
           <LeadsTab />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!deleteClient} onOpenChange={(o) => { if (!o) setDeleteClient(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{deleteClient && (deleteClient.full_name || deleteClient.email || 'this client')}</strong> and all their data. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteClient && deleteMutation.mutate(deleteClient)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <SendQuoteRequestModal open={quoteRequestOpen} onOpenChange={setQuoteRequestOpen} />
 

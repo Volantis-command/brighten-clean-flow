@@ -1,12 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -46,6 +47,21 @@ const FILTER_GROUP: Record<string, string[]> = {
 export default function LeadsTab() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deleteLead, setDeleteLead] = useState<any>(null);
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (lead: any) => {
+      const { error } = await supabase.from('quote_requests').delete().eq('id', lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Lead deleted');
+      setDeleteLead(null);
+      queryClient.invalidateQueries({ queryKey: ['quote-requests'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'client_accepted', 'awaiting_schedule_approval', 'quote_declined', 'declined'];
 
@@ -92,6 +108,7 @@ export default function LeadsTab() {
   );
 
   return (
+    <>
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -151,6 +168,11 @@ export default function LeadsTab() {
                         }}>
                         <Eye className="w-4 h-4" />
                       </Button>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+                        title="Delete Lead"
+                        onClick={(e) => { e.stopPropagation(); setDeleteLead(lead); }}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -160,5 +182,25 @@ export default function LeadsTab() {
         </Table>
       </div>
     </div>
+      <AlertDialog open={!!deleteLead} onOpenChange={(o) => { if (!o) setDeleteLead(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently delete <strong>{deleteLead && ([deleteLead.first_name, deleteLead.last_name].filter(Boolean).join(' ') || deleteLead.phone || 'this lead')}</strong>? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteLead && deleteMutation.mutate(deleteLead)}
+              disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
