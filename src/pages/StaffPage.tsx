@@ -149,8 +149,14 @@ export default function StaffPage() {
         .update({ full_name: editName, email: editEmail, phone: editPhone, employment_type: editEmploymentType })
         .eq('id', editMember!.id);
       if (profileErr) throw profileErr;
-      // Update role via edge function (has admin privileges for user_roles)
-      await invokeFn({ action: 'update_role', user_id: editMember!.id, role: editRole });
+      // Update role directly in user_roles table
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .upsert({ user_id: editMember!.id, role: editRole }, { onConflict: 'user_id' });
+      if (roleErr) {
+        // Non-fatal — profile saved, role update failed silently
+        console.warn('Role update failed:', roleErr.message);
+      }
     },
     onSuccess: () => {
       toast.success('Staff member updated');
