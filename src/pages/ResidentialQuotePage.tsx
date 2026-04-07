@@ -40,8 +40,8 @@ type PriceRange = [number, number] | null;
 const PRICING: Record<string, Record<string, Record<string, PriceRange>>> = {
   house: {
     no: {
-      '1-1': [135, 170], '2-1': [170, 205], '2-2': [205, 245],
-      '3-2': [245, 280], '4-2': [280, 350], '4-3': [315, 390], '5-0': null,
+      '1-1': [110, 140], '2-1': [130, 165], '2-2': [140, 210],
+      '3-2': [185, 240], '4-2': [220, 280], '4-3': [255, 320], '5-0': null,
     },
     yes: {
       '1-1': [175, 215], '2-1': [250, 285], '2-2': [290, 325],
@@ -324,22 +324,7 @@ export default function ResidentialQuotePage() {
               </div>
             </div>
 
-            {cleanType !== 'eol' && (
-              <div>
-                <h3 className="text-base font-bold text-foreground mb-3">Linen required?</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <PillButton selected={!linen} onClick={() => setLinen(false)}>No linen needed</PillButton>
-                  <button type="button" onClick={() => setLinen(true)}
-                    className={cn(
-                      'rounded-xl border-2 px-4 py-3 text-left transition-all min-h-[56px]',
-                      linen ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
-                    )}>
-                    <p className="text-sm font-semibold text-foreground">Include linen hire</p>
-                    <p className="text-xs text-muted-foreground">Fresh sheets, towels & tea towels included</p>
-                  </button>
-                </div>
-              </div>
-            )}
+
           </>
         )}
 
