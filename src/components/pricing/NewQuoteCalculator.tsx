@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import ScheduleAfterAcceptModal from './ScheduleAfterAcceptModal';
 import { Save, Copy, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -184,7 +185,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         gpOverride: editQuote.gp_percent != null ? String(Math.round(editQuote.gp_percent * 100)) : '',
         discountGp: editQuote.discount_gp_percent != null ? String(editQuote.discount_gp_percent) : '',
         notes: editQuote.notes || '',
-        residentialAddons: Array.isArray(editQuote.extras) && editQuote.extras.length > 0 ? editQuote.extras : INITIAL.residentialAddons,
+        residentialAddons: (() => {
+          const saved = Array.isArray(editQuote.extras) ? editQuote.extras : [];
+          if (saved.length === 0) return INITIAL.residentialAddons;
+          const savedNames = new Set(saved.map((e: any) => e.name));
+          return INITIAL.residentialAddons.map(a => ({ ...a, enabled: savedNames.has(a.name) }));
+        })(),
         consumables: (() => {
           const cs = editQuote.consumables_selection;
           if (cs && typeof cs === 'object') {
@@ -587,6 +593,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   };
 
   const [quoteSent, setQuoteSent] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
 
   const formatAUPhone = (phone: string): string => {
     const digits = phone.replace(/\D/g, '');
@@ -931,7 +938,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowConfirm(true)} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowConfirm(true)} savedQuoteId={savedQuoteId} onAcceptClick={() => setShowAcceptModal(true)} />
         </div>
       </div>
 
@@ -947,7 +954,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             hideConsumables={!isAirbnb}
             hourlyRateLabel={hourlyRateLabel}
           />
-          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowConfirm(true)} />
+          <ActionButtons saveMutation={saveMutation} copyForWhatsApp={copyForWhatsApp} editQuote={editQuote} sendQuoteMutation={sendQuoteMutation} canSendQuote={canSendQuote} quoteSent={quoteSent} onSendClick={() => setShowConfirm(true)} savedQuoteId={savedQuoteId} onAcceptClick={() => setShowAcceptModal(true)} />
         </div>
       </div>
 
@@ -981,14 +988,40 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mark Accepted + Schedule Modal */}
+      <ScheduleAfterAcceptModal
+        open={showAcceptModal}
+        onOpenChange={setShowAcceptModal}
+        quoteId={editQuote?.id || savedQuoteId || ''}
+        clientName={form.clientName}
+        clientPhone={form.clientPhone}
+        propertyAddress={form.propertyAddress || form.propertyName}
+        cleanType={form.cleanType}
+        priceIncGst={result.sellPriceIncGst}
+        priceExGst={result.sellPriceExGst}
+        propertyId={form.propertyId || null}
+        estimatedHours={form.hours}
+        leadId={leadId}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['quotes'] });
+          queryClient.invalidateQueries({ queryKey: ['quote-requests-leads'] });
+          onSaved?.();
+        }}
+      />
     </div>
   );
 }
 
-function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent, onSendClick }: {
+function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMutation, canSendQuote, quoteSent, onSendClick, savedQuoteId, onAcceptClick }: {
   saveMutation: any; copyForWhatsApp: () => void; editQuote?: any;
   sendQuoteMutation: any; canSendQuote: boolean; quoteSent: boolean; onSendClick: () => void;
+  savedQuoteId?: string | null; onAcceptClick: () => void;
 }) {
+  const quoteId = editQuote?.id || savedQuoteId;
+  const quoteStatus = editQuote?.status;
+  const showAcceptBtn = !!quoteId && quoteStatus !== 'accepted' && quoteStatus !== 'scheduled';
+
   return (
     <div className="space-y-2">
       <Button className="w-full gap-2" size="lg" onClick={() => saveMutation.mutate('draft')} disabled={saveMutation.isPending}>
@@ -1008,6 +1041,17 @@ function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMuta
         >
           {sendQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           Send Quote to Client
+        </Button>
+      )}
+
+      {showAcceptBtn && (
+        <Button
+          variant="outline"
+          className="w-full gap-2 border-[rgba(254,219,0,0.4)] bg-transparent text-[#FEDB00] hover:bg-[#FEDB00]/10 rounded-xl"
+          size="lg"
+          onClick={onAcceptClick}
+        >
+          <CheckCircle2 className="h-4 w-4" /> Mark Accepted ✓
         </Button>
       )}
 
