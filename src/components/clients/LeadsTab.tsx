@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Loader2, Eye, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import LeadDetailSlideOver from './LeadDetailSlideOver';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -48,6 +49,7 @@ const FILTER_GROUP: Record<string, string[]> = {
 export default function LeadsTab() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedLead, setSelectedLead] = useState<any>(null);
   const [deleteLead, setDeleteLead] = useState<any>(null);
   const queryClient = useQueryClient();
 
@@ -145,7 +147,7 @@ export default function LeadsTab() {
               const nav = getNavTarget(lead);
               return (
                 <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/60"
-                  onClick={() => navigate(nav.pathname, nav.state ? { state: nav.state } : undefined)}>
+                  onClick={() => setSelectedLead(lead)}>
                   <TableCell className="font-semibold text-primary">
                     {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—'}
                   </TableCell>
@@ -202,6 +204,7 @@ export default function LeadsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <LeadDetailSlideOver lead={selectedLead} open={!!selectedLead} onClose={() => setSelectedLead(null)} />
     </>
   );
 }
