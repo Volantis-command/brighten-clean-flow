@@ -64,6 +64,30 @@ export default function DashboardPage() {
   useProcessScheduledSms();
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
+  const { groups: alertGroups } = useAlertsData();
+
+  // Count active cleaners (clocked on right now)
+  const { data: activeCleanerCount = 0 } = useQuery({
+    queryKey: ['active-cleaner-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('time_entries')
+        .select('id', { count: 'exact', head: true })
+        .is('clock_out_time', null);
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Count critical + important alerts
+  const needsActionCount = useMemo(() => {
+    const criticalGroups = ['not_invoiced', 'overdue', 're_clean'];
+    const importantGroups = ['extra_time', 'not_sent', 'quotes_awaiting', 'not_clocked_on'];
+    return alertGroups
+      .filter(g => criticalGroups.includes(g.key) || importantGroups.includes(g.key))
+      .reduce((sum, g) => sum + g.items.length, 0);
+  }, [alertGroups]);
 
   const { data: pendingOnboarding = [] } = useQuery({
     queryKey: ['pending-staff-onboarding'],
