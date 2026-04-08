@@ -1,4 +1,4 @@
-import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
+import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
 
@@ -37,6 +37,7 @@ import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
 import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
+import { useAlertsData } from '@/hooks/useAlertsData';
 import OperationsDashboard from '@/components/dashboard/OperationsDashboard';
 import { useProcessScheduledSms } from '@/hooks/useProcessScheduledSms';
 import { toast } from 'sonner';
