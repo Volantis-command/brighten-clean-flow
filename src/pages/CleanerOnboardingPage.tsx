@@ -336,6 +336,10 @@ export default function CleanerOnboardingPage() {
       extras.sop_chemical_acknowledged_at = form.acks.sop_chemical_acknowledged_at ? now : null;
       extras.sop_conduct_acknowledged_at = form.acks.sop_conduct_acknowledged_at ? now : null;
       extras.sop_acknowledged_at = now;
+      // Set SOP re-sign due date to 365 days from now
+      const resignDue = new Date();
+      resignDue.setDate(resignDue.getDate() + 365);
+      extras.sops_resign_due = resignDue.toISOString().split('T')[0];
     }
 
     await upsertProgress(extras);
