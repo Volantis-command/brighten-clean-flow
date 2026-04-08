@@ -16,14 +16,18 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<string, string> = {
   mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
 };
+const SHIFTS = ['am', 'pm', 'evening'] as const;
+const SHIFT_LABELS: Record<string, string> = { am: 'AM', pm: 'PM', evening: 'Eve' };
 
 interface Props {
   staffId: string;
   staffName: string;
 }
 
+type WeeklyPattern = Record<string, string[]>; // { mon: ['am','pm'], tue: ['am'] }
+
 function WeeklyAvailability({ staffId }: { staffId: string }) {
-  const [days, setDays] = useState<string[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
+  const [pattern, setPattern] = useState<WeeklyPattern>({});
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -34,39 +38,63 @@ function WeeklyAvailability({ staffId }: { staffId: string }) {
       .eq('id', staffId)
       .single()
       .then(({ data, error }) => {
-        if (error) {
-          console.error('Failed to load availability:', error);
-        }
+        if (error) console.error('Failed to load availability:', error);
         const saved = data?.weekly_availability;
-        if (Array.isArray(saved)) setDays(saved as string[]);
+        if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+          // New format: { mon: ['am','pm'], ... }
+          setPattern(saved as WeeklyPattern);
+        } else if (Array.isArray(saved)) {
+          // Legacy format: ['mon','tue',...] → convert to all-shifts
+          const legacy: WeeklyPattern = {};
+          (saved as string[]).forEach(d => { legacy[d] = ['am', 'pm', 'evening']; });
+          setPattern(legacy);
+        }
         setLoaded(true);
       });
   }, [staffId]);
 
-  const saveAvailability = useCallback(async (updated: string[]) => {
+  const saveAvailability = useCallback(async (updated: WeeklyPattern) => {
     setSaveStatus('saving');
     const { error } = await supabase
       .from('profiles')
       .update({ weekly_availability: updated })
       .eq('id', staffId);
-
     if (error) {
       setSaveStatus('error');
-      toast.error('Failed to save availability: ' + error.message);
-      console.error('Availability save error:', error);
+      toast.error('Failed to save availability');
     } else {
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     }
   }, [staffId]);
 
-  const toggleDay = useCallback((day: string) => {
-    setDays(prev => {
-      const updated = prev.includes(day)
-        ? prev.filter(d => d !== day)
-        : [...prev, day];
-      saveAvailability(updated);
-      return updated;
+  const toggleShift = useCallback((day: string, shift: string) => {
+    setPattern(prev => {
+      const dayShifts = prev[day] || [];
+      const updated = dayShifts.includes(shift)
+        ? dayShifts.filter(s => s !== shift)
+        : [...dayShifts, shift];
+      const newPattern = { ...prev };
+      if (updated.length === 0) {
+        delete newPattern[day];
+      } else {
+        newPattern[day] = updated;
+      }
+      saveAvailability(newPattern);
+      return newPattern;
+    });
+  }, [saveAvailability]);
+
+  const toggleFullDay = useCallback((day: string) => {
+    setPattern(prev => {
+      const newPattern = { ...prev };
+      if (prev[day] && prev[day].length > 0) {
+        delete newPattern[day];
+      } else {
+        newPattern[day] = ['am', 'pm', 'evening'];
+      }
+      saveAvailability(newPattern);
+      return newPattern;
     });
   }, [saveAvailability]);
 
@@ -83,31 +111,53 @@ function WeeklyAvailability({ staffId }: { staffId: string }) {
             <Check className="h-3 w-3" /> Saved ✓
           </span>
         )}
-        {saveStatus === 'saving' && (
-          <span className="text-xs text-muted-foreground">Saving…</span>
-        )}
-        {saveStatus === 'error' && (
-          <span className="text-xs text-destructive">Save failed</span>
-        )}
+        {saveStatus === 'saving' && <span className="text-xs text-muted-foreground">Saving…</span>}
+        {saveStatus === 'error' && <span className="text-xs text-destructive">Save failed</span>}
       </div>
-      <div className="flex gap-2 flex-wrap">
-        {DAYS.map(day => (
-          <button
-            key={day}
-            type="button"
-            onClick={() => toggleDay(day)}
-            className={cn(
-              'h-12 w-14 rounded-xl font-bold text-sm transition-colors cursor-pointer select-none',
-              days.includes(day)
-                ? 'bg-[#0C463D] text-white'
-                : 'bg-muted text-muted-foreground'
-            )}
-          >
-            {DAY_LABELS[day]}
-          </button>
-        ))}
+
+      {/* Grid: Days × Shifts */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-center">
+          <thead>
+            <tr>
+              <th className="text-xs text-muted-foreground pb-2 w-16"></th>
+              {DAYS.map(day => (
+                <th key={day} className="text-xs font-bold text-foreground pb-2 cursor-pointer"
+                  onClick={() => toggleFullDay(day)}>
+                  {DAY_LABELS[day]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SHIFTS.map(shift => (
+              <tr key={shift}>
+                <td className="text-xs font-semibold text-muted-foreground py-1 text-left">{SHIFT_LABELS[shift]}</td>
+                {DAYS.map(day => {
+                  const active = pattern[day]?.includes(shift);
+                  return (
+                    <td key={`${day}-${shift}`} className="py-1 px-0.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleShift(day, shift)}
+                        className={cn(
+                          'w-10 h-8 rounded-lg text-xs font-bold transition-colors cursor-pointer select-none',
+                          active
+                            ? 'bg-[#0C463D] text-white'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        )}
+                      >
+                        {active ? '✓' : '—'}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <p className="text-xs text-muted-foreground">Tap to toggle working days</p>
+      <p className="text-xs text-muted-foreground">Tap cells to toggle. Tap day header for full day.</p>
     </div>
   );
 }
@@ -163,7 +213,6 @@ function LeaveSection({ staffId, staffName }: Props) {
             <Plus className="h-4 w-4" /> Add Leave
           </Button>
         </div>
-
         {leaveEntries.length === 0 ? (
           <p className="text-sm text-muted-foreground">No leave scheduled.</p>
         ) : (
@@ -193,14 +242,8 @@ function LeaveSection({ staffId, staffName }: Props) {
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Start Date *</Label>
-                <Input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
-              </div>
-              <div>
-                <Label>End Date *</Label>
-                <Input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
-              </div>
+              <div><Label>Start Date *</Label><Input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} /></div>
+              <div><Label>End Date *</Label><Input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} /></div>
             </div>
             <div>
               <Label>Reason</Label>
@@ -225,6 +268,38 @@ function LeaveSection({ staffId, staffName }: Props) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function DateExceptions({ staffId }: { staffId: string }) {
+  const { data: exceptions = [] } = useQuery({
+    queryKey: ['cleaner-availability', staffId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('cleaner_availability')
+        .select('*')
+        .eq('user_id', staffId)
+        .order('date', { ascending: true });
+      return data || [];
+    },
+  });
+
+  if (exceptions.length === 0) return null;
+
+  return (
+    <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">Date-Based Exceptions</h3>
+      <div className="space-y-1">
+        {exceptions.slice(0, 10).map((ex: any) => (
+          <div key={ex.id} className="flex items-center justify-between text-sm">
+            <span>{format(parseISO(ex.date), 'dd MMM yyyy')}</span>
+            <Badge className={ex.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+              {ex.available ? 'Available' : 'Unavailable'}
+            </Badge>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -264,6 +339,7 @@ export function StaffAvailabilitySection({ staffId, staffName }: Props) {
     <div className="space-y-6">
       <ConflictBadge staffId={staffId} />
       <WeeklyAvailability staffId={staffId} />
+      <DateExceptions staffId={staffId} />
       <LeaveSection staffId={staffId} staffName={staffName} />
     </div>
   );
