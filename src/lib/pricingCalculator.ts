@@ -27,6 +27,10 @@ export type CalcInput = {
   includePhotoReport?: boolean;
   manualPriceOverride?: boolean;
   manualPriceIncGst?: number;
+  // New inputs
+  distanceKm: number;
+  activePropertyCount: number;
+  extraToilets: number;
 };
 
 export type CalcResult = {
@@ -48,6 +52,8 @@ export type CalcResult = {
   discountedPrice: number | null;
   gpLost: number | null;
   totalCost: number;
+  travelSurcharge: number;
+  multiPropertyDiscount: number;
   // Legacy aliases
   consumablesCost: number;
   photoReportFee: number;
@@ -90,11 +96,20 @@ export function calculateConsumablesCostIncGst(consumables?: ConsumableSelection
   return cost;
 }
 
+// Clean types that NEVER include linen or consumables
+const NO_LINEN_TYPES = new Set([
+  SERVICE_TYPES.STANDARD_CLEAN,
+  SERVICE_TYPES.DEEP_CLEAN,
+  SERVICE_TYPES.BOND_END_OF_LEASE,
+]);
+
 export function calculateLinenCost(
   bedTypes: BedType[],
   sofaBeds: number,
   bathrooms: number,
   kitchens: number,
+  extraToilets: number,
+  cleanType: string,
   rates: Record<string, number>
 ): number {
   let cost = 0;
@@ -113,6 +128,10 @@ export function calculateLinenCost(
     1 * (rates.linen_bath_towel || 0) +
     1 * (rates.linen_face_washer || 0)
   );
+  // Extra toilet surcharge (Airbnb only — hand towel per extra toilet)
+  if (cleanType === SERVICE_TYPES.AIRBNB_TURNOVER && extraToilets > 0) {
+    cost += extraToilets * (rates.linen_hand_towel || 0);
+  }
   return cost;
 }
 
@@ -122,11 +141,12 @@ export function calculateLinenCost(
  * Hourly rate = SELL PRICE inc GST (e.g. $70/hr).
  * Work backwards to derive cost and GP.
  *
- * Consumables (Airbnb): fixed prices inc GST, NO GP markup.
- * Linen (Airbnb/Deep): cost input, marked up with GP.
+ * Consumables (Airbnb only): fixed prices inc GST, NO GP markup.
+ * Linen (Airbnb only): cost input, marked up with GP.
+ * Standard, Deep, Bond/EOL: NEVER include linen or consumables.
  */
 export function calculate(input: CalcInput, rates: Record<string, number>): CalcResult {
-  const defaultGp = rates.default_gp_percent || 0.32;
+  const defaultGp = rates.default_gp_percent || 0.40;
   const effectiveGp = input.gpOverride != null ? input.gpOverride / 100 : defaultGp;
   const gpSafe = Math.min(Math.max(effectiveGp, 0), 0.99);
 
@@ -137,16 +157,17 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
     ? input.hours * (input.deepCleanMultiplier || rates.deep_clean_multiplier || 1.5)
     : input.hours;
 
-  // Linen (cost)
-  const hasLinen = input.cleanType === SERVICE_TYPES.AIRBNB_TURNOVER || input.cleanType === SERVICE_TYPES.DEEP_CLEAN;
+  // Linen (cost) — Airbnb ONLY, never for Standard/Deep/Bond
+  const hasLinen = !NO_LINEN_TYPES.has(input.cleanType as any) &&
+    input.cleanType === SERVICE_TYPES.AIRBNB_TURNOVER;
   const linenCost = hasLinen
-    ? calculateLinenCost(input.bedTypes, input.sofaBeds, input.bathrooms, input.kitchens, rates)
+    ? calculateLinenCost(input.bedTypes, input.sofaBeds, input.bathrooms, input.kitchens, input.extraToilets || 0, input.cleanType, rates)
     : 0;
 
-  // Consumables (Airbnb only, fixed inc GST, no markup)
+  // Consumables (Airbnb only, fixed inc GST, no markup) — never for Standard/Deep/Bond
   const isAirbnb = input.cleanType === SERVICE_TYPES.AIRBNB_TURNOVER;
   let consumablesCostIncGst = 0;
-  if (isAirbnb) {
+  if (isAirbnb && !NO_LINEN_TYPES.has(input.cleanType as any)) {
     consumablesCostIncGst = calculateConsumablesCostIncGst(input.consumables);
   }
   const consumablesExGst = consumablesCostIncGst / 1.1;
@@ -190,6 +211,8 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
       discountedPrice: null,
       gpLost: null,
       totalCost: labourCostManual + linenCost + consumablesExGst + photoReportFeeExGst,
+      travelSurcharge: 0,
+      multiPropertyDiscount: 0,
       consumablesCost: consumablesExGst,
       photoReportFee: photoReportFeeExGst,
       actualGpDollars: gpDollars,
@@ -220,10 +243,10 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
     specialistGst = specialistSellExGst * 0.1;
   }
 
-  // Totals
+  // Totals (before travel/discount)
   const sellPriceExGst = labourSellExGst + linenSellExGst + specialistSellExGst + consumablesExGst + photoReportFeeExGst;
   const totalGst = labourGst + linenGst + specialistGst + consumablesGst + photoReportGst;
-  const sellPriceIncGst = sellPriceExGst + totalGst;
+  let sellPriceIncGst = sellPriceExGst + totalGst;
 
   const totalCost = labourCost + linenCost + specialistCost + consumablesExGst + photoReportFeeExGst;
   const totalGpDollars = sellPriceExGst - totalCost;
@@ -234,7 +257,6 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
   let gpLost: number | null = null;
   if (input.discountGp != null && input.discountGp > 0) {
     const discGp = Math.min(input.discountGp / 100, 0.99);
-    // Recalculate marked-up items with lower GP
     const discLabourEx = labourCost / (1 - discGp);
     const discLinenEx = linenCost > 0 ? linenCost / (1 - discGp) : 0;
     const discSpecEx = specialistCost > 0 ? specialistCost / (1 - discGp) : 0;
@@ -242,6 +264,24 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
     discountedPrice = discSellExGst * 1.1;
     gpLost = sellPriceIncGst - discountedPrice;
   }
+
+  // ── Travel surcharge (flat, per clean, from Broadbeach) ──
+  const distanceKm = input.distanceKm || 0;
+  const zone1 = rates.travel_zone_1_max_km || 25;
+  const zone2 = rates.travel_zone_2_max_km || 35;
+  const fee2 = rates.travel_zone_2_fee || 20;
+  const fee3 = rates.travel_zone_3_fee || 30;
+  let travelSurcharge = 0;
+  if (distanceKm > zone2) travelSurcharge = fee3;
+  else if (distanceKm > zone1) travelSurcharge = fee2;
+
+  // ── Multi-property discount ──
+  const activePropertyCount = input.activePropertyCount || 1;
+  const discountPct = (rates.multi_property_discount_pct || 5) / 100;
+  const multiPropertyDiscount = activePropertyCount >= 2 ? sellPriceIncGst * discountPct : 0;
+
+  // Apply to final sell price
+  const finalSellIncGst = sellPriceIncGst + travelSurcharge - multiPropertyDiscount;
 
   return {
     labourCost,
@@ -256,12 +296,14 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
     labourSellExGst,
     sellPriceExGst,
     gst: totalGst,
-    sellPriceIncGst,
+    sellPriceIncGst: finalSellIncGst,
     gpDollars: totalGpDollars,
     gpPercent: totalGpPercent,
     discountedPrice,
     gpLost,
     totalCost,
+    travelSurcharge,
+    multiPropertyDiscount,
     consumablesCost: consumablesExGst,
     photoReportFee: photoReportFeeExGst,
     actualGpDollars: totalGpDollars,

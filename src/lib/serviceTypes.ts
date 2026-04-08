@@ -40,7 +40,7 @@ export const CLIENT_SERVICE_TYPES: string[] = [
   'Other',
 ];
 
-// Default estimated hours per service type for quoting
+// Legacy fallback default hours for service types not covered by calculateDefaultHours
 export const DEFAULT_HOURS: Record<string, number> = {
   [SERVICE_TYPES.STANDARD_CLEAN]: 2,
   [SERVICE_TYPES.DEEP_CLEAN]: 6,
@@ -49,6 +49,30 @@ export const DEFAULT_HOURS: Record<string, number> = {
   [SERVICE_TYPES.POST_RENOVATION]: 7,
   [SERVICE_TYPES.OFFICE_COMMERCIAL]: 3,
 };
+
+/**
+ * Stepped hour calculation based on bedrooms/bathrooms.
+ * Covers Standard, Deep, Bond/EOL, and Airbnb.
+ * Falls back to DEFAULT_HOURS for Post-Reno, Office, etc.
+ */
+export function calculateDefaultHours(cleanType: string, bedrooms: number, bathrooms: number): number {
+  // Types not covered by the stepped formula — use legacy constant
+  if (
+    cleanType === SERVICE_TYPES.POST_RENOVATION ||
+    cleanType === SERVICE_TYPES.OFFICE_COMMERCIAL
+  ) {
+    return DEFAULT_HOURS[cleanType] || 3;
+  }
+
+  let hours = 1.5; // base
+  for (let i = 1; i <= bedrooms; i++) hours += i <= 2 ? 0.25 : 0.5;
+  for (let i = 1; i <= bathrooms; i++) hours += i <= 2 ? 0.25 : 0.5;
+  hours = Math.max(hours, 2); // 2hr minimum
+
+  if (cleanType === SERVICE_TYPES.DEEP_CLEAN) hours *= 1.5;
+
+  return hours;
+}
 
 // Consumable kits (replace old flat $15 fee)
 export const CONSUMABLE_KITS = [
