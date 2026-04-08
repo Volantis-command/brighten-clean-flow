@@ -216,10 +216,13 @@ export type Database = {
           date_of_birth: string | null
           digital_signature: string | null
           director_approved: boolean | null
+          drivers_licence_expiry: string | null
+          drivers_licence_url: string | null
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           full_name: string | null
+          gst_registered: boolean | null
           id: string
           id_document_type: string | null
           id_document_url: string | null
@@ -227,6 +230,9 @@ export type Database = {
           onboarding_complete: boolean | null
           police_check_date: string | null
           police_check_url: string | null
+          profile_photo_url: string | null
+          public_liability_expiry: string | null
+          public_liability_url: string | null
           signed_at: string | null
           sop_acknowledged_at: string | null
           sop_chemical_acknowledged_at: string | null
@@ -234,8 +240,14 @@ export type Database = {
           sop_consumables_acknowledged_at: string | null
           sop_linen_acknowledged_at: string | null
           sop_master_acknowledged_at: string | null
+          sops_resign_due: string | null
           suburb: string | null
+          uniform_received: boolean | null
           user_id: string
+          vehicle_rego: string | null
+          vevo_check_url: string | null
+          vevo_required: boolean | null
+          vevo_verified_at: string | null
         }
         Insert: {
           abn?: string | null
@@ -250,10 +262,13 @@ export type Database = {
           date_of_birth?: string | null
           digital_signature?: string | null
           director_approved?: boolean | null
+          drivers_licence_expiry?: string | null
+          drivers_licence_url?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           full_name?: string | null
+          gst_registered?: boolean | null
           id?: string
           id_document_type?: string | null
           id_document_url?: string | null
@@ -261,6 +276,9 @@ export type Database = {
           onboarding_complete?: boolean | null
           police_check_date?: string | null
           police_check_url?: string | null
+          profile_photo_url?: string | null
+          public_liability_expiry?: string | null
+          public_liability_url?: string | null
           signed_at?: string | null
           sop_acknowledged_at?: string | null
           sop_chemical_acknowledged_at?: string | null
@@ -268,8 +286,14 @@ export type Database = {
           sop_consumables_acknowledged_at?: string | null
           sop_linen_acknowledged_at?: string | null
           sop_master_acknowledged_at?: string | null
+          sops_resign_due?: string | null
           suburb?: string | null
+          uniform_received?: boolean | null
           user_id: string
+          vehicle_rego?: string | null
+          vevo_check_url?: string | null
+          vevo_required?: boolean | null
+          vevo_verified_at?: string | null
         }
         Update: {
           abn?: string | null
@@ -284,10 +308,13 @@ export type Database = {
           date_of_birth?: string | null
           digital_signature?: string | null
           director_approved?: boolean | null
+          drivers_licence_expiry?: string | null
+          drivers_licence_url?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           full_name?: string | null
+          gst_registered?: boolean | null
           id?: string
           id_document_type?: string | null
           id_document_url?: string | null
@@ -295,6 +322,9 @@ export type Database = {
           onboarding_complete?: boolean | null
           police_check_date?: string | null
           police_check_url?: string | null
+          profile_photo_url?: string | null
+          public_liability_expiry?: string | null
+          public_liability_url?: string | null
           signed_at?: string | null
           sop_acknowledged_at?: string | null
           sop_chemical_acknowledged_at?: string | null
@@ -302,8 +332,14 @@ export type Database = {
           sop_consumables_acknowledged_at?: string | null
           sop_linen_acknowledged_at?: string | null
           sop_master_acknowledged_at?: string | null
+          sops_resign_due?: string | null
           suburb?: string | null
+          uniform_received?: boolean | null
           user_id?: string
+          vehicle_rego?: string | null
+          vevo_check_url?: string | null
+          vevo_required?: boolean | null
+          vevo_verified_at?: string | null
         }
         Relationships: []
       }
