@@ -360,7 +360,7 @@ export default function OnboardingPage() {
               <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Bedrooms *</p>
               <div className="flex gap-3">
                 {[1, 2, 3, 4, 5].map(n => (
-                  <Pill key={n} selected={form.bedrooms === n} onClick={() => u('bedrooms', n)} className="flex-1 !min-h-[48px]">
+                  <Pill key={n} selected={form.bedrooms === n} onClick={() => u('bedrooms', n)} small>
                     <span className="text-base font-extrabold">{n}{n === 5 ? '+' : ''}</span>
                   </Pill>
                 ))}
@@ -370,7 +370,7 @@ export default function OnboardingPage() {
               <p className="text-xs font-bold mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Bathrooms *</p>
               <div className="flex gap-3">
                 {[1, 2, 3, 4].map(n => (
-                  <Pill key={n} selected={form.bathrooms === n} onClick={() => u('bathrooms', n)} className="flex-1 !min-h-[48px]">
+                  <Pill key={n} selected={form.bathrooms === n} onClick={() => u('bathrooms', n)} small>
                     <span className="text-base font-extrabold">{n}{n === 4 ? '+' : ''}</span>
                   </Pill>
                 ))}
