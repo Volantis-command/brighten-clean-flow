@@ -65,6 +65,7 @@ import JobAuditPage from "./pages/JobAuditPage";
 import ResidentialQuotePage from "./pages/ResidentialQuotePage";
 import AirbnbQuotePage from "./pages/AirbnbQuotePage";
 import LiveTrackerPage from "./pages/LiveTrackerPage";
+import MapPage from "./pages/MapPage";
 import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
@@ -225,6 +226,7 @@ function AppRoutes() {
         <Route path="/actions" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><ActionsPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
+        <Route path="/map" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><MapPage /></ProtectedRoute>} />
         <Route path="/schedule/new" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><AddJobPage /></ProtectedRoute>} />
         <Route path="/properties" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><PropertiesPage /></ProtectedRoute>} />
         <Route path="/properties/new" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
