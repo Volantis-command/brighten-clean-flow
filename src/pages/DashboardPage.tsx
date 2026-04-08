@@ -1,4 +1,5 @@
-import { Bot, AlertTriangle, ClipboardList } from 'lucide-react';
+import { useMemo } from 'react';
+import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
 
@@ -37,6 +38,7 @@ import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
 import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
+import { useAlertsData } from '@/hooks/useAlertsData';
 import OperationsDashboard from '@/components/dashboard/OperationsDashboard';
 import { useProcessScheduledSms } from '@/hooks/useProcessScheduledSms';
 import { toast } from 'sonner';
@@ -63,6 +65,30 @@ export default function DashboardPage() {
   useProcessScheduledSms();
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
+  const { groups: alertGroups } = useAlertsData();
+
+  // Count active cleaners (clocked on right now)
+  const { data: activeCleanerCount = 0 } = useQuery({
+    queryKey: ['active-cleaner-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('time_entries')
+        .select('id', { count: 'exact', head: true })
+        .is('clock_out_time', null);
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Count critical + important alerts
+  const needsActionCount = useMemo(() => {
+    const criticalGroups = ['not_invoiced', 'overdue', 're_clean'];
+    const importantGroups = ['extra_time', 'not_sent', 'quotes_awaiting', 'not_clocked_on'];
+    return alertGroups
+      .filter(g => criticalGroups.includes(g.key) || importantGroups.includes(g.key))
+      .reduce((sum, g) => sum + g.items.length, 0);
+  }, [alertGroups]);
 
   const { data: pendingOnboarding = [] } = useQuery({
     queryKey: ['pending-staff-onboarding'],
@@ -196,6 +222,34 @@ export default function DashboardPage() {
 
       {/* Row 1: Top Stats */}
       <TopStatsBar kpi={kpi} />
+
+      {/* Quick KPI: Active Cleaners + Needs Action */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => navigate('/map')}
+            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-5 h-5 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Now</span>
+            </div>
+            <p className="text-3xl font-extrabold text-foreground">{activeCleanerCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">Cleaners clocked in → Map</p>
+          </button>
+          <button
+            onClick={() => navigate('/actions')}
+            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-destructive/50 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldAlert className="w-5 h-5 text-destructive" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Needs Action</span>
+            </div>
+            <p className="text-3xl font-extrabold text-foreground">{needsActionCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">Critical + Important alerts</p>
+          </button>
+        </div>
+      )}
 
       {/* Row 2: Today at a Glance */}
       <TodayAtAGlance
