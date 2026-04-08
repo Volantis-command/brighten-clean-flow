@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
