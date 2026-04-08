@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import BusinessSection from '@/components/settings/BusinessSection';
 import TeamSection from '@/components/settings/TeamSection';
-import ClientsSection from '@/components/settings/ClientsSection';
+import PricingSection from '@/components/settings/PricingSection';
 import PropertiesSection from '@/components/settings/PropertiesSection';
+import ClientsSection from '@/components/settings/ClientsSection';
 import AppSettingsSection from '@/components/settings/AppSettingsSection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
-import XeroSection from '@/components/settings/XeroSection';
+import AlertTiersSection from '@/components/settings/AlertTiersSection';
+import SMSTemplatesSection from '@/components/settings/SMSTemplatesSection';
+import MergedIntegrationsSection from '@/components/settings/MergedIntegrationsSection';
 import LegalSection from '@/components/settings/LegalSection';
-import IntegrationsSection from '@/components/settings/IntegrationsSection';
-import GuestySection from '@/components/settings/GuestySection';
-import GoogleCalendarSection from '@/components/settings/GoogleCalendarSection';
-import { Users, Building2, Settings, Bell, Receipt, UserCircle, Scale, Link2, Calendar, Plug } from 'lucide-react';
+import DangerZoneTab from '@/components/settings/DangerZoneTab';
+import { Briefcase, Users, DollarSign, Building2, UserCircle, Settings, Bell, MessageSquare, Plug, Scale, AlertTriangle } from 'lucide-react';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('team');
+  const [activeTab, setActiveTab] = useState('business');
 
   return (
     <div className="space-y-6">
@@ -21,17 +23,25 @@ export default function SettingsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1 bg-muted rounded-xl p-1 h-auto">
+          <TabsTrigger value="business" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Briefcase className="w-4 h-4" />
+            <span className="hidden sm:inline">Business</span>
+          </TabsTrigger>
           <TabsTrigger value="team" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">Team</span>
           </TabsTrigger>
-          <TabsTrigger value="clients" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <UserCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Clients</span>
+          <TabsTrigger value="pricing" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <DollarSign className="w-4 h-4" />
+            <span className="hidden sm:inline">Pricing</span>
           </TabsTrigger>
           <TabsTrigger value="properties" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Building2 className="w-4 h-4" />
             <span className="hidden sm:inline">Properties</span>
+          </TabsTrigger>
+          <TabsTrigger value="clients" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <UserCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Clients</span>
           </TabsTrigger>
           <TabsTrigger value="app" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Settings className="w-4 h-4" />
@@ -41,39 +51,38 @@ export default function SettingsPage() {
             <Bell className="w-4 h-4" />
             <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
-          <TabsTrigger value="legal" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Scale className="w-4 h-4" />
-            <span className="hidden sm:inline">Legal</span>
-          </TabsTrigger>
-          <TabsTrigger value="guesty" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Link2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Guesty</span>
-          </TabsTrigger>
-          <TabsTrigger value="xero" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Receipt className="w-4 h-4" />
-            <span className="hidden sm:inline">Xero</span>
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">Calendar</span>
+          <TabsTrigger value="sms" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <MessageSquare className="w-4 h-4" />
+            <span className="hidden sm:inline">SMS</span>
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Plug className="w-4 h-4" />
             <span className="hidden sm:inline">Integrations</span>
           </TabsTrigger>
+          <TabsTrigger value="legal" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Scale className="w-4 h-4" />
+            <span className="hidden sm:inline">Legal</span>
+          </TabsTrigger>
+          <TabsTrigger value="danger" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="hidden sm:inline">Danger</span>
+          </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="business"><BusinessSection /></TabsContent>
         <TabsContent value="team"><TeamSection /></TabsContent>
-        <TabsContent value="clients"><ClientsSection /></TabsContent>
+        <TabsContent value="pricing"><PricingSection /></TabsContent>
         <TabsContent value="properties"><PropertiesSection /></TabsContent>
+        <TabsContent value="clients"><ClientsSection /></TabsContent>
         <TabsContent value="app"><AppSettingsSection /></TabsContent>
-        <TabsContent value="notifications"><NotificationsSection /></TabsContent>
-        
+        <TabsContent value="notifications">
+          <NotificationsSection />
+          <AlertTiersSection />
+        </TabsContent>
+        <TabsContent value="sms"><SMSTemplatesSection /></TabsContent>
+        <TabsContent value="integrations"><MergedIntegrationsSection /></TabsContent>
         <TabsContent value="legal"><LegalSection /></TabsContent>
-        <TabsContent value="guesty"><GuestySection /></TabsContent>
-        <TabsContent value="xero"><XeroSection /></TabsContent>
-        <TabsContent value="calendar"><GoogleCalendarSection /></TabsContent>
-        <TabsContent value="integrations"><IntegrationsSection /></TabsContent>
+        <TabsContent value="danger"><DangerZoneTab /></TabsContent>
       </Tabs>
     </div>
   );

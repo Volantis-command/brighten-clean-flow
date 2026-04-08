@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_tiers: {
+        Row: {
+          enabled: boolean
+          event_type: string
+          id: string
+          tier: string
+          updated_at: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          event_type: string
+          id?: string
+          tier: string
+          updated_at?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          tier?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: string
@@ -30,6 +54,30 @@ export type Database = {
         Update: {
           id?: string
           key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      business_settings: {
+        Row: {
+          id: string
+          key: string
+          label: string | null
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          label?: string | null
+          updated_at?: string | null
+          value?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          label?: string | null
           updated_at?: string | null
           value?: string
         }
@@ -2217,6 +2265,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sms_templates: {
+        Row: {
+          body: string
+          id: string
+          key: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          body?: string
+          id?: string
+          key: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          body?: string
+          id?: string
+          key?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
       }
       sos_alerts: {
         Row: {
