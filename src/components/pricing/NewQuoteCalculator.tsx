@@ -370,6 +370,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     includePhotoReport: form.includePhotoReport,
     manualPriceOverride: form.manualPriceOverride,
     manualPriceIncGst: form.manualPriceOverride ? (parseFloat(form.manualPriceIncGst) || 0) : undefined,
+    distanceKm: 0,
+    activePropertyCount: 1,
+    extraToilets: 0,
   };
 
   const result = useMemo(() => {
