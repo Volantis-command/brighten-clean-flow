@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -12,6 +12,9 @@ export interface Notification {
   link: string | null;
   read: boolean | null;
   created_at: string;
+  tier: string | null;
+  event_type: string | null;
+  metadata: any;
 }
 
 export function useNotifications() {
@@ -27,7 +30,7 @@ export function useNotifications() {
         .select('*')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
       if (error) throw error;
       return (data || []) as Notification[];
     },
@@ -35,7 +38,17 @@ export function useNotifications() {
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const unreadCount = notifications.filter((n) => !n.read && new Date(n.created_at) > thirtyDaysAgo).length;
+  const recentUnread = useMemo(
+    () => notifications.filter((n) => !n.read && new Date(n.created_at) > thirtyDaysAgo),
+    [notifications]
+  );
+  const unreadCount = recentUnread.length;
+
+  const highestUnreadTier = useMemo(() => {
+    if (recentUnread.some((n) => n.tier === 'critical')) return 'critical';
+    if (recentUnread.some((n) => n.tier === 'important')) return 'important';
+    return 'info';
+  }, [recentUnread]);
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
@@ -85,5 +98,5 @@ export function useNotifications() {
     };
   }, [user, queryClient]);
 
-  return { notifications, unreadCount, isLoading, markAsRead, markAllAsRead };
+  return { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, highestUnreadTier };
 }

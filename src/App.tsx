@@ -31,7 +31,8 @@ import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import BookingRequestsPage from "./pages/BookingRequestsPage";
-import NotificationsPage from "./pages/NotificationsPage";
+import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
+import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
 import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
@@ -223,7 +224,9 @@ function AppRoutes() {
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/requests" element={<ProtectedRoute allowedRoles={['admin']}><BookingRequestsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute allowedRoles={['admin']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<Navigate to="/actions" replace />} />
+        <Route path="/bookings/suggestions" element={<ProtectedRoute allowedRoles={['admin']}><BookingSuggestionsPage /></ProtectedRoute>} />
+        <Route path="/quotes/followups-pending" element={<ProtectedRoute allowedRoles={['admin']}><QuoteFollowupsPage /></ProtectedRoute>} />
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
         <Route path="/invoices/pending" element={<ProtectedRoute allowedRoles={['admin']}><PendingInvoicesPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />

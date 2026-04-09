@@ -1,13 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAlertsData, type AlertItem } from '@/hooks/useAlertsData';
+import { useNotifications, type Notification } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronRight, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { formatDistanceToNow } from 'date-fns';
 
 function useDismissed() {
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
@@ -33,9 +36,21 @@ export default function ActionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { groups, totalCount } = useAlertsData();
+  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
   const { dismissed, dismiss } = useDismissed();
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(groups.map(g => g.key)));
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
+  const [tierFilter, setTierFilter] = useState<'all' | 'critical' | 'important' | 'info'>('all');
+
+  // Tier-filtered notification count
+  const tierCounts = useMemo(() => {
+    const c = { critical: 0, important: 0, info: 0 };
+    notifications.filter(n => !n.read).forEach(n => {
+      const t = (n.tier as keyof typeof c) || 'info';
+      if (c[t] !== undefined) c[t]++;
+    });
+    return c;
+  }, [notifications]);
 
   function toggleGroup(key: string) {
     setOpenGroups(prev => {
@@ -102,33 +117,59 @@ export default function ActionsPage() {
     queryClient.invalidateQueries({ queryKey: ['alerts-extra-time'] });
   }
 
-  // Filter dismissed items and count visible
+  // Filter dismissed items
   const visibleGroups = groups.map(g => ({
     ...g,
     items: g.items.filter(i => !dismissed.has(i.id)),
   }));
   const visibleCount = visibleGroups.reduce((sum, g) => sum + g.items.length, 0);
 
+  // Tier-filtered notifications for the notification stream section
+  const filteredNotifications = useMemo(() => {
+    return notifications
+      .filter(n => {
+        if (tierFilter === 'all') return true;
+        return (n.tier || 'info') === tierFilter;
+      })
+      .slice(0, 50);
+  }, [notifications, tierFilter]);
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto overflow-x-hidden">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Alerts</h1>
-        {visibleCount > 0 && (
-          <Badge variant="destructive" className="text-sm px-3 py-1">
-            {visibleCount} pending
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button variant="outline" size="sm" onClick={() => markAllAsRead.mutate()}>
+              Mark all read
+            </Button>
+          )}
+          {visibleCount > 0 && (
+            <Badge variant="destructive" className="text-sm px-3 py-1">
+              {visibleCount + unreadCount} pending
+            </Badge>
+          )}
+        </div>
       </div>
 
-      {visibleCount === 0 && (
-        <div className="bg-card rounded-2xl shadow-md p-12 text-center">
-          <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
-          <p className="text-xl font-bold text-foreground mb-2">All clear</p>
-          <p className="text-muted-foreground">No outstanding actions.</p>
-        </div>
-      )}
+      {/* Tier filter tabs */}
+      <Tabs value={tierFilter} onValueChange={(v) => setTierFilter(v as any)}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="critical" className="gap-1">
+            🔴 Critical {tierCounts.critical > 0 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{tierCounts.critical}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="important" className="gap-1">
+            🟠 Important {tierCounts.important > 0 && <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 text-white">{tierCounts.important}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="info" className="gap-1">
+            🟢 Info
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      {visibleGroups.map(group => {
+      {/* Action groups (operational alerts from useAlertsData) */}
+      {(tierFilter === 'all' || tierFilter === 'critical' || tierFilter === 'important') && visibleGroups.map(group => {
         if (group.items.length === 0) return null;
         const isOpen = openGroups.has(group.key);
 
@@ -165,6 +206,45 @@ export default function ActionsPage() {
           </Collapsible>
         );
       })}
+
+      {/* Notification stream */}
+      {filteredNotifications.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border shadow-sm divide-y divide-border">
+          <div className="px-4 py-3">
+            <h2 className="text-base font-extrabold text-foreground">Notification Stream</h2>
+          </div>
+          {filteredNotifications.map((n) => (
+            <button
+              key={n.id}
+              className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
+              onClick={() => {
+                if (!n.read) markAsRead.mutate(n.id);
+                if (n.link) navigate(n.link);
+              }}
+            >
+              <div className={`mt-0.5 h-2.5 w-2.5 rounded-full shrink-0 ${
+                n.tier === 'critical' ? 'bg-destructive' : n.tier === 'important' ? 'bg-amber-500' : 'bg-primary'
+              }`} />
+              <div className="min-w-0 flex-1">
+                {n.title && <p className="text-sm font-bold text-foreground">{n.title}</p>}
+                <p className="text-sm text-muted-foreground">{n.message}</p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                  {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                </p>
+              </div>
+              {!n.read && <div className="mt-3 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {visibleCount === 0 && filteredNotifications.length === 0 && (
+        <div className="bg-card rounded-2xl shadow-md p-12 text-center">
+          <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+          <p className="text-xl font-bold text-foreground mb-2">All clear</p>
+          <p className="text-muted-foreground">No outstanding alerts.</p>
+        </div>
+      )}
     </div>
   );
 }
