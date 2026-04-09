@@ -167,6 +167,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/staff" element={<StaffMagicAuthPage />} />
       <Route path="/client-login" element={<AuthenticatedArea><ClientLoginPage /></AuthenticatedArea>} />
 
       <Route path="/" element={<RootRedirect />} />
