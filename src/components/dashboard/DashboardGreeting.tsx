@@ -14,7 +14,7 @@ export function DashboardGreeting() {
     <div
       className="relative overflow-hidden rounded-2xl noise-overlay shimmer fade-in w-full max-w-full"
       style={{
-        background: 'linear-gradient(135deg, #163D35 0%, #0C463D 40%, #1A6B5E 100%)',
+        background: 'linear-gradient(135deg, #1E3D34 0%, #2E5D4E 40%, #3A7560 100%)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
       }}
@@ -22,7 +22,7 @@ export function DashboardGreeting() {
       <div className="relative z-10 px-6 py-7 md:px-8 md:py-8">
         <p
           className="text-[11px] font-semibold uppercase mb-1.5"
-          style={{ letterSpacing: '0.08em', color: '#86EFAC' }}
+          style={{ letterSpacing: '0.08em', color: '#A3D9C8' }}
         >
           {dateLine}
         </p>
