@@ -16,10 +16,8 @@ import AddJobPage from "./pages/AddJobPage";
 import JobChecklistPage from "./pages/JobChecklistPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import EditJobPage from "./pages/EditJobPage";
-import PropertiesPage from "./pages/PropertiesPage";
 import PropertyProfilePage from "./pages/PropertyProfilePage";
 import PropertyFormPage from "./pages/PropertyFormPage";
-import FormsPage from "./pages/FormsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import QuotingPage from "./pages/QuotingPage";
 import StaffPage from "./pages/StaffPage";
@@ -207,11 +205,11 @@ function AppRoutes() {
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/map" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><MapPage /></ProtectedRoute>} />
         <Route path="/schedule/new" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><AddJobPage /></ProtectedRoute>} />
-        <Route path="/properties" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><PropertiesPage /></ProtectedRoute>} />
+        <Route path="/properties" element={<Navigate to="/clients" replace />} />
         <Route path="/properties/new" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
         <Route path="/properties/:id" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><PropertyProfilePage /></ProtectedRoute>} />
         <Route path="/properties/:id/edit" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
-        <Route path="/forms" element={<FormsPage />} />
+        <Route path="/forms" element={<Navigate to="/my-jobs" replace />} />
         <Route path="/forms/:formId" element={<FormDetailPage />} />
         <Route path="/jobs/:jobId" element={<JobDetailPage />} />
         <Route path="/jobs/:jobId/edit" element={<ProtectedRoute allowedRoles={['admin']}><EditJobPage /></ProtectedRoute>} />

@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Building2, FileText, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
 
@@ -18,8 +18,6 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'My Jobs', path: '/my-jobs', icon: ClipboardList, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
-  { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'head_cleaner'] },
-  { label: 'Job Records', path: '/forms', icon: FileText, roles: ['admin', 'head_cleaner'] },
   { label: 'Map', path: '/map', icon: MapPin, roles: ['admin', 'head_cleaner'] },
   { label: 'Quality (QC)', path: '/qc', icon: ClipboardCheck, roles: ['admin', 'head_cleaner'] },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner'] },
