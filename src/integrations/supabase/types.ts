@@ -59,6 +59,72 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_suggestions: {
+        Row: {
+          checkin_date: string | null
+          checkout_date: string | null
+          created_at: string | null
+          created_job_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          external_ref: string | null
+          guest_name: string | null
+          id: string
+          property_id: string | null
+          source: string
+          status: string | null
+          suggested_clean_date: string | null
+          suggested_clean_time: string | null
+        }
+        Insert: {
+          checkin_date?: string | null
+          checkout_date?: string | null
+          created_at?: string | null
+          created_job_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          external_ref?: string | null
+          guest_name?: string | null
+          id?: string
+          property_id?: string | null
+          source: string
+          status?: string | null
+          suggested_clean_date?: string | null
+          suggested_clean_time?: string | null
+        }
+        Update: {
+          checkin_date?: string | null
+          checkout_date?: string | null
+          created_at?: string | null
+          created_job_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          external_ref?: string | null
+          guest_name?: string | null
+          id?: string
+          property_id?: string | null
+          source?: string
+          status?: string | null
+          suggested_clean_date?: string | null
+          suggested_clean_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_suggestions_created_job_id_fkey"
+            columns: ["created_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_suggestions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_settings: {
         Row: {
           id: string
@@ -1345,31 +1411,46 @@ export type Database = {
       }
       notifications: {
         Row: {
+          actor_id: string | null
           created_at: string
+          event_type: string | null
           id: string
           link: string | null
           message: string
+          metadata: Json | null
           read: boolean | null
+          target_role: string | null
+          tier: string | null
           title: string | null
           type: string | null
           user_id: string
         }
         Insert: {
+          actor_id?: string | null
           created_at?: string
+          event_type?: string | null
           id?: string
           link?: string | null
           message: string
+          metadata?: Json | null
           read?: boolean | null
+          target_role?: string | null
+          tier?: string | null
           title?: string | null
           type?: string | null
           user_id: string
         }
         Update: {
+          actor_id?: string | null
           created_at?: string
+          event_type?: string | null
           id?: string
           link?: string | null
           message?: string
+          metadata?: Json | null
           read?: boolean | null
+          target_role?: string | null
+          tier?: string | null
           title?: string | null
           type?: string | null
           user_id?: string
@@ -1538,6 +1619,9 @@ export type Database = {
           has_oven: boolean | null
           has_pool: boolean | null
           host_preferences: string | null
+          ical_last_sync: string | null
+          ical_source: string | null
+          ical_url: string | null
           id: string
           lat: number | null
           linen_changeover: string | null
@@ -1614,6 +1698,9 @@ export type Database = {
           has_oven?: boolean | null
           has_pool?: boolean | null
           host_preferences?: string | null
+          ical_last_sync?: string | null
+          ical_source?: string | null
+          ical_url?: string | null
           id?: string
           lat?: number | null
           linen_changeover?: string | null
@@ -1690,6 +1777,9 @@ export type Database = {
           has_oven?: boolean | null
           has_pool?: boolean | null
           host_preferences?: string | null
+          ical_last_sync?: string | null
+          ical_source?: string | null
+          ical_url?: string | null
           id?: string
           lat?: number | null
           linen_changeover?: string | null
@@ -1993,8 +2083,12 @@ export type Database = {
           deposit_refunded: boolean | null
           email: string | null
           estimated_hours: number | null
+          expires_at: string | null
           extra_notes: string | null
           first_name: string | null
+          followup_approved_at: string | null
+          followup_approved_by: string | null
+          followup_sent_at: string | null
           form_data: Json | null
           form_submitted_at: string | null
           has_garage: boolean | null
@@ -2002,6 +2096,7 @@ export type Database = {
           id: string
           is_occupied: boolean | null
           last_name: string | null
+          last_status_change: string | null
           phone: string | null
           photos: Json | null
           preferred_date: string | null
@@ -2037,8 +2132,12 @@ export type Database = {
           deposit_refunded?: boolean | null
           email?: string | null
           estimated_hours?: number | null
+          expires_at?: string | null
           extra_notes?: string | null
           first_name?: string | null
+          followup_approved_at?: string | null
+          followup_approved_by?: string | null
+          followup_sent_at?: string | null
           form_data?: Json | null
           form_submitted_at?: string | null
           has_garage?: boolean | null
@@ -2046,6 +2145,7 @@ export type Database = {
           id?: string
           is_occupied?: boolean | null
           last_name?: string | null
+          last_status_change?: string | null
           phone?: string | null
           photos?: Json | null
           preferred_date?: string | null
@@ -2081,8 +2181,12 @@ export type Database = {
           deposit_refunded?: boolean | null
           email?: string | null
           estimated_hours?: number | null
+          expires_at?: string | null
           extra_notes?: string | null
           first_name?: string | null
+          followup_approved_at?: string | null
+          followup_approved_by?: string | null
+          followup_sent_at?: string | null
           form_data?: Json | null
           form_submitted_at?: string | null
           has_garage?: boolean | null
@@ -2090,6 +2194,7 @@ export type Database = {
           id?: string
           is_occupied?: boolean | null
           last_name?: string | null
+          last_status_change?: string | null
           phone?: string | null
           photos?: Json | null
           preferred_date?: string | null
