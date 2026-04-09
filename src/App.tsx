@@ -67,6 +67,7 @@ import MapPage from "./pages/MapPage";
 import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
+import StaffMagicAuthPage from "./pages/auth/StaffMagicAuthPage";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
 import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
