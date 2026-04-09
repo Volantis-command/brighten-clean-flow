@@ -19,6 +19,63 @@ function DraftInvoiceCount() {
   });
   return <p className="text-3xl font-extrabold text-foreground">{count}</p>;
 }
+
+function BookingSuggestionsCount() {
+  const navigate = useNavigate();
+  const { data: count = 0 } = useQuery({
+    queryKey: ['booking-suggestions-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('booking_suggestions' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 60_000,
+  });
+  if (count === 0) return null;
+  return (
+    <button onClick={() => navigate('/bookings/suggestions')}
+      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors">
+      <div className="flex items-center gap-2 mb-2">
+        <CalendarCheck className="w-5 h-5 text-primary" />
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bookings</span>
+      </div>
+      <p className="text-3xl font-extrabold text-foreground">{count}</p>
+      <p className="text-xs text-muted-foreground mt-1">To approve →</p>
+    </button>
+  );
+}
+
+function QuoteFollowupsCount() {
+  const navigate = useNavigate();
+  const { data: count = 0 } = useQuery({
+    queryKey: ['quote-followups-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('quote_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'followup_pending');
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 60_000,
+  });
+  if (count === 0) return null;
+  return (
+    <button onClick={() => navigate('/quotes/followups-pending')}
+      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors">
+      <div className="flex items-center gap-2 mb-2">
+        <MessageSquare className="w-5 h-5 text-primary" />
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Followups</span>
+      </div>
+      <p className="text-3xl font-extrabold text-foreground">{count}</p>
+      <p className="text-xs text-muted-foreground mt-1">Quotes to follow up →</p>
+    </button>
+  );
+}
+
 function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
   const { data: jobs = [] } = useQuery({
     queryKey: ['cleaner-clock-card-jobs', jobIds.join(',')],
