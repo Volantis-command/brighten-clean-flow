@@ -85,16 +85,13 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
     }
 
     // TRIPLE-CHANNEL ALERT: all three fire in parallel
-    const adminNotifPromise = (async () => {
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (admins) {
-        await supabase.from('notifications').insert(admins.map((a: any) => ({
-          user_id: a.user_id, title: '⚠️ Damage Reported',
-          message: `${cleanerName} reported existing damage at ${address}: ${damageNotes || 'No details'}`,
-          type: 'damage_report', link: `/jobs/${job.id}`,
-        })));
-      }
-    })();
+    const adminNotifPromise = createAlert({
+      event_type: 'damage_reported',
+      title: '⚠️ Damage Reported',
+      body: `${cleanerName} reported existing damage at ${address}: ${damageNotes || 'No details'}`,
+      metadata: { job_id: job.id, cleaner_name: cleanerName, address, notes: damageNotes },
+      link: `/jobs/${job.id}`,
+    });
 
     const adminSmsPromise = sendAdminSms(
       `⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address}. Details: ${damageNotes || 'See photos'}. View: https://app.brightly.cleaning/jobs/${job.id}`
