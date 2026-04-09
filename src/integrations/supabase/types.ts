@@ -2499,6 +2499,33 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_magic_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          staff_id: string
+          token: string
+          used: boolean
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          staff_id: string
+          token?: string
+          used?: boolean
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          staff_id?: string
+          token?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
       staff_onboarding: {
         Row: {
           abn: string | null
