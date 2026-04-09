@@ -53,7 +53,7 @@ export default function PropertyProfilePage() {
     setDeleting(false);
     if (error) { toast.error(error.message); return; }
     toast.success(`${property.property_name} deleted`);
-    navigate('/properties');
+    navigate('/clients');
   };
 
   if (isLoading) {
@@ -64,7 +64,7 @@ export default function PropertyProfilePage() {
     return (
       <div className="text-center py-20">
         <p className="text-lg font-bold text-foreground mb-2">Property not found</p>
-        <Button variant="outline" onClick={() => navigate('/properties')}>Back</Button>
+        <Button variant="outline" onClick={() => navigate('/clients')}>Back</Button>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default function PropertyProfilePage() {
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/properties')} className="gap-1">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/clients')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <div className="flex gap-2">

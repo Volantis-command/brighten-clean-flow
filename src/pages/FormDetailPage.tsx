@@ -66,8 +66,8 @@ export default function FormDetailPage() {
   if (!form) {
     return (
       <div className="space-y-4">
-        <button onClick={() => navigate('/forms')} className="flex items-center gap-2 text-primary font-bold">
-          <ArrowLeft className="h-5 w-5" /> Back to Forms
+        <button onClick={() => navigate('/my-jobs')} className="flex items-center gap-2 text-primary font-bold">
+          <ArrowLeft className="h-5 w-5" /> Back to My Jobs
         </button>
         <p className="text-muted-foreground">Form not found.</p>
       </div>
@@ -96,8 +96,8 @@ export default function FormDetailPage() {
 
   return (
     <div className="space-y-4 pb-8">
-      <button onClick={() => navigate('/forms')} className="flex items-center gap-2 text-primary font-bold text-sm">
-        <ArrowLeft className="h-4 w-4" /> Back to Forms
+      <button onClick={() => navigate('/my-jobs')} className="flex items-center gap-2 text-primary font-bold text-sm">
+        <ArrowLeft className="h-4 w-4" /> Back to My Jobs
       </button>
 
       {/* Header */}
