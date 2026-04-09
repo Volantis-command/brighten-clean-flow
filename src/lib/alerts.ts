@@ -32,8 +32,8 @@ export async function createAlert(params: CreateAlertParams) {
 
   // Get target user IDs
   const role = target_role || 'admin';
-  const { data: roleUsers } = await supabase
-    .from('user_roles')
+  const { data: roleUsers } = await (supabase
+    .from('user_roles') as any)
     .select('user_id')
     .eq('role', role);
 

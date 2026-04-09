@@ -25,7 +25,7 @@ export default function BookingSuggestionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { cleaners } = useCleanersList();
+  const { data: cleaners = [] } = useCleanersList();
   const [approveModal, setApproveModal] = useState<any>(null);
   const [cleanerId, setCleanerId] = useState('');
   const [cleanTime, setCleanTime] = useState('10:00');
