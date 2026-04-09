@@ -2556,6 +2556,53 @@ export type Database = {
         }
         Relationships: []
       }
+      time_edit_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          proposed_clock_in: string | null
+          proposed_clock_out: string | null
+          reason: string
+          requested_by: string
+          status: string
+          time_entry_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          proposed_clock_in?: string | null
+          proposed_clock_out?: string | null
+          reason: string
+          requested_by: string
+          status?: string
+          time_entry_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          proposed_clock_in?: string | null
+          proposed_clock_out?: string | null
+          reason?: string
+          requested_by?: string
+          status?: string
+          time_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_edit_requests_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           approved: boolean | null
@@ -2569,6 +2616,11 @@ export type Database = {
           clock_out_time: string | null
           created_at: string
           edit_reason: string | null
+          extra_time_decided_at: string | null
+          extra_time_decided_by: string | null
+          extra_time_minutes: number | null
+          extra_time_reason: string | null
+          extra_time_status: string | null
           flagged: boolean | null
           geo_distance_meters: number | null
           geo_override: boolean | null
@@ -2590,6 +2642,11 @@ export type Database = {
           clock_out_time?: string | null
           created_at?: string
           edit_reason?: string | null
+          extra_time_decided_at?: string | null
+          extra_time_decided_by?: string | null
+          extra_time_minutes?: number | null
+          extra_time_reason?: string | null
+          extra_time_status?: string | null
           flagged?: boolean | null
           geo_distance_meters?: number | null
           geo_override?: boolean | null
@@ -2611,6 +2668,11 @@ export type Database = {
           clock_out_time?: string | null
           created_at?: string
           edit_reason?: string | null
+          extra_time_decided_at?: string | null
+          extra_time_decided_by?: string | null
+          extra_time_minutes?: number | null
+          extra_time_reason?: string | null
+          extra_time_status?: string | null
           flagged?: boolean | null
           geo_distance_meters?: number | null
           geo_override?: boolean | null
