@@ -67,19 +67,13 @@ export default function CleanBookingForm({ propertyId, clientId, propertyName, o
       } as any);
 
       // Notify admins
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (admins?.length) {
-        const notifLink = jobData?.id ? `/jobs/${jobData.id}` : '/requests';
-        await supabase.from('notifications').insert(
-          admins.map((a: any) => ({
-            user_id: a.user_id,
-            title: 'New Booking Request — Awaiting Quote',
-            message: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'} — set price to schedule.`,
-            type: 'booking_request',
-            link: notifLink,
-          }))
-        );
-      }
+      const notifLink = jobData?.id ? `/jobs/${jobData.id}` : '/requests';
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: 'new_lead',
+        title: 'New Booking Request — Awaiting Quote',
+        body: `New clean request for ${propertyName} on ${date ? format(date, 'dd MMM yyyy') : 'TBD'} — set price to schedule.`,
+        link: notifLink,
+      });
     },
     onSuccess: () => {
       setSubmitted(true);

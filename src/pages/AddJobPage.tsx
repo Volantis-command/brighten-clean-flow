@@ -211,14 +211,13 @@ export default function AddJobPage() {
 
     const propName = selectedProperty?.property_name || 'a property';
     const notifMessage = `New job assigned: ${propName} on ${format(date, 'MMM d, yyyy')} at ${time}`;
-    const notifInserts = [cleaner1, cleaner2].filter(Boolean).map((uid) => ({
-      user_id: uid,
-      message: notifMessage,
-      type: 'job_assigned',
-    }));
-
-    if (notifInserts.length > 0) {
-      await supabase.from('notifications').insert(notifInserts);
+    // Notify assigned cleaners directly (not via createAlert since target is specific users)
+    for (const uid of [cleaner1, cleaner2].filter(Boolean)) {
+      await (await import('@/lib/alerts')).createAlertForUser(uid!, {
+        event_type: 'booking_confirmed',
+        title: 'Job Assigned',
+        body: notifMessage,
+      });
     }
 
     if (jobData?.id) {

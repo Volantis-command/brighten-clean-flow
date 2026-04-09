@@ -99,20 +99,16 @@ export default function ClientRebookPage() {
       if (jobErr) throw jobErr;
 
       // Notify admin
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       const clientName = profile?.full_name || property?.client_name || 'Client';
       const propertyName = property?.property_name || 'Property';
       const propertyAddress = [property?.address, property?.suburb].filter(Boolean).join(', ');
 
-      for (const admin of (admins || [])) {
-        await supabase.from('notifications').insert({
-          user_id: (admin as any).user_id,
-          type: 'rebook',
-          title: 'Rebook Request',
-          message: `${clientName} wants to rebook a clean at ${propertyName}${propertyAddress ? ` (${propertyAddress})` : ''} for ${dateStr}.`,
-          link: '/actions?filter=awaiting_quote',
-        });
-      }
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: 'booking_confirmed',
+        title: 'Rebook Request',
+        body: `${clientName} wants to rebook a clean at ${propertyName}${propertyAddress ? ` (${propertyAddress})` : ''} for ${dateStr}.`,
+        link: '/actions?filter=awaiting_quote',
+      });
 
       setSubmitted(true);
     } catch (err: any) {

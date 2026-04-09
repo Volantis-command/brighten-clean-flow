@@ -124,14 +124,12 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
     } catch { /* non-blocking */ }
 
     // Admin notification
-    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-    if (admins) {
-      await supabase.from('notifications').insert(admins.map((a: any) => ({
-        user_id: a.user_id, title: 'Job Completed',
-        message: `Clean at ${property?.property_name ?? 'property'} has been completed (${durationMinutes}min)`,
-        type: 'job_completed', link: `/jobs/${job.id}`,
-      })));
-    }
+    await (await import('@/lib/alerts')).createAlert({
+      event_type: 'cleaner_checked_in',
+      title: 'Job Completed',
+      body: `Clean at ${property?.property_name ?? 'property'} has been completed (${durationMinutes}min)`,
+      link: `/jobs/${job.id}`,
+    });
 
     // Auto-raise Xero invoice (fire-and-forget — non-blocking)
     triggerJobAutoInvoice(job.id).catch((err) => console.error('Auto invoice failed:', err));
