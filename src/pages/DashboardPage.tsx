@@ -248,7 +248,17 @@ export default function DashboardPage() {
             <p className="text-3xl font-extrabold text-foreground">{needsActionCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Critical + Important alerts</p>
           </button>
-          <DraftInvoiceCard />
+          <button
+            onClick={() => navigate('/invoices/pending')}
+            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Draft Invoices</span>
+            </div>
+            <DraftInvoiceCount />
+            <p className="text-xs text-muted-foreground mt-1">Approve & send →</p>
+          </button>
         </div>
       )}
 
