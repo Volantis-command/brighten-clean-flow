@@ -504,29 +504,29 @@ export default function StaffPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Set Temp Password Dialog */}
-      <Dialog open={!!passwordMember} onOpenChange={(o) => { if (!o) { setPasswordMember(null); setTempPassword(''); } }}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Send Password Reset</DialogTitle>
-            <DialogDescription>Sends {passwordMember?.full_name} an email to set their own password.</DialogDescription>
-          </DialogHeader>
-          <div className="text-sm text-muted-foreground py-2">
-            Reset email will be sent to: <strong className="text-foreground">{passwordMember?.email || 'No email on file'}</strong>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setPasswordMember(null); setTempPassword(''); }}>Cancel</Button>
-            <Button
-              onClick={() => passwordMember && setPasswordMutation.mutate({ userId: passwordMember.id, pw: '' })}
-              disabled={!passwordMember?.email || setPasswordMutation.isPending}
-              className="bg-primary text-primary-foreground font-bold gap-2"
+      {/* Send Magic Link Confirm Dialog */}
+      <AlertDialog open={!!magicLinkConfirm} onOpenChange={(o) => { if (!o) setMagicLinkConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Login Link</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send a one-tap login link to {magicLinkConfirm?.full_name} via SMS?
+              {magicLinkConfirm?.phone ? ` (${magicLinkConfirm.phone})` : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => magicLinkConfirm && sendMagicLinkMutation.mutate(magicLinkConfirm)}
+              disabled={!magicLinkConfirm?.phone || sendMagicLinkMutation.isPending}
+              className="bg-brightly hover:bg-brightly-hover text-white font-bold gap-2"
             >
-              {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Send Reset Email
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {sendMagicLinkMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Send Login Link
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -765,8 +765,12 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
               <div className="border-t pt-3 mt-3 space-y-2">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Key className="w-4 h-4" /> Login Management</h3>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="gap-1 rounded-xl" onClick={() => setPasswordMember(staff)}>
-                    <Key className="w-3.5 h-3.5" /> Set Temp Password
+                  <Button size="sm" className="gap-1 rounded-xl bg-brightly hover:bg-brightly-hover text-white"
+                    disabled={!staff.phone || sendMagicLinkMutation.isPending}
+                    onClick={() => setMagicLinkConfirm(staff)}
+                    title={!staff.phone ? 'No phone on file' : undefined}>
+                    {sendMagicLinkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />}
+                    Send Login Link
                   </Button>
                   <Button variant="outline" size="sm" className="gap-1 rounded-xl"
                     disabled={resetPasswordMutation.isPending}
