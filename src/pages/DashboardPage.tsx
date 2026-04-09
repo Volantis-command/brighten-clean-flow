@@ -275,6 +275,8 @@ export default function DashboardPage() {
             <DraftInvoiceCount />
             <p className="text-xs text-muted-foreground mt-1">Approve & send →</p>
           </button>
+          <BookingSuggestionsCount />
+          <QuoteFollowupsCount />
         </div>
       )}
 
