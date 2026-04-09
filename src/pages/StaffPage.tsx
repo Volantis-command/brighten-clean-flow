@@ -302,7 +302,8 @@ export default function StaffPage() {
         ensureOnboardingMutation={ensureOnboardingMutation}
         markReviewedMutation={markReviewedMutation}
         approveDeploymentMutation={approveDeploymentMutation}
-        setPasswordMember={setPasswordMember}
+        setMagicLinkConfirm={setMagicLinkConfirm}
+        sendMagicLinkMutation={sendMagicLinkMutation}
         resetPasswordMutation={resetPasswordMutation}
       />
     );
