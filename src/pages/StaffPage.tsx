@@ -602,7 +602,7 @@ const PAPERWORK_ITEMS = [
 ];
 
 // ─── Staff Detail View (tabbed) ───
-function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboardingLink, onboardingLinkCopied, copyOnboardingLink, ensureOnboardingMutation, markReviewedMutation, approveDeploymentMutation, setPasswordMember, resetPasswordMutation }: {
+function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboardingLink, onboardingLinkCopied, copyOnboardingLink, ensureOnboardingMutation, markReviewedMutation, approveDeploymentMutation, setMagicLinkConfirm, sendMagicLinkMutation, resetPasswordMutation }: {
   staff: StaffMember;
   isAdmin: boolean;
   onBack: () => void;
@@ -613,7 +613,8 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
   ensureOnboardingMutation: any;
   markReviewedMutation: any;
   approveDeploymentMutation: any;
-  setPasswordMember: (m: StaffMember) => void;
+  setMagicLinkConfirm: (m: StaffMember) => void;
+  sendMagicLinkMutation: any;
   resetPasswordMutation: any;
 }) {
   const queryClient = useQueryClient();
