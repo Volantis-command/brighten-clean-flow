@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createAlert } from '@/lib/alerts';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, ShieldAlert, Clock, CheckCircle2 } from 'lucide-react';
