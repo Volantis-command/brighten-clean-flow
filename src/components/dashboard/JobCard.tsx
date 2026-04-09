@@ -40,11 +40,11 @@ const statusConfig: Record<string, { label: string; style: React.CSSProperties }
   },
   completed: {
     label: 'Completed',
-    style: { background: 'rgba(34,197,94,0.20)', color: '#22C55E' },
+    style: { background: 'rgba(34,197,94,0.20)', color: '#2E5D4E' },
   },
   complete: {
     label: 'Completed',
-    style: { background: 'rgba(34,197,94,0.20)', color: '#22C55E' },
+    style: { background: 'rgba(34,197,94,0.20)', color: '#2E5D4E' },
   },
   cancelled: {
     label: 'Cancelled',
@@ -96,7 +96,7 @@ export function JobCard({
     const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
     const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
     if (hasDeclined) return { borderLeft: '3px solid #EF4444' };
-    if (allAccepted) return { borderLeft: '3px solid #22C55E' };
+    if (allAccepted) return { borderLeft: '3px solid #2E5D4E' };
     if (hasPending) return { borderLeft: '3px solid #FEDB00' };
     return {};
   };

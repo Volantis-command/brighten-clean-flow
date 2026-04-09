@@ -83,7 +83,7 @@ export default function EnquiryPage() {
           </h1>
         </header>
         <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+          <CheckCircle className="h-16 w-16 text-brightly mb-4" />
           <h2 className="text-2xl font-bold mb-2">Thanks {firstName}!</h2>
           <p className="text-muted-foreground max-w-md">
             We'll be in touch within 24 hours with your quote.

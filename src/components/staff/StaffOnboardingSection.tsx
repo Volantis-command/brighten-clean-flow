@@ -200,7 +200,7 @@ export function StaffOnboardingSection({ staffId, staffName }: Props) {
               {completedCount}/{CHECKLIST_ITEMS.length}
             </Badge>
             {reviewed ? (
-              <Badge className="bg-green-100 text-green-800">Reviewed ✓</Badge>
+              <Badge className="bg-brightly/10 text-brightly">Reviewed ✓</Badge>
             ) : submitted ? (
               <Badge className="bg-amber-100 text-amber-800">Action Needed</Badge>
             ) : null}
@@ -316,7 +316,7 @@ export function StaffOnboardingSection({ staffId, staffName }: Props) {
                 </Button>
               </div>
               {d?.vevo_verified_at && (
-                <p className="text-xs text-green-600">Verified {format(parseISO(d.vevo_verified_at), 'dd MMM yyyy')}</p>
+                <p className="text-xs text-brightly">Verified {format(parseISO(d.vevo_verified_at), 'dd MMM yyyy')}</p>
               )}
             </div>
           )}

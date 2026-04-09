@@ -207,7 +207,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       <main className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
         {step === 'damage' && (
           <div className="space-y-4">
-            <Button onClick={handleNoDamage} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white gap-2">
+            <Button onClick={handleNoDamage} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-brightly hover:bg-brightly-hover text-white gap-2">
               <CheckCircle2 className="h-6 w-6" /> ✓ No Damage
             </Button>
             <Button onClick={() => setStep('damage_detail')} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2">
@@ -231,7 +231,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
 
         {step === 'extra_time' && (
           <div className="space-y-4">
-            <Button onClick={handleNoExtraTime} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white gap-2">
+            <Button onClick={handleNoExtraTime} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-brightly hover:bg-brightly-hover text-white gap-2">
               <CheckCircle2 className="h-6 w-6" /> ✓ No, I'm Fine
             </Button>
             <Button onClick={() => setStep('extra_time_detail')} className="w-full h-16 text-lg font-extrabold rounded-2xl bg-amber-500 hover:bg-amber-600 text-white gap-2">

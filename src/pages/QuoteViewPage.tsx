@@ -68,10 +68,10 @@ function CheckItem({ text, delay }: { text: string; delay: number }) {
     >
       <div className="mt-0.5 shrink-0">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <circle cx="10" cy="10" r="9" stroke="#22C55E" strokeWidth="1.5" opacity="0.3" />
+          <circle cx="10" cy="10" r="9" stroke="#2E5D4E" strokeWidth="1.5" opacity="0.3" />
           <path
             d="M6 10.5L9 13.5L14 7.5"
-            stroke="#22C55E"
+            stroke="#2E5D4E"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -99,20 +99,20 @@ function SuccessScreen({ name }: { name: string }) {
           <svg viewBox="0 0 96 96" className="w-24 h-24">
             <circle
               cx="48" cy="48" r="44"
-              fill="none" stroke="#22C55E" strokeWidth="3"
+              fill="none" stroke="#2E5D4E" strokeWidth="3"
               strokeDasharray="276"
               strokeDashoffset="276"
               style={{ animation: 'drawCircle 0.8s ease forwards' }}
             />
             <path
               d="M28 50L42 64L68 34"
-              fill="none" stroke="#22C55E" strokeWidth="4"
+              fill="none" stroke="#2E5D4E" strokeWidth="4"
               strokeLinecap="round" strokeLinejoin="round"
               className="animate-draw-tick"
             />
           </svg>
           <div className="absolute inset-0 rounded-full"
-            style={{ boxShadow: '0 0 40px rgba(34, 197, 94, 0.3)' }} />
+            style={{ boxShadow: '0 0 40px rgba(46, 93, 78, 0.3)' }} />
         </div>
 
         <h1 className="text-3xl font-extrabold text-white animate-slide-up"
@@ -168,7 +168,7 @@ function AlreadyAcceptedScreen() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
       style={{ background: '#0A0F0E' }}>
       <div className="text-center space-y-5 max-w-sm">
-        <CheckCircle2 className="w-16 h-16 mx-auto text-[#22C55E]" />
+        <CheckCircle2 className="w-16 h-16 mx-auto text-[#2E5D4E]" />
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
           This quote has already been accepted.
         </h1>
@@ -550,16 +550,16 @@ export default function QuoteViewPage() {
             disabled={confirming}
             className="w-full py-4 rounded-2xl text-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2"
             style={{
-              background: confirming ? '#166534' : '#22C55E',
+              background: confirming ? '#26503F' : '#2E5D4E',
               color: '#fff',
-              boxShadow: '0 0 24px rgba(34, 197, 94, 0.3)',
+              boxShadow: '0 0 24px rgba(46, 93, 78, 0.3)',
               fontFamily: 'Nunito, sans-serif',
             }}
             onMouseEnter={(e) => {
-              if (!confirming) e.currentTarget.style.boxShadow = '0 0 40px rgba(34, 197, 94, 0.5)';
+              if (!confirming) e.currentTarget.style.boxShadow = '0 0 40px rgba(46, 93, 78, 0.5)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(34, 197, 94, 0.3)';
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(46, 93, 78, 0.3)';
             }}
           >
             {confirming ? (
@@ -593,7 +593,7 @@ export default function QuoteViewPage() {
             }}>
               {messageSent ? (
                 <div className="text-center py-4 space-y-2">
-                  <CheckCircle2 className="w-10 h-10 mx-auto text-[#22C55E]" />
+                  <CheckCircle2 className="w-10 h-10 mx-auto text-[#2E5D4E]" />
                   <p className="text-white font-bold">Thanks! We'll get back to you shortly.</p>
                   <p className="text-white/40 text-sm">Usually within a few hours.</p>
                 </div>

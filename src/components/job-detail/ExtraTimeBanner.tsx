@@ -53,7 +53,7 @@ export function ExtraTimeBanner({ jobId, userId }: Props) {
   return (
     <div className={`rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-bold ${
       status === 'pending' ? 'bg-amber-500/15 text-amber-700 border border-amber-500/30' :
-      status === 'approved' ? 'bg-green-500/15 text-green-700 border border-green-500/30' :
+      status === 'approved' ? 'bg-brightly/15 text-brightly border border-brightly/30' :
       'bg-destructive/15 text-destructive border border-destructive/30'
     }`}>
       <Clock className="h-4 w-4 shrink-0" />

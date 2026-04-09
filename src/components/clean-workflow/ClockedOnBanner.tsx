@@ -26,7 +26,7 @@ export default function ClockedOnBanner({ clockOn }: Props) {
   if (!clockOn) return null;
 
   return (
-    <div className="sticky top-0 z-50 bg-green-600 text-white px-4 py-3 flex items-center justify-between">
+    <div className="sticky top-0 z-50 bg-brightly text-white px-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <Clock className="h-4 w-4" />
         <span className="font-bold text-sm">🕐 Clocked On</span>

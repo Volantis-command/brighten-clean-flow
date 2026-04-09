@@ -217,7 +217,7 @@ export default function CleanerPortalPage() {
   const statusConfig: Record<string, { label: string; color: string }> = {
     scheduled: { label: "Scheduled", color: "bg-blue-100 text-blue-800" },
     in_progress: { label: "In Progress", color: "bg-amber-100 text-amber-800" },
-    completed: { label: "Completed", color: "bg-green-100 text-green-800" },
+    completed: { label: "Completed", color: "bg-brightly/10 text-brightly" },
   };
   const st = statusConfig[job.status] ?? { label: job.status, color: "bg-muted text-muted-foreground" };
 
@@ -328,10 +328,10 @@ export default function CleanerPortalPage() {
         )}
 
         {job.status === "completed" && (
-          <Card className="border-green-200 bg-green-50">
+          <Card className="border-green-200 bg-brightly/10">
             <CardContent className="p-5 text-center space-y-3">
-              <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto" />
-              <p className="text-green-800 font-bold text-lg">Clean Complete ✓</p>
+              <CheckCircle2 className="h-12 w-12 text-brightly mx-auto" />
+              <p className="text-brightly font-bold text-lg">Clean Complete ✓</p>
               {job.report_token && (
                 <a
                   href={`/report/${job.report_token}`}

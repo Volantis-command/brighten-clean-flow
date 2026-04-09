@@ -217,7 +217,7 @@ export default function XeroSection() {
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-lg">Xero Integration</CardTitle>
-                <Badge className="bg-green-100 text-green-700 border-green-300 gap-1">
+                <Badge className="bg-brightly/10 text-brightly border-green-300 gap-1">
                   <CheckCircle2 className="h-3 w-3" /> Connected
                 </Badge>
               </div>

@@ -44,8 +44,8 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
   confirmed: { label: 'Confirmed', className: 'bg-muted text-muted-foreground' },
   in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800' },
-  completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
-  complete: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+  completed: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
+  complete: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
   cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive line-through' },
   flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
 };

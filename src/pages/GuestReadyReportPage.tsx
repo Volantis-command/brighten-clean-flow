@@ -78,7 +78,7 @@ export default function GuestReadyReportPage() {
       </div>
 
       {/* Guest Ready banner */}
-      <div className="bg-green-500 px-5 py-4 text-white flex items-center gap-3">
+      <div className="bg-brightly px-5 py-4 text-white flex items-center gap-3">
         <span className="text-2xl">✅</span>
         <div>
           <p className="font-bold text-sm">Property Guest Ready</p>

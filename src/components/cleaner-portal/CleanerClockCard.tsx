@@ -301,8 +301,8 @@ export function CleanerClockCard({ todayJobs }: { todayJobs: Job[] }) {
                 width: '140px',
                 height: '140px',
                 background: '#0C463D',
-                border: '3px solid #22C55E',
-                color: '#22C55E',
+                border: '3px solid #2E5D4E',
+                color: '#2E5D4E',
               }}
             >
               {busy ? (

@@ -237,7 +237,7 @@ export default function ResidentialQuotePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0C463D' }}>
         <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6 animate-[scale-in_0.4s_ease-out]" style={{ background: 'rgba(254,219,0,0.15)' }}>
-          <CheckCircle2 className="w-14 h-14" style={{ color: '#22C55E' }} />
+          <CheckCircle2 className="w-14 h-14" style={{ color: '#2E5D4E' }} />
         </div>
         <h1 className="text-2xl font-extrabold" style={{ color: '#F0FDF4' }}>Thanks {submittedFirst}!</h1>
         <p className="text-lg font-semibold mt-2" style={{ color: '#86EFAC' }}>We've received your quote request.</p>
@@ -414,8 +414,8 @@ export default function ResidentialQuotePage() {
                 <label className="text-sm font-bold text-foreground">Full Name *</label>
                 <div className="relative">
                   <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith"
-                    className={cn('h-14 rounded-xl', fullName.trim() ? 'border-green-400' : '')} />
-                  {fullName.trim() && <CheckCircle2 className="text-green-500 w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
+                    className={cn('h-14 rounded-xl', fullName.trim() ? 'border-brightly-light' : '')} />
+                  {fullName.trim() && <CheckCircle2 className="text-brightly w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
                 </div>
               </div>
 
@@ -423,8 +423,8 @@ export default function ResidentialQuotePage() {
                 <label className="text-sm font-bold text-foreground">Mobile Number *</label>
                 <div className="relative">
                   <Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="04xx xxx xxx" type="tel" inputMode="tel"
-                    className={cn('h-14 rounded-xl', mobile.trim() ? (isMobileValid ? 'border-green-400' : 'border-destructive') : '')} />
-                  {mobile.trim() && isMobileValid && <CheckCircle2 className="text-green-500 w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
+                    className={cn('h-14 rounded-xl', mobile.trim() ? (isMobileValid ? 'border-brightly-light' : 'border-destructive') : '')} />
+                  {mobile.trim() && isMobileValid && <CheckCircle2 className="text-brightly w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
                 </div>
                 {mobile.trim() && !isMobileValid && <p className="text-destructive text-xs">Enter a valid AU mobile (04xx xxx xxx)</p>}
               </div>
@@ -433,8 +433,8 @@ export default function ResidentialQuotePage() {
                 <label className="text-sm font-bold text-foreground">Email Address *</label>
                 <div className="relative">
                   <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" type="email" inputMode="email"
-                    className={cn('h-14 rounded-xl', email.trim() ? (isEmailValid ? 'border-green-400' : 'border-destructive') : '')} />
-                  {email.trim() && isEmailValid && <CheckCircle2 className="text-green-500 w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
+                    className={cn('h-14 rounded-xl', email.trim() ? (isEmailValid ? 'border-brightly-light' : 'border-destructive') : '')} />
+                  {email.trim() && isEmailValid && <CheckCircle2 className="text-brightly w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
                 </div>
                 {email.trim() && !isEmailValid && <p className="text-destructive text-xs">Enter a valid email address</p>}
               </div>
@@ -443,8 +443,8 @@ export default function ResidentialQuotePage() {
                 <label className="text-sm font-bold text-foreground">Property Address *</label>
                 <div className="relative">
                   <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Smith St, Burleigh Heads QLD"
-                    className={cn('h-14 rounded-xl', address.trim() ? 'border-green-400' : '')} />
-                  {address.trim() && <CheckCircle2 className="text-green-500 w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
+                    className={cn('h-14 rounded-xl', address.trim() ? 'border-brightly-light' : '')} />
+                  {address.trim() && <CheckCircle2 className="text-brightly w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
                 </div>
               </div>
             </div>

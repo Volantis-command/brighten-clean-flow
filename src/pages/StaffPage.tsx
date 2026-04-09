@@ -86,8 +86,7 @@ export default function StaffPage() {
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [passwordMember, setPasswordMember] = useState<StaffMember | null>(null);
-  const [tempPassword, setTempPassword] = useState('');
+  const [magicLinkConfirm, setMagicLinkConfirm] = useState<StaffMember | null>(null);
   const [onboardingLinkCopied, setOnboardingLinkCopied] = useState('');
 
   // Create form
@@ -198,20 +197,18 @@ export default function StaffPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const setPasswordMutation = useMutation({
-    mutationFn: async ({ userId, pw }: { userId: string; pw: string }) => {
-      // Service role key not available on free plan — send reset email instead
-      const member = staff?.find((m: any) => m.id === userId);
-      if (!member?.email) throw new Error('No email address on file for this staff member');
-      const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+  const sendMagicLinkMutation = useMutation({
+    mutationFn: async (staffMember: StaffMember) => {
+      const { data, error } = await supabase.functions.invoke('send-staff-magic-link', {
+        body: { staff_id: staffMember.id },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
-    onSuccess: () => {
-      toast.success('Password updated!');
-      setPasswordMember(null);
-      setTempPassword('');
+    onSuccess: (data) => {
+      toast.success(`Login link sent to ${data?.phone || 'staff'}`);
+      setMagicLinkConfirm(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -305,7 +302,8 @@ export default function StaffPage() {
         ensureOnboardingMutation={ensureOnboardingMutation}
         markReviewedMutation={markReviewedMutation}
         approveDeploymentMutation={approveDeploymentMutation}
-        setPasswordMember={setPasswordMember}
+        setMagicLinkConfirm={setMagicLinkConfirm}
+        sendMagicLinkMutation={sendMagicLinkMutation}
         resetPasswordMutation={resetPasswordMutation}
       />
     );
@@ -507,29 +505,29 @@ export default function StaffPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Set Temp Password Dialog */}
-      <Dialog open={!!passwordMember} onOpenChange={(o) => { if (!o) { setPasswordMember(null); setTempPassword(''); } }}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Send Password Reset</DialogTitle>
-            <DialogDescription>Sends {passwordMember?.full_name} an email to set their own password.</DialogDescription>
-          </DialogHeader>
-          <div className="text-sm text-muted-foreground py-2">
-            Reset email will be sent to: <strong className="text-foreground">{passwordMember?.email || 'No email on file'}</strong>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setPasswordMember(null); setTempPassword(''); }}>Cancel</Button>
-            <Button
-              onClick={() => passwordMember && setPasswordMutation.mutate({ userId: passwordMember.id, pw: '' })}
-              disabled={!passwordMember?.email || setPasswordMutation.isPending}
-              className="bg-primary text-primary-foreground font-bold gap-2"
+      {/* Send Magic Link Confirm Dialog */}
+      <AlertDialog open={!!magicLinkConfirm} onOpenChange={(o) => { if (!o) setMagicLinkConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Login Link</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send a one-tap login link to {magicLinkConfirm?.full_name} via SMS?
+              {magicLinkConfirm?.phone ? ` (${magicLinkConfirm.phone})` : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => magicLinkConfirm && sendMagicLinkMutation.mutate(magicLinkConfirm)}
+              disabled={!magicLinkConfirm?.phone || sendMagicLinkMutation.isPending}
+              className="bg-brightly hover:bg-brightly-hover text-white font-bold gap-2"
             >
-              {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Send Reset Email
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {sendMagicLinkMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Send Login Link
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -549,7 +547,7 @@ function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelec
           <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
           <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
           {isCleanerRole && activeStatus && (
-            <Badge className={`mt-1 text-[10px] ${activeStatus.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <Badge className={`mt-1 text-[10px] ${activeStatus.active ? 'bg-brightly/10 text-brightly' : 'bg-red-100 text-red-800'}`}>
               {activeStatus.active ? '● Active' : '● Inactive'}
             </Badge>
           )}
@@ -604,7 +602,7 @@ const PAPERWORK_ITEMS = [
 ];
 
 // ─── Staff Detail View (tabbed) ───
-function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboardingLink, onboardingLinkCopied, copyOnboardingLink, ensureOnboardingMutation, markReviewedMutation, approveDeploymentMutation, setPasswordMember, resetPasswordMutation }: {
+function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboardingLink, onboardingLinkCopied, copyOnboardingLink, ensureOnboardingMutation, markReviewedMutation, approveDeploymentMutation, setMagicLinkConfirm, sendMagicLinkMutation, resetPasswordMutation }: {
   staff: StaffMember;
   isAdmin: boolean;
   onBack: () => void;
@@ -615,7 +613,8 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
   ensureOnboardingMutation: any;
   markReviewedMutation: any;
   approveDeploymentMutation: any;
-  setPasswordMember: (m: StaffMember) => void;
+  setMagicLinkConfirm: (m: StaffMember) => void;
+  sendMagicLinkMutation: any;
   resetPasswordMutation: any;
 }) {
   const queryClient = useQueryClient();
@@ -721,7 +720,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
           <h1 className="text-2xl font-extrabold text-primary">{staff.full_name || 'No name'}</h1>
           <div className="flex items-center gap-2 mt-1">
             <Badge className={roleBadgeStyles[staff.role]}>{roleLabels[staff.role]}</Badge>
-            {obStatus?.directorApproved && <Badge className="bg-green-100 text-green-800">Director Approved</Badge>}
+            {obStatus?.directorApproved && <Badge className="bg-brightly/10 text-brightly">Director Approved</Badge>}
           </div>
         </div>
       </div>
@@ -768,8 +767,12 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
               <div className="border-t pt-3 mt-3 space-y-2">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Key className="w-4 h-4" /> Login Management</h3>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="gap-1 rounded-xl" onClick={() => setPasswordMember(staff)}>
-                    <Key className="w-3.5 h-3.5" /> Set Temp Password
+                  <Button size="sm" className="gap-1 rounded-xl bg-brightly hover:bg-brightly-hover text-white"
+                    disabled={!staff.phone || sendMagicLinkMutation.isPending}
+                    onClick={() => setMagicLinkConfirm(staff)}
+                    title={!staff.phone ? 'No phone on file' : undefined}>
+                    {sendMagicLinkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />}
+                    Send Login Link
                   </Button>
                   <Button variant="outline" size="sm" className="gap-1 rounded-xl"
                     disabled={resetPasswordMutation.isPending}
@@ -789,7 +792,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                   <div className="flex items-center gap-2">
                     <Input readOnly value={getOnboardingLink(staff.id) || ''} className="text-xs h-8 font-mono" />
                     <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(staff.id)} className="shrink-0 gap-1">
-                      {onboardingLinkCopied === staff.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                      {onboardingLinkCopied === staff.id ? <CheckCircle2 className="w-4 h-4 text-brightly" /> : <Copy className="w-4 h-4" />}
                     </Button>
                   </div>
                 ) : (
@@ -809,7 +812,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                   </Button>
                 )}
                 {obStatus?.reviewed && !obStatus.directorApproved && (
-                  <Button size="sm" className="gap-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                  <Button size="sm" className="gap-1 rounded-xl bg-brightly hover:bg-brightly-hover text-white"
                     disabled={approveDeploymentMutation.isPending}
                     onClick={() => approveDeploymentMutation.mutate(staff.id)}>
                     {approveDeploymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -859,7 +862,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                   <span className={`text-sm ${paperworkStatus[item.key] ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {item.label}
                   </span>
-                  {paperworkStatus[item.key] && <CheckCircle2 className="w-4 h-4 text-green-600 ml-auto" />}
+                  {paperworkStatus[item.key] && <CheckCircle2 className="w-4 h-4 text-brightly ml-auto" />}
                 </div>
               ))}
             </div>
@@ -899,7 +902,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                           </span>
                         )}
                         <Badge className={`text-[10px] ${
-                          job.status === 'complete' || job.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          job.status === 'complete' || job.status === 'completed' ? 'bg-brightly/10 text-brightly' :
                           job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                           'bg-muted text-muted-foreground'
                         }`}>

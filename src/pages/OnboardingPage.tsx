@@ -254,7 +254,7 @@ export default function OnboardingPage() {
     return (
       <Shell>
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <CheckCircle2 className="w-16 h-16 text-[#22C55E] mb-4" />
+          <CheckCircle2 className="w-16 h-16 text-[#2E5D4E] mb-4" />
           <h2 className="text-2xl font-extrabold mb-2" style={{ color: '#F0FDF4' }}>
             {isAdminMode ? 'Client Added' : 'Thank You!'}
           </h2>

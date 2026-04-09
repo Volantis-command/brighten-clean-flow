@@ -18,7 +18,7 @@ const STATUS_CONFIGS: Record<string, { bg: string; icon: string; label: string }
   scheduled: { bg: 'bg-blue-500', icon: '🚗', label: 'Cleaner on the way' },
   confirmed: { bg: 'bg-blue-500', icon: '🚗', label: 'Cleaner on the way' },
   in_progress: { bg: 'bg-accent', icon: '🧹', label: 'Clean in progress' },
-  completed: { bg: 'bg-green-500', icon: '✅', label: 'Property is Guest Ready' },
+  completed: { bg: 'bg-brightly', icon: '✅', label: 'Property is Guest Ready' },
 };
 
 export default function LiveTrackerPage() {
@@ -186,7 +186,7 @@ export default function LiveTrackerPage() {
               .sort((a: any, b: any) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())[0];
 
             return (
-              <div key={room} className={`rounded-xl border-2 p-4 transition-all ${roomDone ? 'border-green-400 bg-green-50' : 'border-border bg-card'}`}>
+              <div key={room} className={`rounded-xl border-2 p-4 transition-all ${roomDone ? 'border-brightly-light bg-brightly/10' : 'border-border bg-card'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-lg">{roomDone ? '✅' : '⏳'}</span>

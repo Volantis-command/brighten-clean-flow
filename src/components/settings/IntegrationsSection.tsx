@@ -67,7 +67,7 @@ export default function IntegrationsSection() {
               <p className="text-xs text-muted-foreground">{int.detail}</p>
             </div>
             {int.connected ? (
-              <div className="flex items-center gap-1.5 text-green-600">
+              <div className="flex items-center gap-1.5 text-brightly">
                 <CheckCircle2 className="h-5 w-5" />
                 <span className="text-xs font-bold">Connected</span>
               </div>

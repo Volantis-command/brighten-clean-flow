@@ -18,8 +18,9 @@
     --popover: 240 2% 17%;
     --popover-foreground: 240 7% 97%;
 
-    --primary: 142 71% 45%;
+    --primary: 158 33% 27%;
     --primary-foreground: 0 0% 100%;
+    --brightly-green: 158 33% 27%;
 
     --secondary: 240 2% 23%;
     --secondary-foreground: 240 7% 97%;
@@ -35,19 +36,19 @@
 
     --border: 240 2% 28%;
     --input: 240 2% 23%;
-    --ring: 142 71% 45%;
+    --ring: 158 33% 27%;
 
     --radius: 1rem;
 
     /* Sidebar */
     --sidebar-background: 240 2% 9%;
     --sidebar-foreground: 240 5% 65%;
-    --sidebar-primary: 142 71% 45%;
+    --sidebar-primary: 158 33% 27%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 2% 17%;
     --sidebar-accent-foreground: 240 7% 97%;
     --sidebar-border: 240 2% 23%;
-    --sidebar-ring: 142 71% 45%;
+    --sidebar-ring: 158 33% 27%;
   }
 
   .dark {
@@ -57,8 +58,9 @@
     --card-foreground: 240 7% 97%;
     --popover: 240 2% 17%;
     --popover-foreground: 240 7% 97%;
-    --primary: 142 71% 45%;
+    --primary: 158 33% 27%;
     --primary-foreground: 0 0% 100%;
+    --brightly-green: 158 33% 27%;
     --secondary: 240 2% 23%;
     --secondary-foreground: 240 7% 97%;
     --muted: 240 2% 23%;
@@ -69,16 +71,16 @@
     --destructive-foreground: 0 0% 100%;
     --border: 240 2% 28%;
     --input: 240 2% 23%;
-    --ring: 142 71% 45%;
+    --ring: 158 33% 27%;
     --radius: 1rem;
     --sidebar-background: 240 2% 9%;
     --sidebar-foreground: 240 5% 65%;
-    --sidebar-primary: 142 71% 45%;
+    --sidebar-primary: 158 33% 27%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 2% 17%;
     --sidebar-accent-foreground: 240 7% 97%;
     --sidebar-border: 240 2% 23%;
-    --sidebar-ring: 142 71% 45%;
+    --sidebar-ring: 158 33% 27%;
   }
 }
 
@@ -128,10 +130,10 @@
 
   /* === YELLOW GLOW === */
   .yellow-glow {
-    box-shadow: 0 0 24px hsl(142 71% 45% / 0.15);
+    box-shadow: 0 0 24px hsl(158 33% 27% / 0.15);
   }
   .yellow-glow-strong {
-    box-shadow: 0 0 32px hsl(142 71% 45% / 0.25), 0 0 8px hsl(142 71% 45% / 0.10);
+    box-shadow: 0 0 32px hsl(158 33% 27% / 0.25), 0 0 8px hsl(158 33% 27% / 0.10);
   }
 
   /* === PULSE GLOW === */
@@ -206,8 +208,8 @@
 
 @layer utilities {
   @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 0 0 hsl(142 71% 45% / 0.4); }
-    50% { box-shadow: 0 0 0 12px hsl(142 71% 45% / 0); }
+    0%, 100% { box-shadow: 0 0 0 0 hsl(158 33% 27% / 0.4); }
+    50% { box-shadow: 0 0 0 12px hsl(158 33% 27% / 0); }
   }
 
   @keyframes pulseGlowRed {
