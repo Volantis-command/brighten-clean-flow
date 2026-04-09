@@ -86,8 +86,7 @@ export default function StaffPage() {
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [removeMember, setRemoveMember] = useState<StaffMember | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [passwordMember, setPasswordMember] = useState<StaffMember | null>(null);
-  const [tempPassword, setTempPassword] = useState('');
+  const [magicLinkConfirm, setMagicLinkConfirm] = useState<StaffMember | null>(null);
   const [onboardingLinkCopied, setOnboardingLinkCopied] = useState('');
 
   // Create form
@@ -198,20 +197,18 @@ export default function StaffPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const setPasswordMutation = useMutation({
-    mutationFn: async ({ userId, pw }: { userId: string; pw: string }) => {
-      // Service role key not available on free plan — send reset email instead
-      const member = staff?.find((m: any) => m.id === userId);
-      if (!member?.email) throw new Error('No email address on file for this staff member');
-      const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+  const sendMagicLinkMutation = useMutation({
+    mutationFn: async (staffMember: StaffMember) => {
+      const { data, error } = await supabase.functions.invoke('send-staff-magic-link', {
+        body: { staff_id: staffMember.id },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
-    onSuccess: () => {
-      toast.success('Password updated!');
-      setPasswordMember(null);
-      setTempPassword('');
+    onSuccess: (data) => {
+      toast.success(`Login link sent to ${data?.phone || 'staff'}`);
+      setMagicLinkConfirm(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
