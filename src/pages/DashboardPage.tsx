@@ -3,7 +3,24 @@ import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert, DollarSign } fro
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
 
-function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
+function DraftInvoiceCount() {
+  const { data: count = 0 } = useQuery({
+    queryKey: ['draft-invoice-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('invoice_status', 'draft')
+        .not('xero_invoice_id', 'is', null);
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 60_000,
+  });
+  return <p className="text-3xl font-extrabold text-foreground">{count}</p>;
+}
+
+
   const { data: jobs = [] } = useQuery({
     queryKey: ['cleaner-clock-card-jobs', jobIds.join(',')],
     enabled: jobIds.length > 0,
