@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
       .eq("key", "app_url")
       .maybeSingle();
 
-    const appUrl = urlSetting?.value || "https://brighten-clean-flow.lovable.app";
+    const appUrl = urlSetting?.value || "https://app.brightly.cleaning";
     const portalUrl = `${appUrl}/client-portal/verify?token=${token}`;
     const firstName = name?.split(" ")[0] || "there";
 
