@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { createAlert, createAlertForUser } from './alerts';
 
 interface CreateNotification {
   userId: string;
@@ -8,34 +9,26 @@ interface CreateNotification {
   link?: string;
 }
 
+/**
+ * @deprecated Use createAlert() from '@/lib/alerts' instead.
+ */
 export async function createAdminNotification(params: Omit<CreateNotification, 'userId'>) {
-  // Get all admin user IDs
-  const { data: admins } = await supabase
-    .from('user_roles')
-    .select('user_id')
-    .eq('role', 'admin');
-
-  if (!admins?.length) return;
-
-  const rows = admins.map((a) => ({
-    user_id: a.user_id,
-    type: params.type,
+  await createAlert({
+    event_type: params.type,
     title: params.title,
-    message: params.message,
-    link: params.link || null,
-    read: false,
-  }));
-
-  await supabase.from('notifications').insert(rows);
+    body: params.message,
+    link: params.link,
+  });
 }
 
+/**
+ * @deprecated Use createAlertForUser() from '@/lib/alerts' instead.
+ */
 export async function createNotification(params: CreateNotification) {
-  await supabase.from('notifications').insert({
-    user_id: params.userId,
-    type: params.type,
+  await createAlertForUser(params.userId, {
+    event_type: params.type,
     title: params.title,
-    message: params.message,
-    link: params.link || null,
-    read: false,
+    body: params.message,
+    link: params.link,
   });
 }
