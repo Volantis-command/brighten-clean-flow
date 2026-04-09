@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
       Reference: `Job ${job.id.slice(0, 8)} — ${dateStr}`,
       Date: today.toISOString().split('T')[0],
       DueDate: dueDate.toISOString().split('T')[0],
-      Status: 'AUTHORISED', // GST 10% applied via TaxType: OUTPUT
+      Status: 'DRAFT', // Admin must approve before sending
       CurrencyCode: 'AUD',
       LineAmountTypes: 'Exclusive',
       LineItems: lineItems,
@@ -276,31 +276,13 @@ Deno.serve(async (req) => {
       .update({
         xero_invoice_id: xeroInvoiceId,
         xero_invoice_number: invoiceNumber,
-        invoice_status: 'sent',
+        invoice_status: 'draft',
         invoice_amount: totalEx,
       })
       .eq('id', job_id);
 
-    // Optionally email the invoice via Xero
-    if (send_email !== false && contactId && contactEmail && xeroInvoiceId) {
-      try {
-        await fetch(
-          `https://api.xero.com/api.xro/2.0/Invoices/${xeroInvoiceId}/Email`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-              'Xero-Tenant-Id': tenant_id,
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-          }
-        );
-        console.log('Invoice emailed via Xero');
-      } catch (emailErr) {
-        console.error('Failed to email invoice via Xero:', emailErr);
-      }
-    }
+    // Invoice created as DRAFT — admin must approve via xero-send-invoice
+    console.log('Invoice created as DRAFT — awaiting admin approval');
 
     return new Response(
       JSON.stringify({

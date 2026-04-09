@@ -84,16 +84,36 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       });
     }
 
-    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-    if (admins) {
-      await supabase.from('notifications').insert(admins.map((a: any) => ({
-        user_id: a.user_id, title: '⚠️ Damage Reported',
-        message: `${cleanerName} reported existing damage at ${address}`,
-        type: 'damage_report', link: `/jobs/${job.id}`,
-      })));
-    }
+    // TRIPLE-CHANNEL ALERT: all three fire in parallel
+    const adminNotifPromise = (async () => {
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+      if (admins) {
+        await supabase.from('notifications').insert(admins.map((a: any) => ({
+          user_id: a.user_id, title: '⚠️ Damage Reported',
+          message: `${cleanerName} reported existing damage at ${address}: ${damageNotes || 'No details'}`,
+          type: 'damage_report', link: `/jobs/${job.id}`,
+        })));
+      }
+    })();
 
-    await sendAdminSms(`⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address} before starting. View: https://app.brightly.cleaning/jobs/${job.id}`);
+    const adminSmsPromise = sendAdminSms(
+      `⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address}. Details: ${damageNotes || 'See photos'}. View: https://app.brightly.cleaning/jobs/${job.id}`
+    );
+
+    // Client SMS via send-client-sms edge function
+    const clientSmsPromise = (async () => {
+      try {
+        await supabase.functions.invoke('send-client-sms', {
+          body: {
+            job_id: job.id,
+            message: `Hi, your cleaner ${cleanerName} has flagged an issue at ${address}: ${damageNotes || 'See details in portal'}. We'll follow up shortly. — Brightly`,
+          },
+        });
+      } catch { /* non-blocking */ }
+    })();
+
+    await Promise.all([adminNotifPromise, adminSmsPromise, clientSmsPromise]);
+
     toast.success('Damage report submitted');
     setSavingDamage(false);
     setStep('extra_time');

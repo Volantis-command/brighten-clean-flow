@@ -58,6 +58,7 @@ import CompletionFormPage from "./pages/CompletionFormPage";
 import JobCompleteDonePage from "./pages/JobCompleteDonePage";
 import JobAuditPage from "./pages/JobAuditPage";
 import ResidentialQuotePage from "./pages/ResidentialQuotePage";
+import PendingInvoicesPage from "./pages/PendingInvoicesPage";
 import AirbnbQuotePage from "./pages/AirbnbQuotePage";
 import LiveTrackerPage from "./pages/LiveTrackerPage";
 import MapPage from "./pages/MapPage";
@@ -224,6 +225,7 @@ function AppRoutes() {
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute allowedRoles={['admin']}><NotificationsPage /></ProtectedRoute>} />
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
+        <Route path="/invoices/pending" element={<ProtectedRoute allowedRoles={['admin']}><PendingInvoicesPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />
         <Route path="/my-cleans" element={<MyCleans />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />

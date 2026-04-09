@@ -225,7 +225,7 @@ export default function DashboardPage() {
 
       {/* Quick KPI: Active Cleaners + Needs Action */}
       {isAdmin && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <button
             onClick={() => navigate('/map')}
             className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
@@ -248,6 +248,7 @@ export default function DashboardPage() {
             <p className="text-3xl font-extrabold text-foreground">{needsActionCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Critical + Important alerts</p>
           </button>
+          <DraftInvoiceCard />
         </div>
       )}
 

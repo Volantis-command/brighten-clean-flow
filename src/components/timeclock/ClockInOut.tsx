@@ -91,6 +91,33 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
       toast.error(error.message);
     } else {
       await supabase.from('jobs').update({ status: 'in_progress' }).eq('id', jobId);
+
+      // FIX 2: Geo-override admin alert
+      if (override && distance) {
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+        const cleanerName = profile?.full_name || 'A cleaner';
+        const alertMsg = `${cleanerName} clocked on ${distance}m outside ${propertyName}`;
+
+        // In-app notification to all admins
+        const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+        if (admins?.length) {
+          await supabase.from('notifications').insert(admins.map((a: any) => ({
+            user_id: a.user_id,
+            title: '📍 Geofence Override',
+            message: alertMsg,
+            type: 'geofence_override',
+            link: `/jobs/${jobId}`,
+          })));
+        }
+
+        // SMS to admins
+        try {
+          await supabase.functions.invoke('send-admin-sms', {
+            body: { message: `📍 GEOFENCE OVERRIDE — ${alertMsg}. Lat: ${userLat}, Lng: ${userLng}` },
+          });
+        } catch { /* non-blocking */ }
+      }
+
       toast.success('Clocked in!');
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
