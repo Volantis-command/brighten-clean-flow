@@ -1,58 +1,53 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
+import { format, differenceInMinutes } from 'date-fns';
 import { ArrowLeft, Loader2, Download, CheckCircle2, AlertTriangle, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { format } from 'date-fns';
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
+import CleanerProfileChip from '@/components/client-portal/CleanerProfileChip';
 
-export default function MagicLinkPropertyPage() {
-  const { token, id: propertyId } = useParams<{ token: string; id: string }>();
+export default function ClientPortalPropertyPage() {
+  const { id: propertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [clientId, setClientId] = useState<string | null>(null);
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
-  const { data: clientProp, isLoading: loadingToken } = useQuery({
-    queryKey: ['magic-validate', token, propertyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_properties' as any)
-        .select('*')
-        .eq('portal_token', token!)
-        .eq('property_id', propertyId!)
-        .eq('portal_active', true)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!token && !!propertyId,
-  });
+  useEffect(() => {
+    const id = localStorage.getItem('brightly_client_id');
+    if (!id) {
+      navigate('/client-portal', { replace: true });
+      return;
+    }
+    setClientId(id);
+  }, [navigate]);
 
-  const { data: property, isLoading: loadingProp } = useQuery({
-    queryKey: ['magic-prop-detail', propertyId],
+  const { data: property, isLoading } = useQuery({
+    queryKey: ['cp-property', propertyId],
     queryFn: async () => {
       const { data, error } = await supabase.from('properties').select('*').eq('id', propertyId!).single();
       if (error) throw error;
       return data;
     },
-    enabled: !!propertyId && !!clientProp,
+    enabled: !!propertyId && !!clientId,
   });
 
   const { data: jobs = [] } = useQuery({
-    queryKey: ['magic-prop-jobs', propertyId],
+    queryKey: ['cp-property-jobs', propertyId],
     queryFn: async () => {
       const { data } = await supabase.from('jobs').select('*').eq('property_id', propertyId!).order('scheduled_date', { ascending: false });
       return data || [];
     },
-    enabled: !!propertyId && !!clientProp,
+    enabled: !!propertyId && !!clientId,
   });
 
   const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
   const { data: cleanerProfiles = [] } = useQuery({
-    queryKey: ['magic-cleaners', cleanerIds],
+    queryKey: ['cp-cleaners', cleanerIds],
     queryFn: async () => {
       if (!cleanerIds.length) return [];
       const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
@@ -68,7 +63,7 @@ export default function MagicLinkPropertyPage() {
   const activeJobId = selectedCleanId || lastCompleteJob?.id;
 
   const { data: photos = [] } = useQuery({
-    queryKey: ['magic-photos', activeJobId],
+    queryKey: ['cp-photos', activeJobId],
     queryFn: async () => {
       if (!activeJobId) return [];
       const { data } = await supabase.from('photos').select('*').eq('job_id', activeJobId).order('room_label');
@@ -78,21 +73,21 @@ export default function MagicLinkPropertyPage() {
   });
 
   const { data: audits = [] } = useQuery({
-    queryKey: ['magic-qc', propertyId],
+    queryKey: ['cp-qc', propertyId],
     queryFn: async () => {
       const { data } = await supabase.from('qc_audits').select('*').eq('property_id', propertyId!).order('audit_date', { ascending: false });
       return data || [];
     },
-    enabled: !!propertyId && !!clientProp,
+    enabled: !!propertyId && !!clientId,
   });
 
   const { data: issues = [] } = useQuery({
-    queryKey: ['magic-issues', propertyId],
+    queryKey: ['cp-issues', propertyId],
     queryFn: async () => {
       const { data } = await supabase.from('property_issues' as any).select('*').eq('property_id', propertyId!).order('reported_at', { ascending: false });
       return data || [];
     },
-    enabled: !!propertyId && !!clientProp,
+    enabled: !!propertyId && !!clientId,
   });
 
   const completedJobs = jobs.filter((j: any) => j.status === 'complete' || j.status === 'completed');
@@ -107,20 +102,30 @@ export default function MagicLinkPropertyPage() {
   const hasIssues = (issues as any[]).some((i: any) => i.status === 'open');
   const isGuestReady = !!lastCompleteJob;
 
-  const isLoading = loadingToken || loadingProp;
-  if (isLoading) return <div className="min-h-screen bg-background flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  if (!clientProp || !property) return <div className="min-h-screen bg-background flex flex-col items-center justify-center"><p className="text-4xl mb-3">🔒</p><p className="font-bold">Invalid link</p></div>;
+  if (isLoading || !clientId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!property) {
+    return <div className="p-6 text-center text-muted-foreground">Property not found</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border/50 sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-3">
-          <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>Brightly<span className="text-accent">.</span></h1>
+      <div className="bg-primary text-primary-foreground px-4 py-4">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            Brightly<span className="text-accent">.</span>
+          </h1>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-20">
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/client/${token}`)} className="gap-1">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 pb-20">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/client-portal/dashboard')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
 
@@ -187,7 +192,7 @@ export default function MagicLinkPropertyPage() {
           </Section>
         )}
 
-        {/* Photos */}
+        {/* Photo Gallery */}
         {photos.length > 0 && (
           <Section title="Completion Photos">
             <CompletionPhotoGallery photos={photos} />
@@ -211,10 +216,18 @@ export default function MagicLinkPropertyPage() {
               {completedJobs.map((job: any) => {
                 const audit = audits.find((a: any) => a.job_id === job.id);
                 return (
-                  <button key={job.id} onClick={() => setSelectedCleanId(job.id)} className={`w-full text-left rounded-xl p-3 border text-sm transition-colors ${selectedCleanId === job.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}>
+                  <button
+                    key={job.id}
+                    onClick={() => setSelectedCleanId(job.id)}
+                    className={`w-full text-left rounded-xl p-3 border text-sm transition-colors ${selectedCleanId === job.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{format(new Date(job.scheduled_date + 'T00:00:00'), 'dd MMM yyyy')}</span>
-                      {audit && <span className={`font-bold text-xs ${(audit.percentage || 0) >= 80 ? 'text-primary' : 'text-orange-500'}`}>{audit.percentage}%</span>}
+                      {audit && (
+                        <span className={`font-bold text-xs ${(audit.percentage || 0) >= 80 ? 'text-primary' : 'text-orange-500'}`}>
+                          {audit.percentage}%
+                        </span>
+                      )}
                     </div>
                   </button>
                 );
@@ -244,13 +257,15 @@ export default function MagicLinkPropertyPage() {
 
         {/* Download Report */}
         {lastCompleteJob && (
-          <Button variant="outline" className="w-full gap-2 font-bold" onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank')}>
+          <Button
+            variant="outline"
+            className="w-full gap-2 font-bold"
+            onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank')}
+          >
             <Download className="w-4 h-4" /> Download Clean Report
           </Button>
         )}
-
-        <p className="text-center text-muted-foreground text-xs pt-4">Powered by Brightly</p>
-      </main>
+      </div>
     </div>
   );
 }

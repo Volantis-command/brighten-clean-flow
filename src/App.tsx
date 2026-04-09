@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import ClientLoginPage from "./pages/ClientLoginPage";
 import AppLayout from "./components/AppLayout";
-import ClientPortalLayout from "./components/portal/ClientPortalLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
 import DashboardPage from "./pages/DashboardPage";
 import ActionsPage from "./pages/ActionsPage";
@@ -29,8 +28,6 @@ import ClientsPage from "./pages/ClientsPage";
 import QCAuditPage from "./pages/QCAuditPage";
 import FormDetailPage from "./pages/FormDetailPage";
 import ClientDetailPage from "./pages/ClientDetailPage";
-import ClientPortalPage from "./pages/ClientPortalPage";
-import ClientPropertyDetailPage from "./pages/ClientPropertyDetailPage";
 import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
 import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
 import FeedbackPage from "./pages/FeedbackPage";
@@ -72,6 +69,7 @@ import NotFound from "./pages/NotFound";
 import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
 import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
+import ClientPortalPropertyPage from "./pages/ClientPortalPropertyPage";
 
 const queryClient = new QueryClient();
 
@@ -99,7 +97,6 @@ class AppErrorBoundary extends Component<
   }
 }
 
-/** Branded loading screen — shown while auth resolves. Never a blank div. */
 function BrandedLoading() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-primary">
@@ -122,21 +119,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (role === 'client') return <Navigate to="/portal" replace />;
+  if (role === 'client') return <Navigate to="/client-portal" replace />;
   if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to="/dashboard" replace />;
-
-  return <>{children}</>;
-}
-
-function ClientRoute({ children }: { children: React.ReactNode }) {
-  const { user, role, loading } = useAuth();
-
-  if (loading || (user && role === undefined)) {
-    return <BrandedLoading />;
-  }
-
-  if (!user) return <Navigate to="/client-login" replace />;
-  if (role !== 'client') return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 }
@@ -181,18 +165,10 @@ function AuthenticatedArea({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* === FULLY PUBLIC — no auth check at all === */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/client-login" element={<AuthenticatedArea><ClientLoginPage /></AuthenticatedArea>} />
 
-      {/* Root — always redirect to login */}
       <Route path="/" element={<RootRedirect />} />
-
-      {/* Client portal */}
-      <Route element={<AuthenticatedArea><ClientRoute><ClientPortalLayout /></ClientRoute></AuthenticatedArea>}>
-        <Route path="/portal" element={<ClientPortalPage />} />
-        <Route path="/portal/property/:id" element={<ClientPropertyDetailPage />} />
-      </Route>
 
       {/* Public token routes */}
       <Route path="/client/:token" element={<MagicLinkPortalPage />} />
@@ -217,9 +193,12 @@ function AppRoutes() {
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
+
+      {/* Client portal (SMS magic link session) */}
       <Route path="/client-portal" element={<ClientPortalLoginPage />} />
       <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
       <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
+      <Route path="/client-portal/property/:id" element={<ClientPortalPropertyPage />} />
 
       {/* Protected staff routes */}
       <Route element={<AuthenticatedArea><><ActiveClockBanner /><ProtectedRoute><AppLayout /></ProtectedRoute></></AuthenticatedArea>}>

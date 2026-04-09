@@ -25,9 +25,10 @@ Deno.serve(async (req) => {
 
     let propertyIds: string[] = [];
     let clientName = "";
+    let clientEmail = "";
+    let clientPhone = "";
 
     if (client_type === "profile") {
-      // Get client_properties
       const { data: cp } = await supabase
         .from("client_properties")
         .select("property_id")
@@ -37,26 +38,31 @@ Deno.serve(async (req) => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, email, phone")
         .eq("id", client_id)
         .maybeSingle();
       clientName = profile?.full_name || "";
+      clientEmail = profile?.email || "";
+      clientPhone = profile?.phone || "";
     } else if (client_type === "property") {
       propertyIds = [client_id];
       const { data: prop } = await supabase
         .from("properties")
-        .select("client_name")
+        .select("client_name, billing_email, client_phone")
         .eq("id", client_id)
         .maybeSingle();
       clientName = prop?.client_name || "";
+      clientEmail = prop?.billing_email || "";
+      clientPhone = prop?.client_phone || "";
     } else {
-      // quote_request - find properties by address match
       const { data: qr } = await supabase
         .from("quote_requests")
-        .select("first_name, last_name, address")
+        .select("first_name, last_name, address, email, phone")
         .eq("id", client_id)
         .maybeSingle();
       clientName = `${qr?.first_name || ''} ${qr?.last_name || ''}`.trim();
+      clientEmail = qr?.email || "";
+      clientPhone = qr?.phone || "";
 
       if (qr?.address) {
         const { data: props } = await supabase
@@ -67,39 +73,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch jobs for these properties
+    // Fetch jobs
     let jobs: any[] = [];
     if (propertyIds.length > 0) {
       const { data } = await supabase
         .from("jobs")
-        .select("id, scheduled_date, scheduled_time, status, price_inc_gst, property_id, cleaner_1_id, feedback_score, notes")
+        .select("id, scheduled_date, scheduled_time, status, price_inc_gst, price_ex_gst, property_id, cleaner_1_id, cleaner_2_id, feedback_score, notes, clean_type, invoice_status, invoice_amount, xero_invoice_number, invoice_raised_at, invoice_sent_at, invoice_paid_at")
         .in("property_id", propertyIds)
         .order("scheduled_date", { ascending: false });
       jobs = data || [];
     }
 
-    // Get property details
+    // Properties
     let properties: any[] = [];
     if (propertyIds.length > 0) {
       const { data } = await supabase
         .from("properties")
-        .select("id, property_name, address, suburb, client_type")
+        .select("id, property_name, address, suburb, client_type, bedrooms, bathrooms")
         .in("id", propertyIds);
       properties = data || [];
     }
 
-    // Get cleaner names
-    const cleanerIds = [...new Set(jobs.map((j: any) => j.cleaner_1_id).filter(Boolean))];
+    // Cleaners
+    const cleanerIds = [...new Set(jobs.flatMap((j: any) => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))];
     let cleaners: any[] = [];
     if (cleanerIds.length > 0) {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, avatar_url")
         .in("id", cleanerIds);
       cleaners = data || [];
     }
 
-    // Get feedback
+    // Feedback
     const jobIds = jobs.map((j: any) => j.id);
     let feedback: any[] = [];
     if (jobIds.length > 0) {
@@ -110,8 +116,28 @@ Deno.serve(async (req) => {
       feedback = data || [];
     }
 
+    // Quotes — lookup by email or phone
+    let quotes: any[] = [];
+    if (clientEmail) {
+      const { data } = await supabase
+        .from("quotes")
+        .select("*")
+        .ilike("client_email", clientEmail)
+        .order("created_at", { ascending: false });
+      quotes = data || [];
+    }
+    if (clientPhone) {
+      const { data } = await supabase
+        .from("quotes")
+        .select("*")
+        .eq("client_phone", clientPhone)
+        .order("created_at", { ascending: false });
+      const existingIds = new Set(quotes.map(q => q.id));
+      (data || []).forEach(q => { if (!existingIds.has(q.id)) quotes.push(q); });
+    }
+
     return new Response(
-      JSON.stringify({ clientName, jobs, properties, cleaners, feedback }),
+      JSON.stringify({ clientName, jobs, properties, cleaners, feedback, quotes }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

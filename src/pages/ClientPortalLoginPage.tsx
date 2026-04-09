@@ -2,11 +2,21 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Loader2, CheckCircle } from 'lucide-react';
+import { Phone, Mail, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+type InputMode = 'phone' | 'email';
+
+function detectInputType(value: string): 'phone' | 'email' | 'unknown' {
+  const trimmed = value.trim();
+  if (trimmed.includes('@')) return 'email';
+  if (/^[\d\s+()-]{6,}$/.test(trimmed)) return 'phone';
+  return 'unknown';
+}
+
 export default function ClientPortalLoginPage() {
-  const [email, setEmail] = useState('');
+  const [inputMode, setInputMode] = useState<InputMode>('phone');
+  const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -17,14 +27,24 @@ export default function ClientPortalLoginPage() {
     setLoading(true);
 
     try {
+      const trimmed = value.trim();
+      const detected = inputMode === 'phone' ? 'phone' : detectInputType(trimmed) === 'phone' ? 'phone' : 'email';
+
+      const body: Record<string, string> = {};
+      if (detected === 'phone') {
+        body.phone = trimmed;
+      } else {
+        body.email = trimmed;
+      }
+
       const { data, error: fnError } = await supabase.functions.invoke('client-magic-login', {
-        body: { email: email.trim() },
+        body,
       });
 
       if (fnError) throw fnError;
 
       if (data?.error === 'not_found') {
-        setError("We don't have an account with that email. Contact us to get set up.");
+        setError("We don't have an account with that " + (detected === 'phone' ? 'number' : 'email') + ". Contact us to get set up.");
       } else if (data?.success) {
         setSent(true);
       } else {
@@ -60,9 +80,9 @@ export default function ClientPortalLoginPage() {
               <Button
                 variant="outline"
                 className="mt-4 rounded-2xl"
-                onClick={() => { setSent(false); setEmail(''); }}
+                onClick={() => { setSent(false); setValue(''); }}
               >
-                Try a different email
+                Try again
               </Button>
             </div>
           ) : (
@@ -76,17 +96,21 @@ export default function ClientPortalLoginPage() {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground font-semibold">
-                    Email address
+                  <Label htmlFor="login-input" className="text-foreground font-semibold">
+                    {inputMode === 'phone' ? 'Mobile number' : 'Email address'}
                   </Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    {inputMode === 'phone' ? (
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    )}
                     <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      id="login-input"
+                      type={inputMode === 'phone' ? 'tel' : 'email'}
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      placeholder={inputMode === 'phone' ? '0412 345 678' : 'you@example.com'}
                       required
                       className="h-14 rounded-2xl text-base pl-11"
                     />
@@ -108,6 +132,18 @@ export default function ClientPortalLoginPage() {
                     'Send me a login link'
                   )}
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputMode(inputMode === 'phone' ? 'email' : 'phone');
+                    setValue('');
+                    setError('');
+                  }}
+                  className="w-full text-center text-sm text-primary font-semibold hover:underline"
+                >
+                  {inputMode === 'phone' ? 'Use email instead' : 'Use phone number instead'}
+                </button>
               </form>
             </>
           )}
