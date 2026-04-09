@@ -1,8 +1,24 @@
 import { useMemo } from 'react';
-import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert } from 'lucide-react';
+import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert, DollarSign } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
 
+function DraftInvoiceCount() {
+  const { data: count = 0 } = useQuery({
+    queryKey: ['draft-invoice-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('invoice_status', 'draft')
+        .not('xero_invoice_id', 'is', null);
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 60_000,
+  });
+  return <p className="text-3xl font-extrabold text-foreground">{count}</p>;
+}
 function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
   const { data: jobs = [] } = useQuery({
     queryKey: ['cleaner-clock-card-jobs', jobIds.join(',')],
@@ -248,7 +264,17 @@ export default function DashboardPage() {
             <p className="text-3xl font-extrabold text-foreground">{needsActionCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Critical + Important alerts</p>
           </button>
-          <DraftInvoiceCard />
+          <button
+            onClick={() => navigate('/invoices/pending')}
+            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Draft Invoices</span>
+            </div>
+            <DraftInvoiceCount />
+            <p className="text-xs text-muted-foreground mt-1">Approve & send →</p>
+          </button>
         </div>
       )}
 
