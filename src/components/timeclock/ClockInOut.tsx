@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { createAlert } from '@/lib/alerts';
 import { useQueryClient } from '@tanstack/react-query';
 import { getCurrentPosition, haversineDistance, formatDuration } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
