@@ -130,10 +130,10 @@
 
   /* === YELLOW GLOW === */
   .yellow-glow {
-    box-shadow: 0 0 24px hsl(142 71% 45% / 0.15);
+    box-shadow: 0 0 24px hsl(158 33% 27% / 0.15);
   }
   .yellow-glow-strong {
-    box-shadow: 0 0 32px hsl(142 71% 45% / 0.25), 0 0 8px hsl(142 71% 45% / 0.10);
+    box-shadow: 0 0 32px hsl(158 33% 27% / 0.25), 0 0 8px hsl(158 33% 27% / 0.10);
   }
 
   /* === PULSE GLOW === */
@@ -208,8 +208,8 @@
 
 @layer utilities {
   @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 0 0 hsl(142 71% 45% / 0.4); }
-    50% { box-shadow: 0 0 0 12px hsl(142 71% 45% / 0); }
+    0%, 100% { box-shadow: 0 0 0 0 hsl(158 33% 27% / 0.4); }
+    50% { box-shadow: 0 0 0 12px hsl(158 33% 27% / 0); }
   }
 
   @keyframes pulseGlowRed {
