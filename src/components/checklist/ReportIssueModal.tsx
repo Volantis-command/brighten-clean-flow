@@ -61,12 +61,11 @@ export function ReportIssueModal({ open, onOpenChange, jobId, propertyId, roomLa
     if (error) { toast.error('Failed to report issue'); setSubmitting(false); return; }
 
     // Notify admins
-    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-    if (admins?.length) {
-      await supabase.from('notifications').insert(
-        admins.map((a: any) => ({ user_id: a.user_id, message: `Issue reported at ${room}: ${description}`, type: 'issue_reported' }))
-      );
-    }
+    await (await import('@/lib/alerts')).createAlert({
+      event_type: 'damage_reported',
+      title: 'Issue Reported',
+      body: `Issue reported at ${room}: ${description}`,
+    });
 
     toast.success('Issue reported');
     setRoom(''); setDescription(''); setPhotoUrl('');

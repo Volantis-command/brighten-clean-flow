@@ -106,19 +106,14 @@ export default function ClientSchedulePage() {
       }
 
       // Create admin notification
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       const clientName = profile?.full_name || 'Client';
-      const propertyAddress = [property?.address, property?.suburb].filter(Boolean).join(', ');
 
-      for (const admin of (admins || [])) {
-        await supabase.from('notifications').insert({
-          user_id: (admin as any).user_id,
-          type: 'schedule_request',
-          title: 'Client Selected Date',
-          message: `${clientName} selected ${dateStr} (${timePreference}) for ${property?.property_name || 'property'}. Confirm and assign cleaner.`,
-          link: '/actions?filter=awaiting_schedule',
-        });
-      }
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: 'booking_confirmed',
+        title: 'Client Selected Date',
+        body: `${clientName} selected ${dateStr} (${timePreference}) for ${property?.property_name || 'property'}. Confirm and assign cleaner.`,
+        link: '/actions?filter=awaiting_schedule',
+      });
 
       setSubmitted(true);
     } catch (err: any) {

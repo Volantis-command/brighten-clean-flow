@@ -82,18 +82,12 @@ export default function FeedbackPage() {
 
       // Notify admin on all feedback
       if (score) {
-        const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-        if (admins?.length) {
-          await supabase.from('notifications').insert(
-            admins.map((a: any) => ({
-              user_id: a.user_id,
-              title: 'Feedback Received',
-              message: `Feedback received for ${job?.properties?.property_name || 'property'} — ${score}/10${score < 8 ? ' ⚠ Review needed' : ''}`,
-              type: 'feedback',
-              link: `/clients/${feedback.client_id}`,
-            }))
-          );
-        }
+        await (await import('@/lib/alerts')).createAlert({
+          event_type: 'review_received',
+          title: 'Feedback Received',
+          body: `Feedback received for ${job?.properties?.property_name || 'property'} — ${score}/10${score < 8 ? ' ⚠ Review needed' : ''}`,
+          link: `/clients/${feedback.client_id}`,
+        });
       }
     },
     onSuccess: () => setSubmitted(true),

@@ -694,18 +694,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       }
 
       // STEP 4 — Create admin notification
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (admins?.length) {
-        await supabase.from('notifications').insert(
-          admins.map((a: any) => ({
-            user_id: a.user_id,
-            title: `Quote sent — awaiting response · ${form.clientName || 'Client'}`,
-            message: `${form.propertyAddress || form.propertyName || 'Property'} · ${form.cleanType}`,
-            type: 'quote_sent',
-            link: '/actions?filter=awaiting_response',
-          }))
-        );
-      }
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: 'quote_sent',
+        title: `Quote sent — awaiting response · ${form.clientName || 'Client'}`,
+        body: `${form.propertyAddress || form.propertyName || 'Property'} · ${form.cleanType}`,
+        link: '/actions?filter=awaiting_response',
+      });
     },
     onSuccess: async () => {
       setQuoteSent(true);

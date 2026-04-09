@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { createAlert } from '@/lib/alerts';
 import { useQueryClient } from '@tanstack/react-query';
 import { getCurrentPosition, haversineDistance, formatDuration } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
@@ -98,17 +99,13 @@ export function ClockInOut({ jobId, propertyName, propertyLat, propertyLng, exis
         const cleanerName = profile?.full_name || 'A cleaner';
         const alertMsg = `${cleanerName} clocked on ${distance}m outside ${propertyName}`;
 
-        // In-app notification to all admins
-        const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-        if (admins?.length) {
-          await supabase.from('notifications').insert(admins.map((a: any) => ({
-            user_id: a.user_id,
-            title: '📍 Geofence Override',
-            message: alertMsg,
-            type: 'geofence_override',
-            link: `/jobs/${jobId}`,
-          })));
-        }
+        await createAlert({
+          event_type: 'geofence_override',
+          title: '📍 Geofence Override',
+          body: alertMsg,
+          metadata: { lat: userLat, lng: userLng, distance_m: distance, job_id: jobId, cleaner_id: user.id },
+          link: `/jobs/${jobId}`,
+        });
 
         // SMS to admins
         try {

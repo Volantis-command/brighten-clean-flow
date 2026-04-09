@@ -376,17 +376,13 @@ export default function CompletionFormPage() {
       }
     }
 
-    // 4. Admin notification
-    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-    if (admins) {
-      await supabase.from('notifications').insert(admins.map((a: any) => ({
-        user_id: a.user_id,
-        title: 'Job Completed',
-        message: `Clean at ${property?.property_name ?? 'property'} has been completed (${netMinutes}min)`,
-        type: 'job_completed',
-        link: `/jobs/${job.id}`,
-      })));
-    }
+    // 4. Admin notification via createAlert
+    await (await import('@/lib/alerts')).createAlert({
+      event_type: 'cleaner_checked_in',
+      title: 'Job Completed',
+      body: `Clean at ${property?.property_name ?? 'property'} has been completed (${netMinutes}min)`,
+      link: `/jobs/${job.id}`,
+    });
 
     // 5. SMS to admin
     try {

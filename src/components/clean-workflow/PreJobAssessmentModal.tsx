@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createAlert } from '@/lib/alerts';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, ShieldAlert, Clock, CheckCircle2 } from 'lucide-react';
@@ -85,16 +86,13 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
     }
 
     // TRIPLE-CHANNEL ALERT: all three fire in parallel
-    const adminNotifPromise = (async () => {
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (admins) {
-        await supabase.from('notifications').insert(admins.map((a: any) => ({
-          user_id: a.user_id, title: '⚠️ Damage Reported',
-          message: `${cleanerName} reported existing damage at ${address}: ${damageNotes || 'No details'}`,
-          type: 'damage_report', link: `/jobs/${job.id}`,
-        })));
-      }
-    })();
+    const adminNotifPromise = createAlert({
+      event_type: 'damage_reported',
+      title: '⚠️ Damage Reported',
+      body: `${cleanerName} reported existing damage at ${address}: ${damageNotes || 'No details'}`,
+      metadata: { job_id: job.id, cleaner_name: cleanerName, address, notes: damageNotes },
+      link: `/jobs/${job.id}`,
+    });
 
     const adminSmsPromise = sendAdminSms(
       `⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address}. Details: ${damageNotes || 'See photos'}. View: https://app.brightly.cleaning/jobs/${job.id}`
@@ -143,14 +141,13 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       });
     }
 
-    const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-    if (admins) {
-      await supabase.from('notifications').insert(admins.map((a: any) => ({
-        user_id: a.user_id, title: '⏱ Extra Time Requested',
-        message: `${cleanerName} at ${address} needs more than ${allocatedHrs} hrs`,
-        type: 'extra_time', link: `/jobs/${job.id}`,
-      })));
-    }
+    await createAlert({
+      event_type: 'extra_time_request',
+      title: '⏱ Extra Time Requested',
+      body: `${cleanerName} at ${address} needs more than ${allocatedHrs} hrs`,
+      metadata: { job_id: job.id },
+      link: `/jobs/${job.id}`,
+    });
 
     await sendAdminSms(`⏱ EXTRA TIME REQUEST — ${cleanerName} at ${address} needs more than ${allocatedHrs} hrs allocated. Reason: ${extraNotes || 'N/A'}. Approve at: https://app.brightly.cleaning/jobs/${job.id}`);
     toast.success('Extra time request sent');

@@ -433,10 +433,12 @@ export default function JobChecklistPage() {
       .in('role', ['admin', 'head_cleaner']);
 
     if (adminRoles?.length) {
-      const notifs = adminRoles
-        .filter((r) => r.user_id !== user!.id)
-        .map((r) => ({ user_id: r.user_id, message: notifMessage, type: 'job_complete', title: 'Job Completed', link: `/jobs/${jobId}` }));
-      if (notifs.length) await supabase.from('notifications').insert(notifs);
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: 'cleaner_checked_in',
+        title: 'Job Completed',
+        body: notifMessage,
+        link: `/jobs/${jobId}`,
+      });
     }
 
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });

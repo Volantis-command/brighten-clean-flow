@@ -367,14 +367,12 @@ export default function StaffOnboardingPage() {
         .eq('role', 'admin');
 
       if (admins) {
-        const notifications = admins.map(a => ({
-          user_id: a.user_id,
+        await (await import('@/lib/alerts')).createAlert({
+          event_type: 'booking_confirmed',
           title: 'New Staff Onboarding',
-          message: `${form.full_name} has completed their onboarding form. Review in the app.`,
-          type: 'staff_onboarding',
+          body: `${form.full_name} has completed their onboarding form. Review in the app.`,
           link: '/staff',
-        }));
-        await supabase.from('notifications').insert(notifications);
+        });
       }
 
       // Send admin SMS notification

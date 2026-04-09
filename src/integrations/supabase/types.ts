@@ -2661,6 +2661,53 @@ export type Database = {
         }
         Relationships: []
       }
+      time_edit_queue: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          proposed_clock_off: string | null
+          proposed_clock_on: string | null
+          reason: string | null
+          requested_by: string
+          status: string
+          time_entry_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          proposed_clock_off?: string | null
+          proposed_clock_on?: string | null
+          reason?: string | null
+          requested_by: string
+          status?: string
+          time_entry_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          proposed_clock_off?: string | null
+          proposed_clock_on?: string | null
+          reason?: string | null
+          requested_by?: string
+          status?: string
+          time_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_edit_queue_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_edit_requests: {
         Row: {
           created_at: string

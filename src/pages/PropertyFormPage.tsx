@@ -316,15 +316,13 @@ export default function PropertyFormPage() {
           .select('user_id')
           .eq('role', 'head_cleaner');
 
-        if (headCleanerRoles) {
-          const notifications = headCleanerRoles.map((r) => ({
-            user_id: r.user_id,
-            message: `New property "${form.property_name}" has been added. A first clean is required.`,
-            type: 'new_property',
-          }));
-          if (notifications.length > 0) {
-            await supabase.from('notifications').insert(notifications);
-          }
+        if (headCleanerRoles?.length) {
+          await (await import('@/lib/alerts')).createAlert({
+            event_type: 'booking_confirmed',
+            title: 'New Property Added',
+            body: `New property "${form.property_name}" has been added. A first clean is required.`,
+            target_role: 'head_cleaner',
+          });
         }
 
         navigate(`/properties/${data.id}`);

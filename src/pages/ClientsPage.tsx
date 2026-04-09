@@ -258,10 +258,10 @@ export default function ClientsPage() {
         // Log to notifications for now
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase.from('notifications').insert({
-            user_id: user.id,
-            message: `Onboarding form sent to ${onboardClient.full_name} (${onboardClient.email}) — Link: ${onboardLink}`,
-            type: 'onboarding',
+          await (await import('@/lib/alerts')).createAlertForUser(user.id, {
+            event_type: 'booking_confirmed',
+            title: 'Onboarding Sent',
+            body: `Onboarding form sent to ${onboardClient.full_name} (${onboardClient.email}) — Link: ${onboardLink}`,
           });
         }
       }

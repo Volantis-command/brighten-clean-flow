@@ -60,6 +60,7 @@ import JobCompleteDonePage from "./pages/JobCompleteDonePage";
 import JobAuditPage from "./pages/JobAuditPage";
 import ResidentialQuotePage from "./pages/ResidentialQuotePage";
 import PendingInvoicesPage from "./pages/PendingInvoicesPage";
+import PendingTimeEditsPage from "./pages/PendingTimeEditsPage";
 import AirbnbQuotePage from "./pages/AirbnbQuotePage";
 import LiveTrackerPage from "./pages/LiveTrackerPage";
 import MapPage from "./pages/MapPage";
@@ -229,6 +230,7 @@ function AppRoutes() {
         <Route path="/quotes/followups-pending" element={<ProtectedRoute allowedRoles={['admin']}><QuoteFollowupsPage /></ProtectedRoute>} />
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
         <Route path="/invoices/pending" element={<ProtectedRoute allowedRoles={['admin']}><PendingInvoicesPage /></ProtectedRoute>} />
+        <Route path="/timesheets/pending-edits" element={<ProtectedRoute allowedRoles={['admin']}><PendingTimeEditsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />
         <Route path="/my-cleans" element={<MyCleans />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />

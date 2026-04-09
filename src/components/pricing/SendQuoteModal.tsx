@@ -70,11 +70,10 @@ export default function SendQuoteModal({ open, onClose, quote, onSent }: Props) 
 
       // 3. Create admin notification for tracking
       if (user?.id) {
-        await supabase.from('notifications').insert({
-          user_id: user.id,
-          type: 'quote_sent',
+        await (await import('@/lib/alerts')).createAlertForUser(user.id, {
+          event_type: 'quote_sent',
           title: 'Quote sent — awaiting response',
-          message: `Quote sent to ${clientName || 'client'} · ${quote.property_address || quote.property_name || ''}`,
+          body: `Quote sent to ${clientName || 'client'} · ${quote.property_address || quote.property_name || ''}`,
           link: '/quoting',
         });
       }

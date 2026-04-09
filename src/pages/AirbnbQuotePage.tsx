@@ -169,18 +169,12 @@ export default function AirbnbQuotePage() {
 
       // High-volume portfolio — create admin alert
       if (isHighVolume) {
-        const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-        if (admins?.length) {
-          await supabase.from('notifications').insert(
-            admins.map((a: any) => ({
-              user_id: a.user_id,
-              title: `🏢 High-volume Airbnb enquiry — ${propCount} properties`,
-              message: `${firstName} ${lastName} (${mobile}) — ${propCount} properties in ${suburb}. Call to set up custom plan.`,
-              type: 'alert',
-              link: '/dashboard',
-            }))
-          );
-        }
+        await (await import('@/lib/alerts')).createAlert({
+          event_type: 'new_lead',
+          title: `🏢 High-volume Airbnb enquiry — ${propCount} properties`,
+          body: `${firstName} ${lastName} (${mobile}) — ${propCount} properties in ${suburb}. Call to set up custom plan.`,
+          link: '/dashboard',
+        });
       }
 
       localStorage.removeItem(STORAGE_KEY);
