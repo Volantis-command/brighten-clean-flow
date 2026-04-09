@@ -307,26 +307,18 @@ export default function QCAuditPage() {
       if (error) throw error;
 
       // Notify cleaner
-      await supabase.from('notifications').insert({
-        user_id: cleanerId,
-        message: `QC Audit ${result === 'pass' ? 'PASSED ✅' : 'FAILED ❌'} — ${selectedProperty?.property_name || 'Property'} (${percentage}%)`,
-        type: 'qc_audit',
+      await (await import('@/lib/alerts')).createAlertForUser(cleanerId, {
+        event_type: 'cleaner_checked_in',
+        title: 'QC Audit Result',
+        body: `QC Audit ${result === 'pass' ? 'PASSED ✅' : 'FAILED ❌'} — ${selectedProperty?.property_name || 'Property'} (${percentage}%)`,
       });
 
       // Notify admins
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (adminRoles) {
-        const adminNotifs = adminRoles
-          .filter(r => r.user_id !== user.id)
-          .map(r => ({
-            user_id: r.user_id,
-            message: `QC Audit submitted for ${selectedProperty?.property_name || 'Property'} — ${result.toUpperCase()} (${percentage}%)`,
-            type: 'qc_audit',
-          }));
-        if (adminNotifs.length > 0) {
-          await supabase.from('notifications').insert(adminNotifs);
-        }
-      }
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: result === 'pass' ? 'cleaner_checked_in' : 'qc_fail',
+        title: 'QC Audit Submitted',
+        body: `QC Audit submitted for ${selectedProperty?.property_name || 'Property'} — ${result.toUpperCase()} (${percentage}%)`,
+      });
 
       // Fire-and-forget Google Drive sync — we need the inserted audit ID
       // Re-fetch the latest audit for this property to get the ID
