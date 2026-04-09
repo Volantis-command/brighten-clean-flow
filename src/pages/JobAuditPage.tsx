@@ -100,17 +100,12 @@ export default function JobAuditPage() {
         });
       } catch { /* non-blocking */ }
 
-      // Admin notification
-      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      if (admins) {
-        await supabase.from('notifications').insert(admins.map((a: any) => ({
-          user_id: a.user_id,
-          title: 'Re-Clean Required',
-          message: `${(job.properties as any)?.property_name} failed quality audit. Return required.`,
-          type: 'audit_failed',
-          link: `/jobs/${job.id}`,
-        })));
-      }
+      await (await import('@/lib/alerts')).createAlert({
+        event_type: 'qc_fail',
+        title: 'Re-Clean Required',
+        body: `${(job.properties as any)?.property_name} failed quality audit. Return required.`,
+        link: `/jobs/${job.id}`,
+      });
     }
 
     queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });

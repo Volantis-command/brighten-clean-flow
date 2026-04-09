@@ -237,15 +237,12 @@ export default function OnboardingPage() {
 
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       if (admins?.length) {
-        await supabase.from('notifications').insert(
-          admins.map(a => ({
-            user_id: a.user_id,
-            title: `New enquiry — ${fullName}`,
-            message: `${cleanTypeLabel} — ${form.address || 'No address'}`,
-            type: 'new_enquiry',
-            link: '/clients',
-          }))
-        );
+        await (await import('@/lib/alerts')).createAlert({
+          event_type: 'new_lead',
+          title: `New enquiry — ${fullName}`,
+          body: `${cleanTypeLabel} — ${form.address || 'No address'}`,
+          link: '/clients',
+        });
       }
     },
     onSuccess: () => setSubmitted(true),
