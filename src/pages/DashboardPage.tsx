@@ -19,8 +19,7 @@ function DraftInvoiceCount() {
   });
   return <p className="text-3xl font-extrabold text-foreground">{count}</p>;
 }
-
-
+function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
   const { data: jobs = [] } = useQuery({
     queryKey: ['cleaner-clock-card-jobs', jobIds.join(',')],
     enabled: jobIds.length > 0,
