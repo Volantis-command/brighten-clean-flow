@@ -61,7 +61,7 @@ export function NotificationBell() {
 
   const badgeColor = highestUnreadTier === 'critical' ? 'bg-destructive'
     : highestUnreadTier === 'important' ? 'bg-amber-500'
-    : 'bg-green-500';
+    : 'bg-brightly';
 
   return (
     <DropdownMenu>

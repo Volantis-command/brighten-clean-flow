@@ -293,7 +293,7 @@ function DateExceptions({ staffId }: { staffId: string }) {
         {exceptions.slice(0, 10).map((ex: any) => (
           <div key={ex.id} className="flex items-center justify-between text-sm">
             <span>{format(parseISO(ex.date), 'dd MMM yyyy')}</span>
-            <Badge className={ex.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+            <Badge className={ex.available ? 'bg-brightly/10 text-brightly' : 'bg-red-100 text-red-800'}>
               {ex.available ? 'Available' : 'Unavailable'}
             </Badge>
           </div>

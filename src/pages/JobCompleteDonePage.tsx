@@ -31,7 +31,7 @@ export default function JobCompleteDonePage() {
       {/* Floating dots */}
       <FloatingDots />
 
-      {/* Animated SVG tick — 80px, stroke #22C55E, draw-on */}
+      {/* Animated SVG tick — 80px, stroke #2E5D4E, draw-on */}
       <div className="relative z-10 mb-6 flex items-center justify-center">
         <div
           className="rounded-full flex items-center justify-center"
@@ -54,7 +54,7 @@ export default function JobCompleteDonePage() {
             />
             <path
               d="M22 41 L35 54 L58 28"
-              stroke="#22C55E"
+              stroke="#2E5D4E"
               strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -137,11 +137,11 @@ function FloatingDots() {
   // Six absolutely-positioned dots that float upward and fade out
   const dots = [
     { left: '15%', delay: '0s', size: 6, color: '#FEDB00' },
-    { left: '28%', delay: '0.6s', size: 4, color: '#22C55E' },
+    { left: '28%', delay: '0.6s', size: 4, color: '#2E5D4E' },
     { left: '45%', delay: '1.2s', size: 5, color: '#FEDB00' },
-    { left: '62%', delay: '0.3s', size: 5, color: '#22C55E' },
+    { left: '62%', delay: '0.3s', size: 5, color: '#2E5D4E' },
     { left: '78%', delay: '0.9s', size: 4, color: '#FEDB00' },
-    { left: '88%', delay: '1.5s', size: 6, color: '#22C55E' },
+    { left: '88%', delay: '1.5s', size: 6, color: '#2E5D4E' },
   ];
   return (
     <div className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none overflow-hidden">

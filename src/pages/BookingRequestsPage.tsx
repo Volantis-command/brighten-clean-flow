@@ -130,7 +130,7 @@ export default function BookingRequestsPage() {
   };
 
   const statusColor = (s: string) => {
-    if (s === 'approved') return 'bg-green-100 text-green-800';
+    if (s === 'approved') return 'bg-brightly/10 text-brightly';
     if (s === 'declined') return 'bg-red-100 text-red-800';
     return 'bg-yellow-100 text-yellow-800';
   };
@@ -196,7 +196,7 @@ export default function BookingRequestsPage() {
                   <TableCell>
                     {r.status === 'pending' && (
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" className="text-green-700 hover:bg-green-100" onClick={() => openConfirm(r)}>
+                        <Button size="sm" variant="ghost" className="text-brightly hover:bg-brightly/10" onClick={() => openConfirm(r)}>
                           <Check className="w-4 h-4 mr-1" /> Confirm
                         </Button>
                         <Button size="sm" variant="ghost" className="text-red-700 hover:bg-red-100" onClick={() => declineMutation.mutate(r.id)} disabled={declineMutation.isPending}>

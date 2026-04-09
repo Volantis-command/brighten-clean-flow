@@ -85,7 +85,7 @@ export default function PendingTimeEditsPage() {
                 {edit.reason && <p>Reason: {edit.reason}</p>}
               </div>
               <div className="flex gap-2 pt-1">
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1" disabled={processing.has(edit.id)} onClick={() => handleDecision(edit.id, true, edit)}>
+                <Button size="sm" className="bg-brightly hover:bg-brightly-hover text-white gap-1" disabled={processing.has(edit.id)} onClick={() => handleDecision(edit.id, true, edit)}>
                   {processing.has(edit.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Approve
                 </Button>
                 <Button size="sm" variant="outline" className="text-destructive border-destructive gap-1" disabled={processing.has(edit.id)} onClick={() => handleDecision(edit.id, false, edit)}>

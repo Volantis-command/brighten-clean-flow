@@ -549,7 +549,7 @@ function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelec
           <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
           <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
           {isCleanerRole && activeStatus && (
-            <Badge className={`mt-1 text-[10px] ${activeStatus.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <Badge className={`mt-1 text-[10px] ${activeStatus.active ? 'bg-brightly/10 text-brightly' : 'bg-red-100 text-red-800'}`}>
               {activeStatus.active ? '● Active' : '● Inactive'}
             </Badge>
           )}
@@ -721,7 +721,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
           <h1 className="text-2xl font-extrabold text-primary">{staff.full_name || 'No name'}</h1>
           <div className="flex items-center gap-2 mt-1">
             <Badge className={roleBadgeStyles[staff.role]}>{roleLabels[staff.role]}</Badge>
-            {obStatus?.directorApproved && <Badge className="bg-green-100 text-green-800">Director Approved</Badge>}
+            {obStatus?.directorApproved && <Badge className="bg-brightly/10 text-brightly">Director Approved</Badge>}
           </div>
         </div>
       </div>
@@ -789,7 +789,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                   <div className="flex items-center gap-2">
                     <Input readOnly value={getOnboardingLink(staff.id) || ''} className="text-xs h-8 font-mono" />
                     <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(staff.id)} className="shrink-0 gap-1">
-                      {onboardingLinkCopied === staff.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                      {onboardingLinkCopied === staff.id ? <CheckCircle2 className="w-4 h-4 text-brightly" /> : <Copy className="w-4 h-4" />}
                     </Button>
                   </div>
                 ) : (
@@ -809,7 +809,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                   </Button>
                 )}
                 {obStatus?.reviewed && !obStatus.directorApproved && (
-                  <Button size="sm" className="gap-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                  <Button size="sm" className="gap-1 rounded-xl bg-brightly hover:bg-brightly-hover text-white"
                     disabled={approveDeploymentMutation.isPending}
                     onClick={() => approveDeploymentMutation.mutate(staff.id)}>
                     {approveDeploymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -859,7 +859,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                   <span className={`text-sm ${paperworkStatus[item.key] ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {item.label}
                   </span>
-                  {paperworkStatus[item.key] && <CheckCircle2 className="w-4 h-4 text-green-600 ml-auto" />}
+                  {paperworkStatus[item.key] && <CheckCircle2 className="w-4 h-4 text-brightly ml-auto" />}
                 </div>
               ))}
             </div>
@@ -899,7 +899,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                           </span>
                         )}
                         <Badge className={`text-[10px] ${
-                          job.status === 'complete' || job.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          job.status === 'complete' || job.status === 'completed' ? 'bg-brightly/10 text-brightly' :
                           job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                           'bg-muted text-muted-foreground'
                         }`}>

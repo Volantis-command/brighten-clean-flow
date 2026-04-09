@@ -26,7 +26,7 @@ function BrightlyScoreRing({ scorePct, label }: { scorePct: number; label: strin
         <defs>
           <linearGradient id="brightly-score-grad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#FEDB00" />
-            <stop offset="100%" stopColor="#22C55E" />
+            <stop offset="100%" stopColor="#2E5D4E" />
           </linearGradient>
         </defs>
         <circle
@@ -210,7 +210,7 @@ export default function MyBrightlyScorePage() {
                   <div className="text-right shrink-0">
                     <p
                       className="text-2xl font-extrabold tabular-nums"
-                      style={{ color: isFail ? '#EF4444' : '#22C55E' }}
+                      style={{ color: isFail ? '#EF4444' : '#2E5D4E' }}
                     >
                       {a.percentage != null ? `${Math.round(Number(a.percentage))}%` : '—'}
                     </p>

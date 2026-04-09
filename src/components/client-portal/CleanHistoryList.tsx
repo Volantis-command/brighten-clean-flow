@@ -15,7 +15,7 @@ interface CleanHistoryListProps {
 
 function statusBadge(status: string) {
   if (status === 'complete' || status === 'completed')
-    return { label: 'Completed', cls: 'bg-green-100 text-green-800' };
+    return { label: 'Completed', cls: 'bg-brightly/10 text-brightly' };
   if (['scheduled', 'confirmed'].includes(status))
     return { label: 'Scheduled', cls: 'bg-blue-100 text-blue-800' };
   if (status === 'in_progress')

@@ -605,7 +605,7 @@ export default function JobChecklistPage() {
 
           <Button
             size="lg"
-            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-brightly hover:bg-brightly-hover text-white"
             onClick={handleArrived}
             disabled={arriving}
           >
@@ -630,7 +630,7 @@ export default function JobChecklistPage() {
         </div>
         <main className="flex-1 px-4 py-5 space-y-4">
           <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-            <p className="text-sm text-green-600 font-bold flex items-center gap-1.5">
+            <p className="text-sm text-brightly font-bold flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4" /> Arrival recorded
             </p>
             <div className="space-y-2 text-sm">
@@ -647,7 +647,7 @@ export default function JobChecklistPage() {
 
           <Button
             size="lg"
-            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-brightly hover:bg-brightly-hover text-white"
             onClick={handleClockOn}
             disabled={clockingOn}
           >

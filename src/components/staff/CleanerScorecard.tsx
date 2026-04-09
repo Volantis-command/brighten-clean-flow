@@ -43,7 +43,7 @@ export default function CleanerScorecard({ staffId, staffName }: Props) {
   const avgColor = avg >= 4 ? 'text-amber-500' : avg >= 3 ? 'text-amber-600' : 'text-destructive';
 
   const barColor = (s: number) => {
-    if (s >= 4) return 'bg-green-500';
+    if (s >= 4) return 'bg-brightly';
     if (s >= 3) return 'bg-amber-500';
     return 'bg-destructive';
   };
@@ -74,7 +74,7 @@ export default function CleanerScorecard({ staffId, staffName }: Props) {
       <div className="flex items-center gap-4 text-sm">
         <span className="text-muted-foreground">{totalAudits} audit{totalAudits !== 1 ? 's' : ''}</span>
         {trend === 'improving' && (
-          <span className="text-green-600 font-bold">↑ Improving</span>
+          <span className="text-brightly font-bold">↑ Improving</span>
         )}
         {trend === 'declining' && (
           <span className="text-amber-600 font-bold">↓ Declining</span>

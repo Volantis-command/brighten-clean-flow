@@ -195,7 +195,7 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-bottom z-50">
-        <Button size="lg" className="w-full h-16 text-lg font-extrabold rounded-2xl bg-green-600 hover:bg-green-700 text-white max-w-lg mx-auto block"
+        <Button size="lg" className="w-full h-16 text-lg font-extrabold rounded-2xl bg-brightly hover:bg-brightly-hover text-white max-w-lg mx-auto block"
           onClick={() => setShowConfirm(true)} disabled={photos.length === 0 || submitting}>
           {submitting ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <CheckCircle2 className="h-6 w-6 mr-2" />}
           Clock Off & Submit

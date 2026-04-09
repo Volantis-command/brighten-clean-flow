@@ -482,7 +482,7 @@ export default function CompletionFormPage() {
               <AccordionItem key={section.id} value={section.id} className="border rounded-2xl mb-3 overflow-hidden border-border">
                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
                   <div className="flex items-center gap-2 w-full">
-                    {complete && <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />}
+                    {complete && <CheckCircle2 className="h-5 w-5 text-brightly shrink-0" />}
                     <span className="font-bold text-foreground text-sm">{section.title}</span>
                     <span className="text-xs text-muted-foreground ml-auto mr-2">
                       {section.fields.filter(f => f.required && formData[section.id]?.[f.key]).length}/{section.fields.filter(f => f.required).length}
@@ -499,7 +499,7 @@ export default function CompletionFormPage() {
                       return (
                         <div key={field.key} className="space-y-1.5">
                           <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                            {photoUrl && <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />}
+                            {photoUrl && <CheckCircle2 className="h-3.5 w-3.5 text-brightly" />}
                             {field.label}
                             {field.required && <span className="text-destructive">*</span>}
                           </label>
@@ -527,7 +527,7 @@ export default function CompletionFormPage() {
                                   <X className="h-3.5 w-3.5" />
                                 </button>
                               </div>
-                              <div className="absolute bottom-1 left-1 bg-green-600 text-white rounded-full p-0.5">
+                              <div className="absolute bottom-1 left-1 bg-brightly text-white rounded-full p-0.5">
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                               </div>
                             </div>
@@ -646,7 +646,7 @@ function SignatureBlock({ slot, label, defaultName, signatureData, onChange, onC
   return (
     <div className="border border-border rounded-2xl p-4 space-y-3">
       <div className="flex items-center gap-2">
-        {hasSig && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+        {hasSig && <CheckCircle2 className="h-5 w-5 text-brightly" />}
         <h3 className="font-bold text-foreground text-sm">{label}</h3>
       </div>
       <input

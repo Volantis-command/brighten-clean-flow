@@ -191,14 +191,14 @@ export default function ClientDetailPage() {
   const firstLink = data.links[0];
 
   const statusColor = (s: string) => {
-    if (s === 'complete' || s === 'completed') return 'bg-green-100 text-green-800';
+    if (s === 'complete' || s === 'completed') return 'bg-brightly/10 text-brightly';
     if (s === 'in_progress') return 'bg-yellow-100 text-yellow-800';
     if (s === 'scheduled') return 'bg-blue-100 text-blue-800';
     return 'bg-muted text-muted-foreground';
   };
 
   const invoiceColor = (s: string | null) => {
-    if (s === 'paid') return 'bg-green-100 text-green-800';
+    if (s === 'paid') return 'bg-brightly/10 text-brightly';
     if (s === 'sent') return 'bg-blue-100 text-blue-800';
     if (s === 'draft') return 'bg-yellow-100 text-yellow-800';
     return 'bg-muted text-muted-foreground';
@@ -378,14 +378,14 @@ export default function ClientDetailPage() {
                       <TableCell>{r.requested_date ? format(new Date(r.requested_date), 'dd MMM yyyy') : '—'}</TableCell>
                       <TableCell>{r.clean_type || '—'}</TableCell>
                       <TableCell>
-                        <Badge className={r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'declined' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}>
+                        <Badge className={r.status === 'approved' ? 'bg-brightly/10 text-brightly' : r.status === 'declined' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}>
                           {r.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         {r.status === 'pending' && (
                           <div className="flex items-center justify-end gap-1">
-                            <Button size="sm" variant="ghost" className="text-green-700 hover:bg-green-100" onClick={() => updateRequestMutation.mutate({ requestId: r.id, status: 'approved' })} disabled={updateRequestMutation.isPending}>
+                            <Button size="sm" variant="ghost" className="text-brightly hover:bg-brightly/10" onClick={() => updateRequestMutation.mutate({ requestId: r.id, status: 'approved' })} disabled={updateRequestMutation.isPending}>
                               <Check className="w-4 h-4 mr-1" /> Approve
                             </Button>
                             <Button size="sm" variant="ghost" className="text-red-700 hover:bg-red-100" onClick={() => updateRequestMutation.mutate({ requestId: r.id, status: 'declined' })} disabled={updateRequestMutation.isPending}>

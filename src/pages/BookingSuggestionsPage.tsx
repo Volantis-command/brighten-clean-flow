@@ -125,7 +125,7 @@ export default function BookingSuggestionsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700 text-white font-bold flex-1"
+                  <Button size="sm" className="gap-1 bg-brightly hover:bg-brightly-hover text-white font-bold flex-1"
                     onClick={() => { setApproveModal(s); setCleanerId(prop?.default_cleaner_id || ''); setCleanTime(s.suggested_clean_time || '10:00'); }}>
                     <Check className="h-4 w-4" /> Approve
                   </Button>
@@ -161,7 +161,7 @@ export default function BookingSuggestionsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleApprove} disabled={submitting} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold">
+            <Button onClick={handleApprove} disabled={submitting} className="w-full bg-brightly hover:bg-brightly-hover text-white font-bold">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Create Job
             </Button>

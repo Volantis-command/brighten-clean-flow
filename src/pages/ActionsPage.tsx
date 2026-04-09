@@ -240,7 +240,7 @@ export default function ActionsPage() {
 
       {visibleCount === 0 && filteredNotifications.length === 0 && (
         <div className="bg-card rounded-2xl shadow-md p-12 text-center">
-          <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+          <CheckCircle2 className="h-12 w-12 text-brightly mx-auto mb-4" />
           <p className="text-xl font-bold text-foreground mb-2">All clear</p>
           <p className="text-muted-foreground">No outstanding alerts.</p>
         </div>
@@ -270,7 +270,7 @@ function AlertRow({ item, groupKey, loading, onDismiss, onNavigate, onRaiseInvoi
     switch (groupKey) {
       case 'not_invoiced':
         return (
-          <Button size="sm" className="shrink-0 text-xs font-bold bg-green-600 hover:bg-green-700 text-white" onClick={e => { e.stopPropagation(); onRaiseInvoice(); }}>
+          <Button size="sm" className="shrink-0 text-xs font-bold bg-brightly hover:bg-brightly-hover text-white" onClick={e => { e.stopPropagation(); onRaiseInvoice(); }}>
             Raise Invoice
           </Button>
         );
@@ -283,7 +283,7 @@ function AlertRow({ item, groupKey, loading, onDismiss, onNavigate, onRaiseInvoi
       case 'extra_time':
         return (
           <div className="flex gap-1.5">
-            <Button size="sm" className="text-xs font-bold bg-green-600 hover:bg-green-700 text-white" onClick={e => { e.stopPropagation(); onApproveExtra(); }}>
+            <Button size="sm" className="text-xs font-bold bg-brightly hover:bg-brightly-hover text-white" onClick={e => { e.stopPropagation(); onApproveExtra(); }}>
               Approve
             </Button>
             <Button size="sm" variant="outline" className="text-xs font-bold text-destructive border-destructive" onClick={e => { e.stopPropagation(); onDenyExtra(); }}>

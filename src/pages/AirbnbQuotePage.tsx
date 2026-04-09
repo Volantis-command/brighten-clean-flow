@@ -191,7 +191,7 @@ export default function AirbnbQuotePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0C463D' }}>
         <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6 animate-[scale-in_0.4s_ease-out]" style={{ background: 'rgba(254,219,0,0.15)' }}>
-          <CheckCircle2 className="w-14 h-14" style={{ color: '#22C55E' }} />
+          <CheckCircle2 className="w-14 h-14" style={{ color: '#2E5D4E' }} />
         </div>
         <h1 className="text-2xl font-extrabold" style={{ color: '#F0FDF4' }}>
           {isHighVolume ? `Thanks ${submittedFirst}!` : `Thanks ${submittedFirst}!`}
@@ -357,7 +357,7 @@ export default function AirbnbQuotePage() {
                 <label className="text-sm font-bold text-foreground">Full Name *</label>
                 <div className="relative">
                   <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" className="h-14 rounded-xl" />
-                  {fullName.trim() && <CheckCircle2 className="text-green-500 w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
+                  {fullName.trim() && <CheckCircle2 className="text-brightly w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2" />}
                 </div>
               </div>
               <div className="space-y-1.5">

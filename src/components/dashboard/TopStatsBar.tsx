@@ -53,9 +53,9 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
       label: 'Jobs This Month',
       value: kpi.completedThisMonth.toString(),
       icon: Briefcase,
-      borderGradient: 'linear-gradient(180deg, #22C55E 0%, #1A6B5E 100%)',
-      iconColor: '#22C55E',
-      sparkColor: '#22C55E',
+      borderGradient: 'linear-gradient(180deg, #2E5D4E 0%, #1A6B5E 100%)',
+      iconColor: '#2E5D4E',
+      sparkColor: '#2E5D4E',
       points: [12, 14, 11, 16, 18, 17, 22],
       delta: { up: true, value: '+12%' },
     },
@@ -75,9 +75,9 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
       value: kpi.avgRating != null ? `${kpi.avgRating.toFixed(1)}` : '—',
       suffix: kpi.avgRating != null ? ' / 5.0' : '',
       icon: Star,
-      borderGradient: 'linear-gradient(180deg, #22C55E 0%, #1A6B5E 100%)',
-      iconColor: '#22C55E',
-      sparkColor: '#22C55E',
+      borderGradient: 'linear-gradient(180deg, #2E5D4E 0%, #1A6B5E 100%)',
+      iconColor: '#2E5D4E',
+      sparkColor: '#2E5D4E',
       points: [4.4, 4.5, 4.5, 4.6, 4.7, 4.7, 4.8],
       delta: { up: true, value: '+0.3' },
     },
@@ -85,9 +85,9 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
       label: 'Active Cleaners',
       value: kpi.activeCleanersThisWeek.toString(),
       icon: Users,
-      borderGradient: 'linear-gradient(180deg, #22C55E 0%, #1A6B5E 100%)',
-      iconColor: '#22C55E',
-      sparkColor: '#22C55E',
+      borderGradient: 'linear-gradient(180deg, #2E5D4E 0%, #1A6B5E 100%)',
+      iconColor: '#2E5D4E',
+      sparkColor: '#2E5D4E',
       points: [4, 5, 5, 6, 6, 7, 7],
       delta: { up: false, value: '0%' },
     },
@@ -145,11 +145,11 @@ export function TopStatsBar({ kpi }: TopStatsBarProps) {
               <div className="mt-2 flex items-center gap-1">
                 <Delta
                   className="h-3 w-3"
-                  style={{ color: card.delta.up ? '#22C55E' : '#EF4444' }}
+                  style={{ color: card.delta.up ? '#2E5D4E' : '#EF4444' }}
                 />
                 <span
                   className="text-[11px] font-bold tabular-nums"
-                  style={{ color: card.delta.up ? '#22C55E' : '#EF4444' }}
+                  style={{ color: card.delta.up ? '#2E5D4E' : '#EF4444' }}
                 >
                   {card.delta.value}
                 </span>

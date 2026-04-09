@@ -72,7 +72,7 @@ export default function PendingInvoicesPage() {
                 <Button
                   onClick={() => handleApproveAndSend(job.id)}
                   disabled={sendingId === job.id}
-                  className="shrink-0 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold"
+                  className="shrink-0 gap-2 bg-brightly hover:bg-brightly-hover text-white font-bold"
                 >
                   {sendingId === job.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Approve & Send

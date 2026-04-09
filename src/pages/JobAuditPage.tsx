@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 const AREA_OPTIONS = ['Bedrooms', 'Bathrooms', 'Kitchen', 'Living Areas', 'Laundry', 'Outdoor', 'General'];
 const OUTCOMES = [
-  { value: 'passed', label: 'Audit Passed — satisfied with standard', color: 'bg-green-100 text-green-800 border-green-300' },
+  { value: 'passed', label: 'Audit Passed — satisfied with standard', color: 'bg-brightly/10 text-brightly border-green-300' },
   { value: 'minor_fixes', label: 'Minor Fixes Completed on the Spot', color: 'bg-amber-100 text-amber-800 border-amber-300' },
   { value: 'return_required', label: 'Return Required — property needs re-clean', color: 'bg-red-100 text-red-800 border-red-300' },
 ];

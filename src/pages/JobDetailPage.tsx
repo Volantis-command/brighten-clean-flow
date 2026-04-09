@@ -376,8 +376,8 @@ export default function JobDetailPage() {
     scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
     confirmed: { label: 'Confirmed', className: 'bg-muted text-muted-foreground' },
     in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800' },
-    completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
-    complete: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+    completed: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
+    complete: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
     cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive' },
     flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
   };
@@ -923,7 +923,7 @@ export default function JobDetailPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-green-600 flex items-center gap-1 font-semibold">
+                <p className="text-sm text-brightly flex items-center gap-1 font-semibold">
                   <CheckCircle2 className="h-4 w-4" /> No damage reported
                 </p>
               )}
@@ -951,7 +951,7 @@ export default function JobDetailPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-green-600 flex items-center gap-1 font-semibold">
+                <p className="text-sm text-brightly flex items-center gap-1 font-semibold">
                   <CheckCircle2 className="h-4 w-4" /> No extra time needed
                 </p>
               )}
@@ -1011,7 +1011,7 @@ export default function JobDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-green-600 font-semibold flex items-center gap-1">
+                  <p className="text-sm text-brightly font-semibold flex items-center gap-1">
                     <CheckCircle2 className="h-4 w-4" /> No pre-job damage reported ✓
                   </p>
                 )}
@@ -1052,7 +1052,7 @@ export default function JobDetailPage() {
         const actualRemMins = actualMins % 60;
         const allocatedMins = job.estimated_duration || 0;
         const diffMins = actualMins - allocatedMins;
-        const diffColor = diffMins <= 0 ? 'text-green-600' : diffMins <= 15 ? 'text-amber-600' : 'text-destructive';
+        const diffColor = diffMins <= 0 ? 'text-brightly' : diffMins <= 15 ? 'text-amber-600' : 'text-destructive';
         const diffSign = diffMins > 0 ? '+' : '';
 
         return (
@@ -1103,7 +1103,7 @@ export default function JobDetailPage() {
       {/* Invoice Status Card — Admin only, completed jobs */}
       {role === 'admin' && (job.status === 'complete' || job.status === 'completed') && (
         <Card className={
-          job.invoice_status === 'paid' ? 'border-green-500/30 bg-green-50 dark:bg-green-500/10' :
+          job.invoice_status === 'paid' ? 'border-brightly/30 bg-brightly/10 dark:bg-brightly/10' :
           job.invoice_status === 'sent' ? 'border-blue-500/30 bg-blue-50 dark:bg-blue-500/10' :
           job.invoice_status === 'raised' ? 'border-primary/30 bg-primary/5' :
           'border-amber-500/30 bg-amber-50 dark:bg-amber-500/10'
@@ -1132,7 +1132,7 @@ export default function JobDetailPage() {
                 <Button
                   onClick={handlePushInvoice}
                   disabled={pushingInvoice}
-                  className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  className="w-full gap-2 bg-brightly hover:bg-brightly-hover text-white"
                 >
                   {pushingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
                   Raise Invoice
@@ -1193,7 +1193,7 @@ export default function JobDetailPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    className="flex-1 gap-2 bg-brightly hover:bg-brightly-hover text-white"
                     onClick={async () => {
                       setPushingInvoice(true);
                       try {
@@ -1226,8 +1226,8 @@ export default function JobDetailPage() {
             {/* Paid */}
             {job.invoice_status === 'paid' && (
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                <CheckCircle2 className="h-5 w-5 text-brightly" />
+                <p className="text-sm font-bold text-brightly dark:text-brightly-light">
                   Invoice Paid {job.invoice_paid_at ? format(new Date(job.invoice_paid_at), 'd MMM yyyy') : ''} ✓
                 </p>
               </div>
@@ -1404,7 +1404,7 @@ export default function JobDetailPage() {
             </Button>
           ) : job.status !== 'completed' && job.status !== 'complete' ? (
             <Button
-              className="w-full gap-2 h-16 text-lg font-extrabold bg-green-600 hover:bg-green-700 text-white rounded-2xl"
+              className="w-full gap-2 h-16 text-lg font-extrabold bg-brightly hover:bg-brightly-hover text-white rounded-2xl"
               onClick={() => navigate(`/clean/${jobId}`)}
             >
               Start Job
@@ -1444,7 +1444,7 @@ export default function JobDetailPage() {
 
         {role === 'admin' && job.status !== 'cancelled' && job.status !== 'completed' && job.status !== 'complete' && (
           <Button
-            className="w-full gap-2 h-12 text-base font-bold bg-green-600 hover:bg-green-700 text-white"
+            className="w-full gap-2 h-12 text-base font-bold bg-brightly hover:bg-brightly-hover text-white"
             onClick={handleMarkComplete}
             disabled={markingComplete}
           >

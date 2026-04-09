@@ -9,7 +9,7 @@ interface QuoteHistoryListProps {
 function quoteStatusBadge(status: string) {
   if (status === 'draft') return { label: 'Draft', cls: 'bg-muted text-muted-foreground' };
   if (status === 'quote_sent') return { label: 'Pending', cls: 'bg-blue-100 text-blue-800' };
-  if (status === 'client_accepted') return { label: 'Accepted', cls: 'bg-green-100 text-green-800' };
+  if (status === 'client_accepted') return { label: 'Accepted', cls: 'bg-brightly/10 text-brightly' };
   if (['quote_declined', 'declined'].includes(status)) return { label: 'Declined', cls: 'bg-red-100 text-red-800' };
   if (status === 'expired') return { label: 'Expired', cls: 'bg-muted text-muted-foreground' };
   return { label: status, cls: 'bg-muted text-muted-foreground' };
