@@ -338,7 +338,7 @@ export function useDashboardData() {
   // Live status
   const clockedInCleaners = activeTimeEntries.map((entry: any) => ({
     name: cleanerNameMap[entry.user_id] || 'Unknown',
-    propertyName: (entry as any).jobs?.properties?.property_name || 'Unknown property',
+    propertyName: (entry as any).jobs?.properties?.property_name || 'No property assigned',
     clockInTime: entry.clock_in_time,
     userId: entry.user_id,
   }));
@@ -358,7 +358,7 @@ export function useDashboardData() {
   // Job cards
   const jobCards = jobs.map((job: any) => ({
     id: job.id,
-    propertyName: job.properties?.property_name || 'Unknown Property',
+    propertyName: job.properties?.property_name || 'No property assigned',
     address: [job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null,
     scheduledTime: job.scheduled_time ? job.scheduled_time.slice(0, 5) : null,
     status: job.status,
@@ -371,7 +371,7 @@ export function useDashboardData() {
   // Upcoming job cards (next 7 days, for cleaner view)
   const upcomingJobCards = upcomingJobs.map((job: any) => ({
     id: job.id,
-    propertyName: job.properties?.property_name || 'Unknown Property',
+    propertyName: job.properties?.property_name || 'No property assigned',
     address: [job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null,
     scheduledTime: job.scheduled_time ? job.scheduled_time.slice(0, 5) : null,
     scheduledDate: job.scheduled_date,

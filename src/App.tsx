@@ -34,7 +34,7 @@ import BookingRequestsPage from "./pages/BookingRequestsPage";
 import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
-import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
+// QuoteRequestFormPage deleted — /quote/:token now uses QuoteIntakePage
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
@@ -49,7 +49,7 @@ import ClientSchedulePage from "./pages/ClientSchedulePage";
 import ClientRebookPage from "./pages/ClientRebookPage";
 import CleanerPortalPage from "./pages/CleanerPortalPage";
 import CleanReportPage from "./pages/CleanReportPage";
-import EnquiryPage from "./pages/EnquiryPage";
+// EnquiryPage deleted — enquiries go through the pipeline
 import BookingPage from "./pages/BookingPage";
 import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
@@ -68,7 +68,7 @@ import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
 import StaffMagicAuthPage from "./pages/auth/StaffMagicAuthPage";
-import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
+// ClientPortalLoginPage deleted — /client-portal now uses ClientLoginPage
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
 import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
 import ClientPortalPropertyPage from "./pages/ClientPortalPropertyPage";
@@ -179,7 +179,7 @@ function AppRoutes() {
       <Route path="/feedback/:token" element={<FeedbackPage />} />
       <Route path="/onboard/:token" element={<OnboardingPage />} />
       <Route path="/onboard" element={<OnboardingPage />} />
-      <Route path="/quote/:token" element={<QuoteRequestFormPage />} />
+      <Route path="/quote/:token" element={<QuoteIntakePage />} />
       <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
@@ -188,7 +188,7 @@ function AppRoutes() {
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
       <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
       <Route path="/report/:token" element={<CleanReportPage />} />
-      <Route path="/enquire" element={<EnquiryPage />} />
+      {/* /enquire removed — enquiries go through pipeline */}
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
       <Route path="/residential-quote" element={<ResidentialQuotePage />} />
@@ -198,7 +198,7 @@ function AppRoutes() {
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
 
       {/* Client portal (SMS magic link session) */}
-      <Route path="/client-portal" element={<ClientPortalLoginPage />} />
+      <Route path="/client-portal" element={<ClientLoginPage />} />
       <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
       <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
       <Route path="/client-portal/property/:id" element={<ClientPortalPropertyPage />} />
