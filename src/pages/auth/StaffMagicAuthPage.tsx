@@ -17,7 +17,7 @@ export default function StaffMagicAuthPage() {
 
     (async () => {
       try {
-        // Verify the token
+        // Verify the token — anon can SELECT thanks to RLS policy
         const { data: tokenRow, error: tokenErr } = await supabase
           .from('staff_magic_tokens' as any)
           .select('*')
@@ -31,12 +31,13 @@ export default function StaffMagicAuthPage() {
         }
 
         const row = tokenRow as any;
+        // Use expires_at column (default: created_at + 15 min)
         if (new Date(row.expires_at) < new Date()) {
           setError('This login link has expired. Please ask your admin to send a new one.');
           return;
         }
 
-        // Get the staff member's email
+        // Get the staff member's email (profiles has anon SELECT)
         const { data: profile } = await supabase
           .from('profiles')
           .select('email')
@@ -48,7 +49,7 @@ export default function StaffMagicAuthPage() {
           return;
         }
 
-        // Mark token as used
+        // Mark token as used (anon can UPDATE thanks to RLS policy)
         await supabase
           .from('staff_magic_tokens' as any)
           .update({ used: true } as any)
