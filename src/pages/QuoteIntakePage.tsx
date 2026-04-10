@@ -61,16 +61,16 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
 
 function Confirmation() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#1C1C1E' }}>
-      <div className="rounded-full p-6 mb-6" style={{ background: 'rgba(46,93,78,0.2)' }}>
-        <SprayCan className="w-12 h-12" style={{ color: '#86EFAC' }} />
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
+      <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
+        <SprayCan className="w-12 h-12 text-[#2E5D4E]" />
       </div>
-      <h1 className="text-3xl font-extrabold" style={{ color: '#F2F2F7' }}>You're all set!</h1>
-      <p className="mt-3 max-w-sm" style={{ color: 'rgba(242,242,247,0.6)' }}>
+      <h1 className="text-3xl font-bold text-white">You're all set!</h1>
+      <p className="mt-3 max-w-sm text-base text-white/50">
         We've received your request and will have a quote to you within 24 hours. Keep an eye on your phone for our SMS. 😊
       </p>
-      <p className="text-sm mt-8" style={{ color: 'rgba(242,242,247,0.4)' }}>📞 0418 878 707</p>
-      <p className="text-xs mt-1" style={{ color: 'rgba(242,242,247,0.3)' }}>Brightly Cleaning 🌿</p>
+      <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
+      <p className="text-xs mt-1 text-white/30">Brightly Cleaning 🌿</p>
     </div>
   );
 }
