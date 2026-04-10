@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { CalendarIcon, CheckCircle2, Loader2 } from 'lucide-react';
+import { CalendarIcon, CheckCircle2, Loader2, ShieldAlert } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const TIME_WINDOWS = [
@@ -29,6 +29,10 @@ export default function BookingPage() {
   const leadId = searchParams.get('lead');
   const clientName = searchParams.get('name') || '';
   const serviceType = searchParams.get('service') || '';
+
+  // Check for client context: either a lead ID from SMS or a stored client session
+  const storedClientId = localStorage.getItem('brightly_client_id');
+  const hasClientContext = !!(leadId || storedClientId);
 
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('');
@@ -51,26 +55,43 @@ export default function BookingPage() {
       .then(({ data }) => {
         if (data) {
           setQrData(data);
-          // Pre-fill date/time from what client already submitted in the quote form
           if (data.preferred_date) {
             const parsed = new Date(data.preferred_date + 'T00:00:00');
             if (!isNaN(parsed.getTime())) setDate(parsed);
           }
           if ((data as any).preferred_time) {
             const timemap: Record<string, string> = {
-              'Morning (7am-12pm)': '09:00',
-              'Morning': '09:00',
-              'Afternoon (12pm-5pm)': '13:00',
-              'Afternoon': '13:00',
-              'Either': '09:00',
+              'Morning (7am-12pm)': 'morning',
+              'Morning': 'morning',
+              'Afternoon (12pm-5pm)': 'afternoon',
+              'Afternoon': 'afternoon',
+              'Either': 'morning',
             };
-            setTime(timemap[(data as any).preferred_time] || '09:00');
+            setTime(timemap[(data as any).preferred_time] || 'morning');
           } else {
-            setTime('09:00');
+            setTime('morning');
           }
         }
       });
   }, [leadId]);
+
+  // If no client context, show gated message
+  if (!hasClientContext) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
+        <div className="bg-card rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <ShieldAlert className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h1 className="text-xl font-extrabold text-foreground">Access Required</h1>
+          <p className="text-muted-foreground text-sm">
+            This page is only accessible from your client portal. Need help? Call{' '}
+            <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const displayName = clientName || [qrData?.first_name, qrData?.last_name].filter(Boolean).join(' ');
   const displayService = serviceType || qrData?.clean_type || '';
@@ -78,10 +99,41 @@ export default function BookingPage() {
   const handleConfirmBooking = async () => {
     if (!date || !time) return;
     if (!leadId) {
-      setError('Invalid booking link. Please contact Brightly Cleaning.');
+      // Client portal session booking — create a booking suggestion
+      if (!storedClientId) {
+        setError('Invalid booking session. Please contact Brightly Cleaning.');
+        return;
+      }
+      await completePortalBooking();
       return;
     }
     await completeBooking();
+  };
+
+  const completePortalBooking = async () => {
+    if (!date || !time || !storedClientId) return;
+    setSubmitting(true);
+    setError('');
+    const formattedDate = format(date, 'yyyy-MM-dd');
+
+    try {
+      const { error: insertError } = await supabase.from('booking_suggestions').insert({
+        source: 'client_portal',
+        status: 'pending',
+        suggested_clean_date: formattedDate,
+        suggested_clean_time: time === 'morning' ? '09:00' : time === 'midday' ? '12:00' : '14:00',
+      } as any);
+
+      if (insertError) throw insertError;
+
+      setConfirmedDate(format(date, 'EEEE d MMMM yyyy'));
+      setSubmitted(true);
+    } catch (e: any) {
+      console.error('Booking submit error:', e);
+      setError(e.message || 'Something went wrong. Please try again or call us on 0418 878 707.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const completeBooking = async () => {
@@ -117,6 +169,8 @@ export default function BookingPage() {
   };
 
   if (submitted) {
+    const isPortalBooking = !leadId;
+
     const handleReschedule = async () => {
       try {
         await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-reminder-sms`, {
@@ -142,9 +196,14 @@ export default function BookingPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold text-foreground">Booking confirmed!</h1>
+          <h1 className="text-2xl font-extrabold text-foreground">
+            {isPortalBooking ? 'Booking request sent!' : 'Booking confirmed!'}
+          </h1>
           <p className="text-muted-foreground">
-            We'll see you on <span className="font-bold text-foreground">{confirmedDate}</span>.
+            {isPortalBooking
+              ? <>We'll confirm your booking for <span className="font-bold text-foreground">{confirmedDate}</span> shortly via SMS.</>
+              : <>We'll see you on <span className="font-bold text-foreground">{confirmedDate}</span>.</>
+            }
           </p>
           {frequency !== 'one_off' && (
             <p className="text-sm font-semibold text-primary">
@@ -154,12 +213,14 @@ export default function BookingPage() {
           <p className="text-sm text-muted-foreground">
             Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
           </p>
-          <button
-            onClick={handleReschedule}
-            className="text-sm text-muted-foreground underline hover:text-foreground transition-colors"
-          >
-            Need to reschedule?
-          </button>
+          {!isPortalBooking && (
+            <button
+              onClick={handleReschedule}
+              className="text-sm text-muted-foreground underline hover:text-foreground transition-colors"
+            >
+              Need to reschedule?
+            </button>
+          )}
         </div>
       </div>
     );
@@ -248,10 +309,6 @@ export default function BookingPage() {
           {submitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
           {submitting ? 'Submitting…' : 'Confirm Booking'}
         </Button>
-
-        <p className="text-center text-xs text-muted-foreground">
-          No login required. We'll confirm your booking shortly.
-        </p>
       </div>
     </div>
   );

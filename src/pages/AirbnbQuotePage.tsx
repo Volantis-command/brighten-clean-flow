@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { linkClientAndProperty } from '@/lib/linkClientAndProperty';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -162,6 +163,12 @@ export default function AirbnbQuotePage() {
         form_data: formData,
       } as any);
       if (error) throw error;
+
+      // Best-effort: link client + property
+      linkClientAndProperty({
+        firstName, lastName, phone: mobile, email, address: suburb,
+        propertyType, bedrooms: parseInt(bedrooms) || 1, bathrooms: parseInt(bathrooms) || 1,
+      });
 
       await supabase.functions.invoke('send-quote-notification', {
         body: { type: 'intake_submitted', client_phone: mobile, client_name: firstName, clean_type: 'Airbnb / Short-Stay Turnover', address: suburb },

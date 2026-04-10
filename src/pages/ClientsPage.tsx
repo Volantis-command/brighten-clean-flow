@@ -200,6 +200,16 @@ export default function ClientsPage() {
         const inserts = createPropertyIds.map(pid => ({ client_id: data.user_id, property_id: pid }));
         await supabase.from('client_properties').insert(inserts);
       }
+      // Auto-generate portal token
+      if (data?.user_id) {
+        const token = crypto.randomUUID();
+        await supabase.from('client_tokens').insert({
+          email: createEmail.toLowerCase() || `phone:${createPhone}`,
+          token,
+          expires_at: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // effectively never expires
+          used: false,
+        });
+      }
       // Auto-send onboarding SMS if phone provided
       if (createPhone && data?.user_id) {
         const { data: links } = await supabase.from('client_properties').select('onboard_token').eq('client_id', data.user_id).limit(1);
@@ -225,13 +235,49 @@ export default function ClientsPage() {
     return token ? `${BASE_URL}/client/${token}` : null;
   };
 
-  const copyPortalLink = (client: ClientMember) => {
-    const link = getPortalLink(client);
-    if (link) {
-      navigator.clipboard.writeText(link);
-      toast.success(`Portal link copied for ${client.full_name}`);
-    } else {
-      toast.error('No portal token found for this client');
+  const ensurePortalToken = async (client: ClientMember): Promise<string | null> => {
+    // Check existing token
+    const existingToken = client.linked_properties[0]?.portal_token;
+    if (existingToken) return `${BASE_URL}/client/${existingToken}`;
+
+    // Auto-generate token for clients with properties but no token
+    if (client.linked_properties.length > 0) {
+      const newToken = crypto.randomUUID();
+      await supabase.from('client_properties')
+        .update({ portal_token: newToken })
+        .eq('client_id', client.id)
+        .eq('property_id', client.linked_properties[0].property_id);
+      client.linked_properties[0].portal_token = newToken;
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] });
+      return `${BASE_URL}/client/${newToken}`;
+    }
+
+    // Generate a client_token for clients without properties
+    if (client.email || client.phone) {
+      const newToken = crypto.randomUUID();
+      await supabase.from('client_tokens').insert({
+        email: (client.email || `phone:${client.phone}`).toLowerCase(),
+        token: newToken,
+        expires_at: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        used: false,
+      });
+      return `${BASE_URL}/client-portal/verify?token=${newToken}`;
+    }
+
+    return null;
+  };
+
+  const copyPortalLink = async (client: ClientMember) => {
+    try {
+      const link = await ensurePortalToken(client);
+      if (link) {
+        navigator.clipboard.writeText(link);
+        toast.success(`Portal link copied for ${client.full_name}`);
+      } else {
+        toast.error('Could not generate portal link for this client');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to generate link');
     }
   };
 
@@ -363,7 +409,7 @@ export default function ClientsPage() {
                     {getPortalLink(c) ? (
                       <span className="text-xs text-muted-foreground truncate max-w-[200px] block">{getPortalLink(c)}</span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">No token</span>
+                      <span className="text-xs text-primary cursor-pointer hover:underline" onClick={async (e) => { e.stopPropagation(); await copyPortalLink(c); }}>Generate link</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -371,16 +417,17 @@ export default function ClientsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          const link = getPortalLink(c);
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const link = await ensurePortalToken(c);
                           if (link) window.open(link, '_blank');
-                          else toast.error('No portal link available');
+                          else toast.error('Could not generate portal link');
                         }}
                         title="View Portal"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => copyPortalLink(c)} title="Copy Portal Link">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyPortalLink(c); }} title="Copy Portal Link">
                         <Copy className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openOnboardModal(c)} title="Send Onboarding Form">

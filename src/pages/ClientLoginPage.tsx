@@ -1,31 +1,40 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Phone, Loader2, CheckCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ClientLoginPage() {
-  const { signIn } = useAuth();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error, role } = await signIn(email, password);
-    if (error) {
-      setError(error.message);
-    } else {
-      const redirectPath = role === 'client' ? '/client-portal' : '/dashboard';
-      console.log(`User role detected: ${role ?? 'none'}, redirecting to: ${redirectPath}`);
-      navigate(redirectPath, { replace: true });
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('client-magic-login', {
+        body: { phone: phone.trim() },
+      });
+
+      if (fnError) throw fnError;
+
+      if (data?.error === 'not_found') {
+        setError("We couldn't find that number. Contact us at 0418 878 707");
+      } else if (data?.success) {
+        setSent(true);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -39,38 +48,56 @@ export default function ClientLoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-border/50 p-8">
-          <h2 className="text-xl font-bold text-primary text-center mb-6">Welcome back</h2>
+          {sent ? (
+            <div className="text-center space-y-4">
+              <CheckCircle className="w-12 h-12 text-primary mx-auto" />
+              <h2 className="text-xl font-bold text-foreground">Check your texts</h2>
+              <p className="text-muted-foreground text-sm">
+                We've sent you a login link via SMS. It expires in 1 hour.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4 rounded-2xl"
+                onClick={() => { setSent(false); setPhone(''); }}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-xl font-bold text-primary text-center mb-6">Welcome back</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground font-semibold">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="h-14 rounded-2xl text-base"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground font-semibold">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="h-14 rounded-2xl text-base"
-              />
-            </div>
-            {error && <p className="text-destructive text-sm font-semibold text-center">{error}</p>}
-            <Button type="submit" className="w-full h-14 rounded-2xl text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-foreground font-semibold">Mobile number</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="0412 345 678"
+                      required
+                      className="h-14 rounded-2xl text-base pl-11"
+                    />
+                  </div>
+                </div>
+                {error && <p className="text-destructive text-sm font-semibold text-center">{error}</p>}
+                <Button
+                  type="submit"
+                  className="w-full h-14 rounded-2xl text-base font-bold bg-brightly text-primary-foreground hover:bg-brightly-hover"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>
+                  ) : (
+                    'Send me a login link'
+                  )}
+                </Button>
+              </form>
+            </>
+          )}
         </div>
 
         <p className="text-center text-muted-foreground text-xs mt-6">
