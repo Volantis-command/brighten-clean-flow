@@ -265,7 +265,7 @@ export default function OnboardingPage() {
           </p>
           {isAdminMode && (
             <div className="flex gap-3">
-              <button onClick={() => navigate('/clients')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: '#FEDB00', color: '#0C463D' }}>
+              <button onClick={() => navigate('/clients')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: '#2E5D4E', color: '#FFFFFF' }}>
                 View Clients
               </button>
               <button onClick={() => navigate('/quoting')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: 'transparent', color: '#F0FDF4', border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -302,12 +302,12 @@ export default function OnboardingPage() {
             style={{
               width: i === stepIdx ? 24 : 8,
               height: 8,
-              background: i <= stepIdx ? '#FEDB00' : 'rgba(255,255,255,0.12)',
+              background: i <= stepIdx ? '#2E5D4E' : 'rgba(255,255,255,0.12)',
             }}
           />
         ))}
       </div>
-      <p className="text-center text-[11px] font-semibold mb-8" style={{ color: 'rgba(254,219,0,0.6)' }}>
+      <p className="text-center text-[11px] font-semibold mb-8" style={{ color: '#2E5D4E' }}>
         Step {stepIdx + 1} of {steps.length}
       </p>
 
@@ -455,9 +455,9 @@ export default function OnboardingPage() {
                           style={{
                             padding: '8px 14px',
                             borderRadius: '12px',
-                            border: form.bed_config[roomNum] === bt ? '2px solid #FEDB00' : '1px solid rgba(255,255,255,0.15)',
-                            background: form.bed_config[roomNum] === bt ? '#FEDB00' : 'rgba(255,255,255,0.04)',
-                            color: form.bed_config[roomNum] === bt ? '#0C463D' : '#F0FDF4',
+                            border: form.bed_config[roomNum] === bt ? '2px solid #2E5D4E' : '1px solid rgba(255,255,255,0.15)',
+                            background: form.bed_config[roomNum] === bt ? '#2E5D4E' : 'rgba(255,255,255,0.04)',
+                            color: form.bed_config[roomNum] === bt ? '#FFFFFF' : '#F0FDF4',
                             fontSize: '13px',
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -687,7 +687,7 @@ export default function OnboardingPage() {
               onClick={() => submitMutation.mutate()}
               disabled={submitMutation.isPending}
               className="w-full h-14 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-              style={{ background: '#FEDB00', color: '#0C463D' }}
+              style={{ background: '#2E5D4E', color: '#FFFFFF' }}
             >
               {submitMutation.isPending && <Loader2 className="w-5 h-5 animate-spin" />}
               Submit & Book
@@ -720,7 +720,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <h1 className="text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#F0FDF4' }}>
             Brightly<span style={{ color: '#FEDB00' }}>.</span>
           </h1>
-          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(254,219,0,0.12)', color: '#FEDB00' }}>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(46,93,78,0.2)', color: '#86EFAC' }}>
             New Enquiry
           </span>
         </div>
@@ -751,9 +751,9 @@ function Pill({ children, selected, onClick, small }: { children: React.ReactNod
       onClick={onClick}
       className={`flex flex-col items-center justify-center rounded-2xl transition-all duration-150 active:scale-[0.97] ${small ? 'py-2.5 px-2' : 'py-4 px-3'}`}
       style={{
-        background: selected ? '#FEDB00' : 'rgba(255,255,255,0.04)',
-        color: selected ? '#0C463D' : '#F0FDF4',
-        border: selected ? '2px solid #FEDB00' : '2px solid rgba(255,255,255,0.1)',
+        background: selected ? '#2E5D4E' : 'rgba(255,255,255,0.04)',
+        color: selected ? '#FFFFFF' : '#F0FDF4',
+        border: selected ? '2px solid #2E5D4E' : '2px solid rgba(255,255,255,0.1)',
       }}
     >
       {children}
@@ -775,7 +775,7 @@ function NavButtons({ onBack, onNext, canNext, showBack, label }: {
       )}
       <button onClick={onNext} disabled={!canNext}
         className="flex-1 h-14 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40"
-        style={{ background: '#FEDB00', color: '#0C463D' }}>
+        style={{ background: '#2E5D4E', color: '#FFFFFF' }}>
         {label || 'Next'} <ArrowRight className="w-4 h-4" />
       </button>
     </div>
@@ -803,7 +803,7 @@ function DarkInput({ label, value, onChange, placeholder, type }: {
 function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl p-4 space-y-2 mt-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <h3 className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#FEDB00' }}>{title}</h3>
+      <h3 className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: '#86EFAC' }}>{title}</h3>
       <div className="space-y-1.5 text-sm" style={{ color: '#F0FDF4' }}>{children}</div>
     </div>
   );
@@ -811,7 +811,7 @@ function SummaryCard({ title, children }: { title: string; children: React.React
 
 function SummaryPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-block px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: 'rgba(254,219,0,0.12)', color: '#FEDB00' }}>
+    <span className="inline-block px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: 'rgba(46,93,78,0.2)', color: '#86EFAC' }}>
       {children}
     </span>
   );

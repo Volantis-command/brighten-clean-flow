@@ -38,21 +38,21 @@ export default function ClientLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FDFDFC] px-4">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#0A0F0E' }}>
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-10">
-          <h1 className="text-5xl font-extrabold text-primary tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Brightly<span className="text-accent">.</span>
+          <h1 className="text-5xl font-extrabold tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', color: '#F0FDF4' }}>
+            Brightly<span style={{ color: '#FEDB00' }}>.</span>
           </h1>
-          <p className="text-muted-foreground text-sm mt-2 font-semibold">Client Portal</p>
+          <p className="text-sm mt-2 font-semibold" style={{ color: 'rgba(240,253,244,0.5)' }}>Client Portal</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-border/50 p-8">
+        <div className="rounded-2xl shadow-lg p-8" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {sent ? (
             <div className="text-center space-y-4">
-              <CheckCircle className="w-12 h-12 text-primary mx-auto" />
-              <h2 className="text-xl font-bold text-foreground">Check your texts</h2>
-              <p className="text-muted-foreground text-sm">
+              <CheckCircle className="w-12 h-12 mx-auto" style={{ color: '#2E5D4E' }} />
+              <h2 className="text-xl font-bold" style={{ color: '#F0FDF4' }}>Check your texts</h2>
+              <p className="text-sm" style={{ color: 'rgba(240,253,244,0.5)' }}>
                 We've sent you a login link via SMS. It expires in 1 hour.
               </p>
               <Button
@@ -65,13 +65,13 @@ export default function ClientLoginPage() {
             </div>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-primary text-center mb-6">Welcome back</h2>
+              <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#F0FDF4' }}>Welcome back</h2>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-foreground font-semibold">Mobile number</Label>
+                  <Label htmlFor="phone" className="font-semibold" style={{ color: '#F0FDF4' }}>Mobile number</Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'rgba(240,253,244,0.4)' }} />
                     <Input
                       id="phone"
                       type="tel"
@@ -79,15 +79,16 @@ export default function ClientLoginPage() {
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="0412 345 678"
                       required
-                      className="h-14 rounded-2xl text-base pl-11"
+                      className="h-14 rounded-2xl text-base pl-11 bg-[rgba(255,255,255,0.06)] border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#2E5D4E]"
                     />
                   </div>
                 </div>
                 {error && <p className="text-destructive text-sm font-semibold text-center">{error}</p>}
                 <Button
                   type="submit"
-                  className="w-full h-14 rounded-2xl text-base font-bold bg-brightly text-primary-foreground hover:bg-brightly-hover"
+                  className="w-full h-14 rounded-2xl text-base font-bold"
                   disabled={loading}
+                  style={{ background: '#2E5D4E', color: '#FFFFFF' }}
                 >
                   {loading ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>
@@ -100,7 +101,7 @@ export default function ClientLoginPage() {
           )}
         </div>
 
-        <p className="text-center text-muted-foreground text-xs mt-6">
+        <p className="text-center text-xs mt-6" style={{ color: 'rgba(240,253,244,0.3)' }}>
           Powered by Brightly — Turnover Cleaning Operations
         </p>
       </div>
