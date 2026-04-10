@@ -195,7 +195,7 @@ function AppRoutes() {
       <Route path="/airbnb" element={<AirbnbQuotePage />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
-      <Route path="/cleaner-onboarding" element={<CleanerOnboardingPage />} />
+      <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
 
       {/* Client portal (SMS magic link session) */}
