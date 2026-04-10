@@ -332,7 +332,20 @@ export default function ClientsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (c: ClientMember) => {
+      const isRealUser = !c.id.startsWith('property-') && !c.id.startsWith('qr-');
       const clientId = c.id;
+
+      // For property-derived or quote-derived pseudo-clients, just unlink properties
+      if (!isRealUser) {
+        // Nothing to cascade — these aren't real auth users
+        // Just remove client_properties links if it's a property-derived client
+        if (c.id.startsWith('property-')) {
+          for (const lp of c.linked_properties) {
+            await supabase.from('properties').update({ client_name: null, billing_email: null, client_phone: null }).eq('id', lp.property_id);
+          }
+        }
+        return;
+      }
 
       // 1. Delete client_properties links
       const { error: cpErr } = await supabase.from('client_properties').delete().eq('client_id', clientId);
