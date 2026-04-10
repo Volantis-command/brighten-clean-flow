@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Home, SprayCan, Building2, BedDouble } from 'lucide-react';
+import QuoteDetailView from '@/components/quote/QuoteDetailView';
 import ResidentialForm from '@/components/quote-intake/ResidentialForm';
 import AirbnbForm from '@/components/quote-intake/AirbnbForm';
 import CommercialForm from '@/components/quote-intake/CommercialForm';
@@ -69,8 +71,12 @@ function Confirmation() {
 }
 
 export default function QuoteIntakePage() {
+  const { token } = useParams<{ token: string }>();
   const [selectedType, setSelectedType] = useState<CleanType>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  // If a token is present, show the quote detail view (not the intake form)
+  if (token) return <QuoteDetailView token={token} />;
 
   if (submitted) return <Confirmation />;
   if (!selectedType) return <Welcome onSelect={setSelectedType} />;
