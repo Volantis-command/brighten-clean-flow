@@ -15,33 +15,37 @@ const OPTIONS = [
 
 function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <div className="bg-primary px-6 pt-12 pb-10 text-center">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-primary-foreground tracking-tight">
+    <div className="min-h-screen flex flex-col" style={{ background: '#0A0F0E' }}>
+      <div className="px-6 pt-12 pb-10 text-center" style={{ background: '#2E5D4E' }}>
+        <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
           Get Your Brightly Quote <Sparkles className="inline w-7 h-7 mb-1" />
         </h1>
-        <p className="text-primary-foreground/70 mt-3 text-sm md:text-base max-w-md mx-auto">
+        <p className="text-white/70 mt-3 text-sm md:text-base max-w-md mx-auto">
           Tell us about your space and we'll have a quote to you within 24 hours.
         </p>
       </div>
       <div className="flex-1 max-w-lg mx-auto w-full px-4 py-8 space-y-4">
-        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">What type of clean are you after?</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(240,253,244,0.5)' }}>What type of clean are you after?</p>
         {OPTIONS.map(opt => (
           <button
             key={opt.key}
             onClick={() => onSelect(opt.key)}
-            className="w-full flex items-start gap-4 rounded-2xl border border-border bg-card p-5 text-left shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-start gap-4 rounded-2xl p-5 text-left shadow-sm transition-all active:scale-[0.98]"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
           >
-            <div className="rounded-xl bg-primary/10 p-3 shrink-0">
-              <opt.icon className="w-6 h-6 text-primary" />
+            <div className="rounded-xl p-3 shrink-0" style={{ background: 'rgba(46,93,78,0.2)' }}>
+              <opt.icon className="w-6 h-6" style={{ color: '#86EFAC' }} />
             </div>
             <div>
-              <p className="font-bold text-foreground">{opt.label}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{opt.desc}</p>
+              <p className="font-bold" style={{ color: '#F0FDF4' }}>{opt.label}</p>
+              <p className="text-sm mt-0.5" style={{ color: 'rgba(240,253,244,0.5)' }}>{opt.desc}</p>
             </div>
           </button>
         ))}
-        <p className="text-center text-xs text-muted-foreground pt-4">📞 0418 878 707 · brightly.cleaning</p>
+        <p className="text-center text-xs pt-4" style={{ color: 'rgba(255,255,255,0.3)' }}>📞 0418 878 707 · brightly.cleaning</p>
       </div>
     </div>
   );
@@ -49,16 +53,16 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
 
 function Confirmation() {
   return (
-    <div className="min-h-screen bg-primary flex flex-col items-center justify-center px-6 text-center">
-      <div className="bg-primary-foreground/10 backdrop-blur rounded-full p-6 mb-6">
-        <Sparkles className="w-12 h-12 text-accent" />
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0A0F0E' }}>
+      <div className="rounded-full p-6 mb-6" style={{ background: 'rgba(46,93,78,0.2)' }}>
+        <Sparkles className="w-12 h-12" style={{ color: '#86EFAC' }} />
       </div>
-      <h1 className="text-3xl font-extrabold text-primary-foreground">You're all set!</h1>
-      <p className="text-primary-foreground/70 mt-3 max-w-sm">
+      <h1 className="text-3xl font-extrabold" style={{ color: '#F0FDF4' }}>You're all set!</h1>
+      <p className="mt-3 max-w-sm" style={{ color: 'rgba(240,253,244,0.6)' }}>
         We've received your request and will have a quote to you within 24 hours. Keep an eye on your phone for our SMS. 😊
       </p>
-      <p className="text-primary-foreground/50 text-sm mt-8">📞 0418 878 707</p>
-      <p className="text-primary-foreground/40 text-xs mt-1">Brightly Cleaning 🌿</p>
+      <p className="text-sm mt-8" style={{ color: 'rgba(240,253,244,0.4)' }}>📞 0418 878 707</p>
+      <p className="text-xs mt-1" style={{ color: 'rgba(240,253,244,0.3)' }}>Brightly Cleaning 🌿</p>
     </div>
   );
 }

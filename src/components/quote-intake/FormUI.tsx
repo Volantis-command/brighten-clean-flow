@@ -4,10 +4,10 @@ import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ── Reusable dark-theme class strings for form inputs ───────────── */
 export const darkInputClass =
-  'h-12 rounded-[10px] bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#FEDB00] focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0';
+  'h-12 rounded-[10px] bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#2E5D4E] focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0';
 
 export const darkTextareaClass =
-  'rounded-[10px] bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#FEDB00] focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0';
+  'rounded-[10px] bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#2E5D4E] focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0';
 
 /* ── Card wrapper ───────────────────────────────────────────────── */
 export function FormCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -16,7 +16,7 @@ export function FormCard({ children, className = '' }: { children: React.ReactNo
       className={`rounded-[16px] p-6 ${className}`}
       style={{
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(254,219,0,0.12)',
+        border: '1px solid rgba(255,255,255,0.08)',
         backdropFilter: 'blur(12px)',
       }}
     >
@@ -60,7 +60,7 @@ export function OptionGrid({ options, value, onChange, cols = 3 }: { options: st
         <button key={opt} type="button" onClick={() => onChange(opt)}
           className="rounded-xl px-4 py-3.5 text-[13px] font-semibold transition-all leading-tight"
           style={value === opt
-            ? { background: '#FEDB00', color: '#0C463D', border: '2px solid #FEDB00' }
+            ? { background: '#2E5D4E', color: '#FFFFFF', border: '2px solid #2E5D4E' }
             : { background: 'rgba(255,255,255,0.06)', color: '#F0FDF4', border: '2px solid rgba(255,255,255,0.12)' }
           }>
           {opt}
@@ -78,7 +78,7 @@ export function YesNo({ value, onChange }: { value: boolean | null; onChange: (v
         <button key={String(v)} type="button" onClick={() => onChange(v)}
           className="rounded-xl px-4 py-3.5 text-[13px] font-semibold transition-all"
           style={value === v
-            ? { background: '#FEDB00', color: '#0C463D', border: '2px solid #FEDB00' }
+            ? { background: '#2E5D4E', color: '#FFFFFF', border: '2px solid #2E5D4E' }
             : { background: 'rgba(255,255,255,0.06)', color: '#F0FDF4', border: '2px solid rgba(255,255,255,0.12)' }
           }>
           {v ? 'Yes' : 'No'}
@@ -97,7 +97,7 @@ export function DayChips({ days, selected, onChange }: { days: string[]; selecte
           onClick={() => onChange(selected.includes(d) ? selected.filter(x => x !== d) : [...selected, d])}
           className="rounded-xl px-5 py-3.5 text-[13px] font-semibold transition-all"
           style={selected.includes(d)
-            ? { background: '#FEDB00', color: '#0C463D', border: '2px solid #FEDB00' }
+            ? { background: '#2E5D4E', color: '#FFFFFF', border: '2px solid #2E5D4E' }
             : { background: 'rgba(255,255,255,0.06)', color: '#F0FDF4', border: '2px solid rgba(255,255,255,0.12)' }
           }>
           {d}
@@ -118,12 +118,12 @@ export function FormProgressHeader({ step, totalSteps, stepLabel }: { step: numb
         <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
           <div
             className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${((step + 1) / totalSteps) * 100}%`, background: '#FEDB00' }}
+            style={{ width: `${((step + 1) / totalSteps) * 100}%`, background: '#2E5D4E' }}
           />
         </div>
         <p
           className="text-[12px] font-semibold mt-2.5 text-center tracking-wide"
-          style={{ color: '#FEDB00' }}
+          style={{ color: '#2E5D4E' }}
         >
           Step {step + 1} of {totalSteps} — {stepLabel}
         </p>
@@ -153,7 +153,7 @@ export function FormNavButtons({
           onClick={onNext}
           disabled={!canNext}
           className="flex-1 rounded-xl h-[52px] font-bold text-base flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
-          style={{ background: '#FEDB00', color: '#0C463D' }}
+          style={{ background: '#2E5D4E', color: '#FFFFFF' }}
         >
           Next <ArrowRight className="w-4 h-4" />
         </button>
@@ -162,7 +162,7 @@ export function FormNavButtons({
           onClick={onSubmit}
           disabled={submitting || !tcsAccepted}
           className="flex-1 rounded-xl h-[52px] font-bold text-base flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
-          style={{ background: '#FEDB00', color: '#0C463D' }}
+          style={{ background: '#2E5D4E', color: '#FFFFFF' }}
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Request My Quote →
         </button>
