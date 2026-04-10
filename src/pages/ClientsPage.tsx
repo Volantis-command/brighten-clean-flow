@@ -409,7 +409,7 @@ export default function ClientsPage() {
                     {getPortalLink(c) ? (
                       <span className="text-xs text-muted-foreground truncate max-w-[200px] block">{getPortalLink(c)}</span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">No token</span>
+                      <span className="text-xs text-primary cursor-pointer hover:underline" onClick={async (e) => { e.stopPropagation(); await copyPortalLink(c); }}>Generate link</span>
                     )}
                   </TableCell>
                   <TableCell>
