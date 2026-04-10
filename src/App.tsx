@@ -179,7 +179,7 @@ function AppRoutes() {
       <Route path="/feedback/:token" element={<FeedbackPage />} />
       <Route path="/onboard/:token" element={<OnboardingPage />} />
       <Route path="/onboard" element={<OnboardingPage />} />
-      <Route path="/quote/:token" element={<QuoteRequestFormPage />} />
+      <Route path="/quote/:token" element={<QuoteIntakePage />} />
       <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
@@ -188,7 +188,7 @@ function AppRoutes() {
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
       <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
       <Route path="/report/:token" element={<CleanReportPage />} />
-      <Route path="/enquire" element={<EnquiryPage />} />
+      {/* /enquire removed — enquiries go through pipeline */}
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
       <Route path="/residential-quote" element={<ResidentialQuotePage />} />
@@ -198,7 +198,7 @@ function AppRoutes() {
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
 
       {/* Client portal (SMS magic link session) */}
-      <Route path="/client-portal" element={<ClientPortalLoginPage />} />
+      <Route path="/client-portal" element={<ClientLoginPage />} />
       <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
       <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
       <Route path="/client-portal/property/:id" element={<ClientPortalPropertyPage />} />
