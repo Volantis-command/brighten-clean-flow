@@ -332,17 +332,38 @@ export default function ClientsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (c: ClientMember) => {
-      // Remove from user_roles
-      await supabase.from('user_roles').delete().eq('user_id', c.id);
-      // Remove from quote_requests
-      await (supabase.from('quote_requests').delete() as any).eq('client_id', c.id);
-      // Remove from profiles
-      await supabase.from('profiles').delete().eq('id', c.id);
+      const clientId = c.id;
+
+      // 1. Delete client_properties links
+      const { error: cpErr } = await supabase.from('client_properties').delete().eq('client_id', clientId);
+      if (cpErr) throw new Error(`Failed to remove property links: ${cpErr.message}`);
+
+      // 2. Delete client_comms
+      await supabase.from('client_comms').delete().eq('client_id', clientId);
+
+      // 3. Delete client_messages
+      await supabase.from('client_messages').delete().eq('client_id', clientId);
+
+      // 4. Delete clean_requests
+      await supabase.from('clean_requests').delete().eq('client_id', clientId);
+
+      // 5. Delete job_feedback
+      await supabase.from('job_feedback').delete().eq('client_id', clientId);
+
+      // 6. Delete notifications
+      await supabase.from('notifications').delete().eq('user_id', clientId);
+
+      // 7. Delete user_roles
+      await supabase.from('user_roles').delete().eq('user_id', clientId);
+
+      // 8. Delete profile
+      const { error: profileErr } = await supabase.from('profiles').delete().eq('id', clientId);
+      if (profileErr) throw new Error(`Failed to delete client profile: ${profileErr.message}`);
     },
     onSuccess: () => {
       toast.success('Client deleted');
       setDeleteClient(null);
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
