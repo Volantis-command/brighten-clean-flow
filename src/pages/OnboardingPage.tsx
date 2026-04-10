@@ -265,7 +265,7 @@ export default function OnboardingPage() {
           </p>
           {isAdminMode && (
             <div className="flex gap-3">
-              <button onClick={() => navigate('/clients')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: '#FEDB00', color: '#0C463D' }}>
+              <button onClick={() => navigate('/clients')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: '#2E5D4E', color: '#FFFFFF' }}>
                 View Clients
               </button>
               <button onClick={() => navigate('/quoting')} className="px-6 py-3 rounded-2xl font-bold text-sm" style={{ background: 'transparent', color: '#F0FDF4', border: '1px solid rgba(255,255,255,0.2)' }}>
