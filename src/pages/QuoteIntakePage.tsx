@@ -14,7 +14,6 @@ const OPTIONS = [
 ];
 
 function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
-  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
