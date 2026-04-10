@@ -31,7 +31,7 @@ export function useActiveTimeEntry() {
       if (error || !entry || !entry.job_id) return null;
 
       // Step 2: get job with property name
-      let propertyName = 'Unknown Property';
+      let propertyName = 'No property assigned';
       const { data: job } = await supabase
         .from('jobs')
         .select('property_id, properties(property_name)')
@@ -40,7 +40,7 @@ export function useActiveTimeEntry() {
 
       if (job) {
         const props = job.properties as any;
-        propertyName = props?.property_name || 'Unknown Property';
+        propertyName = props?.property_name || 'No property assigned';
       }
 
       return {

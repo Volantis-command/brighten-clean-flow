@@ -338,7 +338,7 @@ export function useDashboardData() {
   // Live status
   const clockedInCleaners = activeTimeEntries.map((entry: any) => ({
     name: cleanerNameMap[entry.user_id] || 'Unknown',
-    propertyName: (entry as any).jobs?.properties?.property_name || 'Unknown property',
+    propertyName: (entry as any).jobs?.properties?.property_name || 'No property assigned',
     clockInTime: entry.clock_in_time,
     userId: entry.user_id,
   }));
