@@ -337,12 +337,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Row 2: Today at a Glance */}
-      <TodayAtAGlance
-        kpi={kpi}
-        clockedInCleaners={clockedInCleaners}
-        alerts={alerts}
-      />
+      {/* TodayAtAGlance removed — covered by TopStatsBar + Quick KPI cards above */}
 
       {/* Quick Actions */}
       <QuickActions />
