@@ -417,16 +417,17 @@ export default function ClientsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          const link = getPortalLink(c);
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const link = await ensurePortalToken(c);
                           if (link) window.open(link, '_blank');
-                          else toast.error('No portal link available');
+                          else toast.error('Could not generate portal link');
                         }}
                         title="View Portal"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => copyPortalLink(c)} title="Copy Portal Link">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyPortalLink(c); }} title="Copy Portal Link">
                         <Copy className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openOnboardModal(c)} title="Send Onboarding Form">
