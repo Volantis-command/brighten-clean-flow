@@ -40,11 +40,7 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
               onClick={() => onSelect(opt.key)}
               onMouseEnter={() => setHovered(opt.key)}
               onMouseLeave={() => setHovered(null)}
-              className={`flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 ${
-                hovered === opt.key
-                  ? 'bg-white/10 border border-white/20'
-                  : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20'
-              }`}
+              className="flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/20"
             >
               <opt.icon className="w-10 h-10 text-white/70 mb-3" />
               <p className="text-base font-semibold text-white text-center leading-tight">{opt.label}</p>
