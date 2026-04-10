@@ -235,13 +235,49 @@ export default function ClientsPage() {
     return token ? `${BASE_URL}/client/${token}` : null;
   };
 
-  const copyPortalLink = (client: ClientMember) => {
-    const link = getPortalLink(client);
-    if (link) {
-      navigator.clipboard.writeText(link);
-      toast.success(`Portal link copied for ${client.full_name}`);
-    } else {
-      toast.error('No portal token found for this client');
+  const ensurePortalToken = async (client: ClientMember): Promise<string | null> => {
+    // Check existing token
+    const existingToken = client.linked_properties[0]?.portal_token;
+    if (existingToken) return `${BASE_URL}/client/${existingToken}`;
+
+    // Auto-generate token for clients with properties but no token
+    if (client.linked_properties.length > 0) {
+      const newToken = crypto.randomUUID();
+      await supabase.from('client_properties')
+        .update({ portal_token: newToken })
+        .eq('client_id', client.id)
+        .eq('property_id', client.linked_properties[0].property_id);
+      client.linked_properties[0].portal_token = newToken;
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] });
+      return `${BASE_URL}/client/${newToken}`;
+    }
+
+    // Generate a client_token for clients without properties
+    if (client.email || client.phone) {
+      const newToken = crypto.randomUUID();
+      await supabase.from('client_tokens').insert({
+        email: (client.email || `phone:${client.phone}`).toLowerCase(),
+        token: newToken,
+        expires_at: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        used: false,
+      });
+      return `${BASE_URL}/client-portal/verify?token=${newToken}`;
+    }
+
+    return null;
+  };
+
+  const copyPortalLink = async (client: ClientMember) => {
+    try {
+      const link = await ensurePortalToken(client);
+      if (link) {
+        navigator.clipboard.writeText(link);
+        toast.success(`Portal link copied for ${client.full_name}`);
+      } else {
+        toast.error('Could not generate portal link for this client');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to generate link');
     }
   };
 
