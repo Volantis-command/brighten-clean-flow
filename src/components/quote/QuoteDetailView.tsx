@@ -40,13 +40,17 @@ export default function QuoteDetailView({ token }: { token: string }) {
   const handleAction = async (action: 'accepted' | 'declined') => {
     if (!quote) return;
     setSubmitting(true);
-    const updates: Record<string, unknown> = {
-      status: action === 'accepted' ? 'client_accepted' : 'declined',
-    };
-    if (action === 'accepted') updates.quote_accepted_at = new Date().toISOString();
-    else updates.quote_declined_at = new Date().toISOString();
-
-    await supabase.from('quotes').update(updates).eq('id', quote.id);
+    if (action === 'accepted') {
+      await supabase.from('quotes').update({
+        status: 'client_accepted',
+        quote_accepted_at: new Date().toISOString(),
+      }).eq('id', quote.id);
+    } else {
+      await supabase.from('quotes').update({
+        status: 'declined',
+        quote_declined_at: new Date().toISOString(),
+      }).eq('id', quote.id);
+    }
     setActionDone(action);
     setSubmitting(false);
   };
