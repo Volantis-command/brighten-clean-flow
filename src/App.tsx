@@ -34,7 +34,7 @@ import BookingRequestsPage from "./pages/BookingRequestsPage";
 import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
-import QuoteRequestFormPage from "./pages/QuoteRequestFormPage";
+// QuoteRequestFormPage deleted — /quote/:token now uses QuoteIntakePage
 import QuoteAcceptPage from "./pages/QuoteAcceptPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
@@ -49,7 +49,7 @@ import ClientSchedulePage from "./pages/ClientSchedulePage";
 import ClientRebookPage from "./pages/ClientRebookPage";
 import CleanerPortalPage from "./pages/CleanerPortalPage";
 import CleanReportPage from "./pages/CleanReportPage";
-import EnquiryPage from "./pages/EnquiryPage";
+// EnquiryPage deleted — enquiries go through the pipeline
 import BookingPage from "./pages/BookingPage";
 import QuoteIntakePage from "./pages/QuoteIntakePage";
 import MyCleans from "./pages/MyCleans";
@@ -68,7 +68,7 @@ import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
 import StaffMagicAuthPage from "./pages/auth/StaffMagicAuthPage";
-import ClientPortalLoginPage from "./pages/ClientPortalLoginPage";
+// ClientPortalLoginPage deleted — /client-portal now uses ClientLoginPage
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
 import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
 import ClientPortalPropertyPage from "./pages/ClientPortalPropertyPage";
