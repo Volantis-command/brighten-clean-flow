@@ -83,9 +83,9 @@ const EXTRAS_BY_TYPE: Record<string, string[]> = {
 /* ────── Step definitions ────── */
 function getSteps(cleanType: CleanType | ''): string[] {
   if (cleanType === 'airbnb') {
-    return ['clean_type', 'property', 'airbnb_extras', 'access', 'contact'];
+    return ['clean_type', 'property', 'airbnb_extras', 'access', 'contact', 'summary'];
   }
-  return ['clean_type', 'property', 'extras', 'access', 'contact'];
+  return ['clean_type', 'property', 'extras', 'access', 'contact', 'summary'];
 }
 
 /* ────────────── Component ────────────── */
