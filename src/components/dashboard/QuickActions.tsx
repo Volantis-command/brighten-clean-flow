@@ -17,7 +17,7 @@ export function QuickActions() {
       </button>
 
       <button
-        onClick={() => navigate('/onboard')}
+        onClick={() => navigate('/quote')}
         className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col items-center gap-2 transition-all min-h-[80px] active:scale-95 hover:shadow-[0_0_16px_rgba(254,219,0,0.15)]"
       >
         <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(254,219,0,0.12)' }}>
@@ -27,7 +27,7 @@ export function QuickActions() {
       </button>
 
       <button
-        onClick={() => navigate('/onboard')}
+        onClick={() => navigate('/quote')}
         className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col items-center gap-2 transition-all min-h-[80px] active:scale-95 hover:shadow-[0_0_16px_rgba(254,219,0,0.15)]"
       >
         <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(254,219,0,0.12)' }}>

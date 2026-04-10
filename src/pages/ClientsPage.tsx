@@ -216,7 +216,7 @@ export default function ClientsPage() {
         const token = links?.[0]?.onboard_token;
         if (token) {
           await supabase.functions.invoke('send-job-sms', {
-            body: { to: createPhone, message: `Hi ${createName}, welcome to Brightly! Set up your property portal here: ${BASE_URL}/onboard/${token}` },
+            body: { to: createPhone, message: `Hi ${createName}, welcome to Brightly! Set up your property portal here: ${BASE_URL}/quote` },
           }).catch(() => {});
         }
       }
@@ -291,7 +291,7 @@ export default function ClientsPage() {
     mutationFn: async () => {
       if (!onboardClient) return;
       const token = onboardClient.linked_properties[0]?.portal_token;
-      const onboardLink = `${BASE_URL}/onboard/${token || 'new'}`;
+      const onboardLink = `${BASE_URL}/quote`;
 
       if (onboardMethod === 'sms' && onboardClient.phone) {
         await supabase.functions.invoke('send-job-sms', {
@@ -389,10 +389,10 @@ export default function ClientsPage() {
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate('/onboard')} variant="outline" className="font-bold rounded-xl gap-2">
+          <Button onClick={() => navigate('/quote')} variant="outline" className="font-bold rounded-xl gap-2">
             <FileText className="w-5 h-5" /> Send Quote Request
           </Button>
-          <Button onClick={() => navigate('/onboard')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+          <Button onClick={() => navigate('/quote')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
             <UserPlus className="w-5 h-5" /> Add Client
           </Button>
         </div>

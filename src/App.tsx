@@ -29,7 +29,7 @@ import ClientDetailPage from "./pages/ClientDetailPage";
 import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
 import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
 import FeedbackPage from "./pages/FeedbackPage";
-import OnboardingPage from "./pages/OnboardingPage";
+
 import BookingRequestsPage from "./pages/BookingRequestsPage";
 import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
@@ -177,8 +177,8 @@ function AppRoutes() {
       <Route path="/client/:token" element={<MagicLinkPortalPage />} />
       <Route path="/client/:token/property/:id" element={<MagicLinkPropertyPage />} />
       <Route path="/feedback/:token" element={<FeedbackPage />} />
-      <Route path="/onboard/:token" element={<OnboardingPage />} />
-      <Route path="/onboard" element={<OnboardingPage />} />
+      <Route path="/onboard/:token" element={<Navigate to="/quote" replace />} />
+      <Route path="/onboard" element={<Navigate to="/quote" replace />} />
       <Route path="/quote/:token" element={<QuoteIntakePage />} />
       <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
@@ -247,7 +247,7 @@ function AppRoutes() {
         <Route path="/my-pay" element={<MyPaySummaryPage />} />
         <Route path="/qc" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCPage /></ProtectedRoute>} />
         <Route path="/qc/:jobId" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCAuditPage /></ProtectedRoute>} />
-        <Route path="/onboard" element={<ProtectedRoute allowedRoles={['admin']}><OnboardingPage /></ProtectedRoute>} />
+        <Route path="/onboard" element={<Navigate to="/quote" replace />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

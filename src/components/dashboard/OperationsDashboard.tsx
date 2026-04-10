@@ -244,10 +244,10 @@ export default function OperationsDashboard() {
 
       {/* Quick Actions */}
       <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/onboard')}>
+        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quote')}>
           <Plus className="h-4 w-4" /> New Enquiry
         </Button>
-        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/onboard')}>
+        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quote')}>
           <Send className="h-4 w-4" /> Send SMS Quote Link
         </Button>
         <div className="flex-1 min-w-[200px]">
