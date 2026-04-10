@@ -200,6 +200,16 @@ export default function ClientsPage() {
         const inserts = createPropertyIds.map(pid => ({ client_id: data.user_id, property_id: pid }));
         await supabase.from('client_properties').insert(inserts);
       }
+      // Auto-generate portal token
+      if (data?.user_id) {
+        const token = crypto.randomUUID();
+        await supabase.from('client_tokens').insert({
+          email: createEmail.toLowerCase() || `phone:${createPhone}`,
+          token,
+          expires_at: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // effectively never expires
+          used: false,
+        });
+      }
       // Auto-send onboarding SMS if phone provided
       if (createPhone && data?.user_id) {
         const { data: links } = await supabase.from('client_properties').select('onboard_token').eq('client_id', data.user_id).limit(1);
