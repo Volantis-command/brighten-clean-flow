@@ -337,7 +337,8 @@ export default function StaffPage() {
           {staff.map((m) => (
             <StaffCard key={m.id} member={m} perfBadges={perfBadges} onboardingStatuses={onboardingStatuses}
               isAdmin={isAdmin} onSelect={() => setSelectedStaff(m)} onEdit={(e) => { e.stopPropagation(); openEdit(m); }}
-              onRemove={(e) => { e.stopPropagation(); setRemoveMember(m); }} />
+              onRemove={(e) => { e.stopPropagation(); setRemoveMember(m); }}
+              onSendMagicLink={(e) => { e.stopPropagation(); setMagicLinkConfirm(m); }} />
           ))}
         </div>
       )}
@@ -533,9 +534,10 @@ export default function StaffPage() {
 }
 
 // ─── Staff Card with Active Status ───
-function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelect, onEdit, onRemove }: {
+function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelect, onEdit, onRemove, onSendMagicLink }: {
   member: StaffMember; perfBadges: any; onboardingStatuses: any; isAdmin: boolean;
   onSelect: () => void; onEdit: (e: React.MouseEvent) => void; onRemove: (e: React.MouseEvent) => void;
+  onSendMagicLink: (e: React.MouseEvent) => void;
 }) {
   const { data: activeStatus } = useCleanerActiveStatus(m.id);
   const isCleanerRole = m.role === 'cleaner' || m.role === 'head_cleaner';
@@ -579,12 +581,18 @@ function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelec
       )}
 
       {isAdmin && (
-        <div className="flex gap-2 mt-auto pt-2">
+        <div className="flex flex-wrap gap-2 mt-auto pt-2">
+          <Button size="sm" className="flex-1 gap-1 rounded-xl bg-brightly hover:bg-brightly-hover text-white text-xs"
+            disabled={!m.phone}
+            title={!m.phone ? 'No phone on file' : `Send login link to ${m.phone}`}
+            onClick={onSendMagicLink}>
+            <Link2 className="w-3.5 h-3.5" /> Login Link
+          </Button>
           <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl" onClick={onEdit}>
             <Pencil className="w-4 h-4" /> Edit
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={onRemove}>
-            <Trash2 className="w-4 h-4" /> Remove
+          <Button variant="outline" size="sm" className="gap-1 rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={onRemove}>
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       )}

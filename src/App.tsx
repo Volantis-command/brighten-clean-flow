@@ -195,6 +195,7 @@ function AppRoutes() {
       <Route path="/airbnb" element={<AirbnbQuotePage />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
+      <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
 
       {/* Client portal (SMS magic link session) */}
@@ -240,7 +241,7 @@ function AppRoutes() {
         <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
         <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
         <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
-        <Route path="/cleaner-onboarding" element={<CleanerOnboardingPage />} />
+        {/* cleaner-onboarding moved to public routes for token access */}
         <Route path="/availability" element={<CleanerAvailabilityPage />} />
         <Route path="/my-score" element={<MyBrightlyScorePage />} />
         <Route path="/my-pay" element={<MyPaySummaryPage />} />

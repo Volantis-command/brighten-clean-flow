@@ -176,7 +176,10 @@ export default function CleanerOnboardingPage() {
 
   // Bootstrap: load existing onboarding row if present
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       const { data } = await supabase
         .from('cleaner_onboarding')
@@ -479,6 +482,23 @@ export default function CleanerOnboardingPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+        <h1 className="text-3xl font-extrabold text-primary mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          Brightly<span className="text-accent">.</span>
+        </h1>
+        <div className="bg-card rounded-2xl shadow-md p-8 max-w-md text-center space-y-4 mt-6">
+          <ShieldCheck className="h-10 w-10 text-primary mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Cleaner Onboarding</h2>
+          <p className="text-muted-foreground">
+            Please use the onboarding link sent to you via SMS to access this form. Need help? Call <span className="font-bold">0418 878 707</span>.
+          </p>
+        </div>
       </div>
     );
   }
