@@ -105,7 +105,7 @@ import { JobCard } from '@/components/dashboard/JobCard';
 import { LiveStatusStrip } from '@/components/dashboard/LiveStatusStrip';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TopStatsBar } from '@/components/dashboard/TopStatsBar';
-import { TodayAtAGlance } from '@/components/dashboard/TodayAtAGlance';
+// TodayAtAGlance removed — consolidated into TopStatsBar + Quick KPI cards
 import { TeamPerformanceTable } from '@/components/dashboard/TeamPerformanceTable';
 import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
 import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
