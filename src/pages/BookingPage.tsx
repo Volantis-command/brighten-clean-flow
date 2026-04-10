@@ -78,15 +78,15 @@ export default function BookingPage() {
   // If no client context, show gated message
   if (!hasClientContext) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
-        <div className="bg-card rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-            <ShieldAlert className="h-8 w-8 text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0A0F0E' }}>
+        <div className="rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <ShieldAlert className="h-8 w-8" style={{ color: 'rgba(240,253,244,0.5)' }} />
           </div>
-          <h1 className="text-xl font-extrabold text-foreground">Access Required</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1 className="text-xl font-extrabold" style={{ color: '#F0FDF4' }}>Access Required</h1>
+          <p className="text-sm" style={{ color: 'rgba(240,253,244,0.5)' }}>
             This page is only accessible from your client portal. Need help? Call{' '}
-            <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
+            <a href="tel:0418878707" className="font-semibold" style={{ color: '#86EFAC' }}>0418 878 707</a>
           </p>
         </div>
       </div>
@@ -191,32 +191,33 @@ export default function BookingPage() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
-        <div className="bg-card rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <CheckCircle2 className="h-8 w-8 text-primary" />
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0A0F0E' }}>
+        <div className="rounded-3xl shadow-xl p-8 max-w-md w-full text-center space-y-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ background: 'rgba(46,93,78,0.2)' }}>
+            <CheckCircle2 className="h-8 w-8" style={{ color: '#86EFAC' }} />
           </div>
-          <h1 className="text-2xl font-extrabold text-foreground">
+          <h1 className="text-2xl font-extrabold" style={{ color: '#F0FDF4' }}>
             {isPortalBooking ? 'Booking request sent!' : 'Booking confirmed!'}
           </h1>
-          <p className="text-muted-foreground">
+          <p style={{ color: 'rgba(240,253,244,0.6)' }}>
             {isPortalBooking
-              ? <>We'll confirm your booking for <span className="font-bold text-foreground">{confirmedDate}</span> shortly via SMS.</>
-              : <>We'll see you on <span className="font-bold text-foreground">{confirmedDate}</span>.</>
+              ? <>We'll confirm your booking for <span className="font-bold" style={{ color: '#F0FDF4' }}>{confirmedDate}</span> shortly via SMS.</>
+              : <>We'll see you on <span className="font-bold" style={{ color: '#F0FDF4' }}>{confirmedDate}</span>.</>
             }
           </p>
           {frequency !== 'one_off' && (
-            <p className="text-sm font-semibold text-primary">
+            <p className="text-sm font-semibold" style={{ color: '#86EFAC' }}>
               🔄 {FREQUENCIES.find(f => f.value === frequency)?.label} recurring clean set up
             </p>
           )}
-          <p className="text-sm text-muted-foreground">
-            Questions? Call us on <a href="tel:0418878707" className="font-semibold text-primary">0418 878 707</a>
+          <p className="text-sm" style={{ color: 'rgba(240,253,244,0.5)' }}>
+            Questions? Call us on <a href="tel:0418878707" className="font-semibold" style={{ color: '#86EFAC' }}>0418 878 707</a>
           </p>
           {!isPortalBooking && (
             <button
               onClick={handleReschedule}
-              className="text-sm text-muted-foreground underline hover:text-foreground transition-colors"
+              className="text-sm underline transition-colors"
+              style={{ color: 'rgba(240,253,244,0.5)' }}
             >
               Need to reschedule?
             </button>
@@ -227,19 +228,19 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-6">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0A0F0E' }}>
+      <div className="rounded-3xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-6" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-extrabold text-primary tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Brightly<span className="text-accent">.</span>
+          <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', color: '#F0FDF4' }}>
+            Brightly<span style={{ color: '#FEDB00' }}>.</span>
           </h1>
-          <h2 className="text-xl font-bold text-foreground">Book Your Clean</h2>
-          {displayName ? <p className="text-muted-foreground">Hi {displayName.split(' ')[0]}, confirm your booking details below.</p> : null}
+          <h2 className="text-xl font-bold" style={{ color: '#F0FDF4' }}>Book Your Clean</h2>
+          {displayName ? <p style={{ color: 'rgba(240,253,244,0.5)' }}>Hi {displayName.split(' ')[0]}, confirm your booking details below.</p> : null}
           {qrData?.preferred_date && (
-            <p className="text-xs text-muted-foreground">We've pre-filled your preferred date from your quote request.</p>
+            <p className="text-xs" style={{ color: 'rgba(240,253,244,0.4)' }}>We've pre-filled your preferred date from your quote request.</p>
           )}
           {displayService ? (
-            <p className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{displayService}</p>
+            <p className="inline-block rounded-full px-3 py-1 text-sm font-semibold" style={{ background: 'rgba(46,93,78,0.2)', color: '#86EFAC' }}>{displayService}</p>
           ) : null}
         </div>
 
