@@ -56,7 +56,7 @@ export default function LeadsTab() {
   const deleteMutation = useMutation({
     mutationFn: async (lead: any) => {
       // Delete any quotes linked to this request
-      await supabase.from('quotes').delete().eq('quote_request_id', lead.id);
+      await (supabase.from('quotes').delete() as any).eq('quote_request_id', lead.id);
       // Delete the lead/quote_request
       const { error } = await supabase.from('quote_requests').delete().eq('id', lead.id);
       if (error) throw new Error(`Failed to delete lead: ${error.message}`);
