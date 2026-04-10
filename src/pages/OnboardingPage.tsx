@@ -455,9 +455,9 @@ export default function OnboardingPage() {
                           style={{
                             padding: '8px 14px',
                             borderRadius: '12px',
-                            border: form.bed_config[roomNum] === bt ? '2px solid #FEDB00' : '1px solid rgba(255,255,255,0.15)',
-                            background: form.bed_config[roomNum] === bt ? '#FEDB00' : 'rgba(255,255,255,0.04)',
-                            color: form.bed_config[roomNum] === bt ? '#0C463D' : '#F0FDF4',
+                            border: form.bed_config[roomNum] === bt ? '2px solid #2E5D4E' : '1px solid rgba(255,255,255,0.15)',
+                            background: form.bed_config[roomNum] === bt ? '#2E5D4E' : 'rgba(255,255,255,0.04)',
+                            color: form.bed_config[roomNum] === bt ? '#FFFFFF' : '#F0FDF4',
                             fontSize: '13px',
                             fontWeight: 700,
                             cursor: 'pointer',
