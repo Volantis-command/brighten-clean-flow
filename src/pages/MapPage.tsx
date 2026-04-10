@@ -5,7 +5,9 @@ import { MapPin, Phone, Users, Building2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
-const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+import { GOOGLE_MAPS_API_KEY } from '@/lib/config';
+
+const MAPS_KEY = GOOGLE_MAPS_API_KEY;
 
 export default function MapPage() {
   const [filter, setFilter] = useState<'cleaners' | 'properties' | 'all'>('all');
