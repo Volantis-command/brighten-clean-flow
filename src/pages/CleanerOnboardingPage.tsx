@@ -176,7 +176,10 @@ export default function CleanerOnboardingPage() {
 
   // Bootstrap: load existing onboarding row if present
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       const { data } = await supabase
         .from('cleaner_onboarding')
