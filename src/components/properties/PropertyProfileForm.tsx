@@ -71,6 +71,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
     estimated_hours: '',
     pricing_notes: '',
     preferred_cleaner_id: '',
+    default_price: '',
+    price_includes_gst: false,
     // Client
     client_name: '',
     client_phone: '',
@@ -114,6 +116,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         estimated_hours: property.estimated_hours != null ? String(property.estimated_hours) : '',
         pricing_notes: property.pricing_notes || '',
         preferred_cleaner_id: property.preferred_cleaner_id || '',
+        default_price: (property as any).default_price != null ? String((property as any).default_price) : '',
+        price_includes_gst: (property as any).price_includes_gst || false,
         client_name: property.client_name || '',
         client_phone: property.client_phone || '',
         client_email: property.client_email || '',
@@ -162,6 +166,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
       estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
       pricing_notes: form.pricing_notes || null,
       preferred_cleaner_id: form.preferred_cleaner_id || null,
+      default_price: form.default_price ? parseFloat(form.default_price) : null,
+      price_includes_gst: form.price_includes_gst,
       client_name: form.client_name || null,
       client_phone: form.client_phone || null,
       client_email: form.client_email || null,
@@ -256,13 +262,18 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
           <p className="text-sm text-muted-foreground">
             {[form.address, form.suburb, form.state, form.postcode].filter(Boolean).join(', ')}
           </p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex flex-wrap gap-2 mt-2">
             {form.property_type && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{form.property_type}</span>
             )}
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
               {form.bedrooms} bed / {form.bathrooms} bath
             </span>
+            {form.default_price && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                ${parseFloat(form.default_price).toFixed(2)} {form.price_includes_gst ? 'inc GST' : 'ex GST'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -464,6 +475,31 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         <TabsContent value="pricing" className="space-y-4 mt-4">
           {isAdmin ? (
             <>
+              <Field label="Standard Clean Price">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
+                    <Input type="number" step="0.01" min="0" value={form.default_price} onChange={e => u('default_price', e.target.value)} className="h-12 rounded-xl pl-8" placeholder="e.g. 150.00" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => u('price_includes_gst', !form.price_includes_gst)}
+                    className={cn(
+                      'px-4 h-12 rounded-xl border-2 font-bold text-sm transition-all whitespace-nowrap',
+                      form.price_includes_gst ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
+                    )}
+                  >
+                    {form.price_includes_gst ? 'inc GST' : 'ex GST'}
+                  </button>
+                </div>
+                {form.default_price && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.price_includes_gst
+                      ? `$${(parseFloat(form.default_price) / 1.1).toFixed(2)} ex GST`
+                      : `$${(parseFloat(form.default_price) * 1.1).toFixed(2)} inc GST`}
+                  </p>
+                )}
+              </Field>
               <Field label="Locked Sell Price (inc GST)">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>

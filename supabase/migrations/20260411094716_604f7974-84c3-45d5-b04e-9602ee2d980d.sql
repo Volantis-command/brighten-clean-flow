@@ -1,0 +1,2 @@
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS default_price DECIMAL(10,2);
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS price_includes_gst BOOLEAN DEFAULT false;

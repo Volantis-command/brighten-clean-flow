@@ -1611,6 +1611,7 @@ export type Database = {
           consumables_config: Json | null
           created_at: string
           default_cleaner_id: string | null
+          default_price: number | null
           fragrance_preference: string | null
           guest_checkin_at: string | null
           guesty_listing_id: string | null
@@ -1645,6 +1646,7 @@ export type Database = {
           preferred_cleaner_id: string | null
           price_deep_clean: number | null
           price_end_of_lease: number | null
+          price_includes_gst: boolean | null
           price_post_build: number | null
           price_turnover: number | null
           pricing_agreement_notes: string | null
@@ -1690,6 +1692,7 @@ export type Database = {
           consumables_config?: Json | null
           created_at?: string
           default_cleaner_id?: string | null
+          default_price?: number | null
           fragrance_preference?: string | null
           guest_checkin_at?: string | null
           guesty_listing_id?: string | null
@@ -1724,6 +1727,7 @@ export type Database = {
           preferred_cleaner_id?: string | null
           price_deep_clean?: number | null
           price_end_of_lease?: number | null
+          price_includes_gst?: boolean | null
           price_post_build?: number | null
           price_turnover?: number | null
           pricing_agreement_notes?: string | null
@@ -1769,6 +1773,7 @@ export type Database = {
           consumables_config?: Json | null
           created_at?: string
           default_cleaner_id?: string | null
+          default_price?: number | null
           fragrance_preference?: string | null
           guest_checkin_at?: string | null
           guesty_listing_id?: string | null
@@ -1803,6 +1808,7 @@ export type Database = {
           preferred_cleaner_id?: string | null
           price_deep_clean?: number | null
           price_end_of_lease?: number | null
+          price_includes_gst?: boolean | null
           price_post_build?: number | null
           price_turnover?: number | null
           pricing_agreement_notes?: string | null

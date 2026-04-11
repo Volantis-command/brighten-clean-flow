@@ -56,6 +56,8 @@ export default function AddJobPage() {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [propertySearch, setPropertySearch] = useState('');
   const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
+  const [priceExGst, setPriceExGst] = useState<number | null>(null);
+  const [priceIncGst, setPriceIncGst] = useState<number | null>(null);
 
   const { leaveMap, conflictMap } = useAllCleanerLeave(date);
   const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
@@ -65,7 +67,7 @@ export default function AddJobPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb, price_turnover, client_name')
+        .select('id, property_name, address, suburb, price_turnover, client_name, default_price, price_includes_gst')
         .in('status', ['active', 'onboarding'])
         .order('client_name', { ascending: true, nullsFirst: false });
       if (error) throw error;
@@ -80,6 +82,26 @@ export default function AddJobPage() {
   );
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
+
+  const handlePropertySelect = (p: any) => {
+    setPropertyId(p.id);
+    if (p.default_price != null && parseFloat(p.default_price) > 0) {
+      const dp = parseFloat(p.default_price);
+      if (p.price_includes_gst) {
+        setPriceIncGst(dp);
+        setPriceExGst(parseFloat((dp / 1.1).toFixed(2)));
+      } else {
+        setPriceExGst(dp);
+        setPriceIncGst(parseFloat((dp * 1.1).toFixed(2)));
+      }
+    } else if (p.price_turnover) {
+      setPriceExGst(Number(p.price_turnover));
+      setPriceIncGst(parseFloat((Number(p.price_turnover) * 1.1).toFixed(2)));
+    } else {
+      setPriceExGst(null);
+      setPriceIncGst(null);
+    }
+  };
 
   // Conflict state for selected cleaners
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
@@ -131,8 +153,8 @@ export default function AddJobPage() {
       specialInstructions ? `Special instructions: ${specialInstructions}` : '',
     ].filter(Boolean).join('\n\n');
 
-    const priceExGst = selectedProperty?.price_turnover || null;
-    const priceIncGst = priceExGst ? Number(priceExGst) * 1.1 : null;
+    const finalExGst = priceExGst;
+    const finalIncGst = priceIncGst;
 
     let seriesId: string | null = null;
 
@@ -301,7 +323,7 @@ export default function AddJobPage() {
                             {props.map((p) => (
                               <button
                                 key={p.id}
-                                onClick={() => { setPropertyId(p.id); setPropertySearch(''); }}
+                                onClick={() => { handlePropertySelect(p); setPropertySearch(''); }}
                                 className="w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border last:border-b-0"
                               >
                                 <p className="font-bold text-foreground text-sm">{p.property_name}</p>

@@ -34,7 +34,7 @@ interface ScheduleCleanModalProps {
   onOpenChange: (open: boolean) => void;
   clientId: string;
   clientName: string;
-  properties: Array<{ id: string; property_name: string; address?: string | null }>;
+  properties: Array<{ id: string; property_name: string; address?: string | null; default_price?: number | null; price_includes_gst?: boolean | null }>;
 }
 
 export default function ScheduleCleanModal({ open, onOpenChange, clientId, clientName, properties }: ScheduleCleanModalProps) {
@@ -49,17 +49,42 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const [duration, setDuration] = useState('120');
   const [cleanerId, setCleanerId] = useState('');
   const [priceExGst, setPriceExGst] = useState('');
+  const [priceIncGst, setPriceIncGst] = useState('');
+  const [gstMode, setGstMode] = useState<'ex' | 'inc'>('ex');
   const [notes, setNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
-  const priceIncGst = priceExGst ? (parseFloat(priceExGst) * 1.1).toFixed(2) : '';
-
   const { unavailableMap } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
+
+  // Helper to set both prices from one value
+  const setPriceFromEx = (val: string) => {
+    setPriceExGst(val);
+    setPriceIncGst(val && parseFloat(val) > 0 ? (parseFloat(val) * 1.1).toFixed(2) : '');
+  };
+  const setPriceFromInc = (val: string) => {
+    setPriceIncGst(val);
+    setPriceExGst(val && parseFloat(val) > 0 ? (parseFloat(val) / 1.1).toFixed(2) : '');
+  };
+
+  // Pre-fill price from property default_price
+  const prefillPriceFromProperty = (propId: string) => {
+    const prop = properties.find(p => p.id === propId) as any;
+    if (prop?.default_price != null && parseFloat(prop.default_price) > 0) {
+      const isInc = prop.price_includes_gst === true;
+      setGstMode(isInc ? 'inc' : 'ex');
+      if (isInc) {
+        setPriceFromInc(String(prop.default_price));
+      } else {
+        setPriceFromEx(String(prop.default_price));
+      }
+    }
+  };
 
   // Pre-select first property
   useEffect(() => {
     if (open && properties.length > 0 && !propertyId) {
       setPropertyId(properties[0].id);
+      prefillPriceFromProperty(properties[0].id);
     }
   }, [open, properties, propertyId]);
 
@@ -73,6 +98,8 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       setDuration('120');
       setCleanerId('');
       setPriceExGst('');
+      setPriceIncGst('');
+      setGstMode('ex');
       setNotes('');
       setInternalNotes('');
     }
@@ -93,14 +120,17 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       const hasPrice = priceExGst && parseFloat(priceExGst) > 0;
       const status = hasPrice ? 'scheduled' : 'awaiting_quote';
 
+      const finalExGst = hasPrice ? parseFloat(priceExGst) : null;
+      const finalIncGst = hasPrice ? parseFloat(priceIncGst) : null;
+
       const { data: jobData, error } = await supabase.from('jobs').insert({
         property_id: propertyId,
         scheduled_date: format(date, 'yyyy-MM-dd'),
         scheduled_time: time,
         estimated_duration: parseInt(duration),
         cleaner_1_id: cleanerId || null,
-        price_ex_gst: hasPrice ? parseFloat(priceExGst) : null,
-        price_inc_gst: hasPrice ? parseFloat(priceIncGst) : null,
+        price_ex_gst: finalExGst,
+        price_inc_gst: finalIncGst,
         notes: notes || null,
         price_notes: internalNotes || null,
         status,
@@ -175,7 +205,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
             {properties.length === 1 ? (
               <div className="bg-secondary rounded-xl px-3 py-2 text-sm">{properties[0].property_name}</div>
             ) : (
-              <Select value={propertyId} onValueChange={setPropertyId}>
+              <Select value={propertyId} onValueChange={v => { setPropertyId(v); prefillPriceFromProperty(v); }}>
                 <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select property" /></SelectTrigger>
                 <SelectContent>
                   {properties.map(p => (
@@ -254,14 +284,59 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
           </div>
 
           {/* Price */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-semibold">Price ex GST ($)</Label>
-              <Input type="number" step="0.01" min="0" value={priceExGst} onChange={e => setPriceExGst(e.target.value)} className="rounded-xl" placeholder="0.00" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Price ($)</Label>
+              <button
+                type="button"
+                onClick={() => {
+                  if (gstMode === 'ex') {
+                    setGstMode('inc');
+                    if (priceExGst && parseFloat(priceExGst) > 0) {
+                      setPriceIncGst((parseFloat(priceExGst) * 1.1).toFixed(2));
+                    }
+                  } else {
+                    setGstMode('ex');
+                    if (priceIncGst && parseFloat(priceIncGst) > 0) {
+                      setPriceExGst((parseFloat(priceIncGst) / 1.1).toFixed(2));
+                    }
+                  }
+                }}
+                className={cn(
+                  'px-3 py-1 rounded-lg border text-xs font-bold transition-all',
+                  gstMode === 'inc' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
+                )}
+              >
+                {gstMode === 'ex' ? 'ex GST' : 'inc GST'}
+              </button>
             </div>
-            <div className="space-y-1">
-              <Label className="text-sm font-semibold">Price inc GST ($)</Label>
-              <Input value={priceIncGst ? `$${priceIncGst}` : '—'} readOnly className="rounded-xl bg-muted" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Ex GST</span>
+                <Input
+                  type="number" step="0.01" min="0" value={priceExGst}
+                  onChange={e => {
+                    setPriceExGst(e.target.value);
+                    if (e.target.value && parseFloat(e.target.value) > 0) {
+                      setPriceIncGst((parseFloat(e.target.value) * 1.1).toFixed(2));
+                    } else { setPriceIncGst(''); }
+                  }}
+                  className="rounded-xl" placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Inc GST</span>
+                <Input
+                  type="number" step="0.01" min="0" value={priceIncGst}
+                  onChange={e => {
+                    setPriceIncGst(e.target.value);
+                    if (e.target.value && parseFloat(e.target.value) > 0) {
+                      setPriceExGst((parseFloat(e.target.value) / 1.1).toFixed(2));
+                    } else { setPriceExGst(''); }
+                  }}
+                  className="rounded-xl" placeholder="0.00"
+                />
+              </div>
             </div>
           </div>
 

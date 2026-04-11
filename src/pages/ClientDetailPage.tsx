@@ -311,8 +311,8 @@ export default function ClientDetailPage() {
   };
 
   const scheduleProperties = schedulePropertyId
-    ? data.properties.filter((p: any) => p.id === schedulePropertyId).map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address }))
-    : data.properties.map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address }));
+    ? data.properties.filter((p: any) => p.id === schedulePropertyId).map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address, default_price: p.default_price, price_includes_gst: p.price_includes_gst }))
+    : data.properties.map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address, default_price: p.default_price, price_includes_gst: p.price_includes_gst }));
 
   return (
     <div className="space-y-6">

@@ -151,7 +151,7 @@ export default function PropertyProfilePage() {
         onOpenChange={setScheduleOpen}
         clientId={property.id}
         clientName={(property as any).client_name || property.property_name}
-        properties={[{ id: property.id, property_name: property.property_name, address: property.address }]}
+        properties={[{ id: property.id, property_name: property.property_name, address: property.address, default_price: (property as any).default_price, price_includes_gst: (property as any).price_includes_gst }]}
       />
 
       {/* Delete Confirmation Modal */}
