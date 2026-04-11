@@ -103,6 +103,7 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
 
                 <div className="space-y-0.5">
                   {dayJobs.slice(0, maxPills).map(job => {
+                    const shortName = (job.properties?.property_name || 'Job').split(' ').slice(0, 2).join(' ');
                     const isComplete = job.status === 'completed' || job.status === 'complete';
                     const isInProgress = job.status === 'in_progress';
                     const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
