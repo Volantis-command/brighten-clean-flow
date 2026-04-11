@@ -10,6 +10,7 @@ import { StaffPayRatesSection } from '@/components/staff/StaffPayRatesSection';
 import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
 import { StaffOnboardingSection, useStaffOnboardingStatuses, useCleanerActiveStatus } from '@/components/staff/StaffOnboardingSection';
 import CleanerScorecard from '@/components/staff/CleanerScorecard';
+import StaffOnboardingDataView from '@/components/staff/StaffOnboardingDataView';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -904,6 +905,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
 
         {/* PAPERWORK TAB */}
         <TabsContent value="paperwork" className="space-y-4 mt-4">
+          <StaffOnboardingDataView staffId={staff.id} />
           <div className="bg-card rounded-2xl shadow-md p-5">
             <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><FileCheck className="w-4 h-4" /> Required Documents</h3>
             <div className="space-y-3">
