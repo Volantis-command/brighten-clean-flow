@@ -17,6 +17,7 @@ export interface ScheduleJob {
   invoice_status: string | null;
   series_id: string | null;
   is_urgent: boolean | null;
+  frequency: string | null;
   source: string | null;
   properties: {
     property_name: string;
