@@ -15,6 +15,7 @@ import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
+import { RecurringSeriesPanel } from '@/components/schedule/RecurringSeriesPanel';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 import { Skeleton } from '@/components/ui/skeleton';
