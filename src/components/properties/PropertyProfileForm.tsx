@@ -71,6 +71,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
     estimated_hours: '',
     pricing_notes: '',
     preferred_cleaner_id: '',
+    default_price: '',
+    price_includes_gst: false,
     // Client
     client_name: '',
     client_phone: '',
@@ -114,6 +116,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         estimated_hours: property.estimated_hours != null ? String(property.estimated_hours) : '',
         pricing_notes: property.pricing_notes || '',
         preferred_cleaner_id: property.preferred_cleaner_id || '',
+        default_price: (property as any).default_price != null ? String((property as any).default_price) : '',
+        price_includes_gst: (property as any).price_includes_gst || false,
         client_name: property.client_name || '',
         client_phone: property.client_phone || '',
         client_email: property.client_email || '',
