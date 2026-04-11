@@ -7,13 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil, CalendarPlus, Camera, FileText } from 'lucide-react';
 import { JobHistoryTab } from '@/components/property/JobHistoryTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
 import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
+import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 const ROOMS = ['Kitchen', 'Bathroom', 'Bedroom', 'Lounge', 'Balcony', 'Entry', 'Other'];
 
@@ -35,6 +39,7 @@ export default function PropertyProfilePage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [profileMode, setProfileMode] = useState<'view' | 'edit'>('view');
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -72,10 +77,13 @@ export default function PropertyProfilePage() {
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/clients')} className="gap-1">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <div className="flex gap-2">
+          <Button size="sm" onClick={() => setScheduleOpen(true)} className="bg-primary text-primary-foreground gap-1.5">
+            <CalendarPlus className="h-4 w-4" /> Book Clean
+          </Button>
           {isAdmin && profileMode === 'view' && (
             <Button variant="outline" size="sm" onClick={() => setProfileMode('edit')} className="gap-1.5">
               <Pencil className="h-4 w-4" /> Edit
@@ -88,7 +96,16 @@ export default function PropertyProfilePage() {
           )}
         </div>
       </div>
-      <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
+
+      <div>
+        <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
+        {(property.address || property.suburb) && (
+          <p className="text-sm text-muted-foreground mt-1">{[property.address, property.suburb, (property as any).state, (property as any).postcode].filter(Boolean).join(', ')}</p>
+        )}
+        {(property as any).client_name && (
+          <p className="text-sm text-muted-foreground mt-0.5">Client: <span className="font-semibold">{(property as any).client_name}</span></p>
+        )}
+      </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="w-full">
@@ -96,6 +113,7 @@ export default function PropertyProfilePage() {
           <TabsTrigger value="passport" className="flex-1">Passport</TabsTrigger>
           <TabsTrigger value="sop" className="flex-1">SOP</TabsTrigger>
           <TabsTrigger value="history" className="flex-1">History</TabsTrigger>
+          <TabsTrigger value="forms" className="flex-1">Forms</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <div className="bg-card rounded-2xl shadow-md p-5 mt-4">
@@ -119,10 +137,22 @@ export default function PropertyProfilePage() {
         <TabsContent value="history">
           <JobHistoryTab propertyId={property.id} />
         </TabsContent>
+        <TabsContent value="forms">
+          <FormsTab propertyId={property.id} />
+        </TabsContent>
       </Tabs>
 
       {/* Notes for Next Clean */}
       <WatchlistNotes propertyId={property.id} initialNotes={(property as any).property_notes || ''} />
+
+      {/* Schedule Clean Modal */}
+      <ScheduleCleanModal
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        clientId={property.id}
+        clientName={(property as any).client_name || property.property_name}
+        properties={[{ id: property.id, property_name: property.property_name, address: property.address }]}
+      />
 
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -139,6 +169,144 @@ export default function PropertyProfilePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/* ======= FORMS TAB ======= */
+function FormsTab({ propertyId }: { propertyId: string }) {
+  const navigate = useNavigate();
+
+  const { data: completedJobs = [], isLoading } = useQuery({
+    queryKey: ['property-completed-jobs', propertyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, scheduled_time, status, cleaner_1_id, cleaner_2_id, completion_notes, completion_photos, completion_form_completed_at, clock_on, clock_off, duration_minutes')
+        .eq('property_id', propertyId)
+        .in('status', ['completed', 'complete'])
+        .order('scheduled_date', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const cleanerIds = [...new Set(completedJobs.flatMap(j => [j.cleaner_1_id, j.cleaner_2_id].filter(Boolean)))];
+  const { data: cleaners = [] } = useQuery({
+    queryKey: ['property-form-cleaners', cleanerIds],
+    queryFn: async () => {
+      if (cleanerIds.length === 0) return [];
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds as string[]);
+      return data || [];
+    },
+    enabled: cleanerIds.length > 0,
+  });
+
+  const { data: photos = [] } = useQuery({
+    queryKey: ['property-form-photos', propertyId],
+    queryFn: async () => {
+      const jobIds = completedJobs.map(j => j.id);
+      if (jobIds.length === 0) return [];
+      const { data } = await supabase.from('job_photos').select('*').in('job_id', jobIds);
+      return data || [];
+    },
+    enabled: completedJobs.length > 0,
+  });
+
+  const cleanerMap: Record<string, string> = {};
+  cleaners.forEach((c: any) => { cleanerMap[c.id] = c.full_name || ''; });
+
+  const photosByJob: Record<string, any[]> = {};
+  photos.forEach((p: any) => {
+    if (!photosByJob[p.job_id]) photosByJob[p.job_id] = [];
+    photosByJob[p.job_id].push(p);
+  });
+
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
+
+  if (isLoading) return <p className="text-muted-foreground text-sm mt-4 p-4">Loading forms…</p>;
+
+  if (completedJobs.length === 0) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-8 text-center mt-4">
+        <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground">No completed cleans yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 mt-4">
+      {completedJobs.map((job: any) => {
+        const isExpanded = expandedJob === job.id;
+        const jobPhotos = photosByJob[job.id] || [];
+        const completionPhotos = job.completion_photos || [];
+        const allPhotos = [...completionPhotos, ...jobPhotos.map((p: any) => p.public_url || p.storage_path)].filter(Boolean);
+        const cleaner = cleanerMap[job.cleaner_1_id] || '—';
+
+        return (
+          <div key={job.id} className="bg-card rounded-2xl border border-border overflow-hidden">
+            <button
+              onClick={() => setExpandedJob(isExpanded ? null : job.id)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="font-semibold text-foreground text-sm">{format(new Date(job.scheduled_date), 'dd MMM yyyy')}</p>
+                  <p className="text-xs text-muted-foreground">{cleaner} · {job.duration_minutes ? `${job.duration_minutes} min` : '—'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {allPhotos.length > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground"><Camera className="w-3.5 h-3.5" /> {allPhotos.length}</span>
+                )}
+                <Badge className="bg-primary/10 text-primary">Completed</Badge>
+                {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </div>
+            </button>
+
+            {isExpanded && (
+              <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
+                {job.completion_notes && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Notes</p>
+                    <p className="text-sm text-foreground bg-muted rounded-lg p-3">{job.completion_notes}</p>
+                  </div>
+                )}
+
+                {job.clock_on && job.clock_off && (
+                  <div className="flex gap-4 text-sm">
+                    <div><span className="text-muted-foreground">Clock On:</span> <span className="font-medium">{format(new Date(job.clock_on), 'HH:mm')}</span></div>
+                    <div><span className="text-muted-foreground">Clock Off:</span> <span className="font-medium">{format(new Date(job.clock_off), 'HH:mm')}</span></div>
+                    {job.duration_minutes && <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{job.duration_minutes} min</span></div>}
+                  </div>
+                )}
+
+                {allPhotos.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Photos ({allPhotos.length})</p>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {allPhotos.slice(0, 8).map((url: string, idx: number) => (
+                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden bg-muted">
+                          <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                        </a>
+                      ))}
+                      {allPhotos.length > 8 && (
+                        <div className="aspect-square rounded-lg bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
+                          +{allPhotos.length - 8} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button variant="outline" size="sm" onClick={() => navigate(`/jobs/${job.id}`)} className="gap-1.5">
+                  <FileText className="w-3.5 h-3.5" /> View Full Report
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCleanersList } from '@/hooks/useCleanersList';
@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, Plus, BedDouble, Bath, Trash2, AlertTriangle, Merge } from 'lucide-react';
+import { Search, Plus, BedDouble, Bath, Trash2, AlertTriangle, Merge, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 
 export default function PropertiesPage() {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export default function PropertiesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [bookProperty, setBookProperty] = useState<any>(null);
   const { data: cleaners = [] } = useCleanersList();
 
   const handleDelete = async () => {
@@ -45,7 +47,6 @@ export default function PropertiesPage() {
     },
   });
 
-  // Fetch last clean dates for all properties
   const { data: lastCleanMap = {} } = useQuery({
     queryKey: ['properties-last-clean'],
     queryFn: async () => {
@@ -65,7 +66,6 @@ export default function PropertiesPage() {
     },
   });
 
-  // Detect duplicates (case-insensitive by address)
   const duplicateGroups = useMemo(() => {
     const groups: Record<string, any[]> = {};
     properties.forEach((p) => {
@@ -120,7 +120,6 @@ export default function PropertiesPage() {
         />
       </div>
 
-      {/* Duplicate properties alert */}
       {role === 'admin' && duplicateGroups.length > 0 && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
@@ -159,61 +158,76 @@ export default function PropertiesPage() {
       {!isLoading && filtered.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((property) => (
-            <button
+            <div
               key={property.id}
-              onClick={() => navigate(`/properties/${property.id}`)}
               className="w-full text-left bg-card rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow border border-border"
             >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h3 className="text-lg font-bold text-foreground leading-tight">{property.property_name}</h3>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-                      property.status === 'active'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {property.status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                  {typeBadge(property.client_type)}
+              <button
+                onClick={() => navigate(`/properties/${property.id}`)}
+                className="w-full text-left"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h3 className="text-lg font-bold text-foreground leading-tight">{property.property_name}</h3>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+                        property.status === 'active'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {property.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                    {typeBadge(property.client_type)}
+                  </div>
                 </div>
-              </div>
 
-              {(property.address || property.suburb) && (
-                <p className="text-sm text-muted-foreground mb-3 truncate">
-                  {[property.address, property.suburb, property.state, property.postcode].filter(Boolean).join(', ')}
-                </p>
-              )}
-
-              <div className="flex items-center gap-4 mb-2">
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <BedDouble className="h-4 w-4" />
-                  <span className="font-semibold">{property.bedrooms || 0}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Bath className="h-4 w-4" />
-                  <span className="font-semibold">{property.bathrooms || 0}</span>
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground mb-3">
-                {(lastCleanMap as Record<string, string>)[property.id]
-                  ? `Last cleaned: ${formatDistanceToNow(new Date((lastCleanMap as Record<string, string>)[property.id]), { addSuffix: true })}`
-                  : 'Never cleaned'}
-              </p>
-
-              <div className="flex items-center justify-between">
-                {property.client_name && (
-                  <p className="text-sm font-semibold text-muted-foreground">
-                    Client: {property.client_name}
+                {(property.address || property.suburb) && (
+                  <p className="text-sm text-muted-foreground mb-3 truncate">
+                    {[property.address, property.suburb, property.state, property.postcode].filter(Boolean).join(', ')}
                   </p>
                 )}
+
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <BedDouble className="h-4 w-4" />
+                    <span className="font-semibold">{property.bedrooms || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Bath className="h-4 w-4" />
+                    <span className="font-semibold">{property.bathrooms || 0}</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground mb-3">
+                  {(lastCleanMap as Record<string, string>)[property.id]
+                    ? `Last cleaned: ${formatDistanceToNow(new Date((lastCleanMap as Record<string, string>)[property.id]), { addSuffix: true })}`
+                    : 'Never cleaned'}
+                </p>
+              </button>
+
+              <div className="flex items-center justify-between mt-1">
                 <div className="flex items-center gap-2">
+                  {property.client_name && (
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      Client: {property.client_name}
+                    </p>
+                  )}
                   {property.preferred_cleaner_id && cleanerMap[property.preferred_cleaner_id] && (
                     <p className="text-xs text-muted-foreground">
                       🧹 {cleanerMap[property.preferred_cleaner_id]}
                     </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {role === 'admin' && (
+                    <Button
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setBookProperty(property); }}
+                      className="bg-primary text-primary-foreground gap-1 h-8 text-xs"
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5" /> Book
+                    </Button>
                   )}
                   {role === 'admin' && (
                     <button
@@ -226,9 +240,20 @@ export default function PropertiesPage() {
                   )}
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
+      )}
+
+      {/* Book Clean Modal */}
+      {bookProperty && (
+        <ScheduleCleanModal
+          open={!!bookProperty}
+          onOpenChange={(open) => { if (!open) setBookProperty(null); }}
+          clientId={bookProperty.id}
+          clientName={bookProperty.client_name || bookProperty.property_name}
+          properties={[{ id: bookProperty.id, property_name: bookProperty.property_name, address: bookProperty.address }]}
+        />
       )}
 
       {/* Delete Confirmation Modal */}
