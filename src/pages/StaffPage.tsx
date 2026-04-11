@@ -546,7 +546,7 @@ export default function StaffPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => removeMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => removeMember && removeMutation.mutate(removeMember.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {removeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Remove'}
             </AlertDialogAction>
           </AlertDialogFooter>
