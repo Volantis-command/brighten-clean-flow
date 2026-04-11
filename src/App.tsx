@@ -191,8 +191,8 @@ function AppRoutes() {
       {/* /enquire removed — enquiries go through pipeline */}
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
-      <Route path="/residential-quote" element={<ResidentialQuotePage />} />
-      <Route path="/airbnb" element={<AirbnbQuotePage />} />
+      <Route path="/residential-quote" element={<Navigate to="/quote" replace />} />
+      <Route path="/airbnb" element={<Navigate to="/quote" replace />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
       <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
