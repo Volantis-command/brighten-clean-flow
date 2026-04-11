@@ -166,6 +166,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
       estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
       pricing_notes: form.pricing_notes || null,
       preferred_cleaner_id: form.preferred_cleaner_id || null,
+      default_price: form.default_price ? parseFloat(form.default_price) : null,
+      price_includes_gst: form.price_includes_gst,
       client_name: form.client_name || null,
       client_phone: form.client_phone || null,
       client_email: form.client_email || null,
