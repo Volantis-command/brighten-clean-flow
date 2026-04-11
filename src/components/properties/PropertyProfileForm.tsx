@@ -262,13 +262,18 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
           <p className="text-sm text-muted-foreground">
             {[form.address, form.suburb, form.state, form.postcode].filter(Boolean).join(', ')}
           </p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex flex-wrap gap-2 mt-2">
             {form.property_type && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{form.property_type}</span>
             )}
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
               {form.bedrooms} bed / {form.bathrooms} bath
             </span>
+            {form.default_price && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                ${parseFloat(form.default_price).toFixed(2)} {form.price_includes_gst ? 'inc GST' : 'ex GST'}
+              </span>
+            )}
           </div>
         </div>
 
