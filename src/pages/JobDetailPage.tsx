@@ -555,39 +555,60 @@ export default function JobDetailPage() {
       <MapsActionSheet open={mapsOpen} onClose={() => setMapsOpen(false)} address={address || ''} />
 
       {/* Recurring Series Banner */}
-      {(job as any).series_id && (
+      {((job as any).series_id || (job as any).frequency && (job as any).frequency !== 'one-off') && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="py-4">
             <div className="flex items-center gap-2 mb-2">
               <Repeat className="h-5 w-5 text-primary" />
-              <p className="text-sm font-bold text-primary">Recurring Job — Part of a series</p>
+              <p className="text-sm font-bold text-primary">
+                Recurring: {(job as any).frequency === 'weekly' ? 'Weekly' : (job as any).frequency === 'fortnightly' ? 'Fortnightly' : (job as any).frequency === 'monthly' ? 'Monthly' : 'Series'}
+              </p>
+              {(job as any).series_id && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
+                  Part of recurring series
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/jobs/${jobId}/edit`)}>
                 Edit this job only
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate(`/jobs/${jobId}/edit`)}>
-                Edit all future jobs
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
                 onClick={async () => {
-                  if (!confirm('Cancel all future scheduled jobs in this series?')) return;
-                  const { error } = await supabase.from('jobs')
-                    .delete()
-                    .eq('series_id', (job as any).series_id)
-                    .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
-                    .eq('status', 'scheduled')
-                    .neq('id', jobId!);
+                  if (!confirm('Cancel THIS job only?')) return;
+                  const { error } = await supabase.from('jobs').update({ status: 'cancelled' } as any).eq('id', jobId!);
                   if (error) { toast.error(error.message); return; }
-                  toast.success('Future jobs in series cancelled');
+                  toast.success('Job cancelled');
+                  queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
                   queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
                 }}
               >
-                Cancel all future jobs
+                Cancel this job only
               </Button>
+              {(job as any).series_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={async () => {
+                    if (!confirm('Cancel all future scheduled jobs in this series?')) return;
+                    const { error } = await supabase.from('jobs')
+                      .delete()
+                      .eq('series_id', (job as any).series_id)
+                      .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
+                      .eq('status', 'scheduled')
+                      .neq('id', jobId!);
+                    if (error) { toast.error(error.message); return; }
+                    toast.success('Future jobs in series cancelled');
+                    queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                  }}
+                >
+                  Cancel all future jobs
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

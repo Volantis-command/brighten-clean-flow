@@ -279,6 +279,25 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
             </div>
           </div>
 
+          {/* Frequency */}
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold">Frequency</Label>
+            <Select value={frequency} onValueChange={setFrequency}>
+              <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one-off">One-off</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+            {frequency !== 'one-off' && (
+              <p className="text-xs text-muted-foreground">
+                {frequency === 'weekly' ? '8 future jobs' : frequency === 'fortnightly' ? '4 future jobs' : '2 future jobs'} will be auto-created
+              </p>
+            )}
+          </div>
+
           {/* Duration */}
           <div className="space-y-1">
             <Label className="text-sm font-semibold">Duration</Label>
