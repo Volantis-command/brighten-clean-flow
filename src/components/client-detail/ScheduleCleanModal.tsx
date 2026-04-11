@@ -205,7 +205,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
             {properties.length === 1 ? (
               <div className="bg-secondary rounded-xl px-3 py-2 text-sm">{properties[0].property_name}</div>
             ) : (
-              <Select value={propertyId} onValueChange={setPropertyId}>
+              <Select value={propertyId} onValueChange={v => { setPropertyId(v); prefillPriceFromProperty(v); }}>
                 <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select property" /></SelectTrigger>
                 <SelectContent>
                   {properties.map(p => (
