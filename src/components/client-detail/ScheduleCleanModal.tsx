@@ -49,17 +49,42 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const [duration, setDuration] = useState('120');
   const [cleanerId, setCleanerId] = useState('');
   const [priceExGst, setPriceExGst] = useState('');
+  const [priceIncGst, setPriceIncGst] = useState('');
+  const [gstMode, setGstMode] = useState<'ex' | 'inc'>('ex');
   const [notes, setNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
-  const priceIncGst = priceExGst ? (parseFloat(priceExGst) * 1.1).toFixed(2) : '';
-
   const { unavailableMap } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
+
+  // Helper to set both prices from one value
+  const setPriceFromEx = (val: string) => {
+    setPriceExGst(val);
+    setPriceIncGst(val && parseFloat(val) > 0 ? (parseFloat(val) * 1.1).toFixed(2) : '');
+  };
+  const setPriceFromInc = (val: string) => {
+    setPriceIncGst(val);
+    setPriceExGst(val && parseFloat(val) > 0 ? (parseFloat(val) / 1.1).toFixed(2) : '');
+  };
+
+  // Pre-fill price from property default_price
+  const prefillPriceFromProperty = (propId: string) => {
+    const prop = properties.find(p => p.id === propId) as any;
+    if (prop?.default_price != null && parseFloat(prop.default_price) > 0) {
+      const isInc = prop.price_includes_gst === true;
+      setGstMode(isInc ? 'inc' : 'ex');
+      if (isInc) {
+        setPriceFromInc(String(prop.default_price));
+      } else {
+        setPriceFromEx(String(prop.default_price));
+      }
+    }
+  };
 
   // Pre-select first property
   useEffect(() => {
     if (open && properties.length > 0 && !propertyId) {
       setPropertyId(properties[0].id);
+      prefillPriceFromProperty(properties[0].id);
     }
   }, [open, properties, propertyId]);
 
@@ -73,6 +98,8 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       setDuration('120');
       setCleanerId('');
       setPriceExGst('');
+      setPriceIncGst('');
+      setGstMode('ex');
       setNotes('');
       setInternalNotes('');
     }
@@ -93,14 +120,17 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       const hasPrice = priceExGst && parseFloat(priceExGst) > 0;
       const status = hasPrice ? 'scheduled' : 'awaiting_quote';
 
+      const finalExGst = hasPrice ? parseFloat(priceExGst) : null;
+      const finalIncGst = hasPrice ? parseFloat(priceIncGst) : null;
+
       const { data: jobData, error } = await supabase.from('jobs').insert({
         property_id: propertyId,
         scheduled_date: format(date, 'yyyy-MM-dd'),
         scheduled_time: time,
         estimated_duration: parseInt(duration),
         cleaner_1_id: cleanerId || null,
-        price_ex_gst: hasPrice ? parseFloat(priceExGst) : null,
-        price_inc_gst: hasPrice ? parseFloat(priceIncGst) : null,
+        price_ex_gst: finalExGst,
+        price_inc_gst: finalIncGst,
         notes: notes || null,
         price_notes: internalNotes || null,
         status,
