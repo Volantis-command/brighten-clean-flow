@@ -141,10 +141,18 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
               const duration = getDurationHours(job.estimated_duration);
               const top = (startTime - firstHour) * HOUR_HEIGHT;
               const height = Math.max(duration * HOUR_HEIGHT, 36);
-              const color = getCleanerColor(job.cleaner_1_id);
               const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
               const clientName = job.properties?.property_name || 'Job';
               const address = job.properties?.address || '';
+
+              // Status-based colour coding
+              const isComplete = job.status === 'completed' || job.status === 'complete';
+              const isInProgress = job.status === 'in_progress';
+              const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
+              const isPending = job.status === 'pending_approval' || job.status === 'awaiting_schedule_approval' || job.status === 'awaiting_quote' || job.status === 'awaiting_approval';
+              const bgColor = isPending ? 'hsl(45 93% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
+              const borderColor = isPending ? 'hsl(45 93% 45%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
+              const textColor = isPending ? '#422006' : '#fff';
 
               return (
                 <div
@@ -156,21 +164,21 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                   style={{
                     top: Math.max(top, 0),
                     height,
-                    backgroundColor: color.bg,
-                    borderLeft: `4px solid ${color.border}`,
+                    backgroundColor: bgColor,
+                    borderLeft: `4px solid ${borderColor}`,
                   }}
                 >
                   <div className="px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">
-                    <p className="text-sm font-bold leading-tight truncate" style={{ color: color.text }}>
+                    <p className={`text-sm font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`} style={{ color: textColor }}>
                       {clientName}
                     </p>
                     {height >= 52 && address && (
-                      <p className="text-xs leading-tight truncate mt-0.5 opacity-85" style={{ color: color.text }}>
+                      <p className="text-xs leading-tight truncate mt-0.5 opacity-85" style={{ color: textColor }}>
                         📍 {address}
                       </p>
                     )}
                     {height >= 68 && (
-                      <p className="text-xs leading-tight truncate mt-0.5 opacity-75" style={{ color: color.text }}>
+                      <p className="text-xs leading-tight truncate mt-0.5 opacity-75" style={{ color: textColor }}>
                         👤 {cleanerName}
                         {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}
                         {job.estimated_duration ? ` · ${job.estimated_duration / 60}hr` : ''}

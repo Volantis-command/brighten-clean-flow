@@ -26,11 +26,20 @@ function isAirbnbType(quote: QuoteData): boolean {
   return AIRBNB_TYPES.some(t => st.includes(t));
 }
 
-const TIME_OPTIONS = [
-  { label: 'Morning', sub: '8am – 12pm', value: 'Morning (8am-12pm)' },
-  { label: 'Afternoon', sub: '12pm – 4pm', value: 'Afternoon (12pm-4pm)' },
-  { label: 'Evening', sub: '4pm – 7pm', value: 'Evening (4pm-7pm)' },
-];
+// Generate 30-minute time slots from 6:00 AM to 7:00 PM
+const TIME_SLOTS: string[] = [];
+for (let h = 6; h <= 19; h++) {
+  TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
+  if (h < 19) TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
+}
+
+function formatTimeLabel(t: string) {
+  const [hStr, mStr] = t.split(':');
+  const h = parseInt(hStr);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${mStr} ${suffix}`;
+}
 
 function getTomorrow(): string {
   const d = new Date();
@@ -49,7 +58,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
 
   // Booking form state
   const [selectedDate, setSelectedDate] = useState(getTomorrow());
-  const [selectedTime, setSelectedTime] = useState('Morning (8am-12pm)');
+  const [selectedTime, setSelectedTime] = useState('');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
   useEffect(() => {
@@ -150,16 +159,10 @@ export default function QuoteDetailView({ token }: { token: string }) {
     setBookingSubmitting(true);
     try {
       // Create a job linked to this quote
-      const timeMap: Record<string, string> = {
-        'Morning (8am-12pm)': '08:00',
-        'Afternoon (12pm-4pm)': '13:00',
-        'Evening (4pm-7pm)': '16:00',
-      };
-
       const { error } = await supabase.from('jobs').insert({
         scheduled_date: selectedDate,
-        scheduled_time: timeMap[selectedTime] || '08:00',
-        status: 'scheduled',
+        scheduled_time: selectedTime || '08:00',
+        status: 'pending_approval',
         price_ex_gst: quote.sell_price_inc_gst ? Number(quote.sell_price_inc_gst) / 1.1 : null,
         price_inc_gst: quote.discounted_price ?? quote.sell_price_inc_gst,
         linked_quote_id: quote.id,
@@ -303,30 +306,22 @@ export default function QuoteDetailView({ token }: { token: string }) {
               <label className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase block mb-2">
                 Preferred time?
               </label>
-              <div className="grid grid-cols-3 gap-3">
-                {TIME_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setSelectedTime(opt.value)}
-                    className={`h-16 rounded-xl border text-center transition-all duration-200 ${
-                      selectedTime === opt.value
-                        ? 'border-2 border-[#2E5D4E] bg-[#2E5D4E]/15 shadow-lg shadow-[#2E5D4E]/10'
-                        : 'border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <p className={`text-sm font-semibold ${selectedTime === opt.value ? 'text-[#2E5D4E]' : 'text-white'}`}>
-                      {opt.label}
-                    </p>
-                    <p className="text-xs text-white/40 mt-0.5">{opt.sub}</p>
-                  </button>
+              <select
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-full h-14 rounded-xl bg-white/5 border border-white/15 text-white px-4 text-base focus:outline-none focus:border-[#2E5D4E] transition-colors appearance-none [color-scheme:dark]"
+              >
+                <option value="" disabled className="bg-[#1a1a1a]">Select a time</option>
+                {TIME_SLOTS.map(t => (
+                  <option key={t} value={t} className="bg-[#1a1a1a]">{formatTimeLabel(t)}</option>
                 ))}
-              </div>
+              </select>
             </div>
           </div>
 
           <button
             onClick={handleConfirmBooking}
-            disabled={bookingSubmitting || !selectedDate}
+            disabled={bookingSubmitting || !selectedDate || !selectedTime}
             className="w-full h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-6"
           >
             {bookingSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Booking'}

@@ -44,6 +44,7 @@ export default function JobDetailPage() {
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [sendingTrackerLink, setSendingTrackerLink] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
+  const [approvingJob, setApprovingJob] = useState(false);
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
@@ -371,15 +372,17 @@ export default function JobDetailPage() {
   }
 
   const statusConfig: Record<string, { label: string; className: string }> = {
-    awaiting_quote: { label: 'Needs Quote', className: 'bg-amber-100 text-amber-800' },
-    awaiting_approval: { label: 'Accepted — Confirm', className: 'bg-primary/20 text-primary' },
-    scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
-    confirmed: { label: 'Confirmed', className: 'bg-muted text-muted-foreground' },
-    in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800' },
-    completed: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
-    complete: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
-    cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive' },
-    flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+    pending_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
+    awaiting_schedule_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
+    awaiting_quote: { label: 'Needs Quote', className: 'bg-yellow-100 text-yellow-800' },
+    awaiting_approval: { label: 'Accepted — Confirm', className: 'bg-yellow-100 text-yellow-800' },
+    scheduled: { label: 'Scheduled', className: 'bg-emerald-100 text-emerald-800' },
+    confirmed: { label: 'Confirmed', className: 'bg-emerald-100 text-emerald-800' },
+    in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-800' },
+    completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+    complete: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+    cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700' },
+    flagged: { label: 'Flagged', className: 'bg-red-100 text-red-700' },
   };
 
   const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
@@ -610,6 +613,65 @@ export default function JobDetailPage() {
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pending Approval Banner */}
+      {role === 'admin' && (job.status === 'pending_approval' || job.status === 'awaiting_schedule_approval') && (
+        <Card className="border-yellow-400/50 bg-yellow-50">
+          <CardContent className="py-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-yellow-600" />
+              <p className="text-sm font-bold text-yellow-800">⏳ Pending Approval — Assign a cleaner and approve this booking</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">Date</span>
+                <p className="font-bold">{jobDate}</p>
+              </div>
+              {scheduledTime && (
+                <div>
+                  <span className="text-muted-foreground">Time</span>
+                  <p className="font-bold">{scheduledTime}</p>
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={async () => {
+                if (!job.cleaner_1_id) {
+                  toast.error('Please assign a cleaner first');
+                  return;
+                }
+                setApprovingJob(true);
+                try {
+                  const { error } = await supabase.from('jobs').update({ status: 'scheduled' }).eq('id', jobId!);
+                  if (error) throw error;
+
+                  // Send cleaner SMS
+                  try {
+                    await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+                  } catch { /* non-blocking */ }
+
+                  // Send client confirmation SMS
+                  try {
+                    await supabase.functions.invoke('send-client-booking-sms', { body: { job_id: jobId } });
+                  } catch { /* non-blocking */ }
+
+                  toast.success('Job approved & notifications sent ✓');
+                  queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+                  queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                } catch (err: any) {
+                  toast.error(err.message || 'Failed to approve');
+                }
+                setApprovingJob(false);
+              }}
+              disabled={approvingJob}
+              className="w-full h-12 text-base font-bold gap-2 bg-emerald-600 hover:bg-emerald-700"
+            >
+              {approvingJob ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+              Approve & Schedule
+            </Button>
           </CardContent>
         </Card>
       )}

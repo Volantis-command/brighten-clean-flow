@@ -2,7 +2,8 @@ import { cn } from '@/lib/utils';
 
 const FILTERS = [
   { value: 'all', label: 'All' },
-  { value: 'scheduled', label: 'Confirmed' },
+  { value: 'pending_approval', label: 'Pending' },
+  { value: 'scheduled', label: 'Scheduled' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'complete', label: 'Completed' },
 ] as const;
