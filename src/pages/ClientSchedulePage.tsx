@@ -91,7 +91,7 @@ export default function ClientSchedulePage() {
       const { data: insertedJob, error: jobError } = await supabase.from('jobs').insert({
         property_id: clientProp.property_id,
         scheduled_date: dateStr,
-        status: 'awaiting_schedule_approval',
+        status: 'pending_approval',
         notes: `Client preferred time: ${timePreference}, Frequency: ${frequency}`,
         linked_quote_id: acceptedQuote?.id || null,
         price_inc_gst: acceptedQuote?.sell_price_inc_gst || null,

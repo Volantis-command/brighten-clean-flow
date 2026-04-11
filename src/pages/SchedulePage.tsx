@@ -177,7 +177,7 @@ export default function SchedulePage() {
       const { data } = await supabase
         .from('jobs')
         .select('id, status, scheduled_date, created_at, notes, properties(property_name, address, client_name)')
-        .in('status', ['awaiting_quote', 'awaiting_approval'])
+        .in('status', ['awaiting_quote', 'awaiting_approval', 'pending_approval', 'awaiting_schedule_approval'])
         .order('created_at', { ascending: true });
       return data || [];
     },
