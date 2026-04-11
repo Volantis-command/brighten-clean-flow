@@ -47,7 +47,7 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const STEPS = ['Business Details', 'Space Details', 'Operations', 'Final Details'];
+  const STEPS = ['Space Details', 'Operations', 'Final Details', 'Business Details'];
   const totalSteps = STEPS.length;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,8 +66,8 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
   };
 
   const canNext = () => {
-    if (STEPS[step] === 'Business Details') return !!(contactName.trim() && mobile.trim() && email.trim());
     if (STEPS[step] === 'Space Details') return !!address.trim();
+    if (STEPS[step] === 'Business Details') return !!(contactName.trim() && mobile.trim() && email.trim());
     return true;
   };
 
