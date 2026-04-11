@@ -266,6 +266,43 @@ export default function OperationsDashboard() {
         <StatTile icon={<Star className="h-5 w-5" />} label="Avg Brightly Score" value={`${stats?.avgScore || '—'}`} />
       </div>
 
+      {/* Quotes Needing Action */}
+      {quotesNeedingAction.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <h3 className="text-sm font-bold" style={{ color: '#FEDB00' }}>📋 Quotes Needing Action</h3>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(254,219,0,0.15)', color: '#FEDB00' }}>
+              {quotesNeedingAction.length}
+            </span>
+          </div>
+          <div className="px-4 pb-4 pt-2 space-y-2">
+            {quotesNeedingAction.map((q: any) => (
+              <div
+                key={q.id}
+                className="hover-lift p-3 cursor-pointer flex items-center justify-between gap-3"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px' }}
+                onClick={() => { navigate(`/quoting`); window.scrollTo(0, 0); }}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{q.client_name || 'Unknown'}</p>
+                  <p className="text-xs truncate" style={{ color: '#86EFAC' }}>
+                    {q.clean_type || q.service_type || 'Clean'} · {q.property_address || 'No address'}
+                  </p>
+                  {q.quote_accepted_at && (
+                    <p className="text-[10px] mt-0.5" style={{ color: '#86EFAC' }}>
+                      Accepted {format(new Date(q.quote_accepted_at), 'dd MMM')}
+                    </p>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: 'rgba(34,197,94,0.15)', color: '#86EFAC' }}>
+                  Accepted
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="flex gap-2 flex-wrap">
         <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quote')}>
