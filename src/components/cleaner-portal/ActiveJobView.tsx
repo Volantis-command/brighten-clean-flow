@@ -351,6 +351,13 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
     // 4. Auto-raise Xero invoice (fire-and-forget — non-blocking)
     triggerJobAutoInvoice(job.id).catch((err) => console.error("Auto invoice failed:", err));
 
+    // 5. Trigger guest-ready-sms for Airbnb turnovers
+    if (isAirbnb) {
+      supabase.functions.invoke('guest-ready-sms', { body: { job_id: job.id } }).catch((err) =>
+        console.error('Guest-ready SMS failed:', err)
+      );
+    }
+
     // 5. Notify parent
     onComplete({ ...job, status: "completed", check_out_time: checkOutIso, cleaner_notes: notes });
     toast.success("Job marked as complete!");
