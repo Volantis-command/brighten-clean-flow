@@ -56,6 +56,8 @@ export default function AddJobPage() {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [propertySearch, setPropertySearch] = useState('');
   const [recurring, setRecurring] = useState<RecurringConfig>(defaultRecurringConfig);
+  const [priceExGst, setPriceExGst] = useState<number | null>(null);
+  const [priceIncGst, setPriceIncGst] = useState<number | null>(null);
 
   const { leaveMap, conflictMap } = useAllCleanerLeave(date);
   const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
@@ -65,7 +67,7 @@ export default function AddJobPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb, price_turnover, client_name')
+        .select('id, property_name, address, suburb, price_turnover, client_name, default_price, price_includes_gst')
         .in('status', ['active', 'onboarding'])
         .order('client_name', { ascending: true, nullsFirst: false });
       if (error) throw error;
