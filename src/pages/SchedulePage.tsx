@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Repeat } from 'lucide-react';
 import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
 import { CalendarDayView } from '@/components/schedule/CalendarDayView';
 import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
@@ -305,6 +305,9 @@ export default function SchedulePage() {
             )}
           </>
         )}
+
+        {/* Recurring Series Section */}
+        <RecurringSeriesPanel jobs={filteredJobs} nameMap={nameMap} />
 
         <CalendarLegend jobs={filteredJobs} nameMap={nameMap} />
 

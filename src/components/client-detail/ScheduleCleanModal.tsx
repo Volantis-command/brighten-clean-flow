@@ -192,7 +192,8 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         );
 
         await Promise.allSettled(promises);
-        toast.success('Job scheduled, client + cleaner notified ✓');
+        const recurringLabel = frequency !== 'one-off' ? ` + recurring ${frequency} series` : '';
+        toast.success(`Job scheduled${recurringLabel}, client + cleaner notified ✓`);
       } else {
         toast.warning('No price set — job saved as Awaiting Quote. Set price to notify client and create invoice.');
       }
