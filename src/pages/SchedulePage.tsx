@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Repeat } from 'lucide-react';
 import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
 import { CalendarDayView } from '@/components/schedule/CalendarDayView';
 import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
@@ -15,6 +15,7 @@ import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
+import { RecurringSeriesPanel } from '@/components/schedule/RecurringSeriesPanel';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -305,6 +306,9 @@ export default function SchedulePage() {
             )}
           </>
         )}
+
+        {/* Recurring Series Section */}
+        <RecurringSeriesPanel jobs={filteredJobs} nameMap={nameMap} />
 
         <CalendarLegend jobs={filteredJobs} nameMap={nameMap} />
 

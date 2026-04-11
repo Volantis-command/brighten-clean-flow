@@ -53,6 +53,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const [gstMode, setGstMode] = useState<'ex' | 'inc'>('ex');
   const [notes, setNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
+  const [frequency, setFrequency] = useState('one-off');
 
   const { unavailableMap } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
@@ -102,6 +103,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       setGstMode('ex');
       setNotes('');
       setInternalNotes('');
+      setFrequency('one-off');
     }
   }, [open]);
 
@@ -135,9 +137,30 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         price_notes: internalNotes || null,
         status,
         source: 'manual',
+        frequency,
       } as any).select('id').single();
 
       if (error) throw error;
+
+      // Auto-generate recurring jobs if frequency is not one-off
+      if (jobData?.id && frequency !== 'one-off') {
+        try {
+          const { createRecurringJobSeries } = await import('@/lib/recurringJobHelper');
+          await createRecurringJobSeries({
+            parentJobId: jobData.id,
+            frequency: frequency as any,
+            startDate: format(date, 'yyyy-MM-dd'),
+            scheduledTime: time,
+            propertyId,
+            priceExGst: finalExGst,
+            priceIncGst: finalIncGst,
+            notes: notes || null,
+            cleanerId: cleanerId || null,
+            estimatedDuration: parseInt(duration),
+            source: 'manual',
+          });
+        } catch { /* non-blocking */ }
+      }
 
       // Fire Google Calendar event (non-blocking)
       if (jobData?.id) {
@@ -169,7 +192,8 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         );
 
         await Promise.allSettled(promises);
-        toast.success('Job scheduled, client + cleaner notified ✓');
+        const recurringLabel = frequency !== 'one-off' ? ` + recurring ${frequency} series` : '';
+        toast.success(`Job scheduled${recurringLabel}, client + cleaner notified ✓`);
       } else {
         toast.warning('No price set — job saved as Awaiting Quote. Set price to notify client and create invoice.');
       }
@@ -254,6 +278,25 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
               <Label className="text-sm font-semibold">Start Time *</Label>
               <Input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl" />
             </div>
+          </div>
+
+          {/* Frequency */}
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold">Frequency</Label>
+            <Select value={frequency} onValueChange={setFrequency}>
+              <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one-off">One-off</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+            {frequency !== 'one-off' && (
+              <p className="text-xs text-muted-foreground">
+                {frequency === 'weekly' ? '8 future jobs' : frequency === 'fortnightly' ? '4 future jobs' : '2 future jobs'} will be auto-created
+              </p>
+            )}
           </div>
 
           {/* Duration */}
