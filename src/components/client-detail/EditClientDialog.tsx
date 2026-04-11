@@ -16,9 +16,31 @@ interface Props {
   initialEmail: string;
   initialPhone: string;
   onSaved: () => void;
+  clientType?: 'profile' | 'property' | 'qr';
+  propertyIds?: string[];
+  allowDelete?: boolean;
 }
 
-export default function EditClientDialog({ open, onOpenChange, clientId, initialName, initialEmail, initialPhone, onSaved }: Props) {
+function splitName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    first_name: parts.shift() || null,
+    last_name: parts.join(' ') || null,
+  };
+}
+
+export default function EditClientDialog({
+  open,
+  onOpenChange,
+  clientId,
+  initialName,
+  initialEmail,
+  initialPhone,
+  onSaved,
+  clientType = 'profile',
+  propertyIds = [],
+  allowDelete = clientType === 'profile',
+}: Props) {
   const navigate = useNavigate();
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
@@ -27,33 +49,66 @@ export default function EditClientDialog({ open, onOpenChange, clientId, initial
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Sync when dialog opens with new values
   const handleOpenChange = (o: boolean) => {
-    if (o) { setName(initialName); setEmail(initialEmail); setPhone(initialPhone); setConfirmDelete(false); }
+    if (o) {
+      setName(initialName);
+      setEmail(initialEmail);
+      setPhone(initialPhone);
+      setConfirmDelete(false);
+    }
     onOpenChange(o);
   };
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase.from('profiles')
-      .update({ full_name: name, email, phone })
-      .eq('id', clientId);
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Client updated');
-    onSaved();
-    onOpenChange(false);
+    try {
+      if (clientType === 'profile') {
+        const { error } = await supabase.from('profiles').update({ full_name: name, email, phone }).eq('id', clientId);
+        if (error) throw error;
+      } else if (clientType === 'property') {
+        const targetIds = propertyIds.length ? propertyIds : [clientId];
+        const { error } = await supabase
+          .from('properties')
+          .update({ client_name: name || null, billing_email: email || null, client_phone: phone || null })
+          .in('id', targetIds);
+        if (error) throw error;
+      } else {
+        const { first_name, last_name } = splitName(name);
+        const { error } = await (supabase.from('quote_requests' as any)
+          .update({ first_name, last_name, email: email || null, phone: phone || null })
+          .eq('id', clientId) as any);
+        if (error) throw error;
+
+        if (propertyIds.length) {
+          await supabase
+            .from('properties')
+            .update({ client_name: name || null, billing_email: email || null, client_phone: phone || null })
+            .in('id', propertyIds);
+        }
+      }
+
+      toast.success('Client updated');
+      onSaved();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update client');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteClient = async () => {
     setDeleting(true);
-    // Remove client_properties links
-    await supabase.from('client_properties').delete().eq('client_id', clientId);
-    // Remove role
-    await supabase.from('user_roles').delete().eq('user_id', clientId);
-    setDeleting(false);
-    toast.success('Client removed');
-    navigate('/clients');
+    try {
+      await supabase.from('client_properties').delete().eq('client_id', clientId);
+      await supabase.from('user_roles').delete().eq('user_id', clientId);
+      setDeleting(false);
+      toast.success('Client removed');
+      navigate('/clients');
+    } catch (error: any) {
+      setDeleting(false);
+      toast.error(error.message || 'Failed to remove client');
+    }
   };
 
   return (
@@ -61,7 +116,7 @@ export default function EditClientDialog({ open, onOpenChange, clientId, initial
       <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle>Edit Client</DialogTitle>
-          <DialogDescription>Update client details or remove this client.</DialogDescription>
+          <DialogDescription>Update client details.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div><Label>Full Name</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
@@ -69,15 +124,17 @@ export default function EditClientDialog({ open, onOpenChange, clientId, initial
           <div><Label>Phone</Label><Input value={phone} onChange={e => setPhone(e.target.value)} /></div>
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {!confirmDelete ? (
-            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 mr-auto" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="w-4 h-4 mr-1" /> Delete Client
-            </Button>
-          ) : (
-            <Button variant="destructive" className="mr-auto" onClick={deleteClient} disabled={deleting}>
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-              Confirm Delete
-            </Button>
+          {allowDelete && (
+            !confirmDelete ? (
+              <Button variant="ghost" className="text-destructive hover:bg-destructive/10 mr-auto" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="w-4 h-4 mr-1" /> Delete Client
+              </Button>
+            ) : (
+              <Button variant="destructive" className="mr-auto" onClick={deleteClient} disabled={deleting}>
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Confirm Delete
+              </Button>
+            )
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={save} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold">
