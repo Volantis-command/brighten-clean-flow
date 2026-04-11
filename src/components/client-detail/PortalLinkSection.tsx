@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Copy, Send, Link2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -16,24 +15,63 @@ interface PortalLinkSectionProps {
   phone: string | null;
   email: string | null;
   clientName: string;
+  propertyIds?: string[];
   onRefresh: () => void;
 }
 
 export default function PortalLinkSection({
-  clientId, portalToken, portalLinkSentAt, linkCreatedAt, phone, email, clientName, onRefresh
+  clientId,
+  portalToken,
+  portalLinkSentAt,
+  linkCreatedAt,
+  phone,
+  email,
+  clientName,
+  propertyIds = [],
+  onRefresh,
 }: PortalLinkSectionProps) {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const portalLink = portalToken ? `${getAppBaseUrl()}/client/${portalToken}` : null;
 
   const generateToken = async () => {
+    if (!propertyIds.length) {
+      toast.error('Add a property before generating a portal link');
+      return;
+    }
+
     setGenerating(true);
     try {
       const newToken = crypto.randomUUID();
-      const { error } = await supabase.from('client_properties')
-        .update({ portal_token: newToken })
+      const { data: existingRows, error: existingError } = await supabase
+        .from('client_properties')
+        .select('id, property_id')
         .eq('client_id', clientId);
-      if (error) throw error;
+
+      if (existingError) throw existingError;
+
+      if ((existingRows || []).length > 0) {
+        const { error } = await supabase
+          .from('client_properties')
+          .update({ portal_token: newToken })
+          .eq('client_id', clientId);
+        if (error) throw error;
+      }
+
+      const existingPropertyIds = new Set((existingRows || []).map((row) => row.property_id));
+      const missingPropertyIds = propertyIds.filter((propertyId) => !existingPropertyIds.has(propertyId));
+
+      if (missingPropertyIds.length > 0) {
+        const { error } = await supabase.from('client_properties').insert(
+          missingPropertyIds.map((propertyId) => ({
+            client_id: clientId,
+            property_id: propertyId,
+            portal_token: newToken,
+          })),
+        );
+        if (error) throw error;
+      }
+
       toast.success('Portal link generated');
       onRefresh();
     } catch (e: any) {
@@ -56,9 +94,14 @@ export default function PortalLinkSection({
         });
         if (error) throw error;
       }
-      await supabase.from('client_properties')
+
+      const { error: updateError } = await supabase
+        .from('client_properties')
         .update({ portal_link_sent_at: new Date().toISOString() })
         .eq('client_id', clientId);
+
+      if (updateError) throw updateError;
+
       toast.success(phone ? 'Portal link sent via SMS' : 'Link recorded (no phone — add one to send SMS)');
       onRefresh();
     } catch (e: any) {
@@ -94,6 +137,7 @@ export default function PortalLinkSection({
           <div className="flex gap-4 text-xs text-muted-foreground">
             {linkCreatedAt && <span>Link generated {format(new Date(linkCreatedAt), 'dd MMM yyyy')}</span>}
             {portalLinkSentAt && <span>Last sent {format(new Date(portalLinkSentAt), 'dd MMM yyyy HH:mm')}</span>}
+            {!linkCreatedAt && email && <span>{email}</span>}
           </div>
         </div>
       ) : (
