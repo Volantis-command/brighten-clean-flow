@@ -1,0 +1,2 @@
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS frequency TEXT DEFAULT 'one-off';
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS recurring_parent_id UUID REFERENCES public.jobs(id) ON DELETE SET NULL;

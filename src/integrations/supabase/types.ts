@@ -1074,6 +1074,7 @@ export type Database = {
           extra_time_requested: boolean | null
           feedback_rating_sms_sent_at: string | null
           feedback_score: number | null
+          frequency: string | null
           google_event_id: string | null
           guest_checkin_time: string | null
           guest_checkout_time: string | null
@@ -1097,6 +1098,7 @@ export type Database = {
           price_notes: string | null
           property_id: string | null
           rebook_sms_sent_at: string | null
+          recurring_parent_id: string | null
           report_token: string | null
           review_sms_sent_at: string | null
           scheduled_date: string
@@ -1159,6 +1161,7 @@ export type Database = {
           extra_time_requested?: boolean | null
           feedback_rating_sms_sent_at?: string | null
           feedback_score?: number | null
+          frequency?: string | null
           google_event_id?: string | null
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
@@ -1182,6 +1185,7 @@ export type Database = {
           price_notes?: string | null
           property_id?: string | null
           rebook_sms_sent_at?: string | null
+          recurring_parent_id?: string | null
           report_token?: string | null
           review_sms_sent_at?: string | null
           scheduled_date: string
@@ -1244,6 +1248,7 @@ export type Database = {
           extra_time_requested?: boolean | null
           feedback_rating_sms_sent_at?: string | null
           feedback_score?: number | null
+          frequency?: string | null
           google_event_id?: string | null
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
@@ -1267,6 +1272,7 @@ export type Database = {
           price_notes?: string | null
           property_id?: string | null
           rebook_sms_sent_at?: string | null
+          recurring_parent_id?: string | null
           report_token?: string | null
           review_sms_sent_at?: string | null
           scheduled_date?: string
@@ -1293,6 +1299,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_recurring_parent_id_fkey"
+            columns: ["recurring_parent_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {
