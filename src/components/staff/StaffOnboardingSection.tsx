@@ -69,13 +69,42 @@ export function StaffOnboardingSection({ staffId, staffName }: Props) {
   });
 
   const getChecklist = (): Record<string, boolean> => {
-    if (!staffOnb) return {};
     const so = staffOnb as any;
-    const acks = so.policy_acknowledgements;
-    if (acks && typeof acks === 'object' && !Array.isArray(acks) && acks.checklist) {
-      return acks.checklist;
+    const manual: Record<string, boolean> = {};
+    if (so) {
+      const acks = so.policy_acknowledgements;
+      if (acks && typeof acks === 'object' && !Array.isArray(acks) && acks.checklist) {
+        Object.assign(manual, acks.checklist);
+      }
     }
-    return {};
+
+    // Auto-derive from staff_onboarding data
+    const auto: Record<string, boolean> = {};
+    if (so) {
+      // Bank details provided
+      if (so.bank_account_name && so.bank_bsb && so.bank_account_number) {
+        auto.bank_details = true;
+      }
+      // ID verified
+      if (so.id_document_url) {
+        auto.id_verified = true;
+      }
+      // Signed cleaning agreement — all policy acks are true
+      const policyAcks = so.policy_acknowledgements;
+      if (policyAcks && typeof policyAcks === 'object' && !Array.isArray(policyAcks)) {
+        const { checklist: _c, ...policies } = policyAcks;
+        const policyKeys = Object.keys(policies);
+        if (policyKeys.length > 0 && policyKeys.every(k => !!policies[k])) {
+          auto.signed_agreement = true;
+        }
+      }
+      // Active on app
+      if (so.status === 'completed' || so.status === 'submitted') {
+        auto.active_on_app = true;
+      }
+    }
+
+    return { ...auto, ...manual };
   };
 
   const checklist = getChecklist();
