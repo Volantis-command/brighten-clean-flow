@@ -380,7 +380,7 @@ export default function OperationsDashboard() {
 function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="glass-card hover-lift p-4 space-y-1.5">
-      <div className="flex items-center gap-2" style={{ color: '#2E5D4E' }}>{icon}</div>
+      <div className="flex items-center gap-2" style={{ color: '#3A7560' }}>{icon}</div>
       <p className="text-2xl font-extrabold tabular-nums" style={{ color: '#F0FDF4' }}>{value}</p>
       <p className="text-[11px] font-semibold uppercase" style={{ letterSpacing: '0.08em', color: '#86EFAC' }}>{label}</p>
     </div>
@@ -395,7 +395,7 @@ const STAGE_PILL: Record<PipelineStatus, { bg: string; color: string; label: str
   declined: { bg: 'rgba(239,68,68,0.15)', color: '#FCA5A5', label: 'Declined' },
   scheduled: { bg: 'rgba(139,92,246,0.15)', color: '#C4B5FD', label: 'Scheduled' },
   in_progress: { bg: 'rgba(254,219,0,0.15)', color: '#FEDB00', label: 'In Progress' },
-  complete: { bg: 'rgba(34,197,94,0.20)', color: '#2E5D4E', label: 'Complete' },
+  complete: { bg: 'rgba(34,197,94,0.20)', color: '#3A7560', label: 'Complete' },
 };
 
 const pipelineBtnBase: React.CSSProperties = {
@@ -637,7 +637,7 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
                 className="w-2 h-2 rounded-full animate-pulse-dot"
                 style={{ background: '#2E5D4E', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }}
               />
-              <span className="text-xs font-semibold" style={{ color: '#2E5D4E' }}>Live</span>
+              <span className="text-xs font-semibold" style={{ color: '#3A7560' }}>Live</span>
             </div>
           )}
           {item.invoice_status && column === 'complete' && (

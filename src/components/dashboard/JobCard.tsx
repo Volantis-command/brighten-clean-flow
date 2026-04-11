@@ -40,11 +40,11 @@ const statusConfig: Record<string, { label: string; style: React.CSSProperties }
   },
   completed: {
     label: 'Completed',
-    style: { background: 'rgba(34,197,94,0.20)', color: '#2E5D4E' },
+    style: { background: 'rgba(34,197,94,0.20)', color: '#3A7560' },
   },
   complete: {
     label: 'Completed',
-    style: { background: 'rgba(34,197,94,0.20)', color: '#2E5D4E' },
+    style: { background: 'rgba(34,197,94,0.20)', color: '#3A7560' },
   },
   cancelled: {
     label: 'Cancelled',
