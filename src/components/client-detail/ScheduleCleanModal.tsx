@@ -34,7 +34,7 @@ interface ScheduleCleanModalProps {
   onOpenChange: (open: boolean) => void;
   clientId: string;
   clientName: string;
-  properties: Array<{ id: string; property_name: string; address?: string | null }>;
+  properties: Array<{ id: string; property_name: string; address?: string | null; default_price?: number | null; price_includes_gst?: boolean | null }>;
 }
 
 export default function ScheduleCleanModal({ open, onOpenChange, clientId, clientName, properties }: ScheduleCleanModalProps) {
