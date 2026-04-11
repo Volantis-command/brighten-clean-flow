@@ -470,6 +470,31 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         <TabsContent value="pricing" className="space-y-4 mt-4">
           {isAdmin ? (
             <>
+              <Field label="Standard Clean Price">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
+                    <Input type="number" step="0.01" min="0" value={form.default_price} onChange={e => u('default_price', e.target.value)} className="h-12 rounded-xl pl-8" placeholder="e.g. 150.00" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => u('price_includes_gst', !form.price_includes_gst)}
+                    className={cn(
+                      'px-4 h-12 rounded-xl border-2 font-bold text-sm transition-all whitespace-nowrap',
+                      form.price_includes_gst ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
+                    )}
+                  >
+                    {form.price_includes_gst ? 'inc GST' : 'ex GST'}
+                  </button>
+                </div>
+                {form.default_price && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.price_includes_gst
+                      ? `$${(parseFloat(form.default_price) / 1.1).toFixed(2)} ex GST`
+                      : `$${(parseFloat(form.default_price) * 1.1).toFixed(2)} inc GST`}
+                  </p>
+                )}
+              </Field>
               <Field label="Locked Sell Price (inc GST)">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
