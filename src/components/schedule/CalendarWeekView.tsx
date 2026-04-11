@@ -181,10 +181,11 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   // Status-based colour coding
                   const isComplete = job.status === 'completed' || job.status === 'complete';
                   const isInProgress = job.status === 'in_progress';
-                  const isCancelled = job.status === 'cancelled';
-                  const statusBg = isComplete ? 'hsl(160 84% 39%)' : isInProgress ? 'hsl(38 92% 50%)' : isCancelled ? 'hsl(220 9% 64%)' : getCleanerColor(job.cleaner_1_id).bg;
-                  const statusBorder = isComplete ? 'hsl(160 84% 30%)' : isInProgress ? 'hsl(38 92% 40%)' : isCancelled ? 'hsl(220 9% 54%)' : getCleanerColor(job.cleaner_1_id).border;
-                  const statusText = (isComplete || isInProgress || isCancelled) ? '#fff' : getCleanerColor(job.cleaner_1_id).text;
+                  const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
+                  const isPending = job.status === 'pending_approval' || job.status === 'awaiting_schedule_approval' || job.status === 'awaiting_quote' || job.status === 'awaiting_approval';
+                  const statusBg = isPending ? 'hsl(45 93% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
+                  const statusBorder = isPending ? 'hsl(45 93% 45%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
+                  const statusText = isPending ? '#422006' : '#fff';
 
                   return (
                     <div

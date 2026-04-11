@@ -371,15 +371,17 @@ export default function JobDetailPage() {
   }
 
   const statusConfig: Record<string, { label: string; className: string }> = {
-    awaiting_quote: { label: 'Needs Quote', className: 'bg-amber-100 text-amber-800' },
-    awaiting_approval: { label: 'Accepted — Confirm', className: 'bg-primary/20 text-primary' },
-    scheduled: { label: 'Scheduled', className: 'bg-muted text-muted-foreground' },
-    confirmed: { label: 'Confirmed', className: 'bg-muted text-muted-foreground' },
-    in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800' },
-    completed: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
-    complete: { label: 'Completed', className: 'bg-brightly/10 text-brightly' },
-    cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive' },
-    flagged: { label: 'Flagged', className: 'bg-destructive text-destructive-foreground' },
+    pending_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
+    awaiting_schedule_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
+    awaiting_quote: { label: 'Needs Quote', className: 'bg-yellow-100 text-yellow-800' },
+    awaiting_approval: { label: 'Accepted — Confirm', className: 'bg-yellow-100 text-yellow-800' },
+    scheduled: { label: 'Scheduled', className: 'bg-emerald-100 text-emerald-800' },
+    confirmed: { label: 'Confirmed', className: 'bg-emerald-100 text-emerald-800' },
+    in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-800' },
+    completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+    complete: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+    cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700' },
+    flagged: { label: 'Flagged', className: 'bg-red-100 text-red-700' },
   };
 
   const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
