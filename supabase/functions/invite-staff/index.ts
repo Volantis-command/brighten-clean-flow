@@ -136,7 +136,9 @@ Deno.serve(async (req) => {
       }
 
       // Create onboarding record
-      await ensureOnboarding(newUserId, full_name, email);
+      if (role !== 'client') {
+        await ensureOnboarding(newUserId, full_name, email);
+      }
 
       return new Response(
         JSON.stringify({ success: true, user_id: newUserId }),
@@ -170,7 +172,9 @@ Deno.serve(async (req) => {
       }
 
       // Create onboarding record
-      await ensureOnboarding(newUserId, full_name, email);
+      if (role !== 'client') {
+        await ensureOnboarding(newUserId, full_name, email);
+      }
 
       return new Response(
         JSON.stringify({ success: true, user_id: newUserId }),
