@@ -153,14 +153,9 @@ export default function StaffPage() {
         email: invEmail,
       });
 
-      // Send SMS magic link for login
-      if (invPhone) {
-        try {
-          await supabase.functions.invoke('send-staff-magic-link', {
-            body: { staff_id: userId },
-          });
-        } catch { /* best effort */ }
-      }
+      // NOTE: Do NOT send magic login link here — the onboarding SMS below
+      // is the new staff member's entry point. Login links are only for
+      // existing staff re-authentication (via "Send Login Link" button).
 
       // Send SMS with onboarding form link
       if (invPhone && onboardData?.token) {
