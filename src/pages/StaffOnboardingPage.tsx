@@ -13,12 +13,12 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const SECTIONS = [
+const STEPS = [
   'Personal Details',
   'Work Entitlements',
   'Identity Verification',
   'Your Availability',
-  'Tools & Policies',
+  'WhatsApp + Policy Acknowledgements',
 ];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -97,7 +97,7 @@ export default function StaffOnboardingPage() {
   const [form, setForm] = useState<FormData>(initialForm);
   const [recordId, setRecordId] = useState('');
   const [userId, setUserId] = useState('');
-  const [currentSection, setCurrentSection] = useState(0);
+  const [currentStep, setCurrentStep] = useState(1);
   const [idFile, setIdFile] = useState<File | null>(null);
   const [uploadingId, setUploadingId] = useState(false);
   const [idFileUrl, setIdFileUrl] = useState('');
@@ -218,9 +218,11 @@ export default function StaffOnboardingPage() {
     }
   };
 
-  const validateSection = (idx: number): string | null => {
-    switch (idx) {
-      case 0:
+  const totalSteps = STEPS.length;
+
+  const validateStep = (step: number): string | null => {
+    switch (step) {
+      case 1:
         if (!form.full_name) return 'Full legal name is required';
         if (!form.phone) return 'Mobile number is required';
         if (!form.email) return 'Email address is required';
@@ -230,23 +232,23 @@ export default function StaffOnboardingPage() {
         if (!form.emergency_contact_phone) return 'Emergency contact phone is required';
         if (!form.emergency_contact_relationship) return 'Emergency contact relationship is required';
         return null;
-      case 1:
+      case 2:
         if (!form.abn_status) return 'Please select your ABN status';
         if (form.abn_status === 'yes' && !form.abn) return 'ABN number is required';
         if (!form.bank_account_name) return 'Bank account name is required';
         if (!form.bank_bsb) return 'BSB is required';
         if (!form.bank_account_number) return 'Account number is required';
         return null;
-      case 2:
+      case 3:
         if (!idFileUrl) return 'Please upload a photo of your ID';
         if (!form.id_confirmed) return 'Please confirm your ID is current and belongs to you';
         return null;
-      case 3:
+      case 4:
         if (form.available_days.length === 0) return 'Please select at least one available day';
         if (!form.preferred_start_time) return 'Please select a preferred start time';
         if (!form.max_jobs_per_day) return 'Please select maximum jobs per day';
         return null;
-      case 4:
+      case 5:
         if (!form.policy_acks.every(Boolean)) return 'All policy acknowledgements must be checked';
         return null;
       default:
@@ -254,26 +256,33 @@ export default function StaffOnboardingPage() {
     }
   };
 
+  const validateCurrentStep = () => validateStep(currentStep);
+
+  const goToStep = (step: number) => {
+    setCurrentStep(Math.max(1, Math.min(step, totalSteps)));
+    window.scrollTo(0, 0);
+  };
+
   const handleNext = () => {
-    const err = validateSection(currentSection);
+    const err = validateCurrentStep();
     if (err) { toast.error(err); return; }
-    if (currentSection < SECTIONS.length - 1) {
-      setCurrentSection(currentSection + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (currentStep < totalSteps) {
+      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+      window.scrollTo(0, 0);
     }
   };
 
   const handleBack = () => {
-    if (currentSection > 0) {
-      setCurrentSection(currentSection - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (currentStep > 1) {
+      setCurrentStep(prev => Math.max(prev - 1, 1));
+      window.scrollTo(0, 0);
     }
   };
 
   const handleSubmit = async () => {
-    for (let i = 0; i < SECTIONS.length; i++) {
-      const err = validateSection(i);
-      if (err) { setCurrentSection(i); toast.error(err); return; }
+    for (let step = 1; step <= totalSteps; step += 1) {
+      const err = validateStep(step);
+      if (err) { goToStep(step); toast.error(err); return; }
     }
 
     setSubmitting(true);
@@ -355,7 +364,7 @@ export default function StaffOnboardingPage() {
     }
   };
 
-  const progress = ((currentSection + 1) / SECTIONS.length) * 100;
+  const progress = (currentStep / totalSteps) * 100;
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-secondary">
@@ -395,8 +404,6 @@ export default function StaffOnboardingPage() {
     </div>
   );
 
-  const isLastSection = currentSection === SECTIONS.length - 1;
-
   return (
     <div className="min-h-screen bg-secondary py-6 px-4">
       <div className="max-w-lg mx-auto space-y-5">
@@ -405,24 +412,24 @@ export default function StaffOnboardingPage() {
           <h1 className="text-2xl font-extrabold text-primary">Brightly.</h1>
           <h2 className="text-lg font-bold text-foreground mt-2">Welcome to Brightly — Let's Get You Set Up</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Complete all sections below before your first job. This should take about 5 minutes.
+            Complete each step before your first job. This should take about 5 minutes.
           </p>
         </div>
 
         {/* Progress */}
         <div className="bg-card rounded-xl p-4 shadow-sm">
           <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-2">
-            <span>Section {currentSection + 1} of {SECTIONS.length}</span>
-            <span>{SECTIONS[currentSection]}</span>
+            <span>Section {currentStep} of {totalSteps}</span>
+            <span>{STEPS[currentStep - 1]}</span>
           </div>
           <Progress value={progress} className="h-2" />
           <div className="flex gap-1 mt-3">
-            {SECTIONS.map((_, i) => (
+            {STEPS.map((_, i) => (
               <div
                 key={i}
                 className={cn(
                   'flex-1 h-1.5 rounded-full transition-colors',
-                  i <= currentSection ? 'bg-primary' : 'bg-border'
+                  i + 1 <= currentStep ? 'bg-primary' : 'bg-border'
                 )}
               />
             ))}
@@ -430,7 +437,7 @@ export default function StaffOnboardingPage() {
         </div>
 
         {/* Section 1: Personal Details */}
-        {currentSection === 0 && (
+        {currentStep === 1 && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
             <h2 className="text-base font-bold text-primary">1. Personal Details</h2>
             <div className="space-y-3">
@@ -508,7 +515,7 @@ export default function StaffOnboardingPage() {
         )}
 
         {/* Section 2: Work Entitlements */}
-        {currentSection === 1 && (
+        {currentStep === 2 && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
             <h2 className="text-base font-bold text-primary">2. Work Entitlements</h2>
             <div className="space-y-3">
@@ -570,7 +577,7 @@ export default function StaffOnboardingPage() {
         )}
 
         {/* Section 3: Identity Verification */}
-        {currentSection === 2 && (
+        {currentStep === 3 && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
             <h2 className="text-base font-bold text-primary">3. Identity Verification</h2>
             <div className="space-y-3">
@@ -612,7 +619,7 @@ export default function StaffOnboardingPage() {
         )}
 
         {/* Section 4: Availability */}
-        {currentSection === 3 && (
+        {currentStep === 4 && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
             <h2 className="text-base font-bold text-primary">4. Your Availability</h2>
             <div className="space-y-3">
@@ -675,10 +682,10 @@ export default function StaffOnboardingPage() {
           </div>
         )}
 
-        {/* Section 5: Tools & Policies (merged WhatsApp + policies) */}
-        {currentSection === 4 && (
+        {/* Section 5: WhatsApp + Policy Acknowledgements */}
+        {currentStep === 5 && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-            <h2 className="text-base font-bold text-primary">5. Tools & Policies</h2>
+            <h2 className="text-base font-bold text-primary">5. WhatsApp + Policy Acknowledgements</h2>
 
             <div className="space-y-4">
               <div>
