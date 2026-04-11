@@ -133,8 +133,8 @@ export default function AddJobPage() {
       specialInstructions ? `Special instructions: ${specialInstructions}` : '',
     ].filter(Boolean).join('\n\n');
 
-    const priceExGst = selectedProperty?.price_turnover || null;
-    const priceIncGst = priceExGst ? Number(priceExGst) * 1.1 : null;
+    const finalExGst = priceExGst;
+    const finalIncGst = priceIncGst;
 
     let seriesId: string | null = null;
 
