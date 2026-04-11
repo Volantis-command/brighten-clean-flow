@@ -64,7 +64,7 @@ export default function StaffOnboardingDataView({ staffId }: Props) {
           <p><span className="font-medium text-muted-foreground">Contractor:</span> {onb.is_contractor ? 'Yes' : 'No'}</p>
           <p><span className="font-medium text-muted-foreground">Account Name:</span> {onb.bank_account_name || '—'}</p>
           <p><span className="font-medium text-muted-foreground">BSB:</span> {onb.bank_bsb || '—'}</p>
-          <p><span className="font-medium text-muted-foreground">Account #:</span> {maskAccount(onb.bank_account_number)}</p>
+          <p><span className="font-medium text-muted-foreground">Account #:</span> {onb.bank_account_number || '—'}</p>
         </div>
       </div>
 
