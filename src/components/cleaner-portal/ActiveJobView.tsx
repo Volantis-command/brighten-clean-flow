@@ -377,8 +377,9 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
     const clientFirst = (clientProfile.full_name ?? "").split(" ")[0] || "there";
     const cleanerFirst = (staff?.full_name ?? "").split(" ")[0] || "Your cleaner";
     const propName = property?.property_name ?? "your property";
+    const { getAppBaseUrl } = await import('@/lib/appUrl');
     const reportUrl = job.report_token
-      ? `https://app.brightly.cleaning/report/${job.report_token}`
+      ? `${getAppBaseUrl()}/report/${job.report_token}`
       : "";
 
     const message = isAirbnb
