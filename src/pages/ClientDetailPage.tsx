@@ -16,7 +16,6 @@ import { getAppBaseUrl } from '@/lib/appUrl';
 import ClientHeader from '@/components/client-detail/ClientHeader';
 import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
 import OnboardingStatusSection from '@/components/client-detail/OnboardingStatusSection';
-import AssignedPropertiesSection from '@/components/client-detail/AssignedPropertiesSection';
 import EditClientDialog from '@/components/client-detail/EditClientDialog';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
@@ -37,13 +36,27 @@ function useClientDetail(rawId: string) {
       if (parsed.type === 'property') {
         const { data: prop } = await supabase.from('properties').select('*').eq('id', parsed.realId).single();
         if (!prop) return { profile: null, links: [], properties: [], pseudoType: 'property' as const };
+
+        // Check if there's a client_properties link for this property (to get portal_token etc.)
+        const { data: cpLinks } = await supabase.from('client_properties').select('*').eq('property_id', parsed.realId);
+
         const pseudoProfile = {
           id: rawId,
           full_name: prop.client_name || prop.property_name,
           email: (prop as any).billing_email || null,
           phone: (prop as any).client_phone || null,
         };
-        return { profile: pseudoProfile, links: [], properties: [prop], pseudoType: 'property' as const };
+
+        // If there's a client_properties link, use that client_id for portal operations
+        const effectiveClientId = cpLinks?.[0]?.client_id || null;
+
+        return {
+          profile: pseudoProfile,
+          links: cpLinks || [],
+          properties: [prop],
+          pseudoType: 'property' as const,
+          effectiveClientId,
+        };
       }
 
       if (parsed.type === 'qr') {
@@ -55,14 +68,36 @@ function useClientDetail(rawId: string) {
           phone: qr.phone || null,
         } : null;
 
-        // Try to find properties linked via client_properties or matching address
+        // Try to find properties matching address
         let properties: any[] = [];
         if (qr?.address) {
           const { data: matchedProps } = await supabase.from('properties').select('*').ilike('address', `%${qr.address}%`);
           properties = matchedProps || [];
         }
 
-        return { profile: pseudoProfile, links: [], properties, pseudoType: 'qr' as const };
+        // Try to find client_properties links for matched properties
+        let links: any[] = [];
+        if (properties.length > 0) {
+          const propIds = properties.map(p => p.id);
+          const { data: cpLinks } = await supabase.from('client_properties').select('*').in('property_id', propIds);
+          links = cpLinks || [];
+        }
+
+        // Also check if qr has a converted_client_id
+        const effectiveClientId = qr?.converted_client_id || links?.[0]?.client_id || null;
+
+        // If there's a converted client, also fetch their client_properties
+        if (effectiveClientId && links.length === 0) {
+          const { data: cpLinks } = await supabase.from('client_properties').select('*').eq('client_id', effectiveClientId);
+          links = cpLinks || [];
+          if (links.length > 0 && properties.length === 0) {
+            const propIds = links.map(l => l.property_id);
+            const { data: linkedProps } = await supabase.from('properties').select('*').in('id', propIds);
+            properties = linkedProps || [];
+          }
+        }
+
+        return { profile: pseudoProfile, links, properties, pseudoType: 'qr' as const, effectiveClientId };
       }
 
       // Real profile-based client
@@ -72,7 +107,7 @@ function useClientDetail(rawId: string) {
       const { data: props } = propIds.length
         ? await supabase.from('properties').select('*').in('id', propIds)
         : { data: [] };
-      return { profile, links: links || [], properties: props || [], pseudoType: 'profile' as const };
+      return { profile, links: links || [], properties: props || [], pseudoType: 'profile' as const, effectiveClientId: parsed.realId };
     },
     enabled: !!rawId,
   });
@@ -237,6 +272,9 @@ export default function ClientDetailPage() {
   const firstLink = data.links[0];
   const parsed = stripPseudoPrefix(id!);
 
+  // The client ID to use for portal/link operations (may differ from parsed.realId for pseudo-clients)
+  const portalClientId = data.effectiveClientId || parsed.realId;
+
   const statusColor = (s: string) => {
     if (s === 'complete' || s === 'completed') return 'bg-brightly/10 text-brightly';
     if (s === 'in_progress') return 'bg-yellow-100 text-yellow-800';
@@ -291,7 +329,7 @@ export default function ClientDetailPage() {
       <ScheduleCleanModal
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
-        clientId={parsed.realId}
+        clientId={portalClientId}
         clientName={profile?.full_name || 'Client'}
         properties={scheduleProperties}
       />
@@ -306,22 +344,19 @@ export default function ClientDetailPage() {
           <TabsTrigger value="messages" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Messages</TabsTrigger>
         </TabsList>
 
-        {/* OVERVIEW — unified for ALL client types */}
+        {/* ======================= OVERVIEW — SAME FOR ALL CLIENT TYPES ======================= */}
         <TabsContent value="overview" className="space-y-6 mt-4">
-          {/* UNIFIED PROPERTIES SECTION */}
+
+          {/* 1. PROPERTIES SECTION — always shown */}
           <div className="bg-card rounded-2xl border border-border p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-foreground">Properties</h3>
-              {isRealProfile && (
-                <AssignPropertyButton clientId={parsed.realId} onRefresh={refreshAll} />
-              )}
+              <AssignPropertyButton clientId={portalClientId} onRefresh={refreshAll} />
             </div>
             {data.properties.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-muted-foreground mb-3">No properties yet</p>
-                {isRealProfile && (
-                  <AssignPropertyButton clientId={parsed.realId} onRefresh={refreshAll} variant="outline" />
-                )}
+                <AssignPropertyButton clientId={portalClientId} onRefresh={refreshAll} variant="outline" />
               </div>
             ) : (
               <div className="space-y-2">
@@ -338,24 +373,22 @@ export default function ClientDetailPage() {
                         <CalendarPlus className="w-3.5 h-3.5" /> Book Clean
                       </Button>
                       <Link to={`/properties/${p.id}`}><Badge variant="secondary">View</Badge></Link>
-                      {isRealProfile && (
-                        <Button
-                          size="sm" variant="ghost"
-                          className="text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
-                          onClick={async () => {
-                            if (!confirm('Remove this property from client?')) return;
-                            const { error } = await supabase.from('client_properties')
-                              .delete()
-                              .eq('client_id', parsed.realId)
-                              .eq('property_id', p.id);
-                            if (error) { toast.error(error.message); return; }
-                            toast.success('Property removed');
-                            refreshAll();
-                          }}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <Button
+                        size="sm" variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+                        onClick={async () => {
+                          if (!confirm('Remove this property from client?')) return;
+                          const { error } = await supabase.from('client_properties')
+                            .delete()
+                            .eq('client_id', portalClientId)
+                            .eq('property_id', p.id);
+                          if (error) { toast.error(error.message); return; }
+                          toast.success('Property removed');
+                          refreshAll();
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -363,75 +396,65 @@ export default function ClientDetailPage() {
             )}
           </div>
 
-          {/* Portal & onboarding sections — show for real profiles */}
+          {/* 2. MAGIC LINK PORTAL URL — always shown */}
+          <PortalLinkSection
+            clientId={portalClientId}
+            portalToken={firstLink?.portal_token || null}
+            portalLinkSentAt={(firstLink as any)?.portal_link_sent_at || null}
+            linkCreatedAt={firstLink?.created_at || null}
+            phone={profile?.phone || null}
+            email={profile?.email || null}
+            clientName={profile?.full_name || ''}
+            propertyIds={propertyIds}
+            onRefresh={refreshAll}
+          />
+
+          {/* 3. CLIENT PORTAL ACCESS — always shown */}
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-bold text-foreground mb-3">Client Portal Access</h3>
+            <p className="text-sm text-muted-foreground mb-3">Send the client an SMS with a link to log into their portal and view clean history.</p>
+            <Button
+              onClick={handleSendPortalLink}
+              disabled={sendingPortalLink || !profile?.phone}
+              variant="outline"
+              className="gap-2"
+            >
+              {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+              Send Portal Login Link
+            </Button>
+            {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
+          </div>
+
+          {/* 4. ONBOARDING — always shown */}
+          <OnboardingStatusSection
+            clientId={portalClientId}
+            onboardToken={firstLink?.onboard_token || null}
+            onboardUsed={firstLink?.onboard_used || false}
+            onboardingSentAt={(firstLink as any)?.onboarding_sent_at || null}
+            phone={profile?.phone || null}
+            email={profile?.email || null}
+            clientName={profile?.full_name || ''}
+            properties={data.properties}
+            onRefresh={refreshAll}
+          />
+
+          {/* 5. INTERNAL NOTES — only for real profiles (pseudo-clients have no profiles row) */}
           {isRealProfile && (
-            <>
-              <PortalLinkSection
-                clientId={parsed.realId}
-                portalToken={firstLink?.portal_token || null}
-                portalLinkSentAt={(firstLink as any)?.portal_link_sent_at || null}
-                linkCreatedAt={firstLink?.created_at || null}
-                phone={profile?.phone || null}
-                email={profile?.email || null}
-                clientName={profile?.full_name || ''}
-                onRefresh={refreshAll}
-              />
-
-              <div className="bg-card rounded-2xl border border-border p-5">
-                <h3 className="font-bold text-foreground mb-3">Client Portal Access</h3>
-                <p className="text-sm text-muted-foreground mb-3">Send the client an SMS with a link to log into their portal and view clean history.</p>
-                <Button
-                  onClick={handleSendPortalLink}
-                  disabled={sendingPortalLink || !profile?.phone}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                  Send Portal Login Link
-                </Button>
-                {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
-              </div>
-
-              <OnboardingStatusSection
-                clientId={parsed.realId}
-                onboardToken={firstLink?.onboard_token || null}
-                onboardUsed={firstLink?.onboard_used || false}
-                onboardingSentAt={(firstLink as any)?.onboarding_sent_at || null}
-                phone={profile?.phone || null}
-                email={profile?.email || null}
-                clientName={profile?.full_name || ''}
-                properties={data.properties}
-                onRefresh={refreshAll}
-              />
-
-              <div className="bg-card rounded-2xl border border-border p-5">
-                <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
-                <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={async () => {
-                    const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', parsed.realId);
-                    if (error) { toast.error('Failed to save notes'); return; }
-                    toast.success('Notes saved');
-                  }}
-                >
-                  Save Notes
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* For pseudo clients with no extra sections, show contact summary */}
-          {!isRealProfile && (
             <div className="bg-card rounded-2xl border border-border p-5">
-              <h3 className="font-bold text-foreground mb-3">Contact Info</h3>
-              <div className="space-y-2 text-sm">
-                <p><span className="text-muted-foreground">Name:</span> <span className="text-foreground">{profile?.full_name || 'Not provided'}</span></p>
-                <p><span className="text-muted-foreground">Email:</span> <span className="text-foreground">{profile?.email || 'No email on file'}</span></p>
-                <p><span className="text-muted-foreground">Phone:</span> <span className="text-foreground">{profile?.phone || 'No phone on file'}</span></p>
-              </div>
+              <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
+              <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={async () => {
+                  const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', parsed.realId);
+                  if (error) { toast.error('Failed to save notes'); return; }
+                  toast.success('Notes saved');
+                }}
+              >
+                Save Notes
+              </Button>
             </div>
           )}
         </TabsContent>
@@ -442,9 +465,7 @@ export default function ClientDetailPage() {
             <div className="bg-card rounded-2xl border border-border p-8 text-center">
               <p className="text-4xl mb-3">🏠</p>
               <p className="text-muted-foreground mb-3">No properties yet</p>
-              {isRealProfile && (
-                <AssignPropertyButton clientId={parsed.realId} onRefresh={refreshAll} variant="outline" />
-              )}
+              <AssignPropertyButton clientId={portalClientId} onRefresh={refreshAll} variant="outline" />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -609,9 +630,8 @@ export default function ClientDetailPage() {
         </TabsContent>
       </Tabs>
 
-      {isRealProfile && <ClientCommsLog clientId={parsed.realId} />}
+      <ClientCommsLog clientId={portalClientId} />
 
-      {/* Edit dialog — for real profiles, edit directly. For pseudo clients, open as read-only or limited */}
       <EditClientDialog
         open={editOpen}
         onOpenChange={setEditOpen}
@@ -620,6 +640,9 @@ export default function ClientDetailPage() {
         initialEmail={profile?.email || ''}
         initialPhone={profile?.phone || ''}
         onSaved={refreshAll}
+        clientType={parsed.type}
+        propertyIds={propertyIds}
+        allowDelete={isRealProfile}
       />
     </div>
   );
@@ -631,7 +654,7 @@ function AssignPropertyButton({ clientId, onRefresh, variant = 'default' }: { cl
 
   return (
     <>
-      <Button size="sm" variant={variant === 'outline' ? 'outline' : 'outline'} onClick={() => setOpen(true)} className="gap-1.5">
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="w-4 h-4" /> Add Property
       </Button>
       {open && (
