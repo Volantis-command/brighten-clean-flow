@@ -214,7 +214,7 @@ export default function StaffPage() {
   });
 
   const removeMutation = useMutation({
-    mutationFn: () => invokeFn({ action: 'remove', user_id: removeMember!.id }),
+    mutationFn: (memberId: string) => invokeFn({ action: 'remove', user_id: memberId }),
     onSuccess: () => {
       toast.success('Staff member removed');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
