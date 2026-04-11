@@ -58,10 +58,10 @@ import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import CompletionFormPage from "./pages/CompletionFormPage";
 import JobCompleteDonePage from "./pages/JobCompleteDonePage";
 import JobAuditPage from "./pages/JobAuditPage";
-import ResidentialQuotePage from "./pages/ResidentialQuotePage";
+
 import PendingInvoicesPage from "./pages/PendingInvoicesPage";
 import PendingTimeEditsPage from "./pages/PendingTimeEditsPage";
-import AirbnbQuotePage from "./pages/AirbnbQuotePage";
+
 import LiveTrackerPage from "./pages/LiveTrackerPage";
 import MapPage from "./pages/MapPage";
 import GuestReadyReportPage from "./pages/GuestReadyReportPage";
@@ -191,8 +191,8 @@ function AppRoutes() {
       {/* /enquire removed — enquiries go through pipeline */}
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
-      <Route path="/residential-quote" element={<ResidentialQuotePage />} />
-      <Route path="/airbnb" element={<AirbnbQuotePage />} />
+      <Route path="/residential-quote" element={<Navigate to="/quote" replace />} />
+      <Route path="/airbnb" element={<Navigate to="/quote" replace />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
       <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
