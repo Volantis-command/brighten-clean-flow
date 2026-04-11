@@ -186,6 +186,14 @@ export default function EditJobPage() {
         }
       }
 
+      // Send SMS to newly assigned cleaner (if cleaner changed)
+      const cleaner1Changed = cleaner1 !== (job.cleaner_1_id || '');
+      if (cleaner1Changed && cleaner1) {
+        try {
+          await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+        } catch { /* non-blocking */ }
+      }
+
       toast.success('Job updated!');
     }
 

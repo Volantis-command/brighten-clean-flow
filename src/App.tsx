@@ -247,7 +247,8 @@ function AppRoutes() {
         <Route path="/my-pay" element={<MyPaySummaryPage />} />
         <Route path="/qc" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCPage /></ProtectedRoute>} />
         <Route path="/qc/:jobId" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCAuditPage /></ProtectedRoute>} />
-        <Route path="/onboard" element={<Navigate to="/quote" replace />} />
+
+
       </Route>
 
       <Route path="*" element={<NotFound />} />
