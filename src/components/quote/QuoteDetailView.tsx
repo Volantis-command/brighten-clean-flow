@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, CalendarDays } from 'lucide-react';
+import { toast } from 'sonner';
 
 type QuoteData = {
   id: string;
   client_name: string | null;
+  client_phone: string | null;
   property_address: string | null;
   service_type: string | null;
   clean_type: string | null;
@@ -17,42 +19,181 @@ type QuoteData = {
   quote_declined_at: string | null;
 };
 
+const AIRBNB_TYPES = ['airbnb', 'airbnb / short-stay turnover', 'airbnb turnover', 'short-stay'];
+
+function isAirbnbType(quote: QuoteData): boolean {
+  const st = (quote.clean_type || quote.service_type || '').toLowerCase();
+  return AIRBNB_TYPES.some(t => st.includes(t));
+}
+
+const TIME_OPTIONS = [
+  { label: 'Morning', sub: '8am – 12pm', value: 'Morning (8am-12pm)' },
+  { label: 'Afternoon', sub: '12pm – 4pm', value: 'Afternoon (12pm-4pm)' },
+  { label: 'Evening', sub: '4pm – 7pm', value: 'Evening (4pm-7pm)' },
+];
+
+function getTomorrow(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
 export default function QuoteDetailView({ token }: { token: string }) {
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [actionDone, setActionDone] = useState<'accepted' | 'declined' | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Post-acceptance state
+  const [phase, setPhase] = useState<'view' | 'booking' | 'airbnb_done' | 'booking_done' | 'declined'>('view');
+
+  // Booking form state
+  const [selectedDate, setSelectedDate] = useState(getTomorrow());
+  const [selectedTime, setSelectedTime] = useState('Morning (8am-12pm)');
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_name, property_address, service_type, clean_type, bedrooms, bathrooms, sell_price_inc_gst, discounted_price, status, quote_accepted_at, quote_declined_at')
+        .select('id, client_name, client_phone, property_address, service_type, clean_type, bedrooms, bathrooms, sell_price_inc_gst, discounted_price, status, quote_accepted_at, quote_declined_at')
         .eq('quote_token', token)
         .maybeSingle();
       if (error || !data) setNotFound(true);
-      else setQuote(data);
+      else {
+        setQuote(data);
+        // Set initial phase based on existing status
+        if (data.status === 'client_accepted' || data.status === 'accepted' || data.quote_accepted_at) {
+          // Already accepted — check if airbnb
+          if (isAirbnbType(data)) setPhase('airbnb_done');
+          else setPhase('booking'); // Show booking form
+        } else if (data.status === 'declined' || data.quote_declined_at) {
+          setPhase('view'); // Show declined state in view
+        }
+      }
       setLoading(false);
     })();
   }, [token]);
 
-  const handleAction = async (action: 'accepted' | 'declined') => {
+  const sendAcceptanceNotification = async (quoteData: QuoteData) => {
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(`https://${projectId}.supabase.co/functions/v1/send-quote-notification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'quote_accepted',
+          client_name: quoteData.client_name,
+          clean_type: quoteData.clean_type || quoteData.service_type,
+          address: quoteData.property_address,
+        }),
+      });
+    } catch { /* non-blocking */ }
+  };
+
+  const handleAccept = async () => {
     if (!quote) return;
     setSubmitting(true);
-    if (action === 'accepted') {
+    try {
       await supabase.from('quotes').update({
         status: 'client_accepted',
         quote_accepted_at: new Date().toISOString(),
-      }).eq('id', quote.id);
-    } else {
+      } as any).eq('id', quote.id);
+
+      await sendAcceptanceNotification(quote);
+
+      if (isAirbnbType(quote)) {
+        setPhase('airbnb_done');
+      } else {
+        setPhase('booking');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to accept');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!quote) return;
+    setSubmitting(true);
+    try {
       await supabase.from('quotes').update({
         status: 'declined',
         quote_declined_at: new Date().toISOString(),
-      }).eq('id', quote.id);
+      } as any).eq('id', quote.id);
+
+      // Notify admin
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        await fetch(`https://${projectId}.supabase.co/functions/v1/send-quote-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'quote_declined',
+            client_name: quote.client_name,
+            clean_type: quote.clean_type || quote.service_type,
+          }),
+        });
+      } catch { /* non-blocking */ }
+
+      setPhase('declined');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to decline');
+    } finally {
+      setSubmitting(false);
     }
-    setActionDone(action);
-    setSubmitting(false);
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!quote) return;
+    setBookingSubmitting(true);
+    try {
+      // Create a job linked to this quote
+      const timeMap: Record<string, string> = {
+        'Morning (8am-12pm)': '08:00',
+        'Afternoon (12pm-4pm)': '13:00',
+        'Evening (4pm-7pm)': '16:00',
+      };
+
+      const { error } = await supabase.from('jobs').insert({
+        scheduled_date: selectedDate,
+        scheduled_time: timeMap[selectedTime] || '08:00',
+        status: 'scheduled',
+        price_ex_gst: quote.sell_price_inc_gst ? Number(quote.sell_price_inc_gst) / 1.1 : null,
+        price_inc_gst: quote.discounted_price ?? quote.sell_price_inc_gst,
+        linked_quote_id: quote.id,
+        notes: `${quote.clean_type || quote.service_type || 'Clean'} — ${quote.client_name || 'Client'}\n${quote.property_address || ''}`.trim(),
+        source: 'quote_acceptance',
+      } as any);
+
+      if (error) throw error;
+
+      // Send booking SMS to admin
+      try {
+        const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', {
+          weekday: 'long', day: 'numeric', month: 'long',
+        });
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        await fetch(`https://${projectId}.supabase.co/functions/v1/send-quote-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'quote_accepted',
+            client_name: quote.client_name,
+            clean_type: quote.clean_type || quote.service_type,
+            address: quote.property_address,
+          }),
+        });
+      } catch { /* non-blocking */ }
+
+      setPhase('booking_done');
+      toast.success('Booking confirmed!');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to create booking');
+    } finally {
+      setBookingSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -75,50 +216,130 @@ export default function QuoteDetailView({ token }: { token: string }) {
     );
   }
 
-  const alreadyAccepted = quote?.status === 'client_accepted' || quote?.status === 'accepted' || !!quote?.quote_accepted_at;
-  const alreadyDeclined = quote?.status === 'declined' || !!quote?.quote_declined_at;
   const price = quote?.discounted_price ?? quote?.sell_price_inc_gst;
   const serviceLabel = quote?.clean_type || quote?.service_type || 'Cleaning Service';
+  const alreadyDeclined = quote?.status === 'declined' || !!quote?.quote_declined_at;
 
-  // Post-action confirmation
-  if (actionDone) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
-        <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
-          {actionDone === 'accepted' ? (
-            <CheckCircle className="w-12 h-12 text-[#2E5D4E]" />
-          ) : (
-            <XCircle className="w-12 h-12 text-white/40" />
-          )}
-        </div>
-        <h1 className="text-2xl font-bold text-white mb-3">
-          {actionDone === 'accepted' ? 'Quote Accepted!' : 'Quote Declined'}
-        </h1>
-        <p className="text-white/50 max-w-sm">
-          {actionDone === 'accepted'
-            ? "We'll be in touch to confirm your first clean. 😊"
-            : 'No worries — reach out anytime if you change your mind.'}
-        </p>
-        <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
-      </div>
-    );
-  }
-
-  // Already accepted
-  if (alreadyAccepted) {
+  // ── Booking Done ──
+  if (phase === 'booking_done') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
         <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
           <CheckCircle className="w-12 h-12 text-[#2E5D4E]" />
         </div>
-        <h1 className="text-2xl font-bold text-white mb-3">You've Already Accepted This Quote</h1>
-        <p className="text-white/50 max-w-sm">We're getting everything ready for your clean. We'll be in touch soon!</p>
+        <h1 className="text-2xl font-bold text-white mb-3">You're Booked In!</h1>
+        <p className="text-white/50 max-w-sm">We'll confirm your cleaner shortly. 😊</p>
+        <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
+        <p className="text-xs mt-1 text-white/20">Brightly Cleaning 🌿</p>
+      </div>
+    );
+  }
+
+  // ── Airbnb Done ──
+  if (phase === 'airbnb_done') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
+        <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
+          <CheckCircle className="w-12 h-12 text-[#2E5D4E]" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-3">Quote Accepted!</h1>
+        <p className="text-white/50 max-w-sm">
+          We've added your property to our system. You'll be able to schedule cleans through your client portal, or we'll coordinate turnovers directly.
+        </p>
+        <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
+        <p className="text-xs mt-1 text-white/20">Brightly Cleaning 🌿</p>
+      </div>
+    );
+  }
+
+  // ── Declined confirmation ──
+  if (phase === 'declined') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
+        <div className="rounded-full p-6 mb-6 bg-white/10">
+          <XCircle className="w-12 h-12 text-white/40" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-3">Quote Declined</h1>
+        <p className="text-white/50 max-w-sm">No worries — reach out anytime if you change your mind.</p>
         <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
       </div>
     );
   }
 
-  // Already declined
+  // ── Booking Form (post-acceptance for residential) ──
+  if (phase === 'booking') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+        <header className="flex items-center justify-between max-w-2xl mx-auto w-full px-6 pt-6 mb-8">
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            Brightly<span style={{ color: '#FEDB00' }}>.</span>
+          </h1>
+        </header>
+
+        <div className="flex-1 max-w-2xl mx-auto w-full px-6 pb-12">
+          <div className="rounded-full p-4 mb-4 bg-[#2E5D4E]/20 w-fit mx-auto">
+            <CalendarDays className="w-8 h-8 text-[#2E5D4E]" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-1 text-center">Quote Accepted!</h2>
+          <p className="text-base text-white/50 mb-8 text-center">Let's book your clean.</p>
+
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-6">
+            {/* Date picker */}
+            <div>
+              <label className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase block mb-2">
+                When would you like the clean?
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                min={getTomorrow()}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full h-14 rounded-xl bg-white/5 border border-white/15 text-white px-4 text-base focus:outline-none focus:border-[#2E5D4E] transition-colors [color-scheme:dark]"
+              />
+            </div>
+
+            {/* Time picker */}
+            <div>
+              <label className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase block mb-2">
+                Preferred time?
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {TIME_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSelectedTime(opt.value)}
+                    className={`h-16 rounded-xl border text-center transition-all duration-200 ${
+                      selectedTime === opt.value
+                        ? 'border-2 border-[#2E5D4E] bg-[#2E5D4E]/15 shadow-lg shadow-[#2E5D4E]/10'
+                        : 'border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${selectedTime === opt.value ? 'text-[#2E5D4E]' : 'text-white'}`}>
+                      {opt.label}
+                    </p>
+                    <p className="text-xs text-white/40 mt-0.5">{opt.sub}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleConfirmBooking}
+            disabled={bookingSubmitting || !selectedDate}
+            className="w-full h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-6"
+          >
+            {bookingSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Booking'}
+          </button>
+
+          <p className="text-center text-sm text-white/40 mt-10">Questions? Call 0418 878 707</p>
+          <p className="text-center text-xs text-white/20 mt-1">Brightly Cleaning 🌿</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Already declined (re-visit) ──
   if (alreadyDeclined) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
@@ -127,14 +348,15 @@ export default function QuoteDetailView({ token }: { token: string }) {
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">This Quote Was Declined</h1>
         <p className="text-white/50 max-w-sm mb-6">Changed your mind? We'd love to help.</p>
-        <button onClick={() => handleAction('accepted')} className="h-14 px-8 rounded-xl bg-[#2E5D4E] text-white font-semibold">
-          Accept Quote
+        <button onClick={handleAccept} disabled={submitting} className="h-14 px-8 rounded-xl bg-[#2E5D4E] text-white font-semibold disabled:opacity-50 flex items-center gap-2">
+          {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Accept Quote'}
         </button>
         <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
       </div>
     );
   }
 
+  // ── Main quote view ──
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <header className="flex items-center justify-between max-w-2xl mx-auto w-full px-6 pt-6 mb-8">
@@ -196,14 +418,14 @@ export default function QuoteDetailView({ token }: { token: string }) {
         {price ? (
           <div className="space-y-3 mt-8">
             <button
-              onClick={() => handleAction('accepted')}
+              onClick={handleAccept}
               disabled={submitting}
               className="w-full h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/20 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Accept Quote'}
             </button>
             <button
-              onClick={() => handleAction('declined')}
+              onClick={handleDecline}
               disabled={submitting}
               className="w-full text-center text-sm text-white/50 underline hover:text-white/70 transition-colors py-2"
             >
