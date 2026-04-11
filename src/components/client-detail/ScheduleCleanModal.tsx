@@ -284,14 +284,59 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
           </div>
 
           {/* Price */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-semibold">Price ex GST ($)</Label>
-              <Input type="number" step="0.01" min="0" value={priceExGst} onChange={e => setPriceExGst(e.target.value)} className="rounded-xl" placeholder="0.00" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Price ($)</Label>
+              <button
+                type="button"
+                onClick={() => {
+                  if (gstMode === 'ex') {
+                    setGstMode('inc');
+                    if (priceExGst && parseFloat(priceExGst) > 0) {
+                      setPriceIncGst((parseFloat(priceExGst) * 1.1).toFixed(2));
+                    }
+                  } else {
+                    setGstMode('ex');
+                    if (priceIncGst && parseFloat(priceIncGst) > 0) {
+                      setPriceExGst((parseFloat(priceIncGst) / 1.1).toFixed(2));
+                    }
+                  }
+                }}
+                className={cn(
+                  'px-3 py-1 rounded-lg border text-xs font-bold transition-all',
+                  gstMode === 'inc' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
+                )}
+              >
+                {gstMode === 'ex' ? 'ex GST' : 'inc GST'}
+              </button>
             </div>
-            <div className="space-y-1">
-              <Label className="text-sm font-semibold">Price inc GST ($)</Label>
-              <Input value={priceIncGst ? `$${priceIncGst}` : '—'} readOnly className="rounded-xl bg-muted" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Ex GST</span>
+                <Input
+                  type="number" step="0.01" min="0" value={priceExGst}
+                  onChange={e => {
+                    setPriceExGst(e.target.value);
+                    if (e.target.value && parseFloat(e.target.value) > 0) {
+                      setPriceIncGst((parseFloat(e.target.value) * 1.1).toFixed(2));
+                    } else { setPriceIncGst(''); }
+                  }}
+                  className="rounded-xl" placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Inc GST</span>
+                <Input
+                  type="number" step="0.01" min="0" value={priceIncGst}
+                  onChange={e => {
+                    setPriceIncGst(e.target.value);
+                    if (e.target.value && parseFloat(e.target.value) > 0) {
+                      setPriceExGst((parseFloat(e.target.value) / 1.1).toFixed(2));
+                    } else { setPriceExGst(''); }
+                  }}
+                  className="rounded-xl" placeholder="0.00"
+                />
+              </div>
             </div>
           </div>
 
