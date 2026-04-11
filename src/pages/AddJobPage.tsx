@@ -303,7 +303,7 @@ export default function AddJobPage() {
                             {props.map((p) => (
                               <button
                                 key={p.id}
-                                onClick={() => { setPropertyId(p.id); setPropertySearch(''); }}
+                                onClick={() => { handlePropertySelect(p); setPropertySearch(''); }}
                                 className="w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border last:border-b-0"
                               >
                                 <p className="font-bold text-foreground text-sm">{p.property_name}</p>
