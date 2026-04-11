@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import SendQuoteLinkModal from './SendQuoteLinkModal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +27,7 @@ export default function OperationsDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
 
@@ -308,9 +310,10 @@ export default function OperationsDashboard() {
         <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quote')}>
           <Plus className="h-4 w-4" /> New Enquiry
         </Button>
-        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => navigate('/quote')}>
+        <Button variant="outline" className="rounded-xl h-12 gap-2" onClick={() => setSmsModalOpen(true)}>
           <Send className="h-4 w-4" /> Send SMS Quote Link
         </Button>
+        <SendQuoteLinkModal open={smsModalOpen} onOpenChange={setSmsModalOpen} />
         <div className="flex-1 min-w-[200px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
