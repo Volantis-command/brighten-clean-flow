@@ -57,8 +57,8 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
   const fileRef = useRef<HTMLInputElement>(null);
 
   const steps = isDeepClean
-    ? ['Contact', 'Property', 'Deep Clean Details', 'Preferences', 'Access', 'Final Details']
-    : ['Contact', 'Property', 'Preferences', 'Access', 'Final Details'];
+    ? ['Property', 'Deep Clean Details', 'Preferences', 'Access', 'Final Details', 'Contact']
+    : ['Property', 'Preferences', 'Access', 'Final Details', 'Contact'];
   const totalSteps = steps.length;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

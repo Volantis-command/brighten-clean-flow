@@ -33,7 +33,7 @@ export function SectionHeader({ icon, label }: { icon: string; label: string }) 
 export function QuestionLabel({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-sm font-medium text-[#2E5D4E] block">{children}</p>
+      <p className="text-sm font-medium text-[#3A7560] block">{children}</p>
       {sub && <p className="text-sm text-white/40">{sub}</p>}
     </div>
   );
