@@ -294,7 +294,7 @@ export default function JobDetailPage() {
         .single();
       if (!clientProfile?.phone) { toast.error('Client has no phone number'); setSendingTrackerLink(false); return; }
       const firstName = (clientProfile.full_name || 'there').split(' ')[0];
-      const trackerUrl = `https://app.brightly.cleaning/track/${job.id}`;
+      const trackerUrl = `${(await import('@/lib/appUrl')).getAppBaseUrl()}/track/${job.id}`;
       const sms = `Hi ${firstName}, track your clean live here: ${trackerUrl} — Brightly Cleaning 🌿`;
       await supabase.functions.invoke('send-job-sms', { body: { to: clientProfile.phone, message: sms } });
       toast.success('Tracker link sent to client!');

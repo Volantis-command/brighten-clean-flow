@@ -95,7 +95,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
     });
 
     const adminSmsPromise = sendAdminSms(
-      `⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address}. Details: ${damageNotes || 'See photos'}. View: https://app.brightly.cleaning/jobs/${job.id}`
+      `⚠️ DAMAGE REPORTED — ${cleanerName} found existing damage at ${address}. Details: ${damageNotes || 'See photos'}. View: ${(await import('@/lib/appUrl')).getAppBaseUrl()}/jobs/${job.id}`
     );
 
     // Client SMS via send-client-sms edge function
@@ -149,7 +149,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       link: `/jobs/${job.id}`,
     });
 
-    await sendAdminSms(`⏱ EXTRA TIME REQUEST — ${cleanerName} at ${address} needs more than ${allocatedHrs} hrs allocated. Reason: ${extraNotes || 'N/A'}. Approve at: https://app.brightly.cleaning/jobs/${job.id}`);
+    await sendAdminSms(`⏱ EXTRA TIME REQUEST — ${cleanerName} at ${address} needs more than ${allocatedHrs} hrs allocated. Reason: ${extraNotes || 'N/A'}. Approve at: ${(await import('@/lib/appUrl')).getAppBaseUrl()}/jobs/${job.id}`);
     toast.success('Extra time request sent');
     setSavingExtra(false);
     onComplete();

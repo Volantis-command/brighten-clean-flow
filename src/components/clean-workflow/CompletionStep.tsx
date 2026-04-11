@@ -1,15 +1,19 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Loader2, X, CheckCircle2 } from 'lucide-react';
+import { Camera, Loader2, X, CheckCircle2, MapPin, Navigation } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import ClockedOnBanner from './ClockedOnBanner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { triggerJobAutoInvoice } from '@/lib/jobInvoice';
+import { MapsActionSheet } from '@/components/MapsActionSheet';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 const ROOM_CHECKLIST = [
   { id: 'kitchen', label: 'Kitchen cleaned' },
@@ -28,13 +32,36 @@ interface Props {
 }
 
 export default function CompletionStep({ job, property, userId, onComplete }: Props) {
+  const navigate = useNavigate();
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [mapsOpen, setMapsOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Query next job for today after completion
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const { data: nextJob } = useQuery({
+    queryKey: ['next-job-today', userId, todayStr, job.id],
+    enabled: completed,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, scheduled_time, property_id, properties(property_name, address, suburb)')
+        .eq('scheduled_date', todayStr)
+        .eq('status', 'scheduled')
+        .or(`cleaner_1_id.eq.${userId},cleaner_2_id.eq.${userId}`)
+        .neq('id', job.id)
+        .order('scheduled_time', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -118,7 +145,7 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
       await supabase.functions.invoke('send-job-sms', {
         body: {
           to: 'ADMIN',
-          message: `✅ JOB COMPLETE — ${cleanerName} has completed the clean at ${address}. Clock-off time: ${timeFormatted}. Post-clean photos submitted. View job: https://app.brightly.cleaning/jobs/${job.id}`,
+          message: `✅ JOB COMPLETE — ${cleanerName} has completed the clean at ${address}. Clock-off time: ${timeFormatted}. Post-clean photos submitted. View job: ${getAppBaseUrl()}/jobs/${job.id}`,
         },
       });
     } catch { /* non-blocking */ }
@@ -134,9 +161,97 @@ export default function CompletionStep({ job, property, userId, onComplete }: Pr
     // Auto-raise Xero invoice (fire-and-forget — non-blocking)
     triggerJobAutoInvoice(job.id).catch((err) => console.error('Auto invoice failed:', err));
 
+    // Trigger guest-ready-sms for Airbnb turnovers
+    const isAirbnb = property?.client_type === 'airbnb';
+    if (isAirbnb) {
+      supabase.functions.invoke('guest-ready-sms', { body: { job_id: job.id } }).catch((err) =>
+        console.error('Guest-ready SMS failed:', err)
+      );
+    }
+
     toast.success('Job completed!');
     setSubmitting(false);
-    onComplete();
+    setCompleted(true);
+  }
+
+  if (completed) {
+    const nextProp = nextJob?.properties as any;
+    const nextAddress = nextProp ? [nextProp.address, nextProp.suburb].filter(Boolean).join(', ') : null;
+    const nextTime = nextJob?.scheduled_time?.slice(0, 5) || null;
+
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <div className="mb-4 flex items-center justify-center">
+            <div className="rounded-full flex items-center justify-center bg-primary/10 border-2 border-primary/30 w-24 h-24">
+              <CheckCircle2 className="h-14 w-14 text-primary" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-extrabold text-foreground mb-2">
+            {nextJob ? 'Job Complete!' : 'All Done for Today!'}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {nextJob ? 'Great work! Your next job is ready.' : 'Great work. Your timesheet has been updated.'}
+          </p>
+        </div>
+
+        {nextJob ? (
+          <div className="w-full space-y-4">
+            <Card className="border-border bg-card/50">
+              <CardContent className="p-5 space-y-2">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Next Clean</p>
+                <p className="font-bold text-lg text-foreground">{nextProp?.property_name || 'Property'}</p>
+                {nextAddress && (
+                  <p className="text-sm flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="h-4 w-4 shrink-0" /> {nextAddress}
+                  </p>
+                )}
+                {nextTime && (
+                  <p className="text-sm text-muted-foreground">Scheduled: {nextTime}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {nextAddress && (
+              <Button
+                size="lg"
+                className="w-full h-14 rounded-2xl font-extrabold"
+                onClick={() => setMapsOpen(true)}
+              >
+                <Navigation className="h-5 w-5 mr-2" /> Navigate
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full h-14 rounded-2xl font-extrabold"
+              onClick={() => navigate(`/clean/${nextJob.id}`)}
+            >
+              View Job Details
+            </Button>
+
+            {nextAddress && (
+              <MapsActionSheet
+                open={mapsOpen}
+                onClose={() => setMapsOpen(false)}
+                address={nextAddress}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="w-full">
+            <Button
+              size="lg"
+              className="w-full h-14 rounded-2xl font-extrabold"
+              onClick={() => navigate('/dashboard')}
+            >
+              Back to Dashboard
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
