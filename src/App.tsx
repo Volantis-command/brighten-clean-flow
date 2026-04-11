@@ -58,10 +58,10 @@ import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import CompletionFormPage from "./pages/CompletionFormPage";
 import JobCompleteDonePage from "./pages/JobCompleteDonePage";
 import JobAuditPage from "./pages/JobAuditPage";
-import ResidentialQuotePage from "./pages/ResidentialQuotePage";
+
 import PendingInvoicesPage from "./pages/PendingInvoicesPage";
 import PendingTimeEditsPage from "./pages/PendingTimeEditsPage";
-import AirbnbQuotePage from "./pages/AirbnbQuotePage";
+
 import LiveTrackerPage from "./pages/LiveTrackerPage";
 import MapPage from "./pages/MapPage";
 import GuestReadyReportPage from "./pages/GuestReadyReportPage";
