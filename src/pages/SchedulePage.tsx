@@ -52,8 +52,10 @@ export default function SchedulePage() {
   };
 
   const filteredJobs = jobs.filter(j => {
-    if (statusFilter !== 'all' && j.status !== statusFilter) return false;
-    return true;
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'pending_approval') return ['pending_approval', 'awaiting_schedule_approval', 'awaiting_quote', 'awaiting_approval'].includes(j.status);
+    if (statusFilter === 'complete') return j.status === 'completed' || j.status === 'complete';
+    return j.status === statusFilter;
   });
 
   const navigateDate = (dir: 'prev' | 'next') => {
