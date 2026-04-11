@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, Check, X, Send, Loader2, MessageSquare, CalendarPlus, BedDouble, Bath } from 'lucide-react';
+import { Star, Check, X, Send, Loader2, MessageSquare, CalendarPlus, BedDouble, Bath, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { getAppBaseUrl } from '@/lib/appUrl';
@@ -35,7 +35,6 @@ function useClientDetail(rawId: string) {
     queryKey: ['client-detail', rawId],
     queryFn: async () => {
       if (parsed.type === 'property') {
-        // Pseudo-client derived from a property record
         const { data: prop } = await supabase.from('properties').select('*').eq('id', parsed.realId).single();
         if (!prop) return { profile: null, links: [], properties: [], pseudoType: 'property' as const };
         const pseudoProfile = {
@@ -48,7 +47,6 @@ function useClientDetail(rawId: string) {
       }
 
       if (parsed.type === 'qr') {
-        // Pseudo-client from quote_requests
         const { data: qr } = await (supabase.from('quote_requests' as any).select('*').eq('id', parsed.realId).single() as any);
         const pseudoProfile = qr ? {
           id: rawId,
@@ -56,7 +54,15 @@ function useClientDetail(rawId: string) {
           email: qr.email || null,
           phone: qr.phone || null,
         } : null;
-        return { profile: pseudoProfile, links: [], properties: [], pseudoType: 'qr' as const };
+
+        // Try to find properties linked via client_properties or matching address
+        let properties: any[] = [];
+        if (qr?.address) {
+          const { data: matchedProps } = await supabase.from('properties').select('*').ilike('address', `%${qr.address}%`);
+          properties = matchedProps || [];
+        }
+
+        return { profile: pseudoProfile, links: [], properties, pseudoType: 'qr' as const };
       }
 
       // Real profile-based client
@@ -229,6 +235,7 @@ export default function ClientDetailPage() {
 
   const profile = data.profile;
   const firstLink = data.links[0];
+  const parsed = stripPseudoPrefix(id!);
 
   const statusColor = (s: string) => {
     if (s === 'complete' || s === 'completed') return 'bg-brightly/10 text-brightly';
@@ -265,22 +272,20 @@ export default function ClientDetailPage() {
     setScheduleOpen(true);
   };
 
-  // Determine which properties to pass to ScheduleCleanModal
   const scheduleProperties = schedulePropertyId
     ? data.properties.filter((p: any) => p.id === schedulePropertyId).map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address }))
     : data.properties.map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address }));
 
-  const parsed = stripPseudoPrefix(id!);
-
   return (
     <div className="space-y-6">
+      {/* UNIFIED HEADER — always shows Schedule a Clean + Edit */}
       <ClientHeader
-        name={profile?.full_name || ''}
+        name={profile?.full_name || 'Client'}
         email={profile?.email}
         phone={profile?.phone}
         onBack={() => navigate('/clients')}
-        onEdit={isRealProfile ? () => setEditOpen(true) : undefined as any}
-        onScheduleClean={data.properties.length > 0 ? () => openBookClean() : undefined}
+        onEdit={() => setEditOpen(true)}
+        onScheduleClean={() => openBookClean()}
       />
 
       <ScheduleCleanModal
@@ -301,34 +306,64 @@ export default function ClientDetailPage() {
           <TabsTrigger value="messages" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Messages</TabsTrigger>
         </TabsList>
 
-        {/* OVERVIEW */}
+        {/* OVERVIEW — unified for ALL client types */}
         <TabsContent value="overview" className="space-y-6 mt-4">
-          {isRealProfile && (
-            <AssignedPropertiesSection clientId={parsed.realId} properties={data.properties} onRefresh={refreshAll} />
-          )}
-
-          {!isRealProfile && data.properties.length > 0 && (
-            <div className="bg-card rounded-2xl border border-border p-5">
-              <h3 className="font-bold text-foreground mb-3">Linked Properties</h3>
+          {/* UNIFIED PROPERTIES SECTION */}
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-foreground">Properties</h3>
+              {isRealProfile && (
+                <AssignPropertyButton clientId={parsed.realId} onRefresh={refreshAll} />
+              )}
+            </div>
+            {data.properties.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-muted-foreground mb-3">No properties yet</p>
+                {isRealProfile && (
+                  <AssignPropertyButton clientId={parsed.realId} onRefresh={refreshAll} variant="outline" />
+                )}
+              </div>
+            ) : (
               <div className="space-y-2">
                 {data.properties.map((p: any) => (
                   <div key={p.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted transition-colors">
                     <Link to={`/properties/${p.id}`} className="flex-1">
                       <p className="font-semibold text-foreground">{p.property_name}</p>
-                      <p className="text-xs text-muted-foreground">{[p.address, p.suburb].filter(Boolean).join(', ')}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[p.address, p.suburb].filter(Boolean).join(', ') || 'No address on file'}
+                      </p>
                     </Link>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <Button size="sm" onClick={() => openBookClean(p.id)} className="bg-primary text-primary-foreground gap-1">
                         <CalendarPlus className="w-3.5 h-3.5" /> Book Clean
                       </Button>
                       <Link to={`/properties/${p.id}`}><Badge variant="secondary">View</Badge></Link>
+                      {isRealProfile && (
+                        <Button
+                          size="sm" variant="ghost"
+                          className="text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+                          onClick={async () => {
+                            if (!confirm('Remove this property from client?')) return;
+                            const { error } = await supabase.from('client_properties')
+                              .delete()
+                              .eq('client_id', parsed.realId)
+                              .eq('property_id', p.id);
+                            if (error) { toast.error(error.message); return; }
+                            toast.success('Property removed');
+                            refreshAll();
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
+          {/* Portal & onboarding sections — show for real profiles */}
           {isRealProfile && (
             <>
               <PortalLinkSection
@@ -387,18 +422,28 @@ export default function ClientDetailPage() {
               </div>
             </>
           )}
+
+          {/* For pseudo clients with no extra sections, show contact summary */}
+          {!isRealProfile && (
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <h3 className="font-bold text-foreground mb-3">Contact Info</h3>
+              <div className="space-y-2 text-sm">
+                <p><span className="text-muted-foreground">Name:</span> <span className="text-foreground">{profile?.full_name || 'Not provided'}</span></p>
+                <p><span className="text-muted-foreground">Email:</span> <span className="text-foreground">{profile?.email || 'No email on file'}</span></p>
+                <p><span className="text-muted-foreground">Phone:</span> <span className="text-foreground">{profile?.phone || 'No phone on file'}</span></p>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
-        {/* PROPERTIES */}
+        {/* PROPERTIES TAB */}
         <TabsContent value="properties" className="mt-4">
           {data.properties.length === 0 ? (
             <div className="bg-card rounded-2xl border border-border p-8 text-center">
               <p className="text-4xl mb-3">🏠</p>
-              <p className="text-muted-foreground">No properties assigned to this client.</p>
+              <p className="text-muted-foreground mb-3">No properties yet</p>
               {isRealProfile && (
-                <Button variant="outline" className="mt-3" onClick={() => {/* switch to overview tab to use assign */}}>
-                  Assign a Property
-                </Button>
+                <AssignPropertyButton clientId={parsed.realId} onRefresh={refreshAll} variant="outline" />
               )}
             </div>
           ) : (
@@ -410,11 +455,9 @@ export default function ClientDetailPage() {
                       <Link to={`/properties/${p.id}`} className="text-lg font-bold text-foreground hover:text-primary transition-colors">
                         {p.property_name}
                       </Link>
-                      {(p.address || p.suburb) && (
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {[p.address, p.suburb].filter(Boolean).join(', ')}
-                        </p>
-                      )}
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {[p.address, p.suburb].filter(Boolean).join(', ') || 'No address on file'}
+                      </p>
                     </div>
                     <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${p.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                       {p.status === 'active' ? 'Active' : 'Inactive'}
@@ -568,17 +611,74 @@ export default function ClientDetailPage() {
 
       {isRealProfile && <ClientCommsLog clientId={parsed.realId} />}
 
-      {isRealProfile && (
-        <EditClientDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          clientId={parsed.realId}
-          initialName={profile?.full_name || ''}
-          initialEmail={profile?.email || ''}
-          initialPhone={profile?.phone || ''}
-          onSaved={refreshAll}
-        />
+      {/* Edit dialog — for real profiles, edit directly. For pseudo clients, open as read-only or limited */}
+      <EditClientDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        clientId={parsed.realId}
+        initialName={profile?.full_name || ''}
+        initialEmail={profile?.email || ''}
+        initialPhone={profile?.phone || ''}
+        onSaved={refreshAll}
+      />
+    </div>
+  );
+}
+
+/** Small helper component to keep the "Assign Property" button DRY */
+function AssignPropertyButton({ clientId, onRefresh, variant = 'default' }: { clientId: string; onRefresh: () => void; variant?: 'default' | 'outline' }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button size="sm" variant={variant === 'outline' ? 'outline' : 'outline'} onClick={() => setOpen(true)} className="gap-1.5">
+        <Plus className="w-4 h-4" /> Add Property
+      </Button>
+      {open && (
+        <AssignPropertyInline clientId={clientId} onRefresh={() => { onRefresh(); setOpen(false); }} onClose={() => setOpen(false)} />
       )}
+    </>
+  );
+}
+
+/** Inline assign property dialog */
+function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: string; onRefresh: () => void; onClose: () => void }) {
+  const [selectedId, setSelectedId] = useState('');
+  const { data: allProps = [] } = useQuery({
+    queryKey: ['all-properties-for-assign-inline'],
+    queryFn: async () => {
+      const { data } = await supabase.from('properties').select('id, property_name, address');
+      return data || [];
+    },
+  });
+
+  const assign = async () => {
+    if (!selectedId) return;
+    const { error } = await supabase.from('client_properties').insert({ client_id: clientId, property_id: selectedId });
+    if (error) { toast.error(error.message); return; }
+    toast.success('Property assigned');
+    onRefresh();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="font-bold text-foreground">Assign Property</h3>
+        <select
+          className="w-full rounded-xl border border-border bg-background text-foreground p-3"
+          value={selectedId}
+          onChange={e => setSelectedId(e.target.value)}
+        >
+          <option value="">Select a property...</option>
+          {allProps.map(p => (
+            <option key={p.id} value={p.id}>{p.property_name} — {p.address || 'No address'}</option>
+          ))}
+        </select>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={assign} disabled={!selectedId}>Assign</Button>
+        </div>
+      </div>
     </div>
   );
 }
