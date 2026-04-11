@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, Check, X, Send, Loader2, MessageSquare } from 'lucide-react';
+import { Star, Check, X, Send, Loader2, MessageSquare, CalendarPlus, BedDouble, Bath } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { getAppBaseUrl } from '@/lib/appUrl';
@@ -21,19 +21,54 @@ import EditClientDialog from '@/components/client-detail/EditClientDialog';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
 
-function useClientDetail(clientId: string) {
+/** Strip synthetic prefixes used for pseudo-clients */
+function stripPseudoPrefix(id: string) {
+  if (id.startsWith('property-')) return { type: 'property' as const, realId: id.replace('property-', '') };
+  if (id.startsWith('qr-')) return { type: 'qr' as const, realId: id.replace('qr-', '') };
+  return { type: 'profile' as const, realId: id };
+}
+
+function useClientDetail(rawId: string) {
+  const parsed = stripPseudoPrefix(rawId);
+
   return useQuery({
-    queryKey: ['client-detail', clientId],
+    queryKey: ['client-detail', rawId],
     queryFn: async () => {
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', clientId).single();
-      const { data: links } = await supabase.from('client_properties').select('*').eq('client_id', clientId);
+      if (parsed.type === 'property') {
+        // Pseudo-client derived from a property record
+        const { data: prop } = await supabase.from('properties').select('*').eq('id', parsed.realId).single();
+        if (!prop) return { profile: null, links: [], properties: [], pseudoType: 'property' as const };
+        const pseudoProfile = {
+          id: rawId,
+          full_name: prop.client_name || prop.property_name,
+          email: (prop as any).billing_email || null,
+          phone: (prop as any).client_phone || null,
+        };
+        return { profile: pseudoProfile, links: [], properties: [prop], pseudoType: 'property' as const };
+      }
+
+      if (parsed.type === 'qr') {
+        // Pseudo-client from quote_requests
+        const { data: qr } = await supabase.from('quote_requests' as any).select('*').eq('id', parsed.realId).single();
+        const pseudoProfile = qr ? {
+          id: rawId,
+          full_name: [qr.first_name, qr.last_name].filter(Boolean).join(' ') || null,
+          email: qr.email || null,
+          phone: qr.phone || null,
+        } : null;
+        return { profile: pseudoProfile, links: [], properties: [], pseudoType: 'qr' as const };
+      }
+
+      // Real profile-based client
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', parsed.realId).single();
+      const { data: links } = await supabase.from('client_properties').select('*').eq('client_id', parsed.realId);
       const propIds = (links || []).map(l => l.property_id);
       const { data: props } = propIds.length
         ? await supabase.from('properties').select('*').in('id', propIds)
         : { data: [] };
-      return { profile, links: links || [], properties: props || [] };
+      return { profile, links: links || [], properties: props || [], pseudoType: 'profile' as const };
     },
-    enabled: !!clientId,
+    enabled: !!rawId,
   });
 }
 
@@ -44,7 +79,6 @@ function useClientJobs(propertyIds: string[], clientName: string | null) {
       const validPropIds = propertyIds.filter(Boolean);
       let allJobs: any[] = [];
 
-      // Query by property_id
       if (validPropIds.length > 0) {
         const { data } = await supabase
           .from('jobs')
@@ -54,7 +88,6 @@ function useClientJobs(propertyIds: string[], clientName: string | null) {
         allJobs = data || [];
       }
 
-      // Also query by client_name to catch jobs without property_id
       if (clientName) {
         const { data: nameJobs } = await (supabase
           .from('jobs')
@@ -108,10 +141,12 @@ function useClientFeedback(propertyIds: string[]) {
 }
 
 function useClientRequests(clientId: string) {
+  const parsed = stripPseudoPrefix(clientId);
   return useQuery({
     queryKey: ['client-requests', clientId],
     queryFn: async () => {
-      const { data } = await supabase.from('clean_requests').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
+      if (parsed.type !== 'profile') return [];
+      const { data } = await supabase.from('clean_requests').select('*').eq('client_id', parsed.realId).order('created_at', { ascending: false });
       const propIds = [...new Set((data || []).map(r => r.property_id).filter(Boolean))] as string[];
       const { data: props } = propIds.length
         ? await supabase.from('properties').select('id, property_name').in('id', propIds)
@@ -125,10 +160,12 @@ function useClientRequests(clientId: string) {
 }
 
 function useClientMessages(clientId: string) {
+  const parsed = stripPseudoPrefix(clientId);
   return useQuery({
     queryKey: ['client-messages', clientId],
     queryFn: async () => {
-      const { data } = await supabase.from('client_messages').select('*').eq('client_id', clientId).order('sent_at', { ascending: true });
+      if (parsed.type !== 'profile') return [];
+      const { data } = await supabase.from('client_messages').select('*').eq('client_id', parsed.realId).order('sent_at', { ascending: true });
       return data || [];
     },
     enabled: !!clientId,
@@ -140,7 +177,8 @@ export default function ClientDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data, isLoading } = useClientDetail(id!);
-  const propertyIds = (data?.links || []).map(l => l.property_id);
+  const propertyIds = (data?.properties || []).map((p: any) => p.id);
+  const isRealProfile = data?.pseudoType === 'profile';
 
   const { data: jobs = [] } = useClientJobs(propertyIds, data?.profile?.full_name || null);
   const { data: feedback = [] } = useClientFeedback(propertyIds);
@@ -151,6 +189,7 @@ export default function ClientDetailPage() {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedulePropertyId, setSchedulePropertyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
 
@@ -172,8 +211,9 @@ export default function ClientDetailPage() {
 
   const sendReplyMutation = useMutation({
     mutationFn: async () => {
-      if (!replyText.trim() || !id) return;
-      const { error } = await supabase.from('client_messages').insert({ client_id: id, message: replyText.trim(), direction: 'outbound' });
+      const parsed = stripPseudoPrefix(id!);
+      if (!replyText.trim() || parsed.type !== 'profile') return;
+      const { error } = await supabase.from('client_messages').insert({ client_id: parsed.realId, message: replyText.trim(), direction: 'outbound' });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -220,6 +260,18 @@ export default function ClientDetailPage() {
     setSendingPortalLink(false);
   };
 
+  const openBookClean = (propertyId?: string) => {
+    setSchedulePropertyId(propertyId || null);
+    setScheduleOpen(true);
+  };
+
+  // Determine which properties to pass to ScheduleCleanModal
+  const scheduleProperties = schedulePropertyId
+    ? data.properties.filter((p: any) => p.id === schedulePropertyId).map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address }))
+    : data.properties.map((p: any) => ({ id: p.id, property_name: p.property_name, address: p.address }));
+
+  const parsed = stripPseudoPrefix(id!);
+
   return (
     <div className="space-y-6">
       <ClientHeader
@@ -227,21 +279,22 @@ export default function ClientDetailPage() {
         email={profile?.email}
         phone={profile?.phone}
         onBack={() => navigate('/clients')}
-        onEdit={() => setEditOpen(true)}
-        onScheduleClean={() => setScheduleOpen(true)}
+        onEdit={isRealProfile ? () => setEditOpen(true) : undefined as any}
+        onScheduleClean={data.properties.length > 0 ? () => openBookClean() : undefined}
       />
 
       <ScheduleCleanModal
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
-        clientId={id!}
+        clientId={parsed.realId}
         clientName={profile?.full_name || 'Client'}
-        properties={data.properties.map(p => ({ id: p.id, property_name: p.property_name, address: p.address }))}
+        properties={scheduleProperties}
       />
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full grid grid-cols-5 bg-muted rounded-xl">
+        <TabsList className="w-full grid grid-cols-6 bg-muted rounded-xl">
           <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="properties" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Properties</TabsTrigger>
           <TabsTrigger value="jobs" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Jobs</TabsTrigger>
           <TabsTrigger value="feedback" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Feedback</TabsTrigger>
           <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">Requests</TabsTrigger>
@@ -250,63 +303,142 @@ export default function ClientDetailPage() {
 
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-6 mt-4">
-          <AssignedPropertiesSection clientId={id!} properties={data.properties} onRefresh={refreshAll} />
+          {isRealProfile && (
+            <AssignedPropertiesSection clientId={parsed.realId} properties={data.properties} onRefresh={refreshAll} />
+          )}
 
-          <PortalLinkSection
-            clientId={id!}
-            portalToken={firstLink?.portal_token || null}
-            portalLinkSentAt={(firstLink as any)?.portal_link_sent_at || null}
-            linkCreatedAt={firstLink?.created_at || null}
-            phone={profile?.phone || null}
-            email={profile?.email || null}
-            clientName={profile?.full_name || ''}
-            onRefresh={refreshAll}
-          />
+          {!isRealProfile && data.properties.length > 0 && (
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <h3 className="font-bold text-foreground mb-3">Linked Properties</h3>
+              <div className="space-y-2">
+                {data.properties.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted transition-colors">
+                    <Link to={`/properties/${p.id}`} className="flex-1">
+                      <p className="font-semibold text-foreground">{p.property_name}</p>
+                      <p className="text-xs text-muted-foreground">{[p.address, p.suburb].filter(Boolean).join(', ')}</p>
+                    </Link>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => openBookClean(p.id)} className="bg-primary text-primary-foreground gap-1">
+                        <CalendarPlus className="w-3.5 h-3.5" /> Book Clean
+                      </Button>
+                      <Link to={`/properties/${p.id}`}><Badge variant="secondary">View</Badge></Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* Send Portal Login Link */}
-          <div className="bg-card rounded-2xl border border-border p-5">
-            <h3 className="font-bold text-foreground mb-3">Client Portal Access</h3>
-            <p className="text-sm text-muted-foreground mb-3">Send the client an SMS with a link to log into their portal and view clean history.</p>
-            <Button
-              onClick={handleSendPortalLink}
-              disabled={sendingPortalLink || !profile?.phone}
-              variant="outline"
-              className="gap-2"
-            >
-              {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-              Send Portal Login Link
-            </Button>
-            {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
-          </div>
+          {isRealProfile && (
+            <>
+              <PortalLinkSection
+                clientId={parsed.realId}
+                portalToken={firstLink?.portal_token || null}
+                portalLinkSentAt={(firstLink as any)?.portal_link_sent_at || null}
+                linkCreatedAt={firstLink?.created_at || null}
+                phone={profile?.phone || null}
+                email={profile?.email || null}
+                clientName={profile?.full_name || ''}
+                onRefresh={refreshAll}
+              />
 
-          <OnboardingStatusSection
-            clientId={id!}
-            onboardToken={firstLink?.onboard_token || null}
-            onboardUsed={firstLink?.onboard_used || false}
-            onboardingSentAt={(firstLink as any)?.onboarding_sent_at || null}
-            phone={profile?.phone || null}
-            email={profile?.email || null}
-            clientName={profile?.full_name || ''}
-            properties={data.properties}
-            onRefresh={refreshAll}
-          />
+              <div className="bg-card rounded-2xl border border-border p-5">
+                <h3 className="font-bold text-foreground mb-3">Client Portal Access</h3>
+                <p className="text-sm text-muted-foreground mb-3">Send the client an SMS with a link to log into their portal and view clean history.</p>
+                <Button
+                  onClick={handleSendPortalLink}
+                  disabled={sendingPortalLink || !profile?.phone}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                  Send Portal Login Link
+                </Button>
+                {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
+              </div>
 
-          <div className="bg-card rounded-2xl border border-border p-5">
-            <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={async () => {
-                const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', id!);
-                if (error) { toast.error('Failed to save notes'); return; }
-                toast.success('Notes saved');
-              }}
-            >
-              Save Notes
-            </Button>
-          </div>
+              <OnboardingStatusSection
+                clientId={parsed.realId}
+                onboardToken={firstLink?.onboard_token || null}
+                onboardUsed={firstLink?.onboard_used || false}
+                onboardingSentAt={(firstLink as any)?.onboarding_sent_at || null}
+                phone={profile?.phone || null}
+                email={profile?.email || null}
+                clientName={profile?.full_name || ''}
+                properties={data.properties}
+                onRefresh={refreshAll}
+              />
+
+              <div className="bg-card rounded-2xl border border-border p-5">
+                <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
+                <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={async () => {
+                    const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', parsed.realId);
+                    if (error) { toast.error('Failed to save notes'); return; }
+                    toast.success('Notes saved');
+                  }}
+                >
+                  Save Notes
+                </Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* PROPERTIES */}
+        <TabsContent value="properties" className="mt-4">
+          {data.properties.length === 0 ? (
+            <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <p className="text-4xl mb-3">🏠</p>
+              <p className="text-muted-foreground">No properties assigned to this client.</p>
+              {isRealProfile && (
+                <Button variant="outline" className="mt-3" onClick={() => {/* switch to overview tab to use assign */}}>
+                  Assign a Property
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {data.properties.map((p: any) => (
+                <div key={p.id} className="bg-card rounded-2xl border border-border p-5 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <Link to={`/properties/${p.id}`} className="text-lg font-bold text-foreground hover:text-primary transition-colors">
+                        {p.property_name}
+                      </Link>
+                      {(p.address || p.suburb) && (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {[p.address, p.suburb].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${p.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                      {p.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1"><BedDouble className="w-4 h-4" /> {p.bedrooms || 0} bed</span>
+                    <span className="flex items-center gap-1"><Bath className="w-4 h-4" /> {p.bathrooms || 0} bath</span>
+                    {p.property_type && <Badge variant="secondary" className="text-xs">{p.property_type}</Badge>}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => openBookClean(p.id)} className="bg-primary text-primary-foreground gap-1.5 flex-1">
+                      <CalendarPlus className="w-4 h-4" /> Book Clean
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/properties/${p.id}`)}>
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* JOBS */}
@@ -421,29 +553,32 @@ export default function ClientDetailPage() {
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
-              <Input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Type a reply..."
-                onKeyDown={e => e.key === 'Enter' && !sendReplyMutation.isPending && replyText.trim() && sendReplyMutation.mutate()} />
-              <Button onClick={() => sendReplyMutation.mutate()} disabled={!replyText.trim() || sendReplyMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
+            {isRealProfile && (
+              <div className="flex gap-2">
+                <Input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Type a reply..."
+                  onKeyDown={e => e.key === 'Enter' && !sendReplyMutation.isPending && replyText.trim() && sendReplyMutation.mutate()} />
+                <Button onClick={() => sendReplyMutation.mutate()} disabled={!replyText.trim() || sendReplyMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Communication History */}
-      <ClientCommsLog clientId={id!} />
+      {isRealProfile && <ClientCommsLog clientId={parsed.realId} />}
 
-      <EditClientDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        clientId={id!}
-        initialName={profile?.full_name || ''}
-        initialEmail={profile?.email || ''}
-        initialPhone={profile?.phone || ''}
-        onSaved={refreshAll}
-      />
+      {isRealProfile && (
+        <EditClientDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          clientId={parsed.realId}
+          initialName={profile?.full_name || ''}
+          initialEmail={profile?.email || ''}
+          initialPhone={profile?.phone || ''}
+          onSaved={refreshAll}
+        />
+      )}
     </div>
   );
 }
