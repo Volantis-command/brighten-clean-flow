@@ -261,6 +261,21 @@ Deno.serve(async (req) => {
     }
 
     if (action === "ensure_onboarding") {
+      // Only create staff_onboarding for staff roles, not clients
+      const { data: userRoles } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user_id);
+      const staffRoles = ['cleaner', 'head_cleaner', 'admin'];
+      const isStaff = userRoles?.some((r: any) => staffRoles.includes(r.role));
+
+      if (!isStaff) {
+        return new Response(
+          JSON.stringify({ success: false, error: "User is not a staff member" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       await ensureOnboarding(user_id, full_name, email);
       // Return the token
       const { data: record } = await adminClient
