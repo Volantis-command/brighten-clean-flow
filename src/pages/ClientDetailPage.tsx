@@ -49,7 +49,7 @@ function useClientDetail(rawId: string) {
 
       if (parsed.type === 'qr') {
         // Pseudo-client from quote_requests
-        const { data: qr } = await supabase.from('quote_requests' as any).select('*').eq('id', parsed.realId).single();
+        const { data: qr } = await (supabase.from('quote_requests' as any).select('*').eq('id', parsed.realId).single() as any);
         const pseudoProfile = qr ? {
           id: rawId,
           full_name: [qr.first_name, qr.last_name].filter(Boolean).join(' ') || null,
