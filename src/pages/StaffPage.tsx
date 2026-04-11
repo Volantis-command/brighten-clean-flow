@@ -130,11 +130,58 @@ export default function StaffPage() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: () =>
-      invokeFn({ action: 'invite', email: invEmail, role: invRole, full_name: invName, phone: invPhone }),
+    mutationFn: async () => {
+      // Create user with random password (they'll use magic link, not password)
+      const randomPwd = crypto.randomUUID().slice(0, 16) + 'Aa1!';
+      const data = await invokeFn({
+        action: 'create_user',
+        email: invEmail,
+        role: invRole,
+        full_name: invName,
+        phone: invPhone,
+        password: randomPwd,
+      });
+      const userId = data?.user_id;
+      if (!userId) throw new Error('Failed to create user');
+
+      // Ensure onboarding record + get token
+      const onboardData = await invokeFn({
+        action: 'ensure_onboarding',
+        user_id: userId,
+        full_name: invName,
+        email: invEmail,
+      });
+
+      // Send SMS magic link for login
+      if (invPhone) {
+        try {
+          await supabase.functions.invoke('send-staff-magic-link', {
+            body: { staff_id: userId },
+          });
+        } catch { /* best effort */ }
+      }
+
+      // Send SMS with onboarding form link
+      if (invPhone && onboardData?.token) {
+        const link = `${getAppBaseUrl()}/staff-onboarding/${onboardData.token}`;
+        const firstName = (invName || 'there').split(' ')[0];
+        try {
+          await supabase.functions.invoke('send-job-sms', {
+            body: {
+              to: invPhone,
+              message: `Hi ${firstName}, welcome to Brightly! 🌿 Complete your onboarding here: ${link}`,
+            },
+          });
+        } catch { /* best effort */ }
+      }
+
+      return data;
+    },
     onSuccess: () => {
-      toast.success('Invitation sent!');
+      toast.success('Staff member invited. SMS sent.');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
       setInviteOpen(false);
       setInvEmail(''); setInvName(''); setInvPhone(''); setInvRole('cleaner');
     },
@@ -401,20 +448,20 @@ export default function StaffPage() {
         <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle>Invite Staff Member</DialogTitle>
-            <DialogDescription>Send an email invitation to join your team.</DialogDescription>
+            <DialogDescription>They'll receive an SMS with their onboarding form link.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Email *</Label>
-              <Input type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="staff@example.com" />
-            </div>
-            <div>
-              <Label>Full Name</Label>
+              <Label>Full Name *</Label>
               <Input value={invName} onChange={(e) => setInvName(e.target.value)} placeholder="Jane Doe" />
             </div>
             <div>
-              <Label>Phone</Label>
-              <Input value={invPhone} onChange={(e) => setInvPhone(e.target.value)} placeholder="0412 345 678" />
+              <Label>Phone *</Label>
+              <Input value={invPhone} onChange={(e) => setInvPhone(e.target.value)} placeholder="0412 345 678" type="tel" />
+            </div>
+            <div>
+              <Label>Email *</Label>
+              <Input type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="staff@example.com" />
             </div>
             <div>
               <Label>Role *</Label>
@@ -430,9 +477,9 @@ export default function StaffPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={() => inviteMutation.mutate()} disabled={!invEmail || inviteMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2">
+            <Button onClick={() => inviteMutation.mutate()} disabled={!invEmail || !invName || !invPhone.trim() || inviteMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2">
               {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Send Invite
+              Invite
             </Button>
           </DialogFooter>
         </DialogContent>
