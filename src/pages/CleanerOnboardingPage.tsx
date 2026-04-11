@@ -493,7 +493,7 @@ export default function CleanerOnboardingPage() {
           Brightly<span style={{ color: '#FEDB00' }}>.</span>
         </h1>
         <div className="rounded-2xl shadow-md p-8 max-w-md text-center space-y-4 mt-6" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <ShieldCheck className="h-10 w-10 mx-auto" style={{ color: '#2E5D4E' }} />
+          <ShieldCheck className="h-10 w-10 mx-auto" style={{ color: '#3A7560' }} />
           <h2 className="text-xl font-bold" style={{ color: '#F0FDF4' }}>Cleaner Onboarding</h2>
           <p style={{ color: 'rgba(240,253,244,0.5)' }}>
             Please use the onboarding link sent to you via SMS to access this form. Need help? Call <span className="font-bold">0418 878 707</span>.

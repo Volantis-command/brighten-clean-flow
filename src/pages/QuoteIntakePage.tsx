@@ -23,7 +23,7 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
           Brightly<span style={{ color: '#FEDB00' }}>.</span>
         </h1>
-        <span className="text-[#2E5D4E] text-sm font-medium">New Enquiry</span>
+        <span className="text-[#3A7560] text-sm font-medium">New Enquiry</span>
       </header>
 
       <div className="flex-1 max-w-2xl mx-auto w-full px-6">
@@ -58,7 +58,7 @@ function Confirmation() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
       <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
-        <SprayCan className="w-12 h-12 text-[#2E5D4E]" />
+        <SprayCan className="w-12 h-12 text-[#3A7560]" />
       </div>
       <h1 className="text-3xl font-bold text-white">You're all set!</h1>
       <p className="mt-3 max-w-sm text-base text-white/50">

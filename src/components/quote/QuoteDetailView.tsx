@@ -202,7 +202,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#2E5D4E] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#3A7560] animate-spin" />
       </div>
     );
   }
@@ -228,7 +228,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
         <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
-          <CheckCircle className="w-12 h-12 text-[#2E5D4E]" />
+          <CheckCircle className="w-12 h-12 text-[#3A7560]" />
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">You're Booked In!</h1>
         <p className="text-white/50 max-w-sm">We'll confirm your cleaner shortly. 😊</p>
@@ -243,7 +243,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
         <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
-          <CheckCircle className="w-12 h-12 text-[#2E5D4E]" />
+          <CheckCircle className="w-12 h-12 text-[#3A7560]" />
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">Quote Accepted!</h1>
         <p className="text-white/50 max-w-sm">
@@ -281,7 +281,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
 
         <div className="flex-1 max-w-2xl mx-auto w-full px-6 pb-12">
           <div className="rounded-full p-4 mb-4 bg-[#2E5D4E]/20 w-fit mx-auto">
-            <CalendarDays className="w-8 h-8 text-[#2E5D4E]" />
+            <CalendarDays className="w-8 h-8 text-[#3A7560]" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-1 text-center">Quote Accepted!</h2>
           <p className="text-base text-white/50 mb-8 text-center">Let's book your clean.</p>
@@ -289,7 +289,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-6">
             {/* Date picker */}
             <div>
-              <label className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase block mb-2">
+              <label className="text-xs font-bold tracking-widest text-[#3A7560] uppercase block mb-2">
                 When would you like the clean?
               </label>
               <input
@@ -303,7 +303,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
 
             {/* Time picker */}
             <div>
-              <label className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase block mb-2">
+              <label className="text-xs font-bold tracking-widest text-[#3A7560] uppercase block mb-2">
                 Preferred time?
               </label>
               <select
@@ -358,7 +358,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
           Brightly<span style={{ color: '#FEDB00' }}>.</span>
         </h1>
-        <a href="/quote" className="text-[#2E5D4E] text-sm font-medium">New Enquiry</a>
+        <a href="/quote" className="text-[#3A7560] text-sm font-medium">New Enquiry</a>
       </header>
 
       <div className="flex-1 max-w-2xl mx-auto w-full px-6 pb-12">
@@ -370,13 +370,13 @@ export default function QuoteDetailView({ token }: { token: string }) {
         {/* Quote card */}
         <div className="rounded-2xl bg-white/5 border border-white/10 p-6 mb-6 space-y-5">
           <div>
-            <span className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase">Service</span>
+            <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Service</span>
             <p className="text-lg text-white font-semibold mt-1">{serviceLabel}</p>
           </div>
 
           {quote?.property_address && (
             <div>
-              <span className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase">Property</span>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Property</span>
               <p className="text-base text-white mt-1">{quote.property_address}</p>
             </div>
           )}
@@ -384,13 +384,13 @@ export default function QuoteDetailView({ token }: { token: string }) {
           <div className="flex gap-8">
             {quote?.bedrooms != null && (
               <div>
-                <span className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase">Bedrooms</span>
+                <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Bedrooms</span>
                 <p className="text-base text-white mt-1">{quote.bedrooms}</p>
               </div>
             )}
             {quote?.bathrooms != null && (
               <div>
-                <span className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase">Bathrooms</span>
+                <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Bathrooms</span>
                 <p className="text-base text-white mt-1">{quote.bathrooms}</p>
               </div>
             )}
@@ -399,7 +399,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
           {/* Price */}
           {price ? (
             <div className="pt-4 border-t border-white/10">
-              <span className="text-xs font-bold tracking-widest text-[#2E5D4E] uppercase">Quoted Price (inc. GST)</span>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Quoted Price (inc. GST)</span>
               <p className="text-3xl font-bold text-white mt-1">${Number(price).toFixed(2)}</p>
             </div>
           ) : (
