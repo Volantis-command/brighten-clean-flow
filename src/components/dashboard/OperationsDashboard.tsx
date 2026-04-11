@@ -99,6 +99,30 @@ export default function OperationsDashboard() {
     },
   });
 
+  // Accepted quotes needing action (no linked job yet)
+  const { data: quotesNeedingAction = [] } = useQuery({
+    queryKey: ['quotes-needing-action'],
+    queryFn: async () => {
+      const { data: acceptedQuotes } = await supabase
+        .from('quotes')
+        .select('id, client_name, property_address, clean_type, service_type, quote_accepted_at, status')
+        .in('status', ['client_accepted', 'accepted'])
+        .order('quote_accepted_at', { ascending: false });
+
+      if (!acceptedQuotes?.length) return [];
+
+      // Check which have linked jobs
+      const quoteIds = acceptedQuotes.map(q => q.id);
+      const { data: linkedJobs } = await supabase
+        .from('jobs')
+        .select('linked_quote_id')
+        .in('linked_quote_id', quoteIds);
+
+      const linkedIds = new Set((linkedJobs || []).map(j => j.linked_quote_id));
+      return acceptedQuotes.filter(q => !linkedIds.has(q.id));
+    },
+  });
+
   // Quick stats
   const { data: stats } = useQuery({
     queryKey: ['ops-stats'],
