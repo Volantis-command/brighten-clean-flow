@@ -88,7 +88,7 @@ export default function ClientSchedulePage() {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
       // Create job with awaiting_schedule_approval status
-      const { error: jobError } = await supabase.from('jobs').insert({
+      const { data: insertedJob, error: jobError } = await supabase.from('jobs').insert({
         property_id: clientProp.property_id,
         scheduled_date: dateStr,
         status: 'awaiting_schedule_approval',
@@ -96,9 +96,27 @@ export default function ClientSchedulePage() {
         linked_quote_id: acceptedQuote?.id || null,
         price_inc_gst: acceptedQuote?.sell_price_inc_gst || null,
         source: 'client_portal',
-      });
+        frequency: frequency === 'one_off' ? 'one-off' : frequency,
+      } as any).select('id').single();
 
       if (jobError) throw jobError;
+
+      // Auto-generate recurring jobs if frequency is not one-off
+      if (insertedJob?.id && frequency !== 'one_off') {
+        try {
+          const { createRecurringJobSeries } = await import('@/lib/recurringJobHelper');
+          const freq = frequency as any; // weekly, fortnightly, monthly
+          await createRecurringJobSeries({
+            parentJobId: insertedJob.id,
+            frequency: freq,
+            startDate: dateStr,
+            propertyId: clientProp.property_id,
+            priceIncGst: acceptedQuote?.sell_price_inc_gst || null,
+            notes: `Client preferred time: ${timePreference}, Frequency: ${frequency}`,
+            source: 'client_portal',
+          });
+        } catch { /* non-blocking */ }
+      }
 
       // Update quote status
       if (acceptedQuote?.id) {

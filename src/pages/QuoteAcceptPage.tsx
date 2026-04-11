@@ -56,15 +56,34 @@ export default function QuoteAcceptPage() {
       };
       await supabase.from('quote_requests').update(updateData).eq('token', token);
 
+      const frequency = quote.frequency || 'one-off';
       const jobData: any = {
         scheduled_date: quote.preferred_date || new Date().toISOString().split('T')[0],
         scheduled_time: quote.preferred_time?.includes('Morning') ? '08:00' : quote.preferred_time?.includes('Afternoon') ? '13:00' : null,
         status: 'scheduled',
         price_ex_gst: quote.total_ex_gst,
         price_inc_gst: quote.total_inc_gst,
+        frequency,
         notes: `Residential quote from ${quote.first_name} ${quote.last_name || ''}\n${quote.clean_type}\n${quote.address}\n${quote.extra_notes || ''}`.trim(),
       };
-      await supabase.from('jobs').insert(jobData);
+      const { data: insertedJob } = await supabase.from('jobs').insert(jobData).select('id').single();
+
+      // Auto-generate recurring jobs if frequency is not one-off
+      if (insertedJob?.id && frequency !== 'one-off') {
+        try {
+          const { createRecurringJobSeries } = await import('@/lib/recurringJobHelper');
+          await createRecurringJobSeries({
+            parentJobId: insertedJob.id,
+            frequency: frequency as any,
+            startDate: quote.preferred_date || new Date().toISOString().split('T')[0],
+            scheduledTime: jobData.scheduled_time,
+            priceExGst: quote.total_ex_gst,
+            priceIncGst: quote.total_inc_gst,
+            notes: jobData.notes,
+            source: 'quote',
+          });
+        } catch { /* non-blocking */ }
+      }
 
       try {
         await supabase.functions.invoke('send-quote-notification', {

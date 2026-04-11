@@ -53,6 +53,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const [gstMode, setGstMode] = useState<'ex' | 'inc'>('ex');
   const [notes, setNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
+  const [frequency, setFrequency] = useState('one-off');
 
   const { unavailableMap } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
@@ -102,6 +103,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       setGstMode('ex');
       setNotes('');
       setInternalNotes('');
+      setFrequency('one-off');
     }
   }, [open]);
 
@@ -135,9 +137,30 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         price_notes: internalNotes || null,
         status,
         source: 'manual',
+        frequency,
       } as any).select('id').single();
 
       if (error) throw error;
+
+      // Auto-generate recurring jobs if frequency is not one-off
+      if (jobData?.id && frequency !== 'one-off') {
+        try {
+          const { createRecurringJobSeries } = await import('@/lib/recurringJobHelper');
+          await createRecurringJobSeries({
+            parentJobId: jobData.id,
+            frequency: frequency as any,
+            startDate: format(date, 'yyyy-MM-dd'),
+            scheduledTime: time,
+            propertyId,
+            priceExGst: finalExGst,
+            priceIncGst: finalIncGst,
+            notes: notes || null,
+            cleanerId: cleanerId || null,
+            estimatedDuration: parseInt(duration),
+            source: 'manual',
+          });
+        } catch { /* non-blocking */ }
+      }
 
       // Fire Google Calendar event (non-blocking)
       if (jobData?.id) {
