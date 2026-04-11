@@ -83,6 +83,26 @@ export default function AddJobPage() {
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
 
+  const handlePropertySelect = (p: any) => {
+    setPropertyId(p.id);
+    if (p.default_price != null && parseFloat(p.default_price) > 0) {
+      const dp = parseFloat(p.default_price);
+      if (p.price_includes_gst) {
+        setPriceIncGst(dp);
+        setPriceExGst(parseFloat((dp / 1.1).toFixed(2)));
+      } else {
+        setPriceExGst(dp);
+        setPriceIncGst(parseFloat((dp * 1.1).toFixed(2)));
+      }
+    } else if (p.price_turnover) {
+      setPriceExGst(Number(p.price_turnover));
+      setPriceIncGst(parseFloat((Number(p.price_turnover) * 1.1).toFixed(2)));
+    } else {
+      setPriceExGst(null);
+      setPriceIncGst(null);
+    }
+  };
+
   // Conflict state for selected cleaners
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
   const cleaner1OnLeave = !!leaveMap[cleaner1];
