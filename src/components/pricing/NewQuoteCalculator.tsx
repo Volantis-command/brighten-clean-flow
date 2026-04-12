@@ -261,18 +261,97 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
       if (qr) {
         const fd = (qr.form_data || {}) as Record<string, any>;
+        
+        setLeadSource('quote_request');
+        setLeadStatus(qr.status || null);
+        setLeadFormData(fd);
+
+        // ── CHECK if a saved quote already exists for this lead ──
+        const existingQuoteId = typeof fd.quote_id === 'string' ? fd.quote_id : null;
+        if (existingQuoteId) {
+          const { data: savedQuote } = await supabase
+            .from('quotes')
+            .select('*')
+            .eq('id', existingQuoteId)
+            .maybeSingle();
+
+          if (savedQuote) {
+            // Load from SAVED quote (preserves all admin selections)
+            setSavedQuoteId(savedQuote.id);
+            const bt = Array.isArray(savedQuote.bed_types) ? savedQuote.bed_types : [];
+            const ct = normaliseLegacyServiceType(savedQuote.clean_type || savedQuote.service_type || SERVICE_TYPES.STANDARD_CLEAN);
+            setForm({
+              cleanType: ct,
+              clientName: savedQuote.client_name || '',
+              clientPhone: savedQuote.client_phone || '',
+              clientEmail: savedQuote.client_email || '',
+              propertyId: savedQuote.property_id || '',
+              propertyName: savedQuote.property_name || '',
+              propertyAddress: savedQuote.property_address || '',
+              bedrooms: savedQuote.bedrooms || 1,
+              bathrooms: savedQuote.bathrooms || 1,
+              livingAreas: savedQuote.living_areas || 1,
+              kitchens: savedQuote.kitchens || 1,
+              balconies: savedQuote.balconies || 0,
+              sofaBeds: savedQuote.sofa_beds || 0,
+              outdoorAreas: savedQuote.outdoor_areas || false,
+              hours: savedQuote.hours || DEFAULT_HOURS[ct] || 3,
+              bedTypes: bt.length > 0 ? bt : ['Queen'],
+              deepCleanMultiplier: savedQuote.deep_clean_multiplier || 1.5,
+              projectName: savedQuote.project_name || '',
+              builderName: savedQuote.builder_name || '',
+              sqm: savedQuote.sqm || 0,
+              levels: savedQuote.levels || 1,
+              wetAreas: savedQuote.wet_areas || 0,
+              propertyTypeBuild: savedQuote.property_type_build || 'Residential',
+              specialistChemicals: savedQuote.specialist_chemicals || 0,
+              specialRequirements: savedQuote.special_requirements || '',
+              bondCertificate: savedQuote.bond_certificate || false,
+              gpOverride: savedQuote.gp_percent != null ? String(Math.round(savedQuote.gp_percent * 100)) : '',
+              discountGp: savedQuote.discount_gp_percent != null ? String(savedQuote.discount_gp_percent) : '',
+              notes: savedQuote.notes || '',
+              residentialAddons: (() => {
+                const saved = Array.isArray(savedQuote.extras) ? savedQuote.extras : [];
+                if (saved.length === 0) return INITIAL.residentialAddons;
+                const savedNames = new Set(saved.map((e: any) => e.name));
+                return INITIAL.residentialAddons.map(a => ({ ...a, enabled: savedNames.has(a.name) }));
+              })(),
+              consumables: (() => {
+                const cs = savedQuote.consumables_selection;
+                if (cs && typeof cs === 'object') {
+                  return {
+                    amenities_kit: cs.amenities_kit === true,
+                    wash_kit: cs.wash_kit === true,
+                    tea_coffee_kit: cs.tea_coffee_kit === true,
+                  };
+                }
+                return { amenities_kit: false, wash_kit: false, tea_coffee_kit: false };
+              })(),
+              includePhotoReport: savedQuote.consumables_selection?.include_photo_report === true,
+              manualPriceOverride: savedQuote.consumables_selection?.manual_price_override === true,
+              manualPriceIncGst: savedQuote.consumables_selection?.manual_price_inc_gst != null ? String(savedQuote.consumables_selection.manual_price_inc_gst) : '',
+              linenRequired: savedQuote.linen_required || false,
+              checkoutTime: savedQuote.checkout_time || '',
+              checkinTime: savedQuote.checkin_time || '',
+              accessMethod: savedQuote.access_method || '',
+              accessInstructions: savedQuote.access_instructions || '',
+              parking: savedQuote.parking || '',
+              hostingPlatform: savedQuote.hosting_platform || '',
+              frequency: savedQuote.frequency || 'one-off',
+              pets: savedQuote.pets || false,
+              preferredDays: savedQuote.preferred_days || [],
+              preferredTime: savedQuote.preferred_time || '',
+            });
+            return;
+          }
+        }
+
+        // ── No saved quote exists — load from raw quote_request form_data ──
         const storedConsumables = fd.consumables && typeof fd.consumables === 'object' ? fd.consumables as Record<string, boolean> : {};
         const ct = normaliseLegacyServiceType(qr.clean_type || SERVICE_TYPES.STANDARD_CLEAN);
         const clientName = [qr.first_name, qr.last_name].filter(Boolean).join(' ');
         const bedroomCount = qr.bedrooms || 1;
         const parsedBedTypes = normaliseStoredBedTypes(fd.bed_types, bedroomCount);
-
-        setLeadSource('quote_request');
-        setLeadStatus(qr.status || null);
-        setLeadFormData(fd);
-        if (typeof fd.quote_id === 'string' && fd.quote_id) {
-          setSavedQuoteId(fd.quote_id);
-        }
 
         setForm(prev => ({
           ...prev,
@@ -315,7 +394,6 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           preferredDays: Array.isArray(fd.preferred_days) ? fd.preferred_days : [],
           preferredTime: fd.preferred_time || '',
           residentialAddons: (() => {
-            // Auto-populate deep clean add-ons from form_data
             const addons = [...INITIAL.residentialAddons];
             if (fd.oven_clean === true) { const idx = addons.findIndex(a => a.name === 'Oven clean'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
             if (fd.inside_fridge === true) { const idx = addons.findIndex(a => a.name === 'Fridge clean'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
