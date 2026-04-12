@@ -837,6 +837,8 @@ export default function QuoteViewPage() {
           </p>
         </div>
       </div>
+
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
     </div>
   );
 }
