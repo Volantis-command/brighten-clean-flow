@@ -111,6 +111,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── Validate scheduled_time (must be HH:MM or null) ──
+    const timeRegex = /^\d{2}:\d{2}$/;
+    const scheduledTime = preferred_time && timeRegex.test(preferred_time) ? preferred_time : null;
+
     // ── Insert job ──
     const jobStatus = "scheduled";
     const { data: job, error: jobErr } = await adminClient
