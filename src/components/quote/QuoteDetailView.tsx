@@ -17,6 +17,13 @@ type QuoteData = {
   status: string | null;
   quote_accepted_at: string | null;
   quote_declined_at: string | null;
+  hours: number | null;
+  notes: string | null;
+  frequency: string | null;
+  linen_required: boolean | null;
+  bed_types: any;
+  extras: any;
+  consumables_selection: any;
 };
 
 const AIRBNB_TYPES = ['airbnb', 'airbnb / short-stay turnover', 'airbnb turnover', 'short-stay'];
