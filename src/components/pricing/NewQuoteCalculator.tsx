@@ -428,6 +428,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     includePhotoReport: form.includePhotoReport,
     manualPriceOverride: form.manualPriceOverride,
     manualPriceIncGst: form.manualPriceOverride ? (parseFloat(form.manualPriceIncGst) || 0) : undefined,
+    linenRequired: form.linenRequired,
     distanceKm: 0,
     activePropertyCount: 1,
     extraToilets: 0,
