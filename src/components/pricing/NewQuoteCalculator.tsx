@@ -999,7 +999,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             </>
           )}
 
-          <NumField label="Estimated Clean Hours" value={form.hours} onChange={(v) => upd('hours', v)} step={0.5} min={0.5} />
+          <NumField label="Estimated Clean Hours" value={form.hours} onChange={(v) => { setHoursManuallySet(true); upd('hours', v); }} step={0.5} min={0.5} />
 
           {isDeepClean && (
             <NumField label="Deep Clean Multiplier" value={form.deepCleanMultiplier} onChange={(v) => upd('deepCleanMultiplier', v)} step={0.1} min={1} />
