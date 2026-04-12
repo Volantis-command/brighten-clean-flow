@@ -257,6 +257,20 @@ export default function QuoteViewPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageSent, setMessageSent] = useState(false);
 
+  // T&C + scheduling states
+  const [tcsAccepted, setTcsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [showScheduling, setShowScheduling] = useState(false);
+  const [preferredDate, setPreferredDate] = useState('');
+  const [preferredTime, setPreferredTime] = useState('');
+
+  // Min date = tomorrow
+  const minDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
   // Load quote
   useEffect(() => {
     async function load() {
@@ -282,9 +296,18 @@ export default function QuoteViewPage() {
     load();
   }, [token]);
 
-  // ─── Accept flow ───
-  const handleAccept = useCallback(async () => {
-    if (!quote) return;
+  // ─── Step 1: Accept quote (show scheduling) ───
+  const handleAcceptClick = useCallback(() => {
+    if (!tcsAccepted) {
+      toast.error('Please accept the Terms & Conditions first');
+      return;
+    }
+    setShowScheduling(true);
+  }, [tcsAccepted]);
+
+  // ─── Step 2: Confirm booking with date/time ───
+  const handleConfirmBooking = useCallback(async () => {
+    if (!quote || !preferredDate) return;
     setConfirming(true);
     try {
       // 1. Update quote status
@@ -292,6 +315,9 @@ export default function QuoteViewPage() {
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
         acceptance_method: 'quote_page',
+        tcs_accepted: true,
+        tcs_accepted_at: new Date().toISOString(),
+        tcs_version: '2026-03',
       }).eq('quote_token', token);
 
       // 2. Update quote_requests if linked
@@ -313,9 +339,12 @@ export default function QuoteViewPage() {
         {
           body: {
             quote_id: quote.id,
-            preferred_date: new Date().toISOString().split('T')[0],
+            preferred_date: preferredDate,
+            preferred_time: preferredTime || null,
             source: 'quote_accepted',
             client_name: quote.client_name,
+            tcs_accepted: true,
+            tcs_version: '2026-03',
           },
         }
       );
@@ -339,7 +368,7 @@ export default function QuoteViewPage() {
       toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  }, [quote, token]);
+  }, [quote, token, preferredDate, preferredTime]);
 
   // ─── Decline flow ───
   const handleDecline = useCallback(async () => {
