@@ -13,8 +13,25 @@ export default function QuotingPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const quoteRequestId = (location.state as any)?.quoteRequestId || searchParams.get('lead');
+  const quoteId = searchParams.get('quote');
   const [tab, setTab] = useState('new');
   const [editQuote, setEditQuote] = useState<any>(null);
+
+  // Auto-open a specific quote from ?quote=ID
+  useEffect(() => {
+    if (!quoteId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+      if (data) {
+        setEditQuote(data);
+        setTab('new');
+      }
+    })();
+  }, [quoteId]);
 
   // Pre-populate from quote_request or lead data
   useEffect(() => {
@@ -51,7 +68,6 @@ export default function QuotingPage() {
         .eq('id', quoteRequestId)
         .single();
       if (leadData) {
-        // Map service_type from lead form values to official service type names
         const serviceMap: Record<string, string> = {
           'house_clean': 'Standard Clean',
           'standard_clean': 'Standard Clean',
