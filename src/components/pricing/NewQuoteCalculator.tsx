@@ -787,6 +787,11 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="flex-1 space-y-5">
+        {/* Client Submitted Info Card */}
+        {leadFormData && Object.keys(leadFormData).length > 0 && (
+          <ClientSubmittedInfoCard formData={leadFormData} cleanType={form.cleanType} />
+        )}
+
         {/* Clean Type Pills */}
         <div className="flex flex-wrap gap-2">
           {QUOTE_SERVICE_TYPES.map((ct) => (
