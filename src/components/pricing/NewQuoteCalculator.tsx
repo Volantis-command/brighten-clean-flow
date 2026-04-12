@@ -435,8 +435,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const result = useMemo(() => {
     const r = calculate(calcInput, rates);
-    // For Standard Clean, add add-ons to the total (add-ons are inc GST prices)
-    if (form.cleanType === SERVICE_TYPES.STANDARD_CLEAN && addonsTotalIncGst > 0 && !form.manualPriceOverride) {
+    // For Standard/Deep Clean, add add-ons to the total (add-ons are inc GST prices)
+    if ((form.cleanType === SERVICE_TYPES.STANDARD_CLEAN || form.cleanType === SERVICE_TYPES.DEEP_CLEAN) && addonsTotalIncGst > 0 && !form.manualPriceOverride) {
       const addonsExGst = addonsTotalIncGst / 1.1;
       const addonsGst = addonsTotalIncGst - addonsExGst;
       return {
