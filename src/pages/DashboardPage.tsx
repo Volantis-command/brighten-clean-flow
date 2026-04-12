@@ -1,8 +1,28 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentPosition } from '@/lib/geo';
+import { Button } from '@/components/ui/button';
 import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert, DollarSign, CalendarCheck, MessageSquare } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
-
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
+import { JobCard } from '@/components/dashboard/JobCard';
+import { LiveStatusStrip } from '@/components/dashboard/LiveStatusStrip';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { TopStatsBar } from '@/components/dashboard/TopStatsBar';
+import { TeamPerformanceTable } from '@/components/dashboard/TeamPerformanceTable';
+import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
+import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
+import { useAlertsData } from '@/hooks/useAlertsData';
+import OperationsDashboard from '@/components/dashboard/OperationsDashboard';
+import { useProcessScheduledSms } from '@/hooks/useProcessScheduledSms';
+import { toast } from 'sonner';
+import { format, parseISO } from 'date-fns';
 function DraftInvoiceCount() {
   const { data: count = 0 } = useQuery({
     queryKey: ['draft-invoice-count'],
