@@ -262,7 +262,9 @@ export default function OperationsDashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile icon={<DollarSign className="h-5 w-5" />} label="This Week Revenue" value={`$${(stats?.weekRevenue || 0).toLocaleString()}`} />
+        <div className="cursor-pointer" onClick={() => navigate('/financials')}>
+          <StatTile icon={<DollarSign className="h-5 w-5" />} label="This Week Revenue" value={`$${(stats?.weekRevenue || 0).toLocaleString()}`} />
+        </div>
         <StatTile icon={<ClipboardList className="h-5 w-5" />} label="Outstanding Quotes" value={`${stats?.outstandingQuotes || 0}`} />
         <StatTile icon={<Clock className="h-5 w-5" />} label="Cleans Today" value={`${stats?.cleansToday || 0}`} />
         <StatTile icon={<Star className="h-5 w-5" />} label="Avg Brightly Score" value={`${stats?.avgScore || '—'}`} />
