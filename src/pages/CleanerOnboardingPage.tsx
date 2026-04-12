@@ -493,7 +493,7 @@ export default function CleanerOnboardingPage() {
           Brightly<span style={{ color: '#FEDB00' }}>.</span>
         </h1>
         <div className="rounded-2xl shadow-md p-8 max-w-md text-center space-y-4 mt-6" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <ShieldCheck className="h-10 w-10 mx-auto" style={{ color: '#3A7560' }} />
+          <ShieldCheck className="h-10 w-10 mx-auto" style={{ color: '#4ADE80' }} />
           <h2 className="text-xl font-bold" style={{ color: '#F0FDF4' }}>Cleaner Onboarding</h2>
           <p style={{ color: 'rgba(240,253,244,0.5)' }}>
             Please use the onboarding link sent to you via SMS to access this form. Need help? Call <span className="font-bold">0418 878 707</span>.
@@ -776,7 +776,7 @@ export default function CleanerOnboardingPage() {
                             selected
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-border bg-card text-foreground',
-                            showCorrect && 'border-emerald-500 bg-emerald-50 text-[#3A7560]',
+                            showCorrect && 'border-emerald-500 bg-emerald-50 text-[#4ADE80]',
                             showWrong && 'border-destructive bg-destructive/10'
                           )}
                         >
@@ -798,8 +798,8 @@ export default function CleanerOnboardingPage() {
                 </Button>
               ) : (
                 <div className="rounded-xl bg-emerald-50 border-2 border-emerald-500 p-4 text-center">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
-                  <p className="font-bold text-[#3A7560]">Perfect score — you can continue.</p>
+                  <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
+                  <p className="font-bold text-[#4ADE80]">Perfect score — you can continue.</p>
                 </div>
               )}
 
@@ -936,7 +936,7 @@ function FileField({
               <span className="text-sm font-bold">Uploading...</span>
             </div>
           ) : fileUrl ? (
-            <div className="flex items-center justify-center gap-2 text-emerald-700">
+            <div className="flex items-center justify-center gap-2 text-emerald-400">
               <CheckCircle2 className="h-5 w-5" />
               <span className="text-sm font-bold">Uploaded — tap to replace</span>
             </div>

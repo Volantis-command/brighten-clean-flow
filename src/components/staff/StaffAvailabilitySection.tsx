@@ -107,7 +107,7 @@ function WeeklyAvailability({ staffId }: { staffId: string }) {
           <Calendar className="h-5 w-5" /> Weekly Availability
         </h3>
         {saveStatus === 'saved' && (
-          <span className="text-xs text-emerald-600 flex items-center gap-1 font-medium">
+          <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
             <Check className="h-3 w-3" /> Saved ✓
           </span>
         )}

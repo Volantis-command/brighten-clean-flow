@@ -52,7 +52,7 @@ export default function FinancialsPage() {
 
   return (
     <div className="space-y-6 max-w-[900px] mx-auto">
-      <h1 className="text-2xl font-extrabold text-[#3A7560]">Financials</h1>
+      <h1 className="text-2xl font-extrabold text-[#4ADE80]">Financials</h1>
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading…</p>
@@ -61,7 +61,7 @@ export default function FinancialsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {statCards.map((card) => (
               <div key={card.label} className="glass-card p-4 space-y-1.5">
-                <div className="flex items-center gap-2" style={{ color: '#3A7560' }}>
+                <div className="flex items-center gap-2" style={{ color: '#4ADE80' }}>
                   <card.icon className="h-5 w-5" />
                 </div>
                 <p className="text-2xl font-extrabold tabular-nums" style={{ color: '#F0FDF4' }}>{card.value}</p>

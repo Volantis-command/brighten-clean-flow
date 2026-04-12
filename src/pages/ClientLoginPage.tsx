@@ -50,7 +50,7 @@ export default function ClientLoginPage() {
         <div className="rounded-2xl shadow-lg p-8" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {sent ? (
             <div className="text-center space-y-4">
-              <CheckCircle className="w-12 h-12 mx-auto" style={{ color: '#3A7560' }} />
+              <CheckCircle className="w-12 h-12 mx-auto" style={{ color: '#4ADE80' }} />
               <h2 className="text-xl font-bold" style={{ color: '#F0FDF4' }}>Check your texts</h2>
               <p className="text-sm" style={{ color: 'rgba(240,253,244,0.5)' }}>
                 We've sent you a login link via SMS. It expires in 1 hour.
