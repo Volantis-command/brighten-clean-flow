@@ -91,7 +91,11 @@ function CheckItem({ text, delay }: { text: string; delay: number }) {
 }
 
 /* ─── Success screen after accept ─── */
-function SuccessScreen({ name }: { name: string }) {
+function SuccessScreen({ name, date, time }: { name: string; date?: string; time?: string }) {
+  const formattedDate = date
+    ? new Date(date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+    : null;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
       style={{ background: '#0A0F0E' }}>
@@ -121,8 +125,25 @@ function SuccessScreen({ name }: { name: string }) {
           style={{ fontFamily: 'Nunito, sans-serif' }}>
           Booking Confirmed!
         </h1>
+
+        {formattedDate && (
+          <div className="rounded-2xl p-4 animate-slide-up" style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            animationDelay: '0.15s',
+          }}>
+            <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Your clean is scheduled for</p>
+            <p className="text-white text-lg font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              📅 {formattedDate}
+            </p>
+            {time && (
+              <p className="text-white/60 text-sm mt-0.5">🕐 {time}</p>
+            )}
+          </div>
+        )}
+
         <p className="text-white/60 text-base animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          We'll be in touch within 24 hours to confirm your clean date.
+          We'll be in touch within 24 hours to confirm your cleaner.
         </p>
         <div className="pt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
           <a href="tel:0418878707"
