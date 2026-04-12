@@ -87,36 +87,23 @@ export default function ClientSchedulePage() {
     try {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-      // Create job with awaiting_schedule_approval status
-      const { data: insertedJob, error: jobError } = await supabase.from('jobs').insert({
-        property_id: clientProp.property_id,
-        scheduled_date: dateStr,
-        status: 'pending_approval',
-        notes: `Client preferred time: ${timePreference}, Frequency: ${frequency}`,
-        linked_quote_id: acceptedQuote?.id || null,
-        price_inc_gst: acceptedQuote?.sell_price_inc_gst || null,
-        source: 'client_portal',
-        frequency: frequency === 'one_off' ? 'one-off' : frequency,
-      } as any).select('id').single();
-
-      if (jobError) throw jobError;
-
-      // Auto-generate recurring jobs if frequency is not one-off
-      if (insertedJob?.id && frequency !== 'one_off') {
-        try {
-          const { createRecurringJobSeries } = await import('@/lib/recurringJobHelper');
-          const freq = frequency as any; // weekly, fortnightly, monthly
-          await createRecurringJobSeries({
-            parentJobId: insertedJob.id,
-            frequency: freq,
-            startDate: dateStr,
-            propertyId: clientProp.property_id,
-            priceIncGst: acceptedQuote?.sell_price_inc_gst || null,
-            notes: `Client preferred time: ${timePreference}, Frequency: ${frequency}`,
+      // Create job via edge function (bypasses RLS, handles recurring)
+      const { data: bookingResult, error: bookingError } = await supabase.functions.invoke(
+        'create-booking-from-quote',
+        {
+          body: {
+            quote_id: acceptedQuote?.id || null,
+            property_id: clientProp.property_id,
+            preferred_date: dateStr,
+            preferred_time: timePreference,
             source: 'client_portal',
-          });
-        } catch { /* non-blocking */ }
-      }
+            frequency: frequency === 'one_off' ? 'one-off' : frequency,
+            price_inc_gst: acceptedQuote?.sell_price_inc_gst || null,
+            notes: `Client preferred time: ${timePreference}, Frequency: ${frequency}`,
+          },
+        }
+      );
+      if (bookingError) throw new Error('Failed to schedule clean');
 
       // Update quote status
       if (acceptedQuote?.id) {

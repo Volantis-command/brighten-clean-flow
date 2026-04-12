@@ -305,17 +305,20 @@ export default function QuoteViewPage() {
           .in('status', ['quote_sent', 'form_submitted', 'awaiting_quote', 'new_enquiry']);
       }
 
-      // 3. Create job
-      const { data: jobData } = await supabase.from('jobs').insert({
-        scheduled_date: new Date().toISOString().split('T')[0],
-        status: 'awaiting_quote',
-        price_ex_gst: quote.sell_price_ex_gst,
-        price_inc_gst: quote.sell_price_inc_gst,
-        property_id: quote.property_id || null,
-        linked_quote_id: quote.id,
-        notes: `Quote accepted by ${quote.client_name || 'client'}\n${quote.clean_type || ''}\n${quote.property_address || ''}`.trim(),
-        source: 'quote_accepted',
-      }).select('id').single();
+      // 3. Create job via edge function (bypasses RLS)
+      const { data: bookingResult, error: bookingError } = await supabase.functions.invoke(
+        'create-booking-from-quote',
+        {
+          body: {
+            quote_id: quote.id,
+            preferred_date: new Date().toISOString().split('T')[0],
+            source: 'quote_accepted',
+            client_name: quote.client_name,
+          },
+        }
+      );
+      if (bookingError) throw new Error('Failed to create booking');
+      const jobId = bookingResult?.job_id;
 
       // 4. Notify admin (non-blocking)
       supabase.functions.invoke('send-quote-notification', {
@@ -325,7 +328,7 @@ export default function QuoteViewPage() {
           clean_type: quote.clean_type,
           address: quote.property_address,
           total_inc_gst: quote.sell_price_inc_gst,
-          job_id: jobData?.id,
+          job_id: jobId,
         },
       }).catch(() => {});
 

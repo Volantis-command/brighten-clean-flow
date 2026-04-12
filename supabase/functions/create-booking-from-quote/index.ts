@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { addWeeks, addMonths, format } from "npm:date-fns@3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,17 +7,56 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function getRecurringDates(startDate: string, frequency: string, count: number): string[] {
+  const start = new Date(startDate + "T00:00:00");
+  const dates: string[] = [];
+  for (let i = 1; i <= count; i++) {
+    let d: Date;
+    if (frequency === "weekly") d = addWeeks(start, i);
+    else if (frequency === "fortnightly") d = addWeeks(start, i * 2);
+    else if (frequency === "monthly") d = addMonths(start, i);
+    else break;
+    dates.push(format(d, "yyyy-MM-dd"));
+  }
+  return dates;
+}
+
+function frequencyToIntervalWeeks(f: string): number {
+  if (f === "weekly") return 1;
+  if (f === "fortnightly") return 2;
+  if (f === "monthly") return 4;
+  return 1;
+}
+
+function recurringCount(f: string): number {
+  if (f === "weekly") return 8;
+  if (f === "fortnightly") return 4;
+  if (f === "monthly") return 2;
+  return 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { quote_id, preferred_date, preferred_time } = await req.json();
+    const body = await req.json();
+    const {
+      quote_id,
+      property_id: bodyPropertyId,
+      preferred_date,
+      preferred_time,
+      client_name,
+      notes,
+      source,
+      frequency: bodyFrequency,
+      price_inc_gst: bodyPriceIncGst,
+    } = body;
 
-    if (!quote_id || !preferred_date || !preferred_time) {
+    if (!preferred_date) {
       return new Response(
-        JSON.stringify({ error: "Missing required parameters: quote_id, preferred_date, preferred_time" }),
+        JSON.stringify({ error: "preferred_date is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -26,43 +66,66 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify quote exists and is accepted
-    const { data: quote, error: quoteErr } = await adminClient
-      .from("quotes")
-      .select("id, status, client_name, clean_type, service_type, property_address, sell_price_inc_gst, discounted_price, property_id, frequency")
-      .eq("id", quote_id)
-      .single();
+    let propertyId = bodyPropertyId || null;
+    let priceIncGst = bodyPriceIncGst ? Number(bodyPriceIncGst) : null;
+    let priceExGst: number | null = null;
+    let linkedQuoteId: string | null = null;
+    let frequency = bodyFrequency || "one-off";
+    let jobNotes = notes || "";
+    let jobSource = source || "client";
 
-    if (quoteErr || !quote) {
-      return new Response(
-        JSON.stringify({ error: "Quote not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // ── Scenario 1: Quote-based booking ──
+    if (quote_id) {
+      const { data: quote, error: quoteErr } = await adminClient
+        .from("quotes")
+        .select("id, status, client_name, clean_type, service_type, property_address, sell_price_inc_gst, sell_price_ex_gst, discounted_price, property_id, frequency, client_phone")
+        .eq("id", quote_id)
+        .single();
+
+      if (quoteErr || !quote) {
+        return new Response(
+          JSON.stringify({ error: "Quote not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!["client_accepted", "accepted"].includes(quote.status)) {
+        return new Response(
+          JSON.stringify({ error: "Quote is not in accepted state" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      priceIncGst = quote.discounted_price ?? quote.sell_price_inc_gst ?? priceIncGst;
+      priceExGst = quote.sell_price_ex_gst ?? (priceIncGst ? Number(priceIncGst) / 1.1 : null);
+      propertyId = quote.property_id || propertyId;
+      linkedQuoteId = quote.id;
+      frequency = quote.frequency || frequency;
+      if (!jobNotes) {
+        jobNotes = `${quote.clean_type || quote.service_type || "Clean"} — ${quote.client_name || client_name || "Client"}\n${quote.property_address || ""}`.trim();
+      }
+    } else {
+      // Non-quote: compute ex-GST from inc-GST
+      if (priceIncGst) {
+        priceExGst = Number(priceIncGst) / 1.1;
+      }
     }
 
-    if (quote.status !== "client_accepted" && quote.status !== "accepted") {
-      return new Response(
-        JSON.stringify({ error: "Quote is not in accepted state" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const priceIncGst = quote.discounted_price ?? quote.sell_price_inc_gst;
-    const priceExGst = priceIncGst ? Number(priceIncGst) / 1.1 : null;
-
+    // ── Insert job ──
+    const jobStatus = "scheduled";
     const { data: job, error: jobErr } = await adminClient
       .from("jobs")
       .insert({
         scheduled_date: preferred_date,
-        scheduled_time: preferred_time,
-        status: "scheduled",
+        scheduled_time: preferred_time || null,
+        status: jobStatus,
         price_ex_gst: priceExGst,
         price_inc_gst: priceIncGst,
-        linked_quote_id: quote.id,
-        property_id: quote.property_id || null,
-        frequency: quote.frequency || "one-off",
-        notes: `${quote.clean_type || quote.service_type || "Clean"} — ${quote.client_name || "Client"}\n${quote.property_address || ""}`.trim(),
-        source: "quote_acceptance",
+        property_id: propertyId,
+        linked_quote_id: linkedQuoteId,
+        frequency: frequency || "one-off",
+        notes: jobNotes,
+        source: jobSource,
       })
       .select("id")
       .single();
@@ -75,8 +138,58 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ── Update quote status to 'booked' ──
+    if (linkedQuoteId) {
+      await adminClient.from("quotes").update({ status: "booked" }).eq("id", linkedQuoteId);
+    }
+
+    // ── Recurring jobs ──
+    const normalizedFreq = frequency === "one_off" ? "one-off" : frequency;
+    if (normalizedFreq !== "one-off" && job?.id) {
+      const count = recurringCount(normalizedFreq);
+      if (count > 0) {
+        const futureDates = getRecurringDates(preferred_date, normalizedFreq, count);
+
+        // Create job_series
+        const { data: seriesData } = await adminClient.from("job_series").insert({
+          frequency: normalizedFreq,
+          interval_weeks: frequencyToIntervalWeeks(normalizedFreq),
+          start_date: preferred_date,
+          property_id: propertyId,
+          notes: jobNotes,
+          price_ex_gst: priceExGst,
+        }).select("id").single();
+
+        const seriesId = seriesData?.id || null;
+
+        // Update parent job
+        await adminClient.from("jobs").update({
+          series_id: seriesId,
+          frequency: normalizedFreq,
+        }).eq("id", job.id);
+
+        // Insert child jobs
+        if (futureDates.length > 0) {
+          const childJobs = futureDates.map(d => ({
+            property_id: propertyId,
+            scheduled_date: d,
+            scheduled_time: preferred_time || null,
+            status: "scheduled",
+            price_ex_gst: priceExGst,
+            price_inc_gst: priceIncGst,
+            series_id: seriesId,
+            frequency: normalizedFreq,
+            recurring_parent_id: job.id,
+            source: jobSource,
+            notes: jobNotes,
+          }));
+          await adminClient.from("jobs").insert(childJobs);
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ job_id: job.id, status: "scheduled" }),
+      JSON.stringify({ job_id: job.id, status: jobStatus }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
