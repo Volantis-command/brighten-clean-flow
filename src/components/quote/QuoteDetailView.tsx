@@ -165,26 +165,31 @@ export default function QuoteDetailView({ token }: { token: string }) {
     if (!quote) return;
     setBookingSubmitting(true);
     try {
-      // Create a job linked to this quote
-      const { error } = await supabase.from('jobs').insert({
-        scheduled_date: selectedDate,
-        scheduled_time: selectedTime || '08:00',
-        status: 'pending_approval',
-        price_ex_gst: quote.sell_price_inc_gst ? Number(quote.sell_price_inc_gst) / 1.1 : null,
-        price_inc_gst: quote.discounted_price ?? quote.sell_price_inc_gst,
-        linked_quote_id: quote.id,
-        notes: `${quote.clean_type || quote.service_type || 'Clean'} — ${quote.client_name || 'Client'}\n${quote.property_address || ''}`.trim(),
-        source: 'quote_acceptance',
-      } as any);
+      // Call edge function to create job (bypasses RLS)
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/create-booking-from-quote`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            quote_id: quote.id,
+            preferred_date: selectedDate,
+            preferred_time: selectedTime || '08:00',
+          }),
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed with status ${response.status}`);
+      }
 
-      // Send booking SMS to admin
+      // Send booking SMS to admin (non-blocking)
       try {
-        const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', {
-          weekday: 'long', day: 'numeric', month: 'long',
-        });
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
         await fetch(`https://${projectId}.supabase.co/functions/v1/send-quote-notification`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
