@@ -4,10 +4,10 @@ import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ── Reusable dark-theme class strings for form inputs ───────────── */
 export const darkInputClass =
-  'w-full h-14 rounded-xl bg-white/5 border border-white/10 px-4 text-base text-white placeholder:text-white/30 focus:outline-none focus:border-[#2E5D4E] focus:ring-1 focus:ring-[#2E5D4E]/50 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0';
+  'w-full h-14 rounded-xl bg-white/5 border border-white/10 px-4 text-base text-white placeholder:text-white/30 focus:outline-none focus:border-[#3A7560] focus:ring-1 focus:ring-[#3A7560]/50 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0';
 
 export const darkTextareaClass =
-  'w-full min-h-[120px] rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-base text-white placeholder:text-white/30 focus:outline-none focus:border-[#2E5D4E] focus:ring-1 focus:ring-[#2E5D4E]/50 transition-colors resize-none focus-visible:ring-0 focus-visible:ring-offset-0';
+  'w-full min-h-[120px] rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-base text-white placeholder:text-white/30 focus:outline-none focus:border-[#3A7560] focus:ring-1 focus:ring-[#3A7560]/50 transition-colors resize-none focus-visible:ring-0 focus-visible:ring-offset-0';
 
 /* ── Card wrapper ───────────────────────────────────────────────── */
 export function FormCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -50,7 +50,7 @@ export function OptionGrid({ options, value, onChange, cols = 3 }: { options: st
           <button key={opt} type="button" onClick={() => onChange(opt)}
             className={`h-14 min-w-[56px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center ${
               selected
-                ? 'bg-[#2E5D4E] border border-[#2E5D4E] text-white'
+                ? 'bg-[#3A7560] border border-[#3A7560] text-white'
                 : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
             }`}>
             {opt}
@@ -71,7 +71,7 @@ export function YesNo({ value, onChange }: { value: boolean | null; onChange: (v
           <button key={String(v)} type="button" onClick={() => onChange(v)}
             className={`flex items-center justify-center h-16 rounded-xl text-base font-medium cursor-pointer transition-all duration-200 ${
               selected
-                ? 'bg-[#2E5D4E]/15 border-2 border-[#2E5D4E] text-white'
+                ? 'bg-[#3A7560]/15 border-2 border-[#3A7560] text-white'
                 : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
             }`}>
             {v ? '✓ Yes' : '✗ No'}
@@ -93,7 +93,7 @@ export function DayChips({ days, selected, onChange }: { days: string[]; selecte
             onClick={() => onChange(isSelected ? selected.filter(x => x !== d) : [...selected, d])}
             className={`h-14 min-w-[56px] px-5 rounded-xl text-base font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center ${
               isSelected
-                ? 'bg-[#2E5D4E] border border-[#2E5D4E] text-white'
+                ? 'bg-[#3A7560] border border-[#3A7560] text-white'
                 : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
             }`}>
             {d}
@@ -114,7 +114,7 @@ export function FormProgressHeader({ step, totalSteps, stepLabel }: { step: numb
             <div
               key={i}
               className={`rounded-full transition-all duration-300 ${
-                i === step ? 'w-8 h-2 bg-[#2E5D4E]' : i < step ? 'w-2 h-2 bg-[#2E5D4E]' : 'w-2 h-2 bg-white/20'
+                i === step ? 'w-8 h-2 bg-[#3A7560]' : i < step ? 'w-2 h-2 bg-[#3A7560]' : 'w-2 h-2 bg-white/20'
               }`}
             />
           ))}
@@ -146,7 +146,7 @@ export function FormNavButtons({
         <button
           onClick={onNext}
           disabled={!canNext}
-          className="flex-1 h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-base font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/20 flex items-center justify-center gap-2 disabled:opacity-40"
+          className="flex-1 h-14 rounded-xl bg-[#3A7560] hover:bg-[#26503F] text-base font-semibold text-white transition-all duration-200 shadow-lg shadow-[#3A7560]/20 flex items-center justify-center gap-2 disabled:opacity-40"
         >
           Next <ArrowRight className="w-4 h-4" />
         </button>
@@ -154,7 +154,7 @@ export function FormNavButtons({
         <button
           onClick={onSubmit}
           disabled={submitting || !tcsAccepted}
-          className="flex-1 h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/25 flex items-center justify-center gap-2 disabled:opacity-40"
+          className="flex-1 h-14 rounded-xl bg-[#3A7560] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#3A7560]/25 flex items-center justify-center gap-2 disabled:opacity-40"
         >
           {submitting && <Loader2 className="w-5 h-5 animate-spin mr-2" />} Get My Quote →
         </button>

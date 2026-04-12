@@ -227,7 +227,7 @@ export default function OperationsDashboard() {
             const isRed = a.color === 'bg-destructive';
             const isAmber = a.color === 'bg-orange-500';
             const isBlue = a.color === 'bg-blue-500';
-            const accentColor = isRed ? '#EF4444' : isAmber ? '#F59E0B' : isBlue ? '#3B82F6' : '#2E5D4E';
+            const accentColor = isRed ? '#EF4444' : isAmber ? '#F59E0B' : isBlue ? '#3B82F6' : '#3A7560';
             const bgColor = isRed
               ? 'rgba(239,68,68,0.08)'
               : isAmber
@@ -262,7 +262,9 @@ export default function OperationsDashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile icon={<DollarSign className="h-5 w-5" />} label="This Week Revenue" value={`$${(stats?.weekRevenue || 0).toLocaleString()}`} />
+        <div className="cursor-pointer" onClick={() => navigate('/financials')}>
+          <StatTile icon={<DollarSign className="h-5 w-5" />} label="This Week Revenue" value={`$${(stats?.weekRevenue || 0).toLocaleString()}`} />
+        </div>
         <StatTile icon={<ClipboardList className="h-5 w-5" />} label="Outstanding Quotes" value={`${stats?.outstandingQuotes || 0}`} />
         <StatTile icon={<Clock className="h-5 w-5" />} label="Cleans Today" value={`${stats?.cleansToday || 0}`} />
         <StatTile icon={<Star className="h-5 w-5" />} label="Avg Brightly Score" value={`${stats?.avgScore || '—'}`} />
@@ -283,7 +285,7 @@ export default function OperationsDashboard() {
                 key={q.id}
                 className="hover-lift p-3 cursor-pointer flex items-center justify-between gap-3"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px' }}
-                onClick={() => { navigate(`/quoting`); window.scrollTo(0, 0); }}
+                onClick={() => { navigate(`/quoting?quote=${q.id}`); window.scrollTo(0, 0); }}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{q.client_name || 'Unknown'}</p>
@@ -635,7 +637,7 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
             <div className="flex items-center gap-1">
               <div
                 className="w-2 h-2 rounded-full animate-pulse-dot"
-                style={{ background: '#2E5D4E', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }}
+                style={{ background: '#3A7560', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }}
               />
               <span className="text-xs font-semibold" style={{ color: '#3A7560' }}>Live</span>
             </div>

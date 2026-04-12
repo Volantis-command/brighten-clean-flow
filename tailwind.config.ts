@@ -19,7 +19,7 @@ export default {
       colors: {
         // Direct Brightly brand tokens
         brightly: {
-          DEFAULT: '#2E5D4E',
+          DEFAULT: '#3A7560',
           hover: '#26503F',
           light: '#3A7560',
           glow: 'rgba(46, 93, 78, 0.2)',

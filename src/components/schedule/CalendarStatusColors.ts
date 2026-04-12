@@ -29,14 +29,14 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
   },
   confirmed: {
     bg: 'bg-emerald-100',
-    text: 'text-emerald-800',
+    text: 'text-[#3A7560]',
     dot: 'bg-emerald-500',
     border: 'border-l-emerald-500',
     label: 'Confirmed',
   },
   scheduled: {
     bg: 'bg-emerald-100',
-    text: 'text-emerald-800',
+    text: 'text-[#3A7560]',
     dot: 'bg-emerald-500',
     border: 'border-l-emerald-500',
     label: 'Scheduled',

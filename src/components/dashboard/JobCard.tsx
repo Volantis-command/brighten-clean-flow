@@ -96,7 +96,7 @@ export function JobCard({
     const allAccepted = acceptances.every(a => a.acceptance_status === 'accepted');
     const hasPending = acceptances.some(a => a.acceptance_status === 'pending');
     if (hasDeclined) return { borderLeft: '3px solid #EF4444' };
-    if (allAccepted) return { borderLeft: '3px solid #2E5D4E' };
+    if (allAccepted) return { borderLeft: '3px solid #3A7560' };
     if (hasPending) return { borderLeft: '3px solid #FEDB00' };
     return {};
   };

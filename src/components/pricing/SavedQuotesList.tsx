@@ -33,7 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
   quote_declined: '❌ Declined',
 };
 
-const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Declined'];
+const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Booked', 'Declined'];
 
 export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void }) {
   const [filter, setFilter] = useState('All');
@@ -70,6 +70,7 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
     Draft: ['draft'],
     Sent: ['sent', 'quote_sent', 'quote_viewed', 'question_received'],
     Accepted: ['accepted', 'client_accepted'],
+    Booked: ['booked'],
     Declined: ['declined', 'quote_declined'],
   };
 

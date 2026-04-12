@@ -776,7 +776,7 @@ export default function CleanerOnboardingPage() {
                             selected
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-border bg-card text-foreground',
-                            showCorrect && 'border-emerald-500 bg-emerald-50 text-emerald-800',
+                            showCorrect && 'border-emerald-500 bg-emerald-50 text-[#3A7560]',
                             showWrong && 'border-destructive bg-destructive/10'
                           )}
                         >
@@ -799,7 +799,7 @@ export default function CleanerOnboardingPage() {
               ) : (
                 <div className="rounded-xl bg-emerald-50 border-2 border-emerald-500 p-4 text-center">
                   <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
-                  <p className="font-bold text-emerald-800">Perfect score — you can continue.</p>
+                  <p className="font-bold text-[#3A7560]">Perfect score — you can continue.</p>
                 </div>
               )}
 
