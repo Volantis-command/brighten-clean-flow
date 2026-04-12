@@ -2238,6 +2238,8 @@ export type Database = {
       quotes: {
         Row: {
           acceptance_method: string | null
+          access_instructions: string | null
+          access_method: string | null
           actual_gp_dollars: number | null
           actual_gp_percent: number | null
           balconies: number | null
@@ -2246,6 +2248,8 @@ export type Database = {
           bedrooms: number | null
           bond_certificate: boolean | null
           builder_name: string | null
+          checkin_time: string | null
+          checkout_time: string | null
           clean_type: string | null
           client_email: string | null
           client_name: string | null
@@ -2258,8 +2262,10 @@ export type Database = {
           discount_gp_percent: number | null
           discounted_price: number | null
           extras: Json | null
+          frequency: string | null
           gp_percent: number | null
           gst: number | null
+          hosting_platform: string | null
           hours: number | null
           id: string
           internal_notes: string | null
@@ -2267,9 +2273,14 @@ export type Database = {
           labour_cost: number | null
           levels: number | null
           linen_cost: number | null
+          linen_required: boolean | null
           living_areas: number | null
           notes: string | null
           outdoor_areas: boolean | null
+          parking: string | null
+          pets: boolean | null
+          preferred_days: string[] | null
+          preferred_time: string | null
           price: number | null
           project_name: string | null
           property_address: string | null
@@ -2298,6 +2309,8 @@ export type Database = {
         }
         Insert: {
           acceptance_method?: string | null
+          access_instructions?: string | null
+          access_method?: string | null
           actual_gp_dollars?: number | null
           actual_gp_percent?: number | null
           balconies?: number | null
@@ -2306,6 +2319,8 @@ export type Database = {
           bedrooms?: number | null
           bond_certificate?: boolean | null
           builder_name?: string | null
+          checkin_time?: string | null
+          checkout_time?: string | null
           clean_type?: string | null
           client_email?: string | null
           client_name?: string | null
@@ -2318,8 +2333,10 @@ export type Database = {
           discount_gp_percent?: number | null
           discounted_price?: number | null
           extras?: Json | null
+          frequency?: string | null
           gp_percent?: number | null
           gst?: number | null
+          hosting_platform?: string | null
           hours?: number | null
           id?: string
           internal_notes?: string | null
@@ -2327,9 +2344,14 @@ export type Database = {
           labour_cost?: number | null
           levels?: number | null
           linen_cost?: number | null
+          linen_required?: boolean | null
           living_areas?: number | null
           notes?: string | null
           outdoor_areas?: boolean | null
+          parking?: string | null
+          pets?: boolean | null
+          preferred_days?: string[] | null
+          preferred_time?: string | null
           price?: number | null
           project_name?: string | null
           property_address?: string | null
@@ -2358,6 +2380,8 @@ export type Database = {
         }
         Update: {
           acceptance_method?: string | null
+          access_instructions?: string | null
+          access_method?: string | null
           actual_gp_dollars?: number | null
           actual_gp_percent?: number | null
           balconies?: number | null
@@ -2366,6 +2390,8 @@ export type Database = {
           bedrooms?: number | null
           bond_certificate?: boolean | null
           builder_name?: string | null
+          checkin_time?: string | null
+          checkout_time?: string | null
           clean_type?: string | null
           client_email?: string | null
           client_name?: string | null
@@ -2378,8 +2404,10 @@ export type Database = {
           discount_gp_percent?: number | null
           discounted_price?: number | null
           extras?: Json | null
+          frequency?: string | null
           gp_percent?: number | null
           gst?: number | null
+          hosting_platform?: string | null
           hours?: number | null
           id?: string
           internal_notes?: string | null
@@ -2387,9 +2415,14 @@ export type Database = {
           labour_cost?: number | null
           levels?: number | null
           linen_cost?: number | null
+          linen_required?: boolean | null
           living_areas?: number | null
           notes?: string | null
           outdoor_areas?: boolean | null
+          parking?: string | null
+          pets?: boolean | null
+          preferred_days?: string[] | null
+          preferred_time?: string | null
           price?: number | null
           project_name?: string | null
           property_address?: string | null
