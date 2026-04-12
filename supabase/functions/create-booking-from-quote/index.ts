@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
       .from("jobs")
       .insert({
         scheduled_date: preferred_date,
-        scheduled_time: preferred_time || null,
+        scheduled_time: scheduledTime,
         status: jobStatus,
         price_ex_gst: priceExGst,
         price_inc_gst: priceIncGst,
