@@ -389,8 +389,8 @@ export default function ClientsPage() {
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate('/quote')} variant="outline" className="font-bold rounded-xl gap-2">
-            <FileText className="w-5 h-5" /> Send Quote Request
+          <Button onClick={() => setQuoteLinkOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
+            <Send className="w-5 h-5" /> Send Quote Request
           </Button>
           <Button onClick={() => navigate('/quote')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
             <UserPlus className="w-5 h-5" /> Add Client
