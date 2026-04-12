@@ -49,10 +49,11 @@ export default function QuoteFollowupsPage() {
   };
 
   const handleSkip = async (id: string) => {
-    await supabase.from('quote_requests').update({
+    const { error } = await supabase.from('quote_requests').update({
       status: 'expired',
       last_status_change: new Date().toISOString(),
     } as any).eq('id', id);
+    if (error) { toast.error('Failed to update quote: ' + error.message); return; }
     toast.success('Quote marked expired');
     queryClient.invalidateQueries({ queryKey: ['quote-followups-pending'] });
   };
