@@ -1011,10 +1011,14 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           )}
         </div>
 
-        {/* Bed Types */}
+        {/* Linen + Bed Types */}
         {hasLinen && form.bedrooms > 0 && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-            <h3 className="font-extrabold text-foreground">Bed Types</h3>
+            <h3 className="font-extrabold text-foreground">Linen & Bed Types</h3>
+            <div className="flex items-center gap-3 pb-2 border-b border-border">
+              <Switch checked={form.linenRequired} onCheckedChange={(v) => upd('linenRequired', v)} />
+              <Label className="text-sm font-semibold">Linen Required</Label>
+            </div>
             <div className="space-y-2">
               {form.bedTypes.map((bt, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -1031,6 +1035,40 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                   </Select>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Deep Clean / Standard Add-ons */}
+        {(isStandard || isDeepClean) && (
+          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
+            <h3 className="font-extrabold text-foreground">Add-ons</h3>
+            <p className="text-xs text-muted-foreground">Prices are inc GST</p>
+            <div className="space-y-2">
+              {form.residentialAddons.map((addon, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Switch checked={addon.enabled} onCheckedChange={(v) => {
+                    const arr = [...form.residentialAddons];
+                    arr[i] = { ...arr[i], enabled: v };
+                    upd('residentialAddons', arr);
+                  }} />
+                  <span className="text-sm font-semibold flex-1">{addon.name}</span>
+                  <Input
+                    type="number"
+                    value={addon.price}
+                    onChange={(e) => {
+                      const arr = [...form.residentialAddons];
+                      arr[i] = { ...arr[i], price: parseFloat(e.target.value) || 0 };
+                      upd('residentialAddons', arr);
+                    }}
+                    className="w-20 h-10 rounded-xl text-right font-semibold"
+                    step={5}
+                  />
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => {
+                upd('residentialAddons', [...form.residentialAddons, { name: 'Custom', price: 0, enabled: true }]);
+              }}>+ Custom add-on</Button>
             </div>
           </div>
         )}
