@@ -18,6 +18,7 @@ import ScheduleAfterAcceptModal from './ScheduleAfterAcceptModal';
 import { Save, Copy, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import ClientSubmittedInfoCard from './ClientSubmittedInfoCard';
 
 const BED_OPTIONS: BedType[] = ['King', 'Queen', 'King Single', 'Single'];
 
@@ -81,6 +82,17 @@ type FormState = {
   includePhotoReport: boolean;
   manualPriceOverride: boolean;
   manualPriceIncGst: string;
+  linenRequired: boolean;
+  checkoutTime: string;
+  checkinTime: string;
+  accessMethod: string;
+  accessInstructions: string;
+  parking: string;
+  hostingPlatform: string;
+  frequency: string;
+  pets: boolean;
+  preferredDays: string[];
+  preferredTime: string;
 };
 
 const INITIAL: FormState = {
@@ -124,6 +136,17 @@ const INITIAL: FormState = {
   includePhotoReport: false,
   manualPriceOverride: false,
   manualPriceIncGst: '',
+  linenRequired: false,
+  checkoutTime: '',
+  checkinTime: '',
+  accessMethod: '',
+  accessInstructions: '',
+  parking: '',
+  hostingPlatform: '',
+  frequency: 'one-off',
+  pets: false,
+  preferredDays: [],
+  preferredTime: '',
 };
 
 export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void; }) {
