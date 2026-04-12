@@ -227,7 +227,7 @@ export default function OperationsDashboard() {
             const isRed = a.color === 'bg-destructive';
             const isAmber = a.color === 'bg-orange-500';
             const isBlue = a.color === 'bg-blue-500';
-            const accentColor = isRed ? '#EF4444' : isAmber ? '#F59E0B' : isBlue ? '#3B82F6' : '#3A7560';
+            const accentColor = isRed ? '#EF4444' : isAmber ? '#F59E0B' : isBlue ? '#3B82F6' : '#4ADE80';
             const bgColor = isRed
               ? 'rgba(239,68,68,0.08)'
               : isAmber
@@ -637,7 +637,7 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
             <div className="flex items-center gap-1">
               <div
                 className="w-2 h-2 rounded-full animate-pulse-dot"
-                style={{ background: '#3A7560', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }}
+                style={{ background: '#4ADE80', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }}
               />
               <span className="text-xs font-semibold" style={{ color: '#4ADE80' }}>Live</span>
             </div>
