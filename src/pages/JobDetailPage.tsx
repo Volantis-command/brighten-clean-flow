@@ -1608,9 +1608,12 @@ export default function JobDetailPage() {
                     setDeleting(true);
                     try {
                       // Clean up related records
-                      await supabase.from('job_forms').delete().eq('job_id', jobId!);
-                      await supabase.from('job_acceptances').delete().eq('job_id', jobId!);
-                      await supabase.from('time_entries').delete().eq('job_id', jobId!);
+                      const { error: formsErr } = await supabase.from('job_forms').delete().eq('job_id', jobId!);
+                      if (formsErr) { toast.error('Failed to delete job forms'); setDeleting(false); return; }
+                      const { error: acceptErr } = await supabase.from('job_acceptances').delete().eq('job_id', jobId!);
+                      if (acceptErr) { toast.error('Failed to delete job acceptances'); setDeleting(false); return; }
+                      const { error: timeErr } = await supabase.from('time_entries').delete().eq('job_id', jobId!);
+                      if (timeErr) { toast.error('Failed to delete time entries'); setDeleting(false); return; }
 
                       // If linked to a quote_request, mark it cancelled
                       if (job?.linked_quote_id) {

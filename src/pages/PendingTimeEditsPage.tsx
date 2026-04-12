@@ -42,13 +42,15 @@ export default function PendingTimeEditsPage() {
           const cout = new Date(updates.clock_out_time || edit.time_entries.clock_out_time);
           updates.total_minutes = Math.round((cout.getTime() - cin.getTime()) / 60000);
         }
-        await supabase.from('time_entries').update(updates).eq('id', edit.time_entry_id);
+        const { error: teError } = await supabase.from('time_entries').update(updates).eq('id', edit.time_entry_id);
+        if (teError) { toast.error('Failed to update time entry: ' + teError.message); return; }
       }
-      await (supabase.from('time_edit_queue' as any) as any).update({
+      const { error: qError } = await (supabase.from('time_edit_queue' as any) as any).update({
         status: approve ? 'approved' : 'denied',
         decided_by: user?.id,
         decided_at: new Date().toISOString(),
       }).eq('id', editId);
+      if (qError) { toast.error('Failed to update edit queue: ' + qError.message); return; }
       toast.success(approve ? 'Time edit approved' : 'Time edit denied');
       queryClient.invalidateQueries({ queryKey: ['pending-time-edits'] });
     } catch (err: any) {

@@ -75,9 +75,10 @@ export default function BookingSuggestionsPage() {
 
   const handleReject = async (id: string) => {
     if (!user) return;
-    await (supabase.from('booking_suggestions' as any) as any)
+    const { error } = await (supabase.from('booking_suggestions' as any) as any)
       .update({ status: 'rejected', decided_at: new Date().toISOString(), decided_by: user.id })
       .eq('id', id);
+    if (error) { toast.error('Failed to reject suggestion: ' + error.message); return; }
     toast.success('Suggestion rejected');
     queryClient.invalidateQueries({ queryKey: ['booking-suggestions'] });
   };

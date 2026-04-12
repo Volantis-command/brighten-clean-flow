@@ -125,11 +125,12 @@ export default function SchedulePage() {
     }
 
     // Cancel old scheduled SMS and reschedule
-    await supabase
+    const { error: smsErr } = await supabase
       .from('scheduled_sms' as any)
       .update({ status: 'cancelled' } as any)
       .eq('job_id', job.id)
       .eq('status', 'pending');
+    if (smsErr) console.error('Failed to cancel scheduled SMS:', smsErr);
 
     toast.success(`Job moved to ${formattedDate}${timeLabel} ✓`, {
       action: {
