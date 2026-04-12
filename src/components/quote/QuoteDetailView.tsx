@@ -408,8 +408,8 @@ export default function QuoteDetailView({ token }: { token: string }) {
             )}
           </div>
 
-          {/* Bed Configuration */}
-          {quote?.bed_types && Array.isArray(quote.bed_types) && quote.bed_types.length > 0 && (
+          {/* Bed Configuration — Airbnb only */}
+          {isAirbnbType(quote!) && quote?.bed_types && Array.isArray(quote.bed_types) && quote.bed_types.length > 0 && (
             <div>
               <span className="text-xs font-bold tracking-widest text-[#4ADE80] uppercase">Bed Configuration</span>
               <div className="mt-1 space-y-0.5">
@@ -428,8 +428,8 @@ export default function QuoteDetailView({ token }: { token: string }) {
             </div>
           )}
 
-          {/* Consumable Kits */}
-          {quote?.consumables_selection && (() => {
+          {/* Consumable Kits — Airbnb only */}
+          {isAirbnbType(quote!) && quote?.consumables_selection && (() => {
             const cs = quote.consumables_selection as Record<string, boolean>;
             const kits = [
               cs.amenities_kit && 'Amenities Kit',
