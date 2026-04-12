@@ -228,6 +228,17 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         includePhotoReport: editQuote.consumables_selection?.include_photo_report === true,
         manualPriceOverride: editQuote.consumables_selection?.manual_price_override === true,
         manualPriceIncGst: editQuote.consumables_selection?.manual_price_inc_gst != null ? String(editQuote.consumables_selection.manual_price_inc_gst) : '',
+        linenRequired: editQuote.linen_required || false,
+        checkoutTime: editQuote.checkout_time || '',
+        checkinTime: editQuote.checkin_time || '',
+        accessMethod: editQuote.access_method || '',
+        accessInstructions: editQuote.access_instructions || '',
+        parking: editQuote.parking || '',
+        hostingPlatform: editQuote.hosting_platform || '',
+        frequency: editQuote.frequency || 'one-off',
+        pets: editQuote.pets || false,
+        preferredDays: editQuote.preferred_days || [],
+        preferredTime: editQuote.preferred_time || '',
       });
     }
   }, [editQuote]);
