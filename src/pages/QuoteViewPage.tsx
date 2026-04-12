@@ -460,7 +460,7 @@ export default function QuoteViewPage() {
   // ─── State screens ───
   if (loading) return <LoadingScreen />;
   if (notFound) return <NotFoundScreen />;
-  if (accepted) return <SuccessScreen name={(quote?.client_name || '').split(' ')[0]} />;
+  if (accepted) return <SuccessScreen name={(quote?.client_name || '').split(' ')[0]} date={preferredDate} time={preferredTime} />;
   if (declined) return <DeclinedScreen name={(quote?.client_name || '').split(' ')[0]} />;
   if (quote?.quote_accepted_at && quote?.status === 'accepted') return <AlreadyAcceptedScreen />;
   if (quote?.quote_declined_at || quote?.status === 'declined') return <AlreadyDeclinedScreen />;
