@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         scheduled_date: preferred_date,
         scheduled_time: preferred_time,
-        status: "pending_approval",
+        status: "scheduled",
         price_ex_gst: priceExGst,
         price_inc_gst: priceIncGst,
         linked_quote_id: quote.id,
@@ -76,7 +76,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ job_id: job.id, status: "pending_approval" }),
+      JSON.stringify({ job_id: job.id, status: "scheduled" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
