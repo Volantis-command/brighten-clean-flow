@@ -27,6 +27,7 @@ export type CalcInput = {
   includePhotoReport?: boolean;
   manualPriceOverride?: boolean;
   manualPriceIncGst?: number;
+  linenRequired?: boolean;
   // New inputs
   distanceKm: number;
   activePropertyCount: number;
@@ -157,9 +158,10 @@ export function calculate(input: CalcInput, rates: Record<string, number>): Calc
     ? input.hours * (input.deepCleanMultiplier || rates.deep_clean_multiplier || 1.5)
     : input.hours;
 
-  // Linen (cost) — Airbnb ONLY, never for Standard/Deep/Bond
+  // Linen (cost) — Airbnb ONLY, never for Standard/Deep/Bond, and only when linenRequired is true
   const hasLinen = !NO_LINEN_TYPES.has(input.cleanType as any) &&
-    input.cleanType === SERVICE_TYPES.AIRBNB_TURNOVER;
+    input.cleanType === SERVICE_TYPES.AIRBNB_TURNOVER &&
+    input.linenRequired !== false;
   const linenCost = hasLinen
     ? calculateLinenCost(input.bedTypes, input.sofaBeds, input.bathrooms, input.kitchens, input.extraToilets || 0, input.cleanType, rates)
     : 0;
