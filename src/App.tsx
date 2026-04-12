@@ -36,7 +36,7 @@ import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
 // QuoteRequestFormPage deleted — /quote/:token now uses QuoteIntakePage
-import QuoteAcceptPage from "./pages/QuoteAcceptPage";
+// QuoteAcceptPage removed — redirects to QuoteViewPage
 import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
 import StaffOnboardingPage from "./pages/StaffOnboardingPage";
