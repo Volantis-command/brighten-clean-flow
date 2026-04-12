@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ─── What's Included by clean type ─── */
 const INCLUSIONS: Record<string, string[]> = {
