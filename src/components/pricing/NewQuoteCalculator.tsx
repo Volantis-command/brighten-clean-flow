@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculate, getHourlyRateIncGst, type BedType, type CalcInput, type ConsumableSelection } from '@/lib/pricingCalculator';
-import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, PHOTO_REPORTING_FEE, normaliseLegacyServiceType } from '@/lib/serviceTypes';
+import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, PHOTO_REPORTING_FEE, normaliseLegacyServiceType, calculateDefaultHours } from '@/lib/serviceTypes';
 import PriceLivePanel from './PriceLivePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
