@@ -296,7 +296,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
               sofaBeds: savedQuote.sofa_beds || 0,
               outdoorAreas: savedQuote.outdoor_areas || false,
               hours: savedQuote.hours || DEFAULT_HOURS[ct] || 3,
-              bedTypes: bt.length > 0 ? bt : ['Queen'],
+              bedTypes: bt.length > 0 ? bt as BedType[] : ['Queen'],
               deepCleanMultiplier: savedQuote.deep_clean_multiplier || 1.5,
               projectName: savedQuote.project_name || '',
               builderName: savedQuote.builder_name || '',
@@ -317,7 +317,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 return INITIAL.residentialAddons.map(a => ({ ...a, enabled: savedNames.has(a.name) }));
               })(),
               consumables: (() => {
-                const cs = savedQuote.consumables_selection;
+                const cs = savedQuote.consumables_selection as any;
                 if (cs && typeof cs === 'object') {
                   return {
                     amenities_kit: cs.amenities_kit === true,
@@ -327,9 +327,9 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 }
                 return { amenities_kit: false, wash_kit: false, tea_coffee_kit: false };
               })(),
-              includePhotoReport: savedQuote.consumables_selection?.include_photo_report === true,
-              manualPriceOverride: savedQuote.consumables_selection?.manual_price_override === true,
-              manualPriceIncGst: savedQuote.consumables_selection?.manual_price_inc_gst != null ? String(savedQuote.consumables_selection.manual_price_inc_gst) : '',
+              includePhotoReport: (savedQuote.consumables_selection as any)?.include_photo_report === true,
+              manualPriceOverride: (savedQuote.consumables_selection as any)?.manual_price_override === true,
+              manualPriceIncGst: (savedQuote.consumables_selection as any)?.manual_price_inc_gst != null ? String((savedQuote.consumables_selection as any).manual_price_inc_gst) : '',
               linenRequired: savedQuote.linen_required || false,
               checkoutTime: savedQuote.checkout_time || '',
               checkinTime: savedQuote.checkin_time || '',
