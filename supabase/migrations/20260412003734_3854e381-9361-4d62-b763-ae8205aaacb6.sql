@@ -1,0 +1,11 @@
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS linen_required BOOLEAN DEFAULT false;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS checkout_time TEXT;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS checkin_time TEXT;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS access_method TEXT;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS access_instructions TEXT;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS parking TEXT;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS hosting_platform TEXT;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS frequency TEXT DEFAULT 'one-off';
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS pets BOOLEAN DEFAULT false;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS preferred_days TEXT[];
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS preferred_time TEXT;

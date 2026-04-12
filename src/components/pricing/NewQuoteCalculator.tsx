@@ -18,6 +18,7 @@ import ScheduleAfterAcceptModal from './ScheduleAfterAcceptModal';
 import { Save, Copy, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import ClientSubmittedInfoCard from './ClientSubmittedInfoCard';
 
 const BED_OPTIONS: BedType[] = ['King', 'Queen', 'King Single', 'Single'];
 
@@ -81,6 +82,17 @@ type FormState = {
   includePhotoReport: boolean;
   manualPriceOverride: boolean;
   manualPriceIncGst: string;
+  linenRequired: boolean;
+  checkoutTime: string;
+  checkinTime: string;
+  accessMethod: string;
+  accessInstructions: string;
+  parking: string;
+  hostingPlatform: string;
+  frequency: string;
+  pets: boolean;
+  preferredDays: string[];
+  preferredTime: string;
 };
 
 const INITIAL: FormState = {
@@ -124,6 +136,17 @@ const INITIAL: FormState = {
   includePhotoReport: false,
   manualPriceOverride: false,
   manualPriceIncGst: '',
+  linenRequired: false,
+  checkoutTime: '',
+  checkinTime: '',
+  accessMethod: '',
+  accessInstructions: '',
+  parking: '',
+  hostingPlatform: '',
+  frequency: 'one-off',
+  pets: false,
+  preferredDays: [],
+  preferredTime: '',
 };
 
 export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?: any; onSaved?: () => void; }) {
@@ -205,6 +228,17 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         includePhotoReport: editQuote.consumables_selection?.include_photo_report === true,
         manualPriceOverride: editQuote.consumables_selection?.manual_price_override === true,
         manualPriceIncGst: editQuote.consumables_selection?.manual_price_inc_gst != null ? String(editQuote.consumables_selection.manual_price_inc_gst) : '',
+        linenRequired: editQuote.linen_required || false,
+        checkoutTime: editQuote.checkout_time || '',
+        checkinTime: editQuote.checkin_time || '',
+        accessMethod: editQuote.access_method || '',
+        accessInstructions: editQuote.access_instructions || '',
+        parking: editQuote.parking || '',
+        hostingPlatform: editQuote.hosting_platform || '',
+        frequency: editQuote.frequency || 'one-off',
+        pets: editQuote.pets || false,
+        preferredDays: editQuote.preferred_days || [],
+        preferredTime: editQuote.preferred_time || '',
       });
     }
   }, [editQuote]);
@@ -269,6 +303,30 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           manualPriceIncGst: fd.manual_price_inc_gst != null ? String(fd.manual_price_inc_gst) : '',
           gpOverride: fd.gp_override != null ? String(fd.gp_override) : '',
           discountGp: fd.discount_gp != null ? String(fd.discount_gp) : '',
+          linenRequired: fd.linen_change === true,
+          checkoutTime: fd.checkout_time || '',
+          checkinTime: fd.checkin_time || '',
+          accessMethod: fd.access_method || '',
+          accessInstructions: fd.access_instructions || '',
+          parking: fd.parking || '',
+          hostingPlatform: fd.platform || '',
+          frequency: fd.frequency || 'one-off',
+          pets: fd.pets === true,
+          preferredDays: Array.isArray(fd.preferred_days) ? fd.preferred_days : [],
+          preferredTime: fd.preferred_time || '',
+          residentialAddons: (() => {
+            // Auto-populate deep clean add-ons from form_data
+            const addons = [...INITIAL.residentialAddons];
+            if (fd.oven_clean === true) { const idx = addons.findIndex(a => a.name === 'Oven clean'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.inside_fridge === true) { const idx = addons.findIndex(a => a.name === 'Fridge clean'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.interior_windows === true) { const idx = addons.findIndex(a => a.name === 'Window cleaning'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.garage === true) { const idx = addons.findIndex(a => a.name === 'Garage sweep'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.outdoor_areas === true) { const idx = addons.findIndex(a => a.name === 'Balcony / Outdoor'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.inside_cupboards === true) {
+              addons.push({ name: 'Inside Cupboards', price: 30, enabled: true });
+            }
+            return addons;
+          })(),
         }));
         return;
       }
@@ -377,8 +435,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const result = useMemo(() => {
     const r = calculate(calcInput, rates);
-    // For Standard Clean, add add-ons to the total (add-ons are inc GST prices)
-    if (form.cleanType === SERVICE_TYPES.STANDARD_CLEAN && addonsTotalIncGst > 0 && !form.manualPriceOverride) {
+    // For Standard/Deep Clean, add add-ons to the total (add-ons are inc GST prices)
+    if ((form.cleanType === SERVICE_TYPES.STANDARD_CLEAN || form.cleanType === SERVICE_TYPES.DEEP_CLEAN) && addonsTotalIncGst > 0 && !form.manualPriceOverride) {
       const addonsExGst = addonsTotalIncGst / 1.1;
       const addonsGst = addonsTotalIncGst - addonsExGst;
       return {
@@ -459,7 +517,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         special_requirements: form.specialRequirements || null,
         price: result.sellPriceIncGst,
         service_type: form.cleanType,
-        extras: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+        extras: (isStandard || isDeepClean) ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
         ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
         consumables_selection: {
           amenities_kit: form.consumables.amenities_kit,
@@ -469,6 +527,17 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           manual_price_override: form.manualPriceOverride,
           manual_price_inc_gst: form.manualPriceOverride ? (parseFloat(form.manualPriceIncGst) || null) : null,
         },
+        linen_required: form.linenRequired,
+        checkout_time: form.checkoutTime || null,
+        checkin_time: form.checkinTime || null,
+        access_method: form.accessMethod || null,
+        access_instructions: form.accessInstructions || null,
+        parking: form.parking || null,
+        hosting_platform: form.hostingPlatform || null,
+        frequency: form.frequency || 'one-off',
+        pets: form.pets,
+        preferred_days: form.preferredDays.length > 0 ? form.preferredDays : null,
+        preferred_time: form.preferredTime || null,
       };
 
       const existingId = editQuote?.id || savedQuoteId || (typeof leadFormData.quote_id === 'string' ? leadFormData.quote_id : null);
@@ -718,6 +787,11 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="flex-1 space-y-5">
+        {/* Client Submitted Info Card */}
+        {leadFormData && Object.keys(leadFormData).length > 0 && (
+          <ClientSubmittedInfoCard formData={leadFormData} cleanType={form.cleanType} />
+        )}
+
         {/* Clean Type Pills */}
         <div className="flex flex-wrap gap-2">
           {QUOTE_SERVICE_TYPES.map((ct) => (
@@ -878,8 +952,62 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           </div>
         </div>
 
-        {/* Standard Clean Add-ons */}
-        {isStandard && (
+
+        {/* Manual Price Override */}
+        <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch checked={form.manualPriceOverride} onCheckedChange={(v) => upd('manualPriceOverride', v)} />
+            <div>
+              <p className="text-sm font-semibold">Manual Price Override</p>
+              <p className="text-xs text-muted-foreground">
+                {form.manualPriceOverride ? 'Enter manual price' : 'Use calculated price'}
+              </p>
+            </div>
+          </div>
+          {form.manualPriceOverride && (
+            <Field label="Total price inc GST ($)">
+              <Input
+                type="number"
+                value={form.manualPriceIncGst}
+                onChange={(e) => upd('manualPriceIncGst', e.target.value)}
+                placeholder="e.g. 280.00"
+                className="h-12 rounded-xl font-semibold text-lg"
+                step={5}
+              />
+            </Field>
+          )}
+        </div>
+
+        {/* Linen + Bed Types */}
+        {hasLinen && form.bedrooms > 0 && (
+          <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
+            <h3 className="font-extrabold text-foreground">Linen & Bed Types</h3>
+            <div className="flex items-center gap-3 pb-2 border-b border-border">
+              <Switch checked={form.linenRequired} onCheckedChange={(v) => upd('linenRequired', v)} />
+              <Label className="text-sm font-semibold">Linen Required</Label>
+            </div>
+            <div className="space-y-2">
+              {form.bedTypes.map((bt, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-muted-foreground w-24">Bedroom {i + 1}</span>
+                  <Select value={bt} onValueChange={(v) => {
+                    const arr = [...form.bedTypes];
+                    arr[i] = v as BedType;
+                    upd('bedTypes', arr);
+                  }}>
+                    <SelectTrigger className="h-10 rounded-xl flex-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BED_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Deep Clean / Standard Add-ons */}
+        {(isStandard || isDeepClean) && (
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
             <h3 className="font-extrabold text-foreground">Add-ons</h3>
             <p className="text-xs text-muted-foreground">Prices are inc GST</p>
@@ -908,55 +1036,6 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
               <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => {
                 upd('residentialAddons', [...form.residentialAddons, { name: 'Custom', price: 0, enabled: true }]);
               }}>+ Custom add-on</Button>
-            </div>
-          </div>
-        )}
-
-        {/* Manual Price Override */}
-        <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <Switch checked={form.manualPriceOverride} onCheckedChange={(v) => upd('manualPriceOverride', v)} />
-            <div>
-              <p className="text-sm font-semibold">Manual Price Override</p>
-              <p className="text-xs text-muted-foreground">
-                {form.manualPriceOverride ? 'Enter manual price' : 'Use calculated price'}
-              </p>
-            </div>
-          </div>
-          {form.manualPriceOverride && (
-            <Field label="Total price inc GST ($)">
-              <Input
-                type="number"
-                value={form.manualPriceIncGst}
-                onChange={(e) => upd('manualPriceIncGst', e.target.value)}
-                placeholder="e.g. 280.00"
-                className="h-12 rounded-xl font-semibold text-lg"
-                step={5}
-              />
-            </Field>
-          )}
-        </div>
-
-        {/* Bed Types */}
-        {hasLinen && form.bedrooms > 0 && (
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-            <h3 className="font-extrabold text-foreground">Bed Types</h3>
-            <div className="space-y-2">
-              {form.bedTypes.map((bt, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-muted-foreground w-24">Bedroom {i + 1}</span>
-                  <Select value={bt} onValueChange={(v) => {
-                    const arr = [...form.bedTypes];
-                    arr[i] = v as BedType;
-                    upd('bedTypes', arr);
-                  }}>
-                    <SelectTrigger className="h-10 rounded-xl flex-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {BED_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
             </div>
           </div>
         )}

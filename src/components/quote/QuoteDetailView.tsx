@@ -17,6 +17,13 @@ type QuoteData = {
   status: string | null;
   quote_accepted_at: string | null;
   quote_declined_at: string | null;
+  hours: number | null;
+  notes: string | null;
+  frequency: string | null;
+  linen_required: boolean | null;
+  bed_types: any;
+  extras: any;
+  consumables_selection: any;
 };
 
 const AIRBNB_TYPES = ['airbnb', 'airbnb / short-stay turnover', 'airbnb turnover', 'short-stay'];
@@ -65,12 +72,12 @@ export default function QuoteDetailView({ token }: { token: string }) {
     (async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_name, client_phone, property_address, service_type, clean_type, bedrooms, bathrooms, sell_price_inc_gst, discounted_price, status, quote_accepted_at, quote_declined_at')
+        .select('id, client_name, client_phone, property_address, service_type, clean_type, bedrooms, bathrooms, sell_price_inc_gst, discounted_price, status, quote_accepted_at, quote_declined_at, hours, notes, frequency, linen_required, bed_types, extras, consumables_selection')
         .eq('quote_token', token)
         .maybeSingle();
       if (error || !data) setNotFound(true);
       else {
-        setQuote(data);
+        setQuote(data as QuoteData);
         // Set initial phase based on existing status
         if (data.status === 'client_accepted' || data.status === 'accepted' || data.quote_accepted_at) {
           // Already accepted — check if airbnb
@@ -395,6 +402,80 @@ export default function QuoteDetailView({ token }: { token: string }) {
               </div>
             )}
           </div>
+
+          {/* Bed Configuration */}
+          {quote?.bed_types && Array.isArray(quote.bed_types) && quote.bed_types.length > 0 && (
+            <div>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Bed Configuration</span>
+              <div className="mt-1 space-y-0.5">
+                {quote.bed_types.map((bt: string, i: number) => (
+                  <p key={i} className="text-sm text-white/80">Bedroom {i + 1}: {bt}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Linen */}
+          {isAirbnbType(quote!) && (
+            <div>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Linen Included</span>
+              <p className="text-base text-white mt-1">{quote?.linen_required ? 'Yes ✓' : 'No'}</p>
+            </div>
+          )}
+
+          {/* Consumable Kits */}
+          {quote?.consumables_selection && (() => {
+            const cs = quote.consumables_selection as Record<string, boolean>;
+            const kits = [
+              cs.amenities_kit && 'Amenities Kit',
+              cs.wash_kit && 'Wash Kit',
+              cs.tea_coffee_kit && 'Tea/Coffee Kit',
+            ].filter(Boolean);
+            return kits.length > 0 ? (
+              <div>
+                <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Consumable Kits</span>
+                <div className="mt-1 space-y-0.5">
+                  {kits.map((k, i) => <p key={i} className="text-sm text-white/80">✓ {k}</p>)}
+                </div>
+              </div>
+            ) : null;
+          })()}
+
+          {/* Add-ons */}
+          {quote?.extras && Array.isArray(quote.extras) && quote.extras.length > 0 && (
+            <div>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Add-ons Included</span>
+              <div className="mt-1 space-y-0.5">
+                {quote.extras.map((e: any, i: number) => (
+                  <p key={i} className="text-sm text-white/80">✓ {e.name}{e.price ? ` — $${Number(e.price).toFixed(2)}` : ''}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Frequency */}
+          {quote?.frequency && quote.frequency !== 'one-off' && (
+            <div>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Frequency</span>
+              <p className="text-base text-white mt-1 capitalize">{quote.frequency} recurring</p>
+            </div>
+          )}
+
+          {/* Estimated Hours */}
+          {quote?.hours && (
+            <div>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Estimated Hours</span>
+              <p className="text-base text-white mt-1">{quote.hours}h</p>
+            </div>
+          )}
+
+          {/* Notes */}
+          {quote?.notes && (
+            <div>
+              <span className="text-xs font-bold tracking-widest text-[#3A7560] uppercase">Notes</span>
+              <p className="text-sm text-white/70 mt-1 whitespace-pre-line">{quote.notes}</p>
+            </div>
+          )}
 
           {/* Price */}
           {price ? (
