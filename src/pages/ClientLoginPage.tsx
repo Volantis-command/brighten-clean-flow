@@ -79,7 +79,7 @@ export default function ClientLoginPage() {
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="0412 345 678"
                       required
-                      className="h-14 rounded-2xl text-base pl-11 bg-[rgba(255,255,255,0.06)] border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#2E5D4E]"
+                      className="h-14 rounded-2xl text-base pl-11 bg-[rgba(255,255,255,0.06)] border-[rgba(255,255,255,0.12)] text-[#F0FDF4] placeholder:text-[rgba(240,253,244,0.4)] focus:border-[#3A7560]"
                     />
                   </div>
                 </div>
@@ -88,7 +88,7 @@ export default function ClientLoginPage() {
                   type="submit"
                   className="w-full h-14 rounded-2xl text-base font-bold"
                   disabled={loading}
-                  style={{ background: '#2E5D4E', color: '#FFFFFF' }}
+                  style={{ background: '#3A7560', color: '#FFFFFF' }}
                 >
                   {loading ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>

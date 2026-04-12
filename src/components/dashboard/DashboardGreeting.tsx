@@ -14,7 +14,7 @@ export function DashboardGreeting() {
     <div
       className="relative overflow-hidden rounded-2xl noise-overlay shimmer fade-in w-full max-w-full"
       style={{
-        background: 'linear-gradient(135deg, #1E3D34 0%, #2E5D4E 40%, #3A7560 100%)',
+        background: 'linear-gradient(135deg, #1E3D34 0%, #3A7560 40%, #3A7560 100%)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
       }}

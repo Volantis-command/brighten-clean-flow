@@ -224,7 +224,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
         <h1 className="text-2xl font-bold text-white mb-3">Quote Not Found</h1>
         <p className="text-white/50 mb-6">We couldn't find this quote. It may have expired or the link is incorrect.</p>
-        <a href="/quote" className="h-14 px-8 rounded-xl bg-[#2E5D4E] text-white font-semibold flex items-center justify-center">
+        <a href="/quote" className="h-14 px-8 rounded-xl bg-[#3A7560] text-white font-semibold flex items-center justify-center">
           Start a New Quote
         </a>
       </div>
@@ -239,7 +239,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
   if (phase === 'booking_done') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
-        <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
+        <div className="rounded-full p-6 mb-6 bg-[#3A7560]/20">
           <CheckCircle className="w-12 h-12 text-[#3A7560]" />
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">You're Booked In!</h1>
@@ -254,7 +254,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
   if (phase === 'airbnb_done') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
-        <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
+        <div className="rounded-full p-6 mb-6 bg-[#3A7560]/20">
           <CheckCircle className="w-12 h-12 text-[#3A7560]" />
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">Quote Accepted!</h1>
@@ -292,7 +292,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
         </header>
 
         <div className="flex-1 max-w-2xl mx-auto w-full px-6 pb-12">
-          <div className="rounded-full p-4 mb-4 bg-[#2E5D4E]/20 w-fit mx-auto">
+          <div className="rounded-full p-4 mb-4 bg-[#3A7560]/20 w-fit mx-auto">
             <CalendarDays className="w-8 h-8 text-[#3A7560]" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-1 text-center">Quote Accepted!</h2>
@@ -309,7 +309,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
                 value={selectedDate}
                 min={getTomorrow()}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full h-14 rounded-xl bg-white/5 border border-white/15 text-white px-4 text-base focus:outline-none focus:border-[#2E5D4E] transition-colors [color-scheme:dark]"
+                className="w-full h-14 rounded-xl bg-white/5 border border-white/15 text-white px-4 text-base focus:outline-none focus:border-[#3A7560] transition-colors [color-scheme:dark]"
               />
             </div>
 
@@ -321,7 +321,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
               <select
                 value={selectedTime}
                 onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full h-14 rounded-xl bg-white/5 border border-white/15 text-white px-4 text-base focus:outline-none focus:border-[#2E5D4E] transition-colors appearance-none [color-scheme:dark]"
+                className="w-full h-14 rounded-xl bg-white/5 border border-white/15 text-white px-4 text-base focus:outline-none focus:border-[#3A7560] transition-colors appearance-none [color-scheme:dark]"
               >
                 <option value="" disabled className="bg-[#1a1a1a]">Select a time</option>
                 {TIME_SLOTS.map(t => (
@@ -334,7 +334,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
           <button
             onClick={handleConfirmBooking}
             disabled={bookingSubmitting || !selectedDate || !selectedTime}
-            className="w-full h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-6"
+            className="w-full h-14 rounded-xl bg-[#3A7560] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#3A7560]/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-6"
           >
             {bookingSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Booking'}
           </button>
@@ -355,7 +355,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">This Quote Was Declined</h1>
         <p className="text-white/50 max-w-sm mb-6">Changed your mind? We'd love to help.</p>
-        <button onClick={handleAccept} disabled={submitting} className="h-14 px-8 rounded-xl bg-[#2E5D4E] text-white font-semibold disabled:opacity-50 flex items-center gap-2">
+        <button onClick={handleAccept} disabled={submitting} className="h-14 px-8 rounded-xl bg-[#3A7560] text-white font-semibold disabled:opacity-50 flex items-center gap-2">
           {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Accept Quote'}
         </button>
         <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
@@ -501,7 +501,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
             <button
               onClick={handleAccept}
               disabled={submitting}
-              className="w-full h-14 rounded-xl bg-[#2E5D4E] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#2E5D4E]/20 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full h-14 rounded-xl bg-[#3A7560] hover:bg-[#26503F] text-lg font-semibold text-white transition-all duration-200 shadow-lg shadow-[#3A7560]/20 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Accept Quote'}
             </button>

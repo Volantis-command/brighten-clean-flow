@@ -57,7 +57,7 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
 function Confirmation() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
-      <div className="rounded-full p-6 mb-6 bg-[#2E5D4E]/20">
+      <div className="rounded-full p-6 mb-6 bg-[#3A7560]/20">
         <SprayCan className="w-12 h-12 text-[#3A7560]" />
       </div>
       <h1 className="text-3xl font-bold text-white">You're all set!</h1>

@@ -270,7 +270,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         </FormCard>
         <FormCard>
           <div className="flex items-start gap-3">
-            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5 border-[rgba(255,255,255,0.3)] data-[state=checked]:bg-[#2E5D4E] data-[state=checked]:border-[#2E5D4E] data-[state=checked]:text-white" />
+            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5 border-[rgba(255,255,255,0.3)] data-[state=checked]:bg-[#3A7560] data-[state=checked]:border-[#3A7560] data-[state=checked]:text-white" />
             <label htmlFor="tcs" className="text-sm" style={{ color: '#F0FDF4' }}>I agree to Brightly's{' '}<button type="button" onClick={() => setTermsOpen(true)} className="underline font-medium" style={{ color: '#86EFAC' }}>Terms & Conditions</button></label>
           </div>
         </FormCard>
