@@ -545,7 +545,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
   const isStandard = form.cleanType === SERVICE_TYPES.STANDARD_CLEAN;
   const isOffice = form.cleanType === SERVICE_TYPES.OFFICE_COMMERCIAL;
   const isAirbnb = form.cleanType === SERVICE_TYPES.AIRBNB_TURNOVER;
-  const hasLinen = !isPostRenovation && !isBondClean && !isStandard && !isOffice;
+  const hasLinen = isAirbnb;
   const showConsumables = isAirbnb;
 
   const saveMutation = useMutation({
