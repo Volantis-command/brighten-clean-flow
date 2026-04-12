@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to create token" }), { status: 500, headers: corsHeaders });
     }
 
-    const loginUrl = `https://app.brightly.cleaning/auth/staff?token=${tokenRow.token}`;
+    const appUrl = Deno.env.get("APP_URL") || "https://brighten-clean-flow.lovable.app";
+    const loginUrl = `${appUrl}/auth/staff?token=${tokenRow.token}`;
 
     // Send SMS via Twilio
     const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
