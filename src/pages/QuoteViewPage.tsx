@@ -168,7 +168,7 @@ function AlreadyAcceptedScreen() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
       style={{ background: '#0A0F0E' }}>
       <div className="text-center space-y-5 max-w-sm">
-        <CheckCircle2 className="w-16 h-16 mx-auto text-[#3A7560]" />
+        <CheckCircle2 className="w-16 h-16 mx-auto text-[#4ADE80]" />
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
           This quote has already been accepted.
         </h1>
@@ -593,7 +593,7 @@ export default function QuoteViewPage() {
             }}>
               {messageSent ? (
                 <div className="text-center py-4 space-y-2">
-                  <CheckCircle2 className="w-10 h-10 mx-auto text-[#3A7560]" />
+                  <CheckCircle2 className="w-10 h-10 mx-auto text-[#4ADE80]" />
                   <p className="text-white font-bold">Thanks! We'll get back to you shortly.</p>
                   <p className="text-white/40 text-sm">Usually within a few hours.</p>
                 </div>

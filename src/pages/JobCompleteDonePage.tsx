@@ -137,11 +137,11 @@ function FloatingDots() {
   // Six absolutely-positioned dots that float upward and fade out
   const dots = [
     { left: '15%', delay: '0s', size: 6, color: '#FEDB00' },
-    { left: '28%', delay: '0.6s', size: 4, color: '#3A7560' },
+    { left: '28%', delay: '0.6s', size: 4, color: '#4ADE80' },
     { left: '45%', delay: '1.2s', size: 5, color: '#FEDB00' },
-    { left: '62%', delay: '0.3s', size: 5, color: '#3A7560' },
+    { left: '62%', delay: '0.3s', size: 5, color: '#4ADE80' },
     { left: '78%', delay: '0.9s', size: 4, color: '#FEDB00' },
-    { left: '88%', delay: '1.5s', size: 6, color: '#3A7560' },
+    { left: '88%', delay: '1.5s', size: 6, color: '#4ADE80' },
   ];
   return (
     <div className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none overflow-hidden">

@@ -125,7 +125,7 @@ export default function CleanerAvailabilityPage() {
                   className={`rounded-xl border-2 p-3 text-left transition-colors ${
                     isUnavailable
                       ? 'bg-destructive/10 border-destructive text-destructive'
-                      : 'bg-emerald-50 border-emerald-500 text-[#3A7560]'
+                      : 'bg-emerald-50 border-emerald-500 text-[#4ADE80]'
                   }`}
                 >
                   <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">
