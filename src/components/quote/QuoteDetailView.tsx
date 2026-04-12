@@ -72,12 +72,12 @@ export default function QuoteDetailView({ token }: { token: string }) {
     (async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_name, client_phone, property_address, service_type, clean_type, bedrooms, bathrooms, sell_price_inc_gst, discounted_price, status, quote_accepted_at, quote_declined_at')
+        .select('id, client_name, client_phone, property_address, service_type, clean_type, bedrooms, bathrooms, sell_price_inc_gst, discounted_price, status, quote_accepted_at, quote_declined_at, hours, notes, frequency, linen_required, bed_types, extras, consumables_selection')
         .eq('quote_token', token)
         .maybeSingle();
       if (error || !data) setNotFound(true);
       else {
-        setQuote(data);
+        setQuote(data as QuoteData);
         // Set initial phase based on existing status
         if (data.status === 'client_accepted' || data.status === 'accepted' || data.quote_accepted_at) {
           // Already accepted — check if airbnb
