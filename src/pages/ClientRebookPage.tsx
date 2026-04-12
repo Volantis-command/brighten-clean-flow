@@ -87,16 +87,20 @@ export default function ClientRebookPage() {
     try {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-      // Create a new job with awaiting_quote status
-      const { error: jobErr } = await supabase.from('jobs').insert({
-        property_id: clientProp.property_id,
-        scheduled_date: dateStr,
-        status: 'awaiting_quote',
-        notes: `Rebook request. Client preferred time: ${timePreference}`,
-        source: 'client_rebook',
-      });
-
-      if (jobErr) throw jobErr;
+      // Create job via edge function (bypasses RLS)
+      const { data: bookingResult, error: bookingError } = await supabase.functions.invoke(
+        'create-booking-from-quote',
+        {
+          body: {
+            property_id: clientProp.property_id,
+            preferred_date: dateStr,
+            preferred_time: timePreference,
+            source: 'client_rebook',
+            notes: `Rebook request. Client preferred time: ${timePreference}`,
+          },
+        }
+      );
+      if (bookingError) throw new Error('Failed to submit rebook request');
 
       // Notify admin
       const clientName = profile?.full_name || property?.client_name || 'Client';
