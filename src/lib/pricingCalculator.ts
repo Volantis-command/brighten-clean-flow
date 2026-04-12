@@ -27,6 +27,7 @@ export type CalcInput = {
   includePhotoReport?: boolean;
   manualPriceOverride?: boolean;
   manualPriceIncGst?: number;
+  linenRequired?: boolean;
   // New inputs
   distanceKm: number;
   activePropertyCount: number;
