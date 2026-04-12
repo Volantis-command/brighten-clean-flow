@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculate, getHourlyRateIncGst, type BedType, type CalcInput, type ConsumableSelection } from '@/lib/pricingCalculator';
-import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, PHOTO_REPORTING_FEE, normaliseLegacyServiceType } from '@/lib/serviceTypes';
+import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, PHOTO_REPORTING_FEE, normaliseLegacyServiceType, calculateDefaultHours } from '@/lib/serviceTypes';
 import PriceLivePanel from './PriceLivePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -452,11 +452,19 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const upd = (f: keyof FormState, v: any) => setForm((p) => ({ ...p, [f]: v }));
 
+  // Track whether the user has manually edited the hours field
+  const [hoursManuallySet, setHoursManuallySet] = useState(false);
+
+  // Auto-calculate hours when clean type or room counts change
   useEffect(() => {
-    const defaultHrs = DEFAULT_HOURS[form.cleanType];
-    if (defaultHrs) {
-      setForm((p) => ({ ...p, hours: defaultHrs }));
-    }
+    if (hoursManuallySet) return;
+    const autoHours = calculateDefaultHours(form.cleanType, form.bedrooms, form.bathrooms);
+    setForm((p) => ({ ...p, hours: autoHours }));
+  }, [form.cleanType, form.bedrooms, form.bathrooms, hoursManuallySet]);
+
+  // Reset manual flag when clean type changes
+  useEffect(() => {
+    setHoursManuallySet(false);
   }, [form.cleanType]);
 
   useEffect(() => {
@@ -991,7 +999,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             </>
           )}
 
-          <NumField label="Estimated Clean Hours" value={form.hours} onChange={(v) => upd('hours', v)} step={0.5} min={0.5} />
+          <NumField label="Estimated Clean Hours" value={form.hours} onChange={(v) => { setHoursManuallySet(true); upd('hours', v); }} step={0.5} min={0.5} />
 
           {isDeepClean && (
             <NumField label="Deep Clean Multiplier" value={form.deepCleanMultiplier} onChange={(v) => upd('deepCleanMultiplier', v)} step={0.1} min={1} />
