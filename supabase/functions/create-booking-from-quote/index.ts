@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
           const childJobs = futureDates.map(d => ({
             property_id: propertyId,
             scheduled_date: d,
-            scheduled_time: preferred_time || null,
+            scheduled_time: scheduledTime,
             status: "scheduled",
             price_ex_gst: priceExGst,
             price_inc_gst: priceIncGst,
