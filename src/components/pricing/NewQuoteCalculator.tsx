@@ -1063,7 +1063,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             <h3 className="font-extrabold text-foreground">Linen & Bed Types</h3>
             <div className="flex items-center gap-3 pb-2 border-b border-border">
               <Switch checked={form.linenRequired} onCheckedChange={(v) => upd('linenRequired', v)} />
-              <Label className="text-sm font-semibold">Linen Required</Label>
+              <Label className="text-sm font-semibold">{form.linenRequired ? '✅ Linen Required — ON' : 'Linen Required — OFF'}</Label>
             </div>
             <div className="space-y-2">
               {form.bedTypes.map((bt, i) => (
@@ -1082,6 +1082,35 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                 </div>
               ))}
             </div>
+            {form.linenRequired && result.linenCost > 0 && (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-1 text-xs border border-border">
+                <p className="font-bold text-sm text-foreground mb-1">Linen Cost Breakdown</p>
+                {form.bedTypes.map((bt, i) => {
+                  const sheetKey = bt === 'King' ? 'linen_king_flat_sheet' : bt === 'Queen' ? 'linen_queen_flat_sheet' : 'linen_king_single_flat_sheet';
+                  const sheetCost = (rates[sheetKey] || 0) * 3;
+                  const pillowCost = (rates.linen_pillowcase || 0) * (bt === 'King' || bt === 'Queen' ? 4 : 2);
+                  const towelCost = (rates.linen_bath_towel || 0) * 2 + (rates.linen_face_washer || 0) * 2;
+                  return (
+                    <div key={i} className="flex justify-between text-muted-foreground">
+                      <span>Bed {i + 1} ({bt}): sheets + pillows + towels</span>
+                      <span className="font-semibold">${(sheetCost + pillowCost + towelCost).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{form.bathrooms} bathroom(s): hand towels + bath mats</span>
+                  <span className="font-semibold">${(form.bathrooms * ((rates.linen_hand_towel || 0) + (rates.linen_bath_mat || 0))).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{form.kitchens} kitchen(s): tea towels</span>
+                  <span className="font-semibold">${(form.kitchens * 2 * (rates.linen_tea_towel || 0)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-foreground border-t border-border pt-1 mt-1">
+                  <span>Total Linen Cost</span>
+                  <span>${result.linenCost.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
