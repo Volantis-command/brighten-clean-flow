@@ -283,7 +283,7 @@ export default function OperationsDashboard() {
                 key={q.id}
                 className="hover-lift p-3 cursor-pointer flex items-center justify-between gap-3"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px' }}
-                onClick={() => { navigate(`/quoting`); window.scrollTo(0, 0); }}
+                onClick={() => { navigate(`/quoting?quote=${q.id}`); window.scrollTo(0, 0); }}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{q.client_name || 'Unknown'}</p>
