@@ -1,5 +1,6 @@
 import { Component, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { BrowserRouter, Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -35,7 +36,7 @@ import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
 import CleanerProfilePage from "./pages/CleanerProfilePage";
 // QuoteRequestFormPage deleted — /quote/:token now uses QuoteIntakePage
-import QuoteAcceptPage from "./pages/QuoteAcceptPage";
+// QuoteAcceptPage removed — redirects to QuoteViewPage
 import QuoteViewPage from "./pages/QuoteViewPage";
 import TimesheetsPage from "./pages/TimesheetsPage";
 import StaffOnboardingPage from "./pages/StaffOnboardingPage";
@@ -157,6 +158,11 @@ function RootRedirect() {
   return <Navigate to="/login" replace />;
 }
 
+function QuoteAcceptRedirect() {
+  const { token } = useParams();
+  return <Navigate to={`/quote-view/${token}`} replace />;
+}
+
 function AuthenticatedArea({ children }: { children: React.ReactNode }) {
   return (
     <AppErrorBoundary>
@@ -181,7 +187,7 @@ function AppRoutes() {
       <Route path="/onboard/:token" element={<Navigate to="/quote" replace />} />
       <Route path="/onboard" element={<Navigate to="/quote" replace />} />
       <Route path="/quote/:token" element={<QuoteIntakePage />} />
-      <Route path="/quote/:token/accept" element={<QuoteAcceptPage />} />
+      <Route path="/quote/:token/accept" element={<QuoteAcceptRedirect />} />
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
       <Route path="/staff-onboard/:token" element={<StaffOnboardingPage />} />

@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ─── What's Included by clean type ─── */
 const INCLUSIONS: Record<string, string[]> = {
@@ -255,6 +257,20 @@ export default function QuoteViewPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageSent, setMessageSent] = useState(false);
 
+  // T&C + scheduling states
+  const [tcsAccepted, setTcsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [showScheduling, setShowScheduling] = useState(false);
+  const [preferredDate, setPreferredDate] = useState('');
+  const [preferredTime, setPreferredTime] = useState('');
+
+  // Min date = tomorrow
+  const minDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
   // Load quote
   useEffect(() => {
     async function load() {
@@ -280,9 +296,18 @@ export default function QuoteViewPage() {
     load();
   }, [token]);
 
-  // ─── Accept flow ───
-  const handleAccept = useCallback(async () => {
-    if (!quote) return;
+  // ─── Step 1: Accept quote (show scheduling) ───
+  const handleAcceptClick = useCallback(() => {
+    if (!tcsAccepted) {
+      toast.error('Please accept the Terms & Conditions first');
+      return;
+    }
+    setShowScheduling(true);
+  }, [tcsAccepted]);
+
+  // ─── Step 2: Confirm booking with date/time ───
+  const handleConfirmBooking = useCallback(async () => {
+    if (!quote || !preferredDate) return;
     setConfirming(true);
     try {
       // 1. Update quote status
@@ -290,6 +315,9 @@ export default function QuoteViewPage() {
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
         acceptance_method: 'quote_page',
+        tcs_accepted: true,
+        tcs_accepted_at: new Date().toISOString(),
+        tcs_version: '2026-03',
       }).eq('quote_token', token);
 
       // 2. Update quote_requests if linked
@@ -311,9 +339,12 @@ export default function QuoteViewPage() {
         {
           body: {
             quote_id: quote.id,
-            preferred_date: new Date().toISOString().split('T')[0],
+            preferred_date: preferredDate,
+            preferred_time: preferredTime || null,
             source: 'quote_accepted',
             client_name: quote.client_name,
+            tcs_accepted: true,
+            tcs_version: '2026-03',
           },
         }
       );
@@ -337,7 +368,7 @@ export default function QuoteViewPage() {
       toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  }, [quote, token]);
+  }, [quote, token, preferredDate, preferredTime]);
 
   // ─── Decline flow ───
   const handleDecline = useCallback(async () => {
@@ -545,35 +576,139 @@ export default function QuoteViewPage() {
           </div>
         </div>
 
+        {/* ═══ TERMS & CONDITIONS ═══ */}
+        {!showScheduling && (
+          <div className="rounded-2xl p-5 fade-in" style={{
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            animationDelay: '0.6s',
+          }}>
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="tcs-quote"
+                checked={tcsAccepted}
+                onCheckedChange={(v) => setTcsAccepted(v === true)}
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-[#3A7560] data-[state=checked]:border-[#3A7560]"
+              />
+              <label htmlFor="tcs-quote" className="text-sm text-white/70 cursor-pointer">
+                I have read and agree to the{' '}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setTermsOpen(true); }}
+                  className="font-bold underline"
+                  style={{ color: '#FEDB00' }}
+                >
+                  Terms & Conditions
+                </button>
+              </label>
+            </div>
+          </div>
+        )}
+
         {/* ═══ ACTION BUTTONS ═══ */}
         <div className="space-y-3 pt-2 fade-in" style={{ animationDelay: '0.6s' }}>
-          {/* ACCEPT */}
-          <button
-            onClick={handleAccept}
-            disabled={confirming}
-            className="w-full py-4 rounded-2xl text-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2"
-            style={{
-              background: confirming ? '#26503F' : '#3A7560',
-              color: '#fff',
-              boxShadow: '0 0 24px rgba(46, 93, 78, 0.3)',
-              fontFamily: 'Nunito, sans-serif',
-            }}
-            onMouseEnter={(e) => {
-              if (!confirming) e.currentTarget.style.boxShadow = '0 0 40px rgba(46, 93, 78, 0.5)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(46, 93, 78, 0.3)';
-            }}
-          >
-            {confirming ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <CheckCircle2 className="w-5 h-5" />
-                Accept This Quote
-              </>
-            )}
-          </button>
+          {/* SCHEDULING SECTION (shown after clicking Accept) */}
+          {showScheduling ? (
+            <div className="rounded-2xl p-5 space-y-4 slide-down" style={{
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              <h3 className="text-white font-bold text-base flex items-center gap-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
+                <CalendarDays className="w-5 h-5" style={{ color: '#FEDB00' }} />
+                Choose Your Preferred Date & Time
+              </h3>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Date</label>
+                  <input
+                    type="date"
+                    min={minDate}
+                    value={preferredDate}
+                    onChange={(e) => setPreferredDate(e.target.value)}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2"
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      colorScheme: 'dark',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Time Preference</label>
+                  <select
+                    value={preferredTime}
+                    onChange={(e) => setPreferredTime(e.target.value)}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 appearance-none"
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    <option value="" style={{ background: '#1a1a1a' }}>Select a time preference</option>
+                    <option value="Morning (7-11am)" style={{ background: '#1a1a1a' }}>Morning (7-11am)</option>
+                    <option value="Midday (11am-2pm)" style={{ background: '#1a1a1a' }}>Midday (11am-2pm)</option>
+                    <option value="Afternoon (2-5pm)" style={{ background: '#1a1a1a' }}>Afternoon (2-5pm)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handleConfirmBooking}
+                disabled={confirming || !preferredDate}
+                className="w-full py-4 rounded-2xl text-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-40"
+                style={{
+                  background: confirming ? '#26503F' : '#3A7560',
+                  color: '#fff',
+                  boxShadow: '0 0 24px rgba(46, 93, 78, 0.3)',
+                  fontFamily: 'Nunito, sans-serif',
+                }}
+              >
+                {confirming ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    Confirm Booking
+                  </>
+                )}
+              </button>
+
+              {!preferredDate && (
+                <p className="text-center text-xs text-white/30">Please select a date to confirm</p>
+              )}
+
+              <button
+                onClick={() => setShowScheduling(false)}
+                className="w-full py-2 text-sm text-white/30 hover:text-white/50 transition-colors"
+              >
+                ← Go Back
+              </button>
+            </div>
+          ) : (
+            /* ACCEPT BUTTON */
+            <button
+              onClick={handleAcceptClick}
+              disabled={!tcsAccepted}
+              className="w-full py-4 rounded-2xl text-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-40"
+              style={{
+                background: !tcsAccepted ? '#26503F' : '#3A7560',
+                color: '#fff',
+                boxShadow: tcsAccepted ? '0 0 24px rgba(46, 93, 78, 0.3)' : 'none',
+                fontFamily: 'Nunito, sans-serif',
+              }}
+              onMouseEnter={(e) => {
+                if (tcsAccepted) e.currentTarget.style.boxShadow = '0 0 40px rgba(46, 93, 78, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = tcsAccepted ? '0 0 24px rgba(46, 93, 78, 0.3)' : 'none';
+              }}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Accept This Quote
+            </button>
+          )}
 
           {/* MORE INFO */}
           <button
@@ -702,6 +837,8 @@ export default function QuoteViewPage() {
           </p>
         </div>
       </div>
+
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
     </div>
   );
 }
