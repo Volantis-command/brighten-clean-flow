@@ -452,11 +452,19 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
 
   const upd = (f: keyof FormState, v: any) => setForm((p) => ({ ...p, [f]: v }));
 
+  // Track whether the user has manually edited the hours field
+  const [hoursManuallySet, setHoursManuallySet] = useState(false);
+
+  // Auto-calculate hours when clean type or room counts change
   useEffect(() => {
-    const defaultHrs = DEFAULT_HOURS[form.cleanType];
-    if (defaultHrs) {
-      setForm((p) => ({ ...p, hours: defaultHrs }));
-    }
+    if (hoursManuallySet) return;
+    const autoHours = calculateDefaultHours(form.cleanType, form.bedrooms, form.bathrooms);
+    setForm((p) => ({ ...p, hours: autoHours }));
+  }, [form.cleanType, form.bedrooms, form.bathrooms, hoursManuallySet]);
+
+  // Reset manual flag when clean type changes
+  useEffect(() => {
+    setHoursManuallySet(false);
   }, [form.cleanType]);
 
   useEffect(() => {
