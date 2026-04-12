@@ -835,25 +835,10 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
               </div>
             )}
 
-            {/* Onboarding Link */}
-            {isAdmin && (
+            {/* Onboarding status actions (no link generation — handled during invite) */}
+            {isAdmin && (obStatus?.submitted || obStatus?.reviewed || obStatus?.directorApproved) && (
               <div className="border-t pt-3 mt-3 space-y-2">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><Link2 className="w-4 h-4" /> Onboarding Link</h3>
-                {obStatus?.token ? (
-                  <div className="flex items-center gap-2">
-                    <Input readOnly value={getOnboardingLink(staff.id) || ''} className="text-xs h-8 font-mono" />
-                    <Button variant="outline" size="sm" onClick={() => copyOnboardingLink(staff.id)} className="shrink-0 gap-1">
-                      {onboardingLinkCopied === staff.id ? <CheckCircle2 className="w-4 h-4 text-brightly" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button variant="outline" size="sm" className="gap-1 rounded-xl"
-                    disabled={ensureOnboardingMutation.isPending}
-                    onClick={() => ensureOnboardingMutation.mutate(staff)}>
-                    {ensureOnboardingMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                    Generate Onboarding Link
-                  </Button>
-                )}
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1"><FileCheck className="w-4 h-4" /> Onboarding Status</h3>
                 {obStatus?.submitted && !obStatus.reviewed && (
                   <Button size="sm" className="gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
                     disabled={markReviewedMutation.isPending}

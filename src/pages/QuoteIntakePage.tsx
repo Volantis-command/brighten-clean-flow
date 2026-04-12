@@ -16,6 +16,7 @@ const OPTIONS = [
 ];
 
 function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
+  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -30,7 +31,7 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-white mb-1">Get Your Quote</h2>
           <p className="text-base text-white/50 mb-8">
-            Tell us about your space and we'll have a quote to you within 24 hours.
+            Tell us about your space and we'll have a quote to you within 24 hours. 🌿
           </p>
         </div>
 
@@ -39,16 +40,28 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
             <button
               key={opt.key}
               onClick={() => onSelect(opt.key)}
-              className="flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/20"
+              onMouseEnter={() => setHovered(opt.key)}
+              onMouseLeave={() => setHovered(null)}
+              className={`flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 bg-white/5 border ${
+                hovered === opt.key
+                  ? 'border-[#3A7560] bg-white/10 shadow-lg shadow-[#3A7560]/10'
+                  : 'border-white/15 hover:bg-white/10 hover:border-white/20'
+              }`}
             >
-              <opt.icon className="w-10 h-10 text-white/70 mb-3" />
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-colors duration-200 ${
+                hovered === opt.key ? 'bg-[#3A7560]/20' : 'bg-white/5'
+              }`}>
+                <opt.icon className={`w-7 h-7 transition-colors duration-200 ${
+                  hovered === opt.key ? 'text-[#3A7560]' : 'text-white/70'
+                }`} />
+              </div>
               <p className="text-base font-semibold text-white text-center leading-tight">{opt.label}</p>
               <p className="text-sm mt-1.5 leading-snug text-white/40">{opt.desc}</p>
             </button>
           ))}
         </div>
 
-        <p className="text-center text-xs text-white/20 pt-10 pb-6">📞 0418 878 707 · brightly.cleaning</p>
+        <p className="text-center text-xs text-white/20 pt-10 pb-6">📞 0418 878 707 · brightly.cleaning 🌿</p>
       </div>
     </div>
   );

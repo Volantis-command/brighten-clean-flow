@@ -14,6 +14,7 @@ import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText, Trash2 } fro
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LeadsTab from '@/components/clients/LeadsTab';
+import SendQuoteLinkModal from '@/components/dashboard/SendQuoteLinkModal';
 import { getAppBaseUrl } from '@/lib/appUrl';
 
 interface ClientMember {
@@ -171,6 +172,7 @@ export default function ClientsPage() {
   const [onboardClient, setOnboardClient] = useState<ClientMember | null>(null);
   const [deleteClient, setDeleteClient] = useState<ClientMember | null>(null);
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
+  const [quoteLinkOpen, setQuoteLinkOpen] = useState(false);
 
   // Create form state
   const [createEmail, setCreateEmail] = useState('');
@@ -389,10 +391,10 @@ export default function ClientsPage() {
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate('/quote')} variant="outline" className="font-bold rounded-xl gap-2">
-            <FileText className="w-5 h-5" /> Send Quote Request
+          <Button onClick={() => setQuoteLinkOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
+            <Send className="w-5 h-5" /> Send Quote Request
           </Button>
-          <Button onClick={() => navigate('/quote')} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+          <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
             <UserPlus className="w-5 h-5" /> Add Client
           </Button>
         </div>
@@ -606,6 +608,8 @@ export default function ClientsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SendQuoteLinkModal open={quoteLinkOpen} onOpenChange={setQuoteLinkOpen} />
     </div>
   );
 }
