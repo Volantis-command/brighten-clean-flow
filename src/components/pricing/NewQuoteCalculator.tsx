@@ -517,7 +517,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         special_requirements: form.specialRequirements || null,
         price: result.sellPriceIncGst,
         service_type: form.cleanType,
-        extras: isStandard ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
+        extras: (isStandard || isDeepClean) ? form.residentialAddons.filter(a => a.enabled).map(a => ({ name: a.name, price: a.price })) : [],
         ...(status === 'quote_sent' ? { quote_sent_at: new Date().toISOString() } : {}),
         consumables_selection: {
           amenities_kit: form.consumables.amenities_kit,
@@ -527,6 +527,17 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           manual_price_override: form.manualPriceOverride,
           manual_price_inc_gst: form.manualPriceOverride ? (parseFloat(form.manualPriceIncGst) || null) : null,
         },
+        linen_required: form.linenRequired,
+        checkout_time: form.checkoutTime || null,
+        checkin_time: form.checkinTime || null,
+        access_method: form.accessMethod || null,
+        access_instructions: form.accessInstructions || null,
+        parking: form.parking || null,
+        hosting_platform: form.hostingPlatform || null,
+        frequency: form.frequency || 'one-off',
+        pets: form.pets,
+        preferred_days: form.preferredDays.length > 0 ? form.preferredDays : null,
+        preferred_time: form.preferredTime || null,
       };
 
       const existingId = editQuote?.id || savedQuoteId || (typeof leadFormData.quote_id === 'string' ? leadFormData.quote_id : null);
