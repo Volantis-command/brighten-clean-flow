@@ -303,6 +303,30 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           manualPriceIncGst: fd.manual_price_inc_gst != null ? String(fd.manual_price_inc_gst) : '',
           gpOverride: fd.gp_override != null ? String(fd.gp_override) : '',
           discountGp: fd.discount_gp != null ? String(fd.discount_gp) : '',
+          linenRequired: fd.linen_change === true,
+          checkoutTime: fd.checkout_time || '',
+          checkinTime: fd.checkin_time || '',
+          accessMethod: fd.access_method || '',
+          accessInstructions: fd.access_instructions || '',
+          parking: fd.parking || '',
+          hostingPlatform: fd.platform || '',
+          frequency: fd.frequency || 'one-off',
+          pets: fd.pets === true,
+          preferredDays: Array.isArray(fd.preferred_days) ? fd.preferred_days : [],
+          preferredTime: fd.preferred_time || '',
+          residentialAddons: (() => {
+            // Auto-populate deep clean add-ons from form_data
+            const addons = [...INITIAL.residentialAddons];
+            if (fd.oven_clean === true) { const idx = addons.findIndex(a => a.name === 'Oven clean'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.inside_fridge === true) { const idx = addons.findIndex(a => a.name === 'Fridge clean'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.interior_windows === true) { const idx = addons.findIndex(a => a.name === 'Window cleaning'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.garage === true) { const idx = addons.findIndex(a => a.name === 'Garage sweep'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.outdoor_areas === true) { const idx = addons.findIndex(a => a.name === 'Balcony / Outdoor'); if (idx >= 0) addons[idx] = { ...addons[idx], enabled: true }; }
+            if (fd.inside_cupboards === true) {
+              addons.push({ name: 'Inside Cupboards', price: 30, enabled: true });
+            }
+            return addons;
+          })(),
         }));
         return;
       }
