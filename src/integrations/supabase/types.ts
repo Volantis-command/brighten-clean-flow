@@ -1026,6 +1026,7 @@ export type Database = {
       }
       jobs: {
         Row: {
+          access_method: string | null
           arrived_at: string | null
           arrived_lat: number | null
           arrived_lng: number | null
@@ -1036,15 +1037,20 @@ export type Database = {
           audit_photos: string[] | null
           audit_rating: number | null
           audited_by: string | null
+          bed_types: Json | null
           cancellation_notes: string | null
           cancellation_reason: string | null
           check_in_time: string | null
           check_out_time: string | null
+          checkin_time: string | null
+          checkout_time: string | null
           cleaner_1_id: string | null
           cleaner_2_id: string | null
           cleaner_notes: string | null
           cleaner_reminder_sms_sent_at: string | null
           client_booking_sms_sent_at: string | null
+          client_name: string | null
+          client_phone: string | null
           client_reminder_sms_sent_at: string | null
           clock_off: string | null
           clock_off_at: string | null
@@ -1057,6 +1063,7 @@ export type Database = {
           completion_notes: string | null
           completion_photos: string[] | null
           completion_signatures: Json | null
+          consumables_selection: Json | null
           created_at: string
           damage_notes: string | null
           damage_photos: string[] | null
@@ -1088,6 +1095,7 @@ export type Database = {
           invoice_status: string | null
           is_urgent: boolean | null
           late_alert_sent: boolean | null
+          linen_required: boolean | null
           linked_quote_id: string | null
           no_show_alert_sent: boolean | null
           notes: string | null
@@ -1113,6 +1121,7 @@ export type Database = {
           xero_invoice_number: string | null
         }
         Insert: {
+          access_method?: string | null
           arrived_at?: string | null
           arrived_lat?: number | null
           arrived_lng?: number | null
@@ -1123,15 +1132,20 @@ export type Database = {
           audit_photos?: string[] | null
           audit_rating?: number | null
           audited_by?: string | null
+          bed_types?: Json | null
           cancellation_notes?: string | null
           cancellation_reason?: string | null
           check_in_time?: string | null
           check_out_time?: string | null
+          checkin_time?: string | null
+          checkout_time?: string | null
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           cleaner_notes?: string | null
           cleaner_reminder_sms_sent_at?: string | null
           client_booking_sms_sent_at?: string | null
+          client_name?: string | null
+          client_phone?: string | null
           client_reminder_sms_sent_at?: string | null
           clock_off?: string | null
           clock_off_at?: string | null
@@ -1144,6 +1158,7 @@ export type Database = {
           completion_notes?: string | null
           completion_photos?: string[] | null
           completion_signatures?: Json | null
+          consumables_selection?: Json | null
           created_at?: string
           damage_notes?: string | null
           damage_photos?: string[] | null
@@ -1175,6 +1190,7 @@ export type Database = {
           invoice_status?: string | null
           is_urgent?: boolean | null
           late_alert_sent?: boolean | null
+          linen_required?: boolean | null
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
@@ -1200,6 +1216,7 @@ export type Database = {
           xero_invoice_number?: string | null
         }
         Update: {
+          access_method?: string | null
           arrived_at?: string | null
           arrived_lat?: number | null
           arrived_lng?: number | null
@@ -1210,15 +1227,20 @@ export type Database = {
           audit_photos?: string[] | null
           audit_rating?: number | null
           audited_by?: string | null
+          bed_types?: Json | null
           cancellation_notes?: string | null
           cancellation_reason?: string | null
           check_in_time?: string | null
           check_out_time?: string | null
+          checkin_time?: string | null
+          checkout_time?: string | null
           cleaner_1_id?: string | null
           cleaner_2_id?: string | null
           cleaner_notes?: string | null
           cleaner_reminder_sms_sent_at?: string | null
           client_booking_sms_sent_at?: string | null
+          client_name?: string | null
+          client_phone?: string | null
           client_reminder_sms_sent_at?: string | null
           clock_off?: string | null
           clock_off_at?: string | null
@@ -1231,6 +1253,7 @@ export type Database = {
           completion_notes?: string | null
           completion_photos?: string[] | null
           completion_signatures?: Json | null
+          consumables_selection?: Json | null
           created_at?: string
           damage_notes?: string | null
           damage_photos?: string[] | null
@@ -1262,6 +1285,7 @@ export type Database = {
           invoice_status?: string | null
           is_urgent?: boolean | null
           late_alert_sent?: boolean | null
+          linen_required?: boolean | null
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
