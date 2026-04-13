@@ -42,6 +42,13 @@ export default function SavedQuotesList({ onEdit }: { onEdit?: (q: any) => void 
 
   const deleteMutation = useMutation({
     mutationFn: async (q: any) => {
+      // Unlink any jobs referencing this quote to avoid FK constraint
+      const { error: unlinkErr } = await supabase
+        .from('jobs')
+        .update({ linked_quote_id: null })
+        .eq('linked_quote_id', q.id);
+      if (unlinkErr) throw new Error('Failed to unlink jobs: ' + unlinkErr.message);
+
       const { error } = await supabase.from('quotes').delete().eq('id', q.id);
       if (error) throw error;
     },
