@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil, CalendarPlus, Camera, FileText } from 'lucide-react';
 import { JobHistoryTab } from '@/components/property/JobHistoryTab';
+import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
 import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
@@ -114,6 +115,7 @@ export default function PropertyProfilePage() {
           <TabsTrigger value="sop" className="flex-1">SOP</TabsTrigger>
           <TabsTrigger value="history" className="flex-1">History</TabsTrigger>
           <TabsTrigger value="forms" className="flex-1">Forms</TabsTrigger>
+          <TabsTrigger value="invoices" className="flex-1">Invoices</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <div className="bg-card rounded-2xl shadow-md p-5 mt-4">
@@ -139,6 +141,9 @@ export default function PropertyProfilePage() {
         </TabsContent>
         <TabsContent value="forms">
           <FormsTab propertyId={property.id} />
+        </TabsContent>
+        <TabsContent value="invoices">
+          <PropertyInvoicesTab propertyId={property.id} showAdminTools={isAdmin} />
         </TabsContent>
       </Tabs>
 

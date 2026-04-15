@@ -40,6 +40,79 @@ function DraftInvoiceCount() {
   return <p className="text-3xl font-extrabold text-foreground">{count}</p>;
 }
 
+/** Sum of invoice_amount for invoices that are sent/authorised but not paid. */
+function OutstandingInvoiceTotal() {
+  const navigate = useNavigate();
+  const { data = { total: 0, count: 0 } } = useQuery({
+    queryKey: ['outstanding-invoice-total'],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('jobs')
+        .select('invoice_amount, price_inc_gst')
+        .in('invoice_status', ['sent', 'authorised']);
+      if (error) throw error;
+      const total = (rows || []).reduce(
+        (s: number, r: any) => s + Number(r.invoice_amount || r.price_inc_gst || 0),
+        0
+      );
+      return { total, count: (rows || []).length };
+    },
+    refetchInterval: 60_000,
+  });
+  return (
+    <button
+      onClick={() => navigate('/financials')}
+      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors w-full"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <DollarSign className="w-5 h-5 text-blue-600" />
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Outstanding</span>
+      </div>
+      <p className="text-3xl font-extrabold text-foreground">${data.total.toFixed(0)}</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        {data.count} invoice{data.count === 1 ? '' : 's'} awaiting payment →
+      </p>
+    </button>
+  );
+}
+
+/** Sum of invoice_amount for invoices marked paid this calendar month. */
+function PaidThisMonthTotal() {
+  const navigate = useNavigate();
+  const { data = { total: 0, count: 0 } } = useQuery({
+    queryKey: ['paid-this-month'],
+    queryFn: async () => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const { data: rows, error } = await supabase
+        .from('jobs')
+        .select('invoice_amount, price_inc_gst')
+        .eq('invoice_status', 'paid')
+        .gte('invoice_paid_at', monthStart);
+      if (error) throw error;
+      const total = (rows || []).reduce(
+        (s: number, r: any) => s + Number(r.invoice_amount || r.price_inc_gst || 0),
+        0
+      );
+      return { total, count: (rows || []).length };
+    },
+    refetchInterval: 60_000,
+  });
+  return (
+    <button
+      onClick={() => navigate('/financials')}
+      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors w-full"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <DollarSign className="w-5 h-5 text-brightly" />
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Paid This Month</span>
+      </div>
+      <p className="text-3xl font-extrabold text-foreground">${data.total.toFixed(0)}</p>
+      <p className="text-xs text-muted-foreground mt-1">{data.count} invoice{data.count === 1 ? '' : 's'} paid →</p>
+    </button>
+  );
+}
+
 function BookingSuggestionsCount() {
   const navigate = useNavigate();
   const { data: count = 0 } = useQuery({
@@ -326,12 +399,14 @@ export default function DashboardPage() {
             className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-5 h-5 text-primary" />
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Draft Invoices</span>
+              <DollarSign className="w-5 h-5 text-yellow-600" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Stuck Drafts</span>
             </div>
             <DraftInvoiceCount />
-            <p className="text-xs text-muted-foreground mt-1">Approve & send →</p>
+            <p className="text-xs text-muted-foreground mt-1">Auto-send failed — retry →</p>
           </button>
+          <OutstandingInvoiceTotal />
+          <PaidThisMonthTotal />
           <BookingSuggestionsCount />
           <QuoteFollowupsCount />
         </div>
