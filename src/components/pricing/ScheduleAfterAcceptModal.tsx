@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,17 +17,13 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
-const TIME_WINDOWS: Record<string, string> = {
-  morning: '07:00',
-  midday: '11:00',
+// Map the legacy time-window enum (set on quotes from the old morning/midday/afternoon
+// picker) to a HH:MM the time input can accept. New quotes save a HH:MM directly.
+const TIME_WINDOW_TO_HHMM: Record<string, string> = {
+  morning: '09:00',
+  midday: '12:00',
   afternoon: '14:00',
-};
-
-const TIME_WINDOW_LABELS: Record<string, string> = {
-  morning: 'Morning 7–11am',
-  midday: 'Midday 11am–2pm',
-  afternoon: 'Afternoon 2–5pm',
-  custom: 'Custom',
+  evening: '17:00',
 };
 
 interface ScheduleAfterAcceptModalProps {
@@ -58,25 +54,51 @@ export default function ScheduleAfterAcceptModal({
 
   const [sendSms, setSendSms] = useState(true);
   const [date, setDate] = useState<Date>();
-  const [timeWindow, setTimeWindow] = useState('morning');
   const [customTime, setCustomTime] = useState('09:00');
   const [cleanerId, setCleanerId] = useState('');
   const [notes, setNotes] = useState('');
   const [phase, setPhase] = useState<'form' | 'confirming' | 'success'>('form');
   const [results, setResults] = useState<StepResult[]>([]);
 
+  // Pull the client's preferred time + date off the quote so admin doesn't have to
+  // reset them from scratch. Fixes the "client picked afternoon, calendar said 9am" bug.
+  const { data: quoteRow } = useQuery({
+    queryKey: ['quote-prefs', quoteId],
+    enabled: open && !!quoteId,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('quotes')
+        .select('preferred_time, preferred_date')
+        .eq('id', quoteId)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   useEffect(() => {
     if (!open) {
       setSendSms(true);
       setDate(undefined);
-      setTimeWindow('morning');
       setCustomTime('09:00');
       setCleanerId('');
       setNotes('');
       setPhase('form');
       setResults([]);
+      return;
     }
-  }, [open]);
+    // Pre-populate from the quote
+    if (quoteRow?.preferred_date) {
+      try { setDate(new Date(quoteRow.preferred_date + 'T00:00:00')); } catch { /* ignore parse */ }
+    }
+    if (quoteRow?.preferred_time) {
+      const raw = String(quoteRow.preferred_time).trim().toLowerCase();
+      // Accept either a HH:MM or one of the legacy window labels
+      if (/^\d{1,2}:\d{2}/.test(raw)) {
+        setCustomTime(raw.slice(0, 5));
+      } else if (TIME_WINDOW_TO_HHMM[raw]) {
+        setCustomTime(TIME_WINDOW_TO_HHMM[raw]);
+      }
+    }
+  }, [open, quoteRow]);
 
   const canConfirm = !!date;
 

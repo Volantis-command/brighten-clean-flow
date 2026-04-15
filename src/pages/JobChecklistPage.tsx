@@ -76,7 +76,7 @@ export default function JobChecklistPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, properties(property_name, address, suburb, bedrooms, bathrooms)')
+        .select('*, properties(property_name, client_name, address, suburb, bedrooms, bathrooms)')
         .eq('id', jobId!)
         .single();
       if (error) throw error;
@@ -688,7 +688,7 @@ export default function JobChecklistPage() {
 
       {/* Job Details — Pre-filled, read-only */}
       <Section title="Job Details">
-        <ReadOnlyField label="Property" value={property?.property_name || 'Unknown'} />
+        <ReadOnlyField label="Property" value={property?.property_name || (job as any)?.client_name || property?.client_name || (job as any)?.property_address || 'Untitled job'} />
         <ReadOnlyField label="Date" value={job.scheduled_date ? format(new Date(job.scheduled_date + 'T00:00:00'), 'EEEE, d MMMM yyyy') : ''} />
         <ReadOnlyField label="Cleaner 1" value={cleaner1Name} />
         <ReadOnlyField label="Cleaner 2" value={cleaner2Name} />

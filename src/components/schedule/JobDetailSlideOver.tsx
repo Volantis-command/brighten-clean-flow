@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { format } from 'date-fns';
+import { jobLabel } from '@/lib/jobLabel';
+import { useCleanersList } from '@/hooks/useCleanersList';
+import { syncJobAssignment } from '@/lib/jobAssignment';
 
 interface JobDetailSlideOverProps {
   job: ScheduleJob | null;
@@ -37,8 +40,28 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [resendingSms, setResendingSms] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [assigningCleaner, setAssigningCleaner] = useState(false);
+  const { data: cleanersList = [] } = useCleanersList();
 
   if (!job) return null;
+
+  const handleCleanerChange = async (slot: 'cleaner_1_id' | 'cleaner_2_id', value: string) => {
+    setAssigningCleaner(true);
+    try {
+      const newId = value === '__none__' ? null : value;
+      const { error } = await supabase.from('jobs').update({ [slot]: newId } as any).eq('id', job.id);
+      if (error) throw error;
+      // syncJobAssignment recomputes status, manages job_acceptances rows, sends SMS to new cleaner
+      await syncJobAssignment(job.id, { sendSms: true });
+      toast.success(newId ? 'Cleaner assigned ✓' : 'Cleaner removed');
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-acceptances'] });
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update cleaner');
+    } finally {
+      setAssigningCleaner(false);
+    }
+  };
 
   const sc = getStatusColor(job.status);
   const cleaners = [
@@ -106,7 +129,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
           {/* Property */}
           <div>
-            <h3 className="text-xl font-extrabold text-foreground">{job.properties?.property_name || 'Unknown'}</h3>
+            <h3 className="text-xl font-extrabold text-foreground">{jobLabel(job)}</h3>
             {address && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
                 <MapPin className="h-4 w-4" />
@@ -176,12 +199,14 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
             )}
           </div>
 
-          {/* Cleaners */}
-          {cleaners.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" /> Cleaners
-              </label>
+          {/* Cleaners — assignable inline */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" /> Cleaners
+            </label>
+
+            {/* Existing assigned cleaners with acceptance status */}
+            {cleaners.length > 0 && (
               <div className="space-y-2">
                 {cleaners.map(c => {
                   const acc = acceptances?.find(a => a.cleaner_id === c.id);
@@ -202,8 +227,51 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                   );
                 })}
               </div>
+            )}
+
+            {/* Assign / change cleaner dropdowns */}
+            <div className="grid grid-cols-1 gap-2 pt-1">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Cleaner 1</label>
+                <Select
+                  value={job.cleaner_1_id || '__none__'}
+                  onValueChange={(v) => handleCleanerChange('cleaner_1_id', v)}
+                  disabled={assigningCleaner}
+                >
+                  <SelectTrigger className="w-full h-10 mt-0.5">
+                    <SelectValue placeholder="Assign cleaner..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Unassigned —</SelectItem>
+                    {(cleanersList as any[]).map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Cleaner 2 (optional)</label>
+                <Select
+                  value={job.cleaner_2_id || '__none__'}
+                  onValueChange={(v) => handleCleanerChange('cleaner_2_id', v)}
+                  disabled={assigningCleaner}
+                >
+                  <SelectTrigger className="w-full h-10 mt-0.5">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {(cleanersList as any[])
+                      .filter((c: any) => c.id !== job.cleaner_1_id)
+                      .map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Changing cleaners sends a fresh acceptance offer via SMS.</p>
             </div>
-          )}
+          </div>
 
           {/* Notes */}
           {job.notes && (

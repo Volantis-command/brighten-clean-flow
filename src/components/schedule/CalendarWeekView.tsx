@@ -4,6 +4,7 @@ import { getCleanerColor, getCleanerName } from './cleanerColors';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
+import { jobLabel } from '@/lib/jobLabel';
 
 interface CalendarWeekViewProps {
   date: Date;
@@ -175,14 +176,14 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const top = (startTime - firstHour) * HOUR_HEIGHT;
                   const height = Math.max(duration * HOUR_HEIGHT, 28);
                   const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
-                  const clientName = job.properties?.property_name || 'Job';
+                  const clientName = jobLabel(job);
                   const address = job.properties?.address || '';
 
-                  // Status-based colour coding
-                  const isComplete = job.status === 'completed' || job.status === 'complete';
+                  // Status-based colour coding (yellow = waiting, green = locked in, blue = in flight)
+                  const isComplete = job.status === 'completed';
                   const isInProgress = job.status === 'in_progress';
                   const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
-                  const isPending = job.status === 'pending_approval' || job.status === 'awaiting_schedule_approval' || job.status === 'awaiting_quote' || job.status === 'awaiting_approval';
+                  const isPending = job.status === 'pending_cleaner' || job.status === 'awaiting_cleaner_acceptance' || job.status === 'awaiting_quote';
                   const statusBg = isPending ? 'hsl(45 93% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
                   const statusBorder = isPending ? 'hsl(45 93% 45%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
                   const statusText = isPending ? '#422006' : '#fff';

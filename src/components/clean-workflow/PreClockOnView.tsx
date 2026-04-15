@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone } from 'lucide-react';
 import { format } from 'date-fns';
+import { jobLabel } from '@/lib/jobLabel';
 
 interface Props {
   job: any;
@@ -33,10 +34,14 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
   const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
   const durationHrs = job.estimated_duration ? job.estimated_duration / 60 : null;
   const endTime = durationHrs ? new Date(jobDate.getTime() + durationHrs * 3600000) : null;
-  const clientFirstName = property?.client_name?.split(' ')[0] || null;
-  const address = property?.address || '';
+  // Fallback chain: property record -> client_name on job (set at quote time)
+  const clientFirstName = (property?.client_name || job?.client_name)?.split(' ')[0] || null;
+  // Address — fallback to job.property_address (captured at quote time, lives on the job row)
+  const address = property?.address || job?.property_address || '';
+  const headerLabel = jobLabel(job);
 
-  const canClockOn = job.status === 'scheduled' || job.status === 'confirmed';
+  // 'confirmed' is the new "ready to clock on" state. Keep 'scheduled' for legacy jobs.
+  const canClockOn = job.status === 'confirmed' || job.status === 'scheduled' || job.status === 'awaiting_cleaner_acceptance';
   const isCompleted = job.status === 'completed';
 
   return (
@@ -46,7 +51,7 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
         <button onClick={() => navigate('/my-jobs')} className="p-2 -ml-2">
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
-        <h1 className="text-base font-extrabold text-foreground truncate flex-1 text-center">{property?.property_name ?? 'Job'}</h1>
+        <h1 className="text-base font-extrabold text-foreground truncate flex-1 text-center">{headerLabel}</h1>
         <div className="w-9" />
       </div>
 
@@ -108,8 +113,12 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
         {/* Property Card */}
         <Card className="border-border">
           <CardContent className="p-4 space-y-3">
-            <p className="font-bold text-foreground">{property?.property_name}</p>
-            {address && <p className="text-sm text-muted-foreground">{address}</p>}
+            <p className="font-bold text-foreground">{headerLabel}</p>
+            {address ? (
+              <p className="text-sm text-muted-foreground">{address}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No address on file — contact admin</p>
+            )}
             <div className="flex gap-2">
               {address && (
                 <Button

@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSa
 import { getCleanerColor } from './cleanerColors';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
+import { jobLabelShort } from '@/lib/jobLabel';
 
 interface CalendarMonthViewProps {
   date: Date;
@@ -103,11 +104,11 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
 
                 <div className="space-y-0.5">
                   {dayJobs.slice(0, maxPills).map(job => {
-                    const shortName = (job.properties?.property_name || 'Job').split(' ').slice(0, 2).join(' ');
-                    const isComplete = job.status === 'completed' || job.status === 'complete';
+                    const shortName = jobLabelShort(job, 2);
+                    const isComplete = job.status === 'completed';
                     const isInProgress = job.status === 'in_progress';
                     const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
-                    const isPending = job.status === 'pending_approval' || job.status === 'awaiting_schedule_approval' || job.status === 'awaiting_quote' || job.status === 'awaiting_approval';
+                    const isPending = job.status === 'pending_cleaner' || job.status === 'awaiting_cleaner_acceptance' || job.status === 'awaiting_quote';
                     const pillBg = isPending ? 'hsl(45 93% 88%)' : isComplete ? 'hsl(220 9% 90%)' : isInProgress ? 'hsl(217 91% 90%)' : isCancelled ? 'hsl(0 72% 90%)' : 'hsl(160 84% 88%)';
                     const pillText = isPending ? 'hsl(45 93% 30%)' : isComplete ? 'hsl(220 9% 40%)' : isInProgress ? 'hsl(217 91% 40%)' : isCancelled ? 'hsl(0 72% 35%)' : 'hsl(160 84% 25%)';
                     const pillBorder = isPending ? 'hsl(45 93% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
