@@ -162,6 +162,6 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('Create invoice error:', err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

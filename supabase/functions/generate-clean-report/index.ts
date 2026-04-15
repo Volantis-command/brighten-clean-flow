@@ -116,6 +116,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
     });
   } catch (err) {
-    return new Response(`Error: ${err.message}`, { status: 500 });
+    return new Response(`Error: ${(err as Error).message}`, { status: 500 });
   }
 });
