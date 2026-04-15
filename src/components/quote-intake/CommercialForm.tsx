@@ -95,6 +95,26 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
         tcs_accepted: true, tcs_accepted_at: new Date().toISOString(), form_data: formData,
       } as any);
       if (error) throw error;
+
+      // Create / reuse client profile + property + link so the client portal
+      // sees the property right away. Non-blocking.
+      try {
+        await supabase.functions.invoke('link-intake-to-profile', {
+          body: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: contactName,
+            phone: mobile,
+            email,
+            property_address: address,
+            property_type: spaceType,
+            clean_type: 'Commercial Clean',
+          },
+        });
+      } catch (linkErr) {
+        console.error('[intake] link-intake-to-profile failed (non-blocking):', linkErr);
+      }
+
       await supabase.functions.invoke('send-quote-notification', {
         body: { type: 'intake_submitted', client_phone: mobile, client_name: firstName, clean_type: 'Commercial Clean', address },
       });
