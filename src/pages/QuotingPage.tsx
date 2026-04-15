@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewQuoteCalculator from '@/components/pricing/NewQuoteCalculator';
 import SavedQuotesList from '@/components/pricing/SavedQuotesList';
