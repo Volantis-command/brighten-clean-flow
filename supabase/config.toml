@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.create-booking-from-quote]
 verify_jwt = false
+
+[functions.link-intake-to-profile]
+verify_jwt = false

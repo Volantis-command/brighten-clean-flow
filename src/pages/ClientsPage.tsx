@@ -337,16 +337,35 @@ export default function ClientsPage() {
       const isRealUser = !c.id.startsWith('property-') && !c.id.startsWith('qr-');
       const clientId = c.id;
 
-      // For property-derived or quote-derived pseudo-clients, just unlink properties
+      // Pseudo-clients come from two places (see useClientsList above):
+      //   - `property-<propId>` — a property row that has client_name/email/phone
+      //      set but no linked profile.
+      //   - `qr-<quoteRequestId>` — an accepted/submitted lead with no profile yet.
+      //
+      // Previously the `qr-*` branch was a silent no-op that still showed
+      // "Client deleted" — the row stayed visible on refresh. Fixed here:
+      // each pseudo-client now has a concrete delete action + error check.
       if (!isRealUser) {
-        // Nothing to cascade — these aren't real auth users
-        // Just remove client_properties links if it's a property-derived client
         if (c.id.startsWith('property-')) {
           for (const lp of c.linked_properties) {
-            await supabase.from('properties').update({ client_name: null, billing_email: null, client_phone: null }).eq('id', lp.property_id);
+            const { error } = await supabase
+              .from('properties')
+              .update({ client_name: null, billing_email: null, client_phone: null })
+              .eq('id', lp.property_id);
+            if (error) throw new Error(`Failed to clear property client info: ${error.message}`);
           }
+          return;
         }
-        return;
+
+        if (c.id.startsWith('qr-')) {
+          const qrId = c.id.replace(/^qr-/, '');
+          const { error } = await supabase.from('quote_requests').delete().eq('id', qrId);
+          if (error) throw new Error(`Failed to delete lead: ${error.message}`);
+          return;
+        }
+
+        // Unknown pseudo-client format — fail loud so we don't lie about success.
+        throw new Error(`Cannot delete: unrecognised client record (${c.id})`);
       }
 
       // 1. Delete client_properties links
