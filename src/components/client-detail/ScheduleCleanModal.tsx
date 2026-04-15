@@ -15,6 +15,7 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 const CLEAN_TYPES = [
   'House Clean', 'Deep Clean', 'End of Lease', 'Post-Build', 'Turnover Clean',
@@ -120,7 +121,11 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
     setSaving(true);
     try {
       const hasPrice = priceExGst && parseFloat(priceExGst) > 0;
-      const status = hasPrice ? 'scheduled' : 'awaiting_quote';
+      // If no price → awaiting_quote. If priced → state machine decides yellow (no cleaner)
+      // or yellow (cleaner assigned, awaiting accept).
+      const status = hasPrice
+        ? initialJobStatusForAssignment(cleanerId || null, null)
+        : 'awaiting_quote';
 
       const finalExGst = hasPrice ? parseFloat(priceExGst) : null;
       const finalIncGst = hasPrice ? parseFloat(priceIncGst) : null;
@@ -168,7 +173,8 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       }
 
       if (hasPrice && jobData?.id) {
-        // Fire client SMS, cleaner SMS, Xero invoice in parallel
+        // Fire client SMS, Xero draft invoice in parallel.
+        // Cleaner notification + acceptance rows are handled by syncJobAssignment below.
         const promises: Promise<any>[] = [];
 
         promises.push(
@@ -177,14 +183,6 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
           })
         );
 
-        if (cleanerId) {
-          promises.push(
-            supabase.functions.invoke('send-job-sms', { body: { job_id: jobData.id } }).catch(e => {
-              toast.error(`⚠️ Cleaner SMS failed: ${e.message}`);
-            })
-          );
-        }
-
         promises.push(
           supabase.functions.invoke('xero-create-invoice', { body: { job_id: jobData.id } }).catch(e => {
             toast.error(`⚠️ Xero invoice failed: ${e.message}`);
@@ -192,8 +190,14 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         );
 
         await Promise.allSettled(promises);
+
+        // Run cleaner assignment sync (acceptance rows, alerts, SMS) if a cleaner was picked.
+        if (cleanerId) {
+          await syncJobAssignment(jobData.id, { sendSms: true });
+        }
+
         const recurringLabel = frequency !== 'one-off' ? ` + recurring ${frequency} series` : '';
-        toast.success(`Job scheduled${recurringLabel}, client + cleaner notified ✓`);
+        toast.success(`Job scheduled${recurringLabel}, client${cleanerId ? ' + cleaner' : ''} notified ✓`);
       } else {
         toast.warning('No price set — job saved as Awaiting Quote. Set price to notify client and create invoice.');
       }

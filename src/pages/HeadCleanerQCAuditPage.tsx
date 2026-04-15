@@ -17,6 +17,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { createAdminNotification, createNotification } from '@/lib/notifications';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 const DEFAULT_ROOMS = [
   'Kitchen',
@@ -210,14 +211,20 @@ export default function HeadCleanerQCAuditPage() {
           .map((r) => r.room_name)
           .join(', ');
 
-        await supabase.from('jobs').insert({
+        // Revisit job: cleaner is already assigned (same as original) so this goes straight
+        // to awaiting_cleaner_acceptance (yellow). They must accept before it turns green.
+        const { data: revisit } = await supabase.from('jobs').insert({
           property_id: job.property_id,
           scheduled_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-          status: 'scheduled',
+          status: initialJobStatusForAssignment(job.cleaner_1_id, job.cleaner_2_id),
           notes: `QC REVISIT — failed rooms: ${failedRoomNames}. ${overallNotes ? `Notes: ${overallNotes}` : ''}`,
           cleaner_1_id: job.cleaner_1_id,
           cleaner_2_id: job.cleaner_2_id,
-        });
+        } as any).select('id').single();
+
+        if (revisit?.id) {
+          await syncJobAssignment(revisit.id, { sendSms: true });
+        }
 
         // Notify admin
         await createAdminNotification({

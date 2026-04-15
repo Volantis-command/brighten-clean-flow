@@ -15,6 +15,7 @@ import { CalendarIcon, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 const TIME_WINDOWS: Record<string, string> = {
   morning: '07:00',
@@ -210,7 +211,7 @@ export default function ScheduleAfterAcceptModal({
         scheduled_date: format(date, 'yyyy-MM-dd'),
         scheduled_time: scheduledTime,
         cleaner_1_id: cleanerId || null,
-        status: 'scheduled',
+        status: initialJobStatusForAssignment(cleanerId || null, null),
         notes: jobNotes || null,
         estimated_duration: Math.round(estimatedHours * 60),
         price_inc_gst: priceIncGst,
@@ -235,11 +236,10 @@ export default function ScheduleAfterAcceptModal({
       }
     }
 
-    // 5. Cleaner SMS
+    // 5. Cleaner assignment sync — creates acceptance row, sends alert + SMS
     if (jobId && cleanerId) {
       try {
-        const { error } = await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
-        if (error) throw error;
+        await syncJobAssignment(jobId, { sendSms: true });
         stepResults.push({ step: 'Cleaner assigned + notified via SMS', ok: true });
       } catch (e: any) {
         stepResults.push({ step: 'Cleaner assigned + notified via SMS', ok: false, error: e.message });

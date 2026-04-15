@@ -12,6 +12,7 @@ import { Loader2, Check, X, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 function useAllPendingRequests() {
   return useQuery({
@@ -78,15 +79,20 @@ export default function BookingRequestsPage() {
     mutationFn: async () => {
       if (!selectedRequest) return;
       // Create job
-      const { error: jobErr } = await supabase.from('jobs').insert({
+      const { data: newJob, error: jobErr } = await supabase.from('jobs').insert({
         property_id: selectedRequest.property_id,
         scheduled_date: confirmDate || selectedRequest.requested_date,
         scheduled_time: confirmTime || null,
         cleaner_1_id: assignedCleaner || null,
-        status: 'scheduled',
+        status: initialJobStatusForAssignment(assignedCleaner || null, null),
         notes: selectedRequest.notes || null,
-      });
+      } as any).select('id').single();
       if (jobErr) throw jobErr;
+
+      // Sync acceptance + alerts + SMS for assigned cleaner
+      if (newJob?.id && assignedCleaner) {
+        await syncJobAssignment(newJob.id, { sendSms: true });
+      }
 
       // Update request status
       await supabase.from('clean_requests').update({ status: 'approved' }).eq('id', selectedRequest.id);
