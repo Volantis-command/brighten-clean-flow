@@ -423,7 +423,7 @@ export default function JobChecklistPage() {
       });
     }
 
-    await supabase.from('jobs').update({ status: 'complete' }).eq('id', jobId!);
+    await supabase.from('jobs').update({ status: 'completed' }).eq('id', jobId!);
 
     const cleanerName = profile?.full_name?.split(' ')[0] || 'Cleaner';
     const notifMessage = `Job completed — ${property?.property_name} by ${cleanerName}`;
@@ -527,7 +527,7 @@ export default function JobChecklistPage() {
       .eq('scheduled_date', today)
       .or(`cleaner_1_id.eq.${user!.id},cleaner_2_id.eq.${user!.id}`)
       .neq('id', jobId!)
-      .neq('status', 'complete')
+      .neq('status', 'completed')
       .order('scheduled_time', { ascending: true });
 
     const nextJob = todayJobs?.[0];

@@ -72,7 +72,7 @@ export default function ClientRebookPage() {
         .from('jobs')
         .select('id, notes, linked_quote_id')
         .eq('property_id', clientProp.property_id)
-        .eq('status', 'complete')
+        .eq('status', 'completed')
         .order('scheduled_date', { ascending: false })
         .limit(1);
       return (data as any[])?.[0] || null;

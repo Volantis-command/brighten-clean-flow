@@ -95,7 +95,7 @@ export function useDashboardData() {
         .select('id, status, price_ex_gst, invoice_status')
         .gte('scheduled_date', monthStart)
         .lte('scheduled_date', monthEnd)
-        .in('status', ['complete', 'completed']);
+        .eq('status', 'completed');
       return data || [];
     },
     enabled: isAdmin,
@@ -159,7 +159,7 @@ export function useDashboardData() {
       const { data } = await supabase
         .from('jobs')
         .select('id, price_ex_gst, invoice_status, properties(property_name)')
-        .in('status', ['complete', 'completed'])
+        .eq('status', 'completed')
         .gt('price_ex_gst', 0)
         .not('invoice_status', 'in', '("paid","voided")');
       return data || [];
@@ -200,7 +200,7 @@ export function useDashboardData() {
       const { data } = await supabase
         .from('jobs')
         .select('scheduled_date, price_ex_gst')
-        .in('status', ['complete', 'completed'])
+        .eq('status', 'completed')
         .gte('scheduled_date', months[0].start)
         .lte('scheduled_date', months[months.length - 1].end)
         .gt('price_ex_gst', 0);

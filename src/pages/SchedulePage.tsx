@@ -53,8 +53,9 @@ export default function SchedulePage() {
 
   const filteredJobs = jobs.filter(j => {
     if (statusFilter === 'all') return true;
-    if (statusFilter === 'pending_approval') return ['pending_approval', 'awaiting_schedule_approval', 'awaiting_quote', 'awaiting_approval'].includes(j.status);
-    if (statusFilter === 'complete') return j.status === 'completed' || j.status === 'complete';
+    // New unified "needs admin attention" bucket matches all yellow states
+    if (statusFilter === 'pending_cleaner') return j.status === 'pending_cleaner';
+    if (statusFilter === 'awaiting_cleaner_acceptance') return j.status === 'awaiting_cleaner_acceptance';
     return j.status === statusFilter;
   });
 

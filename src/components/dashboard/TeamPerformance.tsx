@@ -21,7 +21,7 @@ export function TeamPerformance() {
       const { data: jobs } = await supabase
         .from('jobs')
         .select('id, cleaner_1_id, cleaner_2_id')
-        .eq('status', 'complete')
+        .eq('status', 'completed')
         .gte('scheduled_date', monthStr);
 
       const jobIds = (jobs || []).map(j => j.id);

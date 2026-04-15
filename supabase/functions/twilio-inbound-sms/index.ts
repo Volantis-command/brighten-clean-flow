@@ -218,7 +218,7 @@ async function handleFeedbackRating(supabase: any, from: string, body: string, m
     .from('jobs')
     .select('id, property_id')
     .in('property_id', propertyIds)
-    .eq('status', 'complete')
+    .eq('status', 'completed')
     .not('feedback_rating_sms_sent_at', 'is', null)
     .order('feedback_rating_sms_sent_at', { ascending: false })
     .limit(1);

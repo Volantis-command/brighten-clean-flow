@@ -16,11 +16,11 @@ export default function FinancialsPage() {
       const quarterStart = format(startOfQuarter(now), 'yyyy-MM-dd');
 
       const [weekRes, monthRes, quarterRes, jobsRes, quotesRes] = await Promise.all([
-        supabase.from('jobs').select('price_inc_gst').in('status', ['completed', 'complete']).gte('scheduled_date', weekStart),
-        supabase.from('jobs').select('price_inc_gst').in('status', ['completed', 'complete']).gte('scheduled_date', monthStart),
-        supabase.from('jobs').select('price_inc_gst').in('status', ['completed', 'complete']).gte('scheduled_date', quarterStart),
+        supabase.from('jobs').select('price_inc_gst').eq('status', 'completed').gte('scheduled_date', weekStart),
+        supabase.from('jobs').select('price_inc_gst').eq('status', 'completed').gte('scheduled_date', monthStart),
+        supabase.from('jobs').select('price_inc_gst').eq('status', 'completed').gte('scheduled_date', quarterStart),
         supabase.from('jobs').select('id, scheduled_date, price_inc_gst, status, notes, property_id, properties(property_name)')
-          .in('status', ['completed', 'complete']).order('scheduled_date', { ascending: false }).limit(50),
+          .eq('status', 'completed').order('scheduled_date', { ascending: false }).limit(50),
         supabase.from('quotes').select('sell_price_inc_gst, discounted_price, status')
           .in('status', ['quote_sent', 'draft']),
       ]);

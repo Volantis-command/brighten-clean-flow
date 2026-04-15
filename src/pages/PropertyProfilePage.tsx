@@ -184,7 +184,7 @@ function FormsTab({ propertyId }: { propertyId: string }) {
         .from('jobs')
         .select('id, scheduled_date, scheduled_time, status, cleaner_1_id, cleaner_2_id, completion_notes, completion_photos, completion_form_completed_at, clock_on, clock_off, duration_minutes')
         .eq('property_id', propertyId)
-        .in('status', ['completed', 'complete'])
+        .eq('status', 'completed')
         .order('scheduled_date', { ascending: false });
       return data || [];
     },

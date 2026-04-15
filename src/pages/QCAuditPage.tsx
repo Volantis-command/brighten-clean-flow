@@ -170,7 +170,7 @@ export default function QCAuditPage() {
         .from('jobs')
         .select('id, scheduled_date, scheduled_time, status')
         .eq('property_id', propertyId)
-        .eq('status', 'complete')
+        .eq('status', 'completed')
         .order('scheduled_date', { ascending: false })
         .limit(20);
       if (error) throw error;

@@ -24,7 +24,7 @@ export function StaffPerformanceSection({ staffId, staffName }: Props) {
         .gte('scheduled_date', cutoffStr);
 
       const allJobs = jobs || [];
-      const completed = allJobs.filter(j => j.status === 'complete');
+      const completed = allJobs.filter(j => j.status === 'completed');
       const cancelled = allJobs.filter(j => j.status === 'cancelled');
       const totalAssigned = allJobs.length;
 
@@ -149,7 +149,7 @@ export function useStaffPerformanceBadges(staffIds: string[]) {
       const { data: allJobs } = await supabase
         .from('jobs')
         .select('id, cleaner_1_id, cleaner_2_id, status')
-        .eq('status', 'complete')
+        .eq('status', 'completed')
         .or(staffIds.map(id => `cleaner_1_id.eq.${id},cleaner_2_id.eq.${id}`).join(','));
 
       const jobsByStaff: Record<string, string[]> = {};

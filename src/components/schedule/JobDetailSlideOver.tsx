@@ -18,7 +18,17 @@ interface JobDetailSlideOverProps {
   onClose: () => void;
 }
 
-const STATUSES = ['awaiting_quote', 'scheduled', 'in_progress', 'complete', 'flagged'];
+const STATUSES = [
+  'pending_cleaner',
+  'awaiting_cleaner_acceptance',
+  'awaiting_quote',
+  'confirmed',
+  'scheduled',
+  'in_progress',
+  'completed',
+  'flagged',
+  'cancelled',
+];
 
 export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDetailSlideOverProps) {
   const navigate = useNavigate();

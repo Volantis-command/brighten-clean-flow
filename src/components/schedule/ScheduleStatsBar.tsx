@@ -27,9 +27,9 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
 
   const totalJobs = periodJobs.length;
   const revenue = periodJobs
-    .filter(j => j.price_ex_gst && j.price_ex_gst > 0 && ['scheduled', 'in_progress', 'complete'].includes(j.status))
+    .filter(j => j.price_ex_gst && j.price_ex_gst > 0 && ['scheduled', 'confirmed', 'in_progress', 'completed'].includes(j.status))
     .reduce((s, j) => s + Number(j.price_ex_gst), 0);
-  const completed = periodJobs.filter(j => j.status === 'complete').length;
+  const completed = periodJobs.filter(j => j.status === 'completed').length;
   const inProgress = periodJobs.filter(j => j.status === 'in_progress').length;
 
   return (

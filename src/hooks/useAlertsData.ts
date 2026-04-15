@@ -36,7 +36,7 @@ export function useAlertsData() {
       const { data } = await supabase
         .from('jobs')
         .select('id, clock_off_at, scheduled_date, price_ex_gst, properties(property_name, address, client_name)')
-        .in('status', ['completed', 'complete'])
+        .eq('status', 'completed')
         .or('invoice_status.is.null,invoice_status.eq.not_raised')
         .lt('clock_off_at', cutoff)
         .order('clock_off_at', { ascending: true })
