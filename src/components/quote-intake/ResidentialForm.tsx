@@ -192,7 +192,25 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel sub="Select all that work">Preferred day(s) of week</QuestionLabel><DayChips days={DAYS} selected={preferredDays} onChange={setPreferredDays} /></div>
-            <div className="space-y-2"><QuestionLabel>Preferred time of day</QuestionLabel><OptionGrid options={['Morning', 'Midday', 'Afternoon', 'Flexible']} value={preferredTime} onChange={setPreferredTime} cols={2} /></div>
+            <div className="space-y-2">
+              <QuestionLabel sub="Pick a specific start time, or leave blank if you're flexible">Preferred start time</QuestionLabel>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  value={preferredTime === 'Flexible' || !/^\d{1,2}:\d{2}$/.test(preferredTime) ? '' : preferredTime}
+                  onChange={(e) => setPreferredTime(e.target.value || 'Flexible')}
+                  className={`${darkInputClass} w-40`}
+                  placeholder="e.g. 14:00"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPreferredTime('Flexible')}
+                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${preferredTime === 'Flexible' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  I'm flexible
+                </button>
+              </div>
+            </div>
           </div>
         </FormCard>
       </>

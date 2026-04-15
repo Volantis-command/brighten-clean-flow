@@ -19,8 +19,12 @@ export interface ScheduleJob {
   is_urgent: boolean | null;
   frequency: string | null;
   source: string | null;
+  // Fallback fields used by jobLabel() when properties.property_name is null
+  client_name: string | null;
+  property_address: string | null;
   properties: {
-    property_name: string;
+    property_name: string | null;
+    client_name: string | null;
     address: string | null;
     suburb: string | null;
     lat: number | null;
@@ -49,7 +53,7 @@ export function useScheduleJobs() {
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('*, properties(property_name, address, suburb, lat, lng)')
+        .select('*, properties(property_name, client_name, address, suburb, lat, lng)')
         .order('scheduled_date', { ascending: true })
         .order('scheduled_time', { ascending: true });
 

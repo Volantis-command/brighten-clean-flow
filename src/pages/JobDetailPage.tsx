@@ -406,7 +406,7 @@ export default function JobDetailPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-xl">{property?.property_name || (job as any).client_name || (job as any).property_address || 'Unknown Property'}</CardTitle>
+            <CardTitle className="text-xl">{property?.property_name || (job as any).client_name || property?.client_name || (job as any).property_address || 'Untitled job'}</CardTitle>
             <div className="flex items-center gap-2">
               <InvoiceBadge status={job.invoice_status} />
               <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.className}`}>

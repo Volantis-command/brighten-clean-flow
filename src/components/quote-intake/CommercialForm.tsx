@@ -161,7 +161,25 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel>Frequency needed</QuestionLabel><OptionGrid options={['Daily', 'Weekly', 'Fortnightly', 'Monthly', 'One-off']} value={frequency} onChange={setFrequency} cols={3} /></div>
-            <div className="space-y-2"><QuestionLabel>Preferred time of day</QuestionLabel><OptionGrid options={['Morning', 'Midday', 'Afternoon', 'After hours', 'Flexible']} value={preferredTime} onChange={setPreferredTime} cols={3} /></div>
+            <div className="space-y-2">
+              <QuestionLabel sub="Pick a specific start time, or leave blank if you're flexible">Preferred start time</QuestionLabel>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  value={preferredTime === 'Flexible' || !/^\d{1,2}:\d{2}$/.test(preferredTime) ? '' : preferredTime}
+                  onChange={(e) => setPreferredTime(e.target.value || 'Flexible')}
+                  className={`${darkInputClass} w-40`}
+                  placeholder="e.g. 18:00"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPreferredTime('Flexible')}
+                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${preferredTime === 'Flexible' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  Flexible
+                </button>
+              </div>
+            </div>
             <div className="space-y-2"><QuestionLabel>Parking available?</QuestionLabel><OptionGrid options={['Yes', 'No', 'Street']} value={parking} onChange={setParking} cols={3} /></div>
           </div>
         </FormCard>

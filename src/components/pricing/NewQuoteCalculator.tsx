@@ -559,6 +559,11 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
       const seq = ((count || 0) + 1).toString().padStart(3, '0');
       const reference = editQuote?.reference || `BQ-${year}-${seq}`;
 
+      // Only mint a new quote_token on INSERT — preserve the existing one on UPDATE
+      // so any SMS link already sent to the client stays valid.
+      const isUpdate = !!(editQuote?.id || savedQuoteId || (typeof leadFormData.quote_id === 'string' ? leadFormData.quote_id : null));
+      const preservedToken = editQuote?.quote_token;
+
       const payload: any = {
         client_name: form.clientName || null,
         client_phone: form.clientPhone || null,
@@ -590,7 +595,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         discount_gp_percent: form.discountGp ? parseFloat(form.discountGp) : null,
         discounted_price: result.discountedPrice,
         notes: form.notes || null,
-        quote_token: crypto.randomUUID(),
+        quote_token: isUpdate ? (preservedToken || undefined) : crypto.randomUUID(),
         status,
         reference,
         created_by: user?.id || null,

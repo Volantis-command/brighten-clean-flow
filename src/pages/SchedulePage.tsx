@@ -13,6 +13,7 @@ import { CalendarMonthView } from '@/components/schedule/CalendarMonthView';
 import { CalendarLegend } from '@/components/schedule/CalendarLegend';
 import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
+import { jobLabel } from '@/lib/jobLabel';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { RecurringSeriesPanel } from '@/components/schedule/RecurringSeriesPanel';
@@ -210,7 +211,7 @@ export default function SchedulePage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-foreground text-sm truncate">
-                      {(j.properties as any)?.client_name || (j.properties as any)?.property_name || 'Unknown'}
+                      {jobLabel(j)}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">{(j.properties as any)?.property_name}</p>
                   </div>
@@ -370,7 +371,7 @@ export default function SchedulePage() {
                       </p>
                       <ScheduleJobCard
                         id={job.id}
-                        propertyName={job.properties?.property_name || 'Unknown'}
+                        propertyName={jobLabel(job)}
                         address={[job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ') || null}
                         scheduledTime={job.scheduled_time?.slice(0, 5) || null}
                         estimatedDuration={job.estimated_duration ? job.estimated_duration / 60 : null}
