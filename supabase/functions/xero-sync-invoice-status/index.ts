@@ -43,10 +43,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Get all jobs with a Xero invoice that aren't paid yet
+    // Get all jobs with a Xero invoice that aren't paid yet (include property
+    // name + invoice number for the paid notification body).
     const { data: jobs, error: jobsErr } = await supabase
       .from('jobs')
-      .select('id, xero_invoice_id, invoice_status')
+      .select('id, xero_invoice_id, xero_invoice_number, invoice_status, invoice_amount, properties(property_name)')
       .not('xero_invoice_id', 'is', null)
       .neq('invoice_status', 'paid');
 
@@ -56,6 +57,13 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Pre-load admin user_ids once (avoids one query per status transition)
+    const { data: adminRows } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
+    const adminIds: string[] = (adminRows || []).map((r: any) => r.user_id);
 
     const { access_token, tenant_id } = await getValidToken(supabase);
 
@@ -92,8 +100,31 @@ Deno.serve(async (req) => {
         const newStatus = statusMap[xeroStatus] || xeroStatus;
 
         if (newStatus !== job.invoice_status) {
-          await supabase.from('jobs').update({ invoice_status: newStatus }).eq('id', job.id);
+          const update: Record<string, any> = { invoice_status: newStatus };
+          if (newStatus === 'paid') update.invoice_paid_at = new Date().toISOString();
+          if (newStatus === 'sent' && !job.invoice_status) update.invoice_sent_at = new Date().toISOString();
+
+          await supabase.from('jobs').update(update).eq('id', job.id);
           synced++;
+
+          // Notify admins when an invoice flips to paid
+          if (newStatus === 'paid' && adminIds.length > 0) {
+            const propName = (job as any).properties?.property_name || 'a property';
+            const amountStr = job.invoice_amount ? ` ($${Number(job.invoice_amount).toFixed(2)})` : '';
+            const number = job.xero_invoice_number ? ` #${job.xero_invoice_number}` : '';
+            const rows = adminIds.map((uid) => ({
+              user_id: uid,
+              title: 'Invoice Paid 💰',
+              message: `Invoice${number} for ${propName}${amountStr} has been marked paid in Xero.`,
+              type: 'invoice_paid',
+              tier: 'info',
+              event_type: 'invoice_paid',
+              metadata: { job_id: job.id, xero_invoice_id: job.xero_invoice_id },
+              link: `/jobs/${job.id}`,
+              read: false,
+            }));
+            await supabase.from('notifications').insert(rows);
+          }
         }
       } catch (err: any) {
         errors.push(`Job ${job.id}: ${err.message}`);

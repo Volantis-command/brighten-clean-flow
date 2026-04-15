@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to authorise invoice: ${errText}`);
     }
 
-    // 2. Email the invoice
-    await fetch(`https://api.xero.com/api.xro/2.0/Invoices/${job.xero_invoice_id}/Email`, {
+    // 2. Email the invoice — and check the response. Previously this was
+    //    fire-and-forget which silently set status='sent' even on failure.
+    const emailRes = await fetch(`https://api.xero.com/api.xro/2.0/Invoices/${job.xero_invoice_id}/Email`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${access_token}`,
@@ -83,13 +84,26 @@ Deno.serve(async (req) => {
       },
     });
 
-    // 3. Update job status
+    if (!emailRes.ok) {
+      const errText = await emailRes.text();
+      // Xero accepted the AUTHORISED step but the email failed (no email on
+      // contact, Xero email service issue, etc.). Mark the invoice as
+      // 'authorised' (still in Xero, just not emailed) so admin can retry.
+      await supabase.from('jobs').update({
+        invoice_status: 'authorised',
+        invoice_raised_at: new Date().toISOString(),
+      }).eq('id', job_id);
+      throw new Error(`Invoice authorised but email failed: ${errText}`);
+    }
+
+    // 3. Both steps succeeded — mark sent
     await supabase.from('jobs').update({
       invoice_status: 'sent',
       invoice_sent_at: new Date().toISOString(),
+      invoice_raised_at: new Date().toISOString(),
     }).eq('id', job_id);
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, status: 'sent' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
