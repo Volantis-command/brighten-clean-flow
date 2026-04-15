@@ -9,6 +9,7 @@ import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import CleanerProfileChip from '@/components/client-portal/CleanerProfileChip';
+import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 
 export default function ClientPortalPropertyPage() {
   const { id: propertyId } = useParams<{ id: string }>();
@@ -205,6 +206,11 @@ export default function ClientPortalPropertyPage() {
             <IssuesList issues={issues as any[]} />
           </Section>
         )}
+
+        {/* Invoices for this property */}
+        <Section title="Invoices">
+          <PropertyInvoicesTab propertyId={propertyId!} showAdminTools={false} />
+        </Section>
 
         {/* Clean History */}
         <Section title="Clean History">
