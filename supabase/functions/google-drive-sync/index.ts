@@ -242,6 +242,8 @@ async function uploadFileToDrive(
 // ── HTML builders ──
 
 function buildJobFormHtml(job: any, property: any, formData: any, cleanerNames: Record<string, string>): string {
+  property = property || {};
+  formData = formData || {};
   const c1 = cleanerNames[job.cleaner_1_id] || "Unassigned";
   const c2 = cleanerNames[job.cleaner_2_id] || "None";
 
