@@ -363,6 +363,7 @@ function buildJobFormHtml(job: any, property: any, formData: any, cleanerNames: 
 }
 
 function buildQCAuditHtml(audit: any, property: any, inspectorName: string, cleanerName: string): string {
+  property = property || {};
   const scores = audit.scores || {};
   let html = `<h1>Brightly QC Audit — QC-003</h1>
 <h2>${property.property_name}</h2>
@@ -403,6 +404,7 @@ function buildQCAuditHtml(audit: any, property: any, inspectorName: string, clea
 }
 
 function buildPropertyProfileHtml(property: any): string {
+  property = property || {};
   return `<h1>Property Profile</h1>
 <h2>${property.property_name}</h2>
 <table border="1" cellpadding="6" cellspacing="0">
