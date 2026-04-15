@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculate, getHourlyRateIncGst, type BedType, type CalcInput, type ConsumableSelection } from '@/lib/pricingCalculator';
+import { getAppBaseUrl } from '@/lib/appUrl';
 import { QUOTE_SERVICE_TYPES, SERVICE_TYPES, DEFAULT_HOURS, CONSUMABLE_KITS, PHOTO_REPORTING_FEE, normaliseLegacyServiceType, calculateDefaultHours } from '@/lib/serviceTypes';
 import PriceLivePanel from './PriceLivePanel';
 import { Button } from '@/components/ui/button';
@@ -787,8 +788,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         .maybeSingle();
 
       const quoteToken = savedQuote?.quote_token;
+      // /quote-view/<token> is the accept/decline page (QuoteViewPage).
+      // /quote/<token> goes to the intake form (QuoteIntakePage) which is wrong here.
+      // getAppBaseUrl() ensures the link points to app.brightly.cleaning even when
+      // the SMS is triggered from a Lovable preview / staging host.
       const quoteUrl = quoteToken
-        ? `${window.location.origin}/quote/${quoteToken}`
+        ? `${getAppBaseUrl()}/quote-view/${quoteToken}`
         : null;
 
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;

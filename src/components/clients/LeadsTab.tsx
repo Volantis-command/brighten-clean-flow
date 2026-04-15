@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending_form: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
@@ -168,7 +169,10 @@ export default function LeadsTab() {
                       <Button variant="ghost" size="sm" title="Copy form link"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const url = `${window.location.origin}/quote/${lead.token}`;
+                          // /quote/<token> is the intake form — correct for a "form link"
+                          // (the lead hasn't filled it in yet). Use getAppBaseUrl so the
+                          // copied URL points at app.brightly.cleaning, never a preview.
+                          const url = `${getAppBaseUrl()}/quote/${lead.token}`;
                           navigator.clipboard.writeText(url);
                           toast.success('Quote form link copied');
                         }}>

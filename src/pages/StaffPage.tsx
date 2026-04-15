@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAppBaseUrl } from '@/lib/appUrl';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
 import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
 import { StaffPaySection } from '@/components/staff/StaffPaySection';
@@ -232,7 +233,8 @@ export default function StaffPage() {
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin,
+        // Password reset email — must land on the published app, not a preview.
+        redirectTo: getAppBaseUrl(),
       });
       if (error) throw error;
     },
