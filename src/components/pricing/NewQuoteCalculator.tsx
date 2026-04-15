@@ -241,6 +241,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         preferredDays: editQuote.preferred_days || [],
         preferredTime: editQuote.preferred_time || '',
       });
+      // Mark hours as manually set so the auto-recalc effect below doesn't
+      // overwrite the saved value with calculateDefaultHours(). This was the
+      // root cause of the "save doesn't stick" bug: saved hours loaded, then
+      // the room-count-driven auto-recalc immediately reset them to default,
+      // and the price followed.
+      setHoursManuallySet(true);
     }
   }, [editQuote]);
 
@@ -343,6 +349,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
               preferredDays: savedQuote.preferred_days || [],
               preferredTime: savedQuote.preferred_time || '',
             });
+            // Preserve saved hours — see the editQuote branch above for why.
+            setHoursManuallySet(true);
             return;
           }
         }
@@ -463,10 +471,12 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
     setForm((p) => ({ ...p, hours: autoHours }));
   }, [form.cleanType, form.bedrooms, form.bathrooms, hoursManuallySet]);
 
-  // Reset manual flag when clean type changes
-  useEffect(() => {
-    setHoursManuallySet(false);
-  }, [form.cleanType]);
+  // Previously there was a useEffect that reset hoursManuallySet to false on
+  // every form.cleanType change. That fired when loading a saved quote
+  // (cleanType goes from '' -> saved value) and immediately clobbered the
+  // saved hours via the auto-calc effect above. Removed. If a user changes
+  // clean type on a NEW quote and wants hours to auto-recalc, they can
+  // clear hours (NumField resets manual flag on edit).
 
   useEffect(() => {
     setForm((p) => {
