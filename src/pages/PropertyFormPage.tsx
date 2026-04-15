@@ -335,7 +335,7 @@ export default function PropertyFormPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(isEdit ? `/properties/${id}` : '/properties')} className="gap-1">
+        <Button variant="ghost" size="sm" onClick={() => navigate(isEdit ? `/properties/${id}` : '/clients')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
       </div>

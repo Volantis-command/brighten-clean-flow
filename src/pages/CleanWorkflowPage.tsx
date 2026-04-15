@@ -11,7 +11,6 @@ import { seedDefaultChecklist } from '@/components/clean-workflow/defaultCheckli
 import PreClockOnView from '@/components/clean-workflow/PreClockOnView';
 import PreJobAssessmentModal from '@/components/clean-workflow/PreJobAssessmentModal';
 import ActiveJobView from '@/components/clean-workflow/ActiveJobView';
-import CompletionStep from '@/components/clean-workflow/CompletionStep';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type View = 'pre_clock_on' | 'assessment' | 'active' | 'completion' | 'done';
@@ -175,7 +174,9 @@ export default function CleanWorkflowPage() {
   const property = job.properties as any;
   const view = resolveView(job);
 
-  // Completion route handled by CompletionStep
+  // 'done' state — show the read-only PreClockOnView. The completion form
+  // itself lives at /clean/:jobId/complete (CompletionFormPage), reached
+  // from ActiveJobView's "Complete" button.
   if (view === 'done') {
     return (
       <PreClockOnView

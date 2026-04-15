@@ -184,21 +184,17 @@ function AppRoutes() {
       <Route path="/client/:token" element={<MagicLinkPortalPage />} />
       <Route path="/client/:token/property/:id" element={<MagicLinkPropertyPage />} />
       <Route path="/feedback/:token" element={<FeedbackPage />} />
-      <Route path="/onboard/:token" element={<Navigate to="/quote" replace />} />
-      <Route path="/onboard" element={<Navigate to="/quote" replace />} />
       <Route path="/quote/:token" element={<QuoteIntakePage />} />
       <Route path="/quote/:token/accept" element={<QuoteAcceptRedirect />} />
       <Route path="/quote-view/:token" element={<QuoteViewPage />} />
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
-      <Route path="/staff-onboard/:token" element={<StaffOnboardingPage />} />
       <Route path="/client/:token/schedule" element={<ClientSchedulePage />} />
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
       <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
       <Route path="/report/:token" element={<CleanReportPage />} />
-      {/* /enquire removed — enquiries go through pipeline */}
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
-      <Route path="/residential-quote" element={<Navigate to="/quote" replace />} />
+      {/* /airbnb redirect kept — GuestReadyReportPage:144 still navigates here for "Book again" */}
       <Route path="/airbnb" element={<Navigate to="/quote" replace />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
@@ -218,11 +214,9 @@ function AppRoutes() {
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/map" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><MapPage /></ProtectedRoute>} />
         <Route path="/schedule/new" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><AddJobPage /></ProtectedRoute>} />
-        <Route path="/properties" element={<Navigate to="/clients" replace />} />
         <Route path="/properties/new" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
         <Route path="/properties/:id" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><PropertyProfilePage /></ProtectedRoute>} />
         <Route path="/properties/:id/edit" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
-        <Route path="/forms" element={<Navigate to="/my-jobs" replace />} />
         <Route path="/forms/:formId" element={<FormDetailPage />} />
         <Route path="/jobs/:jobId" element={<JobDetailPage />} />
         <Route path="/jobs/:jobId/edit" element={<ProtectedRoute allowedRoles={['admin']}><EditJobPage /></ProtectedRoute>} />
@@ -235,7 +229,6 @@ function AppRoutes() {
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/requests" element={<ProtectedRoute allowedRoles={['admin']}><BookingRequestsPage /></ProtectedRoute>} />
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
-        <Route path="/notifications" element={<Navigate to="/actions" replace />} />
         <Route path="/bookings/suggestions" element={<ProtectedRoute allowedRoles={['admin']}><BookingSuggestionsPage /></ProtectedRoute>} />
         <Route path="/quotes/followups-pending" element={<ProtectedRoute allowedRoles={['admin']}><QuoteFollowupsPage /></ProtectedRoute>} />
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
