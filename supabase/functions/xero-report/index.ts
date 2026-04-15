@@ -9,7 +9,7 @@ const corsHeaders = {
 const XERO_TENANT_ID = "7e3919fe-824b-4afa-84ae-d7b7c70b61d2";
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_API_BASE = "https://api.xero.com/api.xro/2.0";
-const REPORT_ENDPOINTS = {
+const REPORT_ENDPOINTS: Record<string, string> = {
   profit_loss: "Reports/ProfitAndLoss",
   balance_sheet: "Reports/BalanceSheet",
   trial_balance: "Reports/TrialBalance",
@@ -30,7 +30,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid report_type. Options: profit_loss, balance_sheet, trial_balance" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: tokenData, error: tokenError } = await supabase.from("xero_tokens").select("*").order("created_at", { ascending: false }).limit(1).single();
     if (tokenError || !tokenData) {
       return new Response(JSON.stringify({ error: "No Xero token found", detail: tokenError?.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -69,6 +69,6 @@ serve(async (req) => {
     }
     return new Response(JSON.stringify(xeroData), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Internal error", detail: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Internal error", detail: (err as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

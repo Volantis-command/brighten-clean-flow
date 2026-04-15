@@ -24,7 +24,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { getAppBaseUrl } from '@/lib/appUrl';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
 

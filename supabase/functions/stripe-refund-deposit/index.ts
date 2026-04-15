@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error('stripe-refund-deposit error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

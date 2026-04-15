@@ -86,7 +86,7 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
-    strToUint8(unsignedJwt)
+    strToUint8(unsignedJwt) as unknown as Uint8Array
   );
   const signatureB64 = base64url(new Uint8Array(signature));
   const jwt = `${unsignedJwt}.${signatureB64}`;
@@ -242,6 +242,8 @@ async function uploadFileToDrive(
 // ── HTML builders ──
 
 function buildJobFormHtml(job: any, property: any, formData: any, cleanerNames: Record<string, string>): string {
+  property = property || {};
+  formData = formData || {};
   const c1 = cleanerNames[job.cleaner_1_id] || "Unassigned";
   const c2 = cleanerNames[job.cleaner_2_id] || "None";
 
@@ -361,6 +363,7 @@ function buildJobFormHtml(job: any, property: any, formData: any, cleanerNames: 
 }
 
 function buildQCAuditHtml(audit: any, property: any, inspectorName: string, cleanerName: string): string {
+  property = property || {};
   const scores = audit.scores || {};
   let html = `<h1>Brightly QC Audit — QC-003</h1>
 <h2>${property.property_name}</h2>
@@ -401,6 +404,7 @@ function buildQCAuditHtml(audit: any, property: any, inspectorName: string, clea
 }
 
 function buildPropertyProfileHtml(property: any): string {
+  property = property || {};
   return `<h1>Property Profile</h1>
 <h2>${property.property_name}</h2>
 <table border="1" cellpadding="6" cellspacing="0">
