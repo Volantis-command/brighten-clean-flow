@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewQuoteCalculator from '@/components/pricing/NewQuoteCalculator';
 import SavedQuotesList from '@/components/pricing/SavedQuotesList';
@@ -11,11 +11,20 @@ import { supabase } from '@/integrations/supabase/client';
 export default function QuotingPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const quoteRequestId = (location.state as any)?.quoteRequestId || searchParams.get('lead');
+  const stateLeadId = (location.state as any)?.quoteRequestId;
+  const quoteRequestId = stateLeadId || searchParams.get('lead');
   const quoteId = searchParams.get('quote');
   const [tab, setTab] = useState('new');
   const [editQuote, setEditQuote] = useState<any>(null);
+
+  // If lead ID came via location.state, sync it to the URL so NewQuoteCalculator can read it
+  useEffect(() => {
+    if (stateLeadId && !searchParams.get('lead')) {
+      navigate(`/quoting?lead=${stateLeadId}`, { replace: true });
+    }
+  }, [stateLeadId, searchParams, navigate]);
 
   // Auto-open a specific quote from ?quote=ID
   useEffect(() => {
@@ -37,26 +46,13 @@ export default function QuotingPage() {
   useEffect(() => {
     if (!quoteRequestId) return;
     (async () => {
-      // Try quote_requests first
+      // Try quote_requests first — let NewQuoteCalculator handle full form_data parsing via ?lead= param
       const { data: qrData } = await supabase
         .from('quote_requests')
-        .select('*')
+        .select('id')
         .eq('id', quoteRequestId)
-        .single();
+        .maybeSingle();
       if (qrData) {
-        setEditQuote({
-          client_name: [qrData.first_name, qrData.last_name].filter(Boolean).join(' '),
-          client_phone: qrData.phone || '',
-          client_email: qrData.email || '',
-          property_address: qrData.address || '',
-          bedrooms: qrData.bedrooms || 1,
-          bathrooms: qrData.bathrooms || 1,
-          clean_type: qrData.clean_type || '',
-          notes: qrData.extra_notes || '',
-          _toilets: qrData.toilets,
-          _preferred_date: qrData.preferred_date,
-          _quote_request_id: qrData.id,
-        });
         setTab('new');
         return;
       }
