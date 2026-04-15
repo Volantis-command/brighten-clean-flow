@@ -37,26 +37,13 @@ export default function QuotingPage() {
   useEffect(() => {
     if (!quoteRequestId) return;
     (async () => {
-      // Try quote_requests first
+      // Try quote_requests first — let NewQuoteCalculator handle full form_data parsing via ?lead= param
       const { data: qrData } = await supabase
         .from('quote_requests')
-        .select('*')
+        .select('id')
         .eq('id', quoteRequestId)
-        .single();
+        .maybeSingle();
       if (qrData) {
-        setEditQuote({
-          client_name: [qrData.first_name, qrData.last_name].filter(Boolean).join(' '),
-          client_phone: qrData.phone || '',
-          client_email: qrData.email || '',
-          property_address: qrData.address || '',
-          bedrooms: qrData.bedrooms || 1,
-          bathrooms: qrData.bathrooms || 1,
-          clean_type: qrData.clean_type || '',
-          notes: qrData.extra_notes || '',
-          _toilets: qrData.toilets,
-          _preferred_date: qrData.preferred_date,
-          _quote_request_id: qrData.id,
-        });
         setTab('new');
         return;
       }
