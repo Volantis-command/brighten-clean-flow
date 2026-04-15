@@ -11,11 +11,20 @@ import { supabase } from '@/integrations/supabase/client';
 export default function QuotingPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const quoteRequestId = (location.state as any)?.quoteRequestId || searchParams.get('lead');
+  const stateLeadId = (location.state as any)?.quoteRequestId;
+  const quoteRequestId = stateLeadId || searchParams.get('lead');
   const quoteId = searchParams.get('quote');
   const [tab, setTab] = useState('new');
   const [editQuote, setEditQuote] = useState<any>(null);
+
+  // If lead ID came via location.state, sync it to the URL so NewQuoteCalculator can read it
+  useEffect(() => {
+    if (stateLeadId && !searchParams.get('lead')) {
+      navigate(`/quoting?lead=${stateLeadId}`, { replace: true });
+    }
+  }, [stateLeadId, searchParams, navigate]);
 
   // Auto-open a specific quote from ?quote=ID
   useEffect(() => {
