@@ -2,10 +2,11 @@ import { cn } from '@/lib/utils';
 
 const FILTERS = [
   { value: 'all', label: 'All' },
-  { value: 'pending_approval', label: 'Pending' },
-  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'pending_cleaner', label: 'Needs Cleaner' },
+  { value: 'awaiting_cleaner_acceptance', label: 'Awaiting Cleaner' },
+  { value: 'confirmed', label: 'Confirmed' },
   { value: 'in_progress', label: 'In Progress' },
-  { value: 'complete', label: 'Completed' },
+  { value: 'completed', label: 'Completed' },
 ] as const;
 
 interface StatusFilterProps {

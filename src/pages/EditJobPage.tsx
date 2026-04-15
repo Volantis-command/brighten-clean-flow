@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
 import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
+import { syncJobAssignment } from '@/lib/jobAssignment';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -140,8 +141,20 @@ export default function EditJobPage() {
       status,
     };
 
+    // Detect changes that invalidate prior cleaner acceptance (re-acceptance required).
+    // Rule (decision 1B): re-accept on date, time, or cleaner change — not for cosmetic edits.
+    const dateChanged = format(date, 'yyyy-MM-dd') !== job.scheduled_date;
+    const timeChanged = time !== (job.scheduled_time?.slice(0, 5) || '');
+    const cleaner1Changed = (cleaner1 || null) !== (job.cleaner_1_id || null);
+    const cleaner2Changed = (cleaner2 || null) !== (job.cleaner_2_id || null);
+    const assignmentChanged = cleaner1Changed || cleaner2Changed;
+    const scheduleChanged = dateChanged || timeChanged;
+    const shouldReaccept = job.status === 'confirmed' && (scheduleChanged || assignmentChanged);
+
     if (editScope === 'future' && seriesId) {
-      const { error } = await supabase.from('jobs')
+      // Future recurring edit: touch all yellow/green scheduled future jobs in the series.
+      // (Skip in-progress, completed, cancelled, flagged — those are terminal/in-flight.)
+      const { data: updatedFuture, error } = await supabase.from('jobs')
         .update({
           scheduled_time: time,
           estimated_duration: parseInt(duration),
@@ -151,7 +164,8 @@ export default function EditJobPage() {
         } as any)
         .eq('series_id', seriesId)
         .gte('scheduled_date', format(date, 'yyyy-MM-dd'))
-        .eq('status', 'scheduled');
+        .in('status', ['scheduled', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'confirmed'])
+        .select('id');
 
       if (error) { toast.error(error.message); setSaving(false); return; }
 
@@ -164,15 +178,20 @@ export default function EditJobPage() {
         end_date: recurring.endType === 'until' && recurring.endDate ? format(recurring.endDate, 'yyyy-MM-dd') : null,
       } as any).eq('id', seriesId);
 
+      // Re-sync each touched child job (forces re-acceptance).
+      // SMS only on the first one to avoid flooding — cleaners will see the set in /my-jobs.
+      const touchedIds = (updatedFuture || []).map((r: any) => r.id);
+      for (let i = 0; i < touchedIds.length; i++) {
+        await syncJobAssignment(touchedIds[i], { sendSms: i === 0, forceReaccept: true });
+      }
+
       toast.success('All future jobs updated!');
     } else {
       const { error } = await supabase.from('jobs').update(updatePayload).eq('id', jobId!);
       if (error) { toast.error(error.message); setSaving(false); return; }
 
       // Send update SMS to client if date/time changed
-      const dateChanged = format(date, 'yyyy-MM-dd') !== job.scheduled_date;
-      const timeChanged = time !== (job.scheduled_time?.slice(0, 5) || '');
-      if (dateChanged || timeChanged) {
+      if (scheduleChanged) {
         try {
           const res = await supabase.functions.invoke('send-client-booking-sms', {
             body: { job_id: jobId, is_update: true },
@@ -186,12 +205,16 @@ export default function EditJobPage() {
         }
       }
 
-      // Send SMS to newly assigned cleaner (if cleaner changed)
-      const cleaner1Changed = cleaner1 !== (job.cleaner_1_id || '');
-      if (cleaner1Changed && cleaner1) {
+      // Re-sync the cleaner acceptance state machine.
+      // - If assignment changed: new cleaners need to accept; old ones are removed.
+      // - If schedule changed on a confirmed job: existing cleaners must re-accept.
+      // - Otherwise (cosmetic edit): no-op sync won't change anything.
+      if (assignmentChanged || shouldReaccept) {
         try {
-          await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
-        } catch { /* non-blocking */ }
+          await syncJobAssignment(jobId!, { sendSms: true, forceReaccept: shouldReaccept });
+        } catch (err: any) {
+          toast.error(`⚠️ Job saved but cleaner notification failed: ${err.message}`);
+        }
       }
 
       toast.success('Job updated!');
@@ -278,10 +301,18 @@ export default function EditJobPage() {
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="complete">Complete</SelectItem>
-                <SelectItem value="flagged">Flagged</SelectItem>
+                {/* Yellow (state machine) — shown for visibility but set automatically. */}
+                <SelectItem value="pending_cleaner">🟡 Needs Cleaner</SelectItem>
+                <SelectItem value="awaiting_cleaner_acceptance">🟡 Awaiting Cleaner</SelectItem>
+                {/* Green */}
+                <SelectItem value="confirmed">🟢 Confirmed</SelectItem>
+                {/* Legacy green — only on pre-fix jobs */}
+                <SelectItem value="scheduled">🟢 Scheduled (legacy)</SelectItem>
+                {/* In-flight / terminal */}
+                <SelectItem value="in_progress">🔵 In Progress</SelectItem>
+                <SelectItem value="completed">⚪ Completed</SelectItem>
+                <SelectItem value="flagged">🔴 Flagged</SelectItem>
+                <SelectItem value="cancelled">🔴 Cancelled</SelectItem>
               </SelectContent>
             </Select>
           </FormField>

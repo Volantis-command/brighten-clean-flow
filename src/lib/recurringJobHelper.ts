@@ -1,5 +1,6 @@
 import { addWeeks, addMonths, format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 export type RecurringFrequency = 'one-off' | 'weekly' | 'fortnightly' | 'monthly';
 
@@ -84,7 +85,8 @@ export async function createRecurringJobSeries(params: RecurringJobParams): Prom
     recurring_parent_id: null,
   } as any).eq('id', parentJobId);
 
-  // Generate child jobs
+  // Generate child jobs — each needs its own cleaner acceptance (see jobAssignment.ts)
+  const insertedChildIds: string[] = [];
   if (futureDates.length > 0) {
     const childJobs = futureDates.map(d => ({
       property_id: propertyId || null,
@@ -93,7 +95,7 @@ export async function createRecurringJobSeries(params: RecurringJobParams): Prom
       estimated_duration: estimatedDuration || null,
       cleaner_1_id: cleanerId || null,
       notes: notes || null,
-      status: 'scheduled',
+      status: initialJobStatusForAssignment(cleanerId || null, null),
       price_ex_gst: priceExGst || null,
       price_inc_gst: priceIncGst || null,
       series_id: seriesId,
@@ -103,8 +105,18 @@ export async function createRecurringJobSeries(params: RecurringJobParams): Prom
     }));
 
     for (let i = 0; i < childJobs.length; i += 50) {
-      await supabase.from('jobs').insert(childJobs.slice(i, i + 50) as any);
+      const { data: inserted } = await supabase
+        .from('jobs')
+        .insert(childJobs.slice(i, i + 50) as any)
+        .select('id');
+      (inserted || []).forEach((r: any) => insertedChildIds.push(r.id));
     }
+  }
+
+  // Sync acceptance rows for each child; suppress SMS to avoid spamming cleaners.
+  // The parent-job SMS already notifies them, and they'll see the full set in /my-jobs.
+  for (const childId of insertedChildIds) {
+    await syncJobAssignment(childId, { sendSms: false });
   }
 
   return { seriesId, jobCount: futureDates.length };

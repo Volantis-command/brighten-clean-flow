@@ -116,7 +116,9 @@ Deno.serve(async (req: Request) => {
     const scheduledTime = preferred_time && timeRegex.test(preferred_time) ? preferred_time : null;
 
     // ── Insert job ──
-    const jobStatus = "scheduled";
+    // Quote-accepted jobs land in 'pending_cleaner' (yellow) until an admin assigns a cleaner.
+    // See src/lib/jobAssignment.ts for the full state machine.
+    const jobStatus = "pending_cleaner";
     const { data: job, error: jobErr } = await adminClient
       .from("jobs")
       .insert({
@@ -178,7 +180,9 @@ Deno.serve(async (req: Request) => {
             property_id: propertyId,
             scheduled_date: d,
             scheduled_time: scheduledTime,
-            status: "scheduled",
+            // Recurring children also land in 'pending_cleaner' — admin must assign a cleaner
+            // to each occurrence (or in bulk) before it can turn green.
+            status: "pending_cleaner",
             price_ex_gst: priceExGst,
             price_inc_gst: priceIncGst,
             series_id: seriesId,

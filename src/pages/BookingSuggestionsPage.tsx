@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCleanersList } from '@/hooks/useCleanersList';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 const SOURCE_ICONS: Record<string, string> = {
   guesty: '🏠',
@@ -48,21 +49,27 @@ export default function BookingSuggestionsPage() {
     setSubmitting(true);
     try {
       const prop = approveModal.properties as any;
+      const finalCleanerId = cleanerId || prop?.default_cleaner_id || null;
       const { data: job, error: jobErr } = await supabase.from('jobs').insert({
         property_id: approveModal.property_id,
         scheduled_date: approveModal.suggested_clean_date,
         scheduled_time: cleanTime,
-        cleaner_1_id: cleanerId || prop?.default_cleaner_id || null,
-        status: 'scheduled',
+        cleaner_1_id: finalCleanerId,
+        status: initialJobStatusForAssignment(finalCleanerId, null),
         price_ex_gst: prop?.price_turnover || null,
         source: approveModal.source,
         notes: approveModal.guest_name ? `Guest: ${approveModal.guest_name}` : null,
-      }).select('id').single();
+      } as any).select('id').single();
       if (jobErr) throw jobErr;
 
       await (supabase.from('booking_suggestions' as any) as any)
         .update({ status: 'converted', created_job_id: job.id, decided_at: new Date().toISOString(), decided_by: user.id })
         .eq('id', approveModal.id);
+
+      // Sync acceptance + notify cleaner
+      if (job?.id && finalCleanerId) {
+        await syncJobAssignment(job.id, { sendSms: true });
+      }
 
       toast.success('Booking approved — job created');
       queryClient.invalidateQueries({ queryKey: ['booking-suggestions'] });

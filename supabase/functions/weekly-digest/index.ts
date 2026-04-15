@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     const { data: completedJobs } = await supabase
       .from('jobs')
       .select('id, price_ex_gst')
-      .in('status', ['completed', 'complete'])
+      .eq('status', 'completed')
       .gte('clock_off_at', lastMonISO)
       .lte('clock_off_at', lastSunISO)
 
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const { count: uninvoicedCount } = await supabase
       .from('jobs')
       .select('id', { count: 'exact', head: true })
-      .in('status', ['completed', 'complete'])
+      .eq('status', 'completed')
       .or('invoice_status.eq.not_raised,invoice_status.is.null')
 
     // Upcoming this week

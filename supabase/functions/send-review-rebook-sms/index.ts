@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       let query = supabase
         .from('jobs')
         .select('id, scheduled_date, property_id, clock_off, audit_rating, cleaner_1_id, cleaner_2_id, properties(property_name, client_name)')
-        .in('status', ['complete', 'completed'])
+        .eq('status', 'completed')
         .is('feedback_rating_sms_sent_at', null)
         .not('clock_off', 'is', null);
 
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       let rebookQuery = supabase
         .from('jobs')
         .select('id, scheduled_date, property_id, series_id, properties(property_name, client_name)')
-        .in('status', ['complete', 'completed'])
+        .eq('status', 'completed')
         .is('rebook_sms_sent_at', null)
         .is('series_id', null);
 

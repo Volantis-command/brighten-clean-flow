@@ -20,6 +20,7 @@ import { syncToDrive } from '@/lib/driveSync';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
 import { generateRecurringDates } from '@/lib/recurringJobs';
 import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
+import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -187,7 +188,8 @@ export default function AddJobPage() {
       cleaner_1_id: cleaner1,
       cleaner_2_id: cleaner2 || null,
       notes: combinedNotes || null,
-      status: 'scheduled',
+      // Born in 'awaiting_cleaner_acceptance' (yellow) — cleaners must accept before it goes green.
+      status: initialJobStatusForAssignment(cleaner1, cleaner2 || null),
       price_ex_gst: priceExGst,
       price_inc_gst: priceIncGst,
       series_id: seriesId,
@@ -210,13 +212,25 @@ export default function AddJobPage() {
           cleaner_1_id: cleaner1,
           cleaner_2_id: cleaner2 || null,
           notes: combinedNotes || null,
-          status: 'scheduled',
+          // Each recurring child needs its own acceptance flow; born yellow.
+          status: initialJobStatusForAssignment(cleaner1, cleaner2 || null),
           price_ex_gst: priceExGst,
           price_inc_gst: priceIncGst,
           series_id: seriesId,
         }));
+        const insertedChildIds: string[] = [];
         for (let i = 0; i < futureJobs.length; i += 50) {
-          await supabase.from('jobs').insert(futureJobs.slice(i, i + 50) as any);
+          const { data: chunkInserted } = await supabase
+            .from('jobs')
+            .insert(futureJobs.slice(i, i + 50) as any)
+            .select('id');
+          (chunkInserted || []).forEach((r: any) => insertedChildIds.push(r.id));
+        }
+        // Sync acceptance rows + notifications for each recurring child job.
+        // SMS is skipped for recurring children to avoid spamming — only the parent gets an SMS;
+        // cleaners will see the whole recurring offer grouped in /my-jobs.
+        for (const childId of insertedChildIds) {
+          await syncJobAssignment(childId, { sendSms: false });
         }
       }
     }
@@ -231,32 +245,17 @@ export default function AddJobPage() {
       });
     }
 
-    const propName = selectedProperty?.property_name || 'a property';
-    const notifMessage = `New job assigned: ${propName} on ${format(date, 'MMM d, yyyy')} at ${time}`;
-    // Notify assigned cleaners directly (not via createAlert since target is specific users)
-    for (const uid of [cleaner1, cleaner2].filter(Boolean)) {
-      await (await import('@/lib/alerts')).createAlertForUser(uid!, {
-        event_type: 'booking_confirmed',
-        title: 'Job Assigned',
-        body: notifMessage,
-      });
-    }
-
     if (jobData?.id) {
       syncToDrive("sync_job_folder", { job_id: jobData.id });
     }
 
+    // Single point of truth: syncJobAssignment handles job_acceptances rows,
+    // in-app alerts to cleaners, and the cleaner-assignment SMS.
     if (jobData?.id) {
       try {
-        const res = await supabase.functions.invoke('send-job-sms', {
-          body: { job_id: jobData.id },
-        });
-        const data = res.data as any;
-        if (data?.error) {
-          toast.error(`⚠️ Job saved but SMS failed: ${data.error}`);
-        }
+        await syncJobAssignment(jobData.id, { sendSms: true });
       } catch (err: any) {
-        toast.error(`⚠️ Job saved but SMS to cleaner failed: ${err.message}`);
+        toast.error(`⚠️ Job saved but cleaner notification failed: ${err.message}`);
       }
     }
 

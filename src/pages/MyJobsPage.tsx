@@ -1,10 +1,23 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { MapPin, Clock, ChevronRight, Loader2, Users } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { MapPin, Clock, ChevronRight, Loader2, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { acceptJob, declineJob } from '@/lib/jobAssignment';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'Upcoming', className: 'bg-muted text-muted-foreground border-0' },
@@ -17,8 +30,41 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 export default function MyJobsPage() {
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const today = format(new Date(), 'yyyy-MM-dd');
 
+  const [actionJob, setActionJob] = useState<any | null>(null);
+  const [actionType, setActionType] = useState<'accept' | 'decline' | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // ── Jobs awaiting my acceptance (any date) ──
+  const { data: pendingOffers = [], isLoading: loadingPending } = useQuery({
+    queryKey: ['my-pending-acceptances', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: acceptances, error } = await supabase
+        .from('job_acceptances')
+        .select('id, job_id, acceptance_status, sms_sent_at, jobs(id, scheduled_date, scheduled_time, estimated_duration, status, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type))')
+        .eq('cleaner_id', user!.id)
+        .eq('acceptance_status', 'pending');
+      if (error) throw error;
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      return (acceptances || [])
+        .map((a: any) => a.jobs)
+        .filter((j: any) => j && j.scheduled_date >= today && j.status === 'awaiting_cleaner_acceptance')
+        .map((j: any) => ({
+          ...j,
+          property_name: j.properties?.property_name ?? 'Property',
+          address: j.properties?.address ?? null,
+          client_type: j.properties?.client_type ?? null,
+        }))
+        .sort((a: any, b: any) => (a.scheduled_date + (a.scheduled_time || '')).localeCompare(b.scheduled_date + (b.scheduled_time || '')));
+    },
+  });
+
+  // ── Today's jobs ──
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['my-jobs-today', user?.id, role],
     enabled: !!user,
@@ -67,7 +113,44 @@ export default function MyJobsPage() {
     },
   });
 
-  if (isLoading) {
+  const handleAccept = async (job: any) => {
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      const { confirmed } = await acceptJob(job.id, user.id);
+      toast.success(confirmed ? 'Accepted — job confirmed ✓' : 'Accepted — waiting on other cleaner');
+      queryClient.invalidateQueries({ queryKey: ['my-pending-acceptances'] });
+      queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    } catch (e: any) {
+      toast.error(e.message || 'Could not accept the job');
+    } finally {
+      setSubmitting(false);
+      setActionJob(null);
+      setActionType(null);
+    }
+  };
+
+  const handleDecline = async (job: any) => {
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      await declineJob(job.id, user.id, declineReason || undefined);
+      toast.success('Declined — admin has been notified to reassign');
+      queryClient.invalidateQueries({ queryKey: ['my-pending-acceptances'] });
+      queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    } catch (e: any) {
+      toast.error(e.message || 'Could not decline the job');
+    } finally {
+      setSubmitting(false);
+      setActionJob(null);
+      setActionType(null);
+      setDeclineReason('');
+    }
+  };
+
+  if (isLoading && loadingPending) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -77,6 +160,84 @@ export default function MyJobsPage() {
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
+      {/* ── Pending offers — if any, show at the top ── */}
+      {pendingOffers.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />
+              Awaiting your acceptance
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pendingOffers.length} job{pendingOffers.length === 1 ? '' : 's'} need your response.
+            </p>
+          </div>
+
+          {pendingOffers.map((job: any) => {
+            const serviceLabel = job.client_type === 'airbnb' ? 'Airbnb Turnover' : 'House Clean';
+            const durationHrs = job.estimated_duration ? `${(job.estimated_duration / 60).toFixed(1)} hrs` : null;
+            const dateLabel = format(parseISO(job.scheduled_date), 'EEE, d MMM');
+            return (
+              <div
+                key={job.id}
+                className="bg-card rounded-2xl border-2 border-yellow-400/60 p-4 space-y-3 shadow-md"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-yellow-100 text-yellow-800 border-0 text-[10px] font-bold">
+                      NEW OFFER
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{dateLabel}</span>
+                    {job.scheduled_time && (
+                      <span className="text-xs font-bold text-foreground">
+                        · {job.scheduled_time.slice(0, 5)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-bold text-foreground text-base truncate">{job.property_name}</p>
+                  {job.address && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                      <MapPin className="h-3 w-3 shrink-0" /> {job.address}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{serviceLabel}</span>
+                    {durationHrs && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {durationHrs}
+                      </span>
+                    )}
+                  </div>
+                  {job.notes && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{job.notes}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 rounded-xl font-bold border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => { setActionJob(job); setActionType('decline'); }}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Decline
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-11 rounded-xl font-bold bg-brightly hover:bg-brightly/90"
+                    onClick={() => { setActionJob(job); setActionType('accept'); }}
+                  >
+                    <Check className="h-4 w-4 mr-1" /> Accept
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Today's jobs ── */}
       <div>
         <h1 className="text-2xl font-extrabold text-foreground">Today's Jobs</h1>
         <p className="text-sm text-muted-foreground mt-1">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
@@ -143,6 +304,64 @@ export default function MyJobsPage() {
           })}
         </div>
       )}
+
+      {/* ── Accept confirmation dialog ── */}
+      <Dialog
+        open={actionType === 'accept' && !!actionJob}
+        onOpenChange={(o) => { if (!o) { setActionJob(null); setActionType(null); } }}
+      >
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Accept this job?</DialogTitle>
+            <DialogDescription>
+              {actionJob && (
+                <>
+                  {actionJob.property_name} on{' '}
+                  {format(parseISO(actionJob.scheduled_date), 'EEE, d MMM')}
+                  {actionJob.scheduled_time ? ` at ${actionJob.scheduled_time.slice(0, 5)}` : ''}.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => { setActionJob(null); setActionType(null); }} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button onClick={() => actionJob && handleAccept(actionJob)} disabled={submitting} className="bg-brightly hover:bg-brightly/90">
+              {submitting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Accepting…</> : 'Yes, Accept'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Decline dialog ── */}
+      <Dialog
+        open={actionType === 'decline' && !!actionJob}
+        onOpenChange={(o) => { if (!o) { setActionJob(null); setActionType(null); setDeclineReason(''); } }}
+      >
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Decline this job?</DialogTitle>
+            <DialogDescription>
+              Admin will be notified so they can reassign. You can add a reason (optional).
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+            placeholder="e.g. Already booked that day, too far, etc."
+            className="rounded-xl min-h-[80px]"
+          />
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => { setActionJob(null); setActionType(null); setDeclineReason(''); }} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => actionJob && handleDecline(actionJob)} disabled={submitting}>
+              {submitting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Declining…</> : 'Decline Job'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -134,7 +134,7 @@ export default function OperationsDashboard() {
       const { data: weekJobs } = await supabase
         .from('jobs')
         .select('price_inc_gst')
-        .in('status', ['completed', 'complete'])
+        .eq('status', 'completed')
         .gte('scheduled_date', format(weekStart, 'yyyy-MM-dd'));
       const weekRevenue = (weekJobs || []).reduce((s: number, j: any) => s + (j.price_inc_gst || 0), 0);
 
