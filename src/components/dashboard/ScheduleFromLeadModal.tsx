@@ -135,7 +135,7 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
 
     setSubmitting(true);
     try {
-      // 1. Ensure profile + property exist (idempotent)
+      // ── 1. Ensure profile + property exist (idempotent) ──
       let propertyId: string | null = null;
       try {
         const { data: linkRes, error: linkErr } = await supabase.functions.invoke('link-intake-to-profile', {
@@ -155,48 +155,92 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
         propertyId = (linkRes as any)?.property_id || null;
       } catch (e: any) {
         console.error('[schedule-from-lead] link-intake-to-profile failed', e);
-        // Don't block — admin can still schedule without a property id; jobLabel falls back.
       }
 
-      // 2. Create the job
       const scheduledDate = format(date, 'yyyy-MM-dd');
       const priceIncGst = lead.total_inc_gst || null;
       const priceExGst = lead.total_ex_gst || (priceIncGst ? priceIncGst / 1.1 : null);
 
-      const { data: inserted, error: jobErr } = await supabase.from('jobs').insert({
-        property_id: propertyId,
-        client_name: fullName !== '—' ? fullName : null,
-        property_address: lead.address,
-        scheduled_date: scheduledDate,
-        scheduled_time: time,
-        estimated_duration: parseInt(duration),
-        cleaner_1_id: cleaner1 || null,
-        cleaner_2_id: cleaner2 || null,
-        notes: notes || null,
-        status: initialJobStatusForAssignment(cleaner1 || null, cleaner2 || null),
-        price_inc_gst: priceIncGst,
-        price_ex_gst: priceExGst,
-        source: 'pipeline_schedule',
-      } as any).select('id').single();
-      if (jobErr) throw jobErr;
+      // ── 2. Check if a job already exists for this lead ──
+      // When a client accepts via /quote-view, create-booking-from-quote has
+      // ALREADY created the job(s) with linked_quote_id set to the quote's id.
+      // Find that job via: lead -> form_data.quote_id -> jobs.linked_quote_id.
+      // Without this check we'd create a second, duplicate job every time admin
+      // clicked Schedule Clean on a lead that was accepted through the portal.
+      let existingJobId: string | null = null;
+      const leadQuoteId = lead.form_data?.quote_id;
+      if (leadQuoteId) {
+        const { data: existing } = await supabase
+          .from('jobs')
+          .select('id, status')
+          .eq('linked_quote_id', leadQuoteId)
+          .is('recurring_parent_id', null) // only the parent, not recurring children
+          .in('status', ['pending_cleaner', 'awaiting_cleaner_acceptance', 'confirmed', 'scheduled'])
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (existing?.id) existingJobId = existing.id;
+      }
 
-      // 3. Sync cleaner assignment — creates acceptance rows, sends SMS, etc.
-      if (inserted?.id && (cleaner1 || cleaner2)) {
+      let jobId: string | null = existingJobId;
+
+      if (existingJobId) {
+        // ── 2a. Update the existing job instead of creating a new one ──
+        const { error: updErr } = await supabase.from('jobs').update({
+          scheduled_date: scheduledDate,
+          scheduled_time: time,
+          estimated_duration: parseInt(duration),
+          cleaner_1_id: cleaner1 || null,
+          cleaner_2_id: cleaner2 || null,
+          notes: notes || null,
+          property_id: propertyId,
+        } as any).eq('id', existingJobId);
+        if (updErr) throw updErr;
+      } else {
+        // ── 2b. No existing job — create one ──
+        const { data: inserted, error: jobErr } = await supabase.from('jobs').insert({
+          property_id: propertyId,
+          client_name: fullName !== '—' ? fullName : null,
+          property_address: lead.address,
+          scheduled_date: scheduledDate,
+          scheduled_time: time,
+          estimated_duration: parseInt(duration),
+          cleaner_1_id: cleaner1 || null,
+          cleaner_2_id: cleaner2 || null,
+          notes: notes || null,
+          status: initialJobStatusForAssignment(cleaner1 || null, cleaner2 || null),
+          price_inc_gst: priceIncGst,
+          price_ex_gst: priceExGst,
+          source: 'pipeline_schedule',
+          linked_quote_id: leadQuoteId || null,
+        } as any).select('id').single();
+        if (jobErr) throw jobErr;
+        jobId = inserted.id;
+      }
+
+      // ── 3. Sync cleaner assignment — creates / refreshes acceptance rows, sends SMS ──
+      if (jobId) {
         try {
-          await syncJobAssignment(inserted.id, { sendSms: true });
+          // forceReaccept=true when we just changed assignment on an existing job
+          // so the cleaner re-accepts against the new date / cleaner
+          await syncJobAssignment(jobId, { sendSms: Boolean(cleaner1 || cleaner2), forceReaccept: Boolean(existingJobId) });
         } catch (e: any) {
           toast.warning(`Job saved but cleaner notification failed: ${e.message}`);
         }
       }
 
-      // 4. Mark the quote_request as scheduled so it moves out of the Accepted column
+      // ── 4. Mark the quote_request as scheduled so it moves out of the Accepted column ──
       await supabase.from('quote_requests').update({
         status: 'scheduled',
         preferred_date: scheduledDate,
         preferred_time: time,
       }).eq('id', lead.id);
 
-      toast.success(cleaner1 ? 'Scheduled + cleaner notified ✓' : 'Scheduled — assign a cleaner when ready');
+      toast.success(
+        existingJobId
+          ? (cleaner1 ? 'Updated — cleaner notified ✓' : 'Updated ✓')
+          : (cleaner1 ? 'Scheduled + cleaner notified ✓' : 'Scheduled — assign a cleaner when ready')
+      );
       queryClient.invalidateQueries({ queryKey: ['ops-pipeline'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });

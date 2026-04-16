@@ -307,6 +307,24 @@ export default function QuoteViewPage() {
       setQuote(data);
       setLoading(false);
 
+      // Pre-fill the preferred date/time the client picked during intake so they
+      // can see & confirm their original preference instead of starting from
+      // scratch. Accepts either a HH:MM time or a legacy morning/midday/afternoon
+      // label — converts to a HH:MM value.
+      if (data?.preferred_date) setPreferredDate(data.preferred_date);
+      if (data?.preferred_time) {
+        const raw = String(data.preferred_time).trim();
+        if (/^\d{1,2}:\d{2}/.test(raw)) {
+          setPreferredTime(raw.slice(0, 5));
+        } else {
+          const lower = raw.toLowerCase();
+          if (lower.startsWith('morning')) setPreferredTime('09:00');
+          else if (lower.startsWith('midday')) setPreferredTime('12:00');
+          else if (lower.startsWith('afternoon')) setPreferredTime('14:00');
+          else if (lower.startsWith('evening')) setPreferredTime('17:00');
+        }
+      }
+
       // Fire-and-forget: mark as viewed
       (supabase as any).from('quotes')
         .update({ quote_viewed_at: new Date().toISOString() })
@@ -657,21 +675,19 @@ export default function QuoteViewPage() {
                 </div>
 
                 <div>
-                  <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Time Preference</label>
-                  <select
+                  <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Start Time</label>
+                  <input
+                    type="time"
                     value={preferredTime}
                     onChange={(e) => setPreferredTime(e.target.value)}
-                    className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 appearance-none"
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2"
                     style={{
                       background: 'rgba(255,255,255,0.06)',
                       border: '1px solid rgba(255,255,255,0.1)',
+                      colorScheme: 'dark',
                     }}
-                  >
-                    <option value="" style={{ background: '#1a1a1a' }}>Select a time preference</option>
-                    <option value="Morning (7-11am)" style={{ background: '#1a1a1a' }}>Morning (7-11am)</option>
-                    <option value="Midday (11am-2pm)" style={{ background: '#1a1a1a' }}>Midday (11am-2pm)</option>
-                    <option value="Afternoon (2-5pm)" style={{ background: '#1a1a1a' }}>Afternoon (2-5pm)</option>
-                  </select>
+                  />
+                  <p className="text-white/40 text-xs mt-1.5">Pick a specific start time — or leave it blank if you're flexible and we'll confirm.</p>
                 </div>
               </div>
 

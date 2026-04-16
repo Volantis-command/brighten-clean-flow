@@ -27,14 +27,34 @@ interface Section {
 }
 
 // ─── Build dynamic sections ───
-function buildSections(property: any): Section[] {
+//
+// The list of photos required to submit the clean now depends on the clean
+// type. Previously every field was marked required=true, which blocked
+// Standard Clean jobs at submission because cleaners couldn't realistically
+// photograph e.g. the inside of the oven on a 2-hour routine clean. Brendan's
+// rule: Standard clean = quick turnover, Deep/Bond/Airbnb = full coverage.
+//
+// Fields that are deep-clean or turnover specific stay VISIBLE on Standard
+// jobs (cleaners can still upload if they did the extra work) but are NOT
+// required — so the submit button unlocks without them.
+function buildSections(property: any, cleanType?: string | null): Section[] {
   const bedrooms = property?.bedrooms || 1;
   const bathrooms = property?.bathrooms || 1;
   const hasOutdoor = property?.has_outdoor_area || property?.outdoor_areas || false;
+  const type = (cleanType || '').toLowerCase();
+
+  // Only Standard Clean gets the relaxed required-set. Deep Clean, Bond /
+  // End of Lease, Airbnb Turnover, Post-Renovation, Office/Commercial all
+  // require the full checklist.
+  const isStandard = type.includes('standard');
+
+  // Helper: returns true if field should be required given the clean type.
+  // deepOnly=true means "only required for non-standard cleans".
+  const req = (deepOnly: boolean) => deepOnly ? !isStandard : true;
 
   const sections: Section[] = [];
 
-  // Bedrooms
+  // Bedrooms — bed made is a baseline shot required for every clean type.
   for (let i = 1; i <= bedrooms; i++) {
     sections.push({
       id: `bedroom_${i}`,
@@ -45,7 +65,8 @@ function buildSections(property: any): Section[] {
     });
   }
 
-  // Bathrooms
+  // Bathrooms — all standard shots required on every clean type (bathrooms
+  // are always hit even on a standard clean).
   for (let i = 1; i <= bathrooms; i++) {
     sections.push({
       id: `bathroom_${i}`,
@@ -56,66 +77,66 @@ function buildSections(property: any): Section[] {
         { key: 'toilet', label: 'Inside toilet bowl — clean', required: true },
         { key: 'vanity', label: 'Bathroom bench/vanity — clean and clear', required: true },
         { key: 'mirror', label: 'Mirror — streak-free', required: true },
-        { key: 'towels', label: 'Towels — folded and placed', required: true },
+        { key: 'towels', label: 'Towels — folded and placed', required: req(true) /* optional on Standard */ },
       ],
     });
   }
 
-  // Kitchen
+  // Kitchen — wide/stovetop/sink/bench required on every clean.
+  // Interior photos (oven, microwave, fridge, coffee, toaster, dishwasher)
+  // are deep-clean territory — optional on Standard.
   sections.push({
     id: 'kitchen',
     title: 'Kitchen',
     fields: [
       { key: 'wide_shot', label: 'Kitchen — wide shot', required: true },
-      { key: 'oven', label: 'Oven — door open, interior clean', required: true },
       { key: 'stovetop', label: 'Stovetop/cooktop — clean', required: true },
-      { key: 'microwave', label: 'Microwave — door open, interior clean', required: true },
-      { key: 'coffee_machine', label: 'Coffee machine — clean and descaled', required: true },
-      { key: 'toaster', label: 'Toaster — emptied and clean', required: true },
       { key: 'sink', label: 'Sink — clean and dry', required: true },
-      { key: 'dishwasher', label: 'Dishwasher — empty and clean', required: true },
       { key: 'benchtops', label: 'Benchtops/counters — wiped and clear', required: true },
-      { key: 'fridge', label: 'Fridge — exterior and interior clean', required: true },
+      { key: 'oven', label: 'Oven — door open, interior clean', required: req(true) },
+      { key: 'microwave', label: 'Microwave — door open, interior clean', required: req(true) },
+      { key: 'fridge', label: 'Fridge — exterior and interior clean', required: req(true) },
+      { key: 'dishwasher', label: 'Dishwasher — empty and clean', required: req(true) },
+      { key: 'coffee_machine', label: 'Coffee machine — clean and descaled', required: req(true) },
+      { key: 'toaster', label: 'Toaster — emptied and clean', required: req(true) },
     ],
   });
 
-  // Living & Dining
+  // Living & Dining — wide + couch required, table optional for standard.
   sections.push({
     id: 'living_dining',
     title: 'Living & Dining',
     fields: [
       { key: 'wide_shot', label: 'Living area — wide shot', required: true },
       { key: 'couch', label: 'Couch and cushions — arranged', required: true },
-      { key: 'dining_table', label: 'Dining table — clean and set', required: true },
+      { key: 'dining_table', label: 'Dining table — clean and set', required: req(true) },
     ],
   });
 
-  // Laundry
+  // Laundry — exterior machines shots on every clean, filters only on deep.
   sections.push({
     id: 'laundry',
     title: 'Laundry',
     fields: [
       { key: 'washing_machine', label: 'Washing machine — clean exterior', required: true },
-      { key: 'washing_filter', label: 'Washing machine filter — removed and photographed clean', required: true },
       { key: 'dryer', label: 'Dryer — clean exterior', required: true },
-      { key: 'dryer_filter', label: 'Dryer lint filter — removed and photographed clean', required: true },
-      { key: 'vacuum_filter', label: 'In-house vacuum filter — removed and photographed clean', required: true },
+      { key: 'washing_filter', label: 'Washing machine filter — removed and photographed clean', required: req(true) },
+      { key: 'dryer_filter', label: 'Dryer lint filter — removed and photographed clean', required: req(true) },
+      { key: 'vacuum_filter', label: 'In-house vacuum filter — removed and photographed clean', required: req(true) },
     ],
   });
 
-  // Outdoor
   if (hasOutdoor) {
     sections.push({
       id: 'outdoor',
       title: 'Outdoor / Balcony',
       fields: [
         { key: 'wide_shot', label: 'Balcony/outdoor area — wide shot', required: true },
-        { key: 'furniture', label: 'Outdoor furniture — wiped and arranged', required: true },
+        { key: 'furniture', label: 'Outdoor furniture — wiped and arranged', required: req(true) },
       ],
     });
   }
 
-  // General completion
   sections.push({
     id: 'general',
     title: 'General Completion',
@@ -176,7 +197,10 @@ export default function CompletionFormPage() {
   });
 
   const property = job?.properties as any;
-  const sections = property ? buildSections(property) : [];
+  // Determine clean type from job (primary) or property.client_type (fallback)
+  // so the required-photo set scales with what the client booked.
+  const cleanType = (job as any)?.clean_type || property?.client_type || null;
+  const sections = property ? buildSections(property, cleanType) : [];
 
   // Load existing form data on mount
   useEffect(() => {
