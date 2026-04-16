@@ -442,9 +442,13 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           hours: DEFAULT_HOURS[ct] || 3,
           notes: lead.notes || '',
         }));
+        setHoursManuallySet(true);
       }
     };
-    loadLead();
+    // Mark hours as user-set at the top of the raw quote_request load path so the
+    // auto-recalc effect (above) doesn't immediately clobber hours loaded from
+    // the intake form's form_data.hours (same bug class as PR #8, different path).
+    loadLead().then(() => setHoursManuallySet(true));
   }, [leadId, editQuote]);
 
   const { data: properties = [] } = useQuery({

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronDown, Clock, Plus, Search, Send, DollarSign, ClipboardList, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import ScheduleFromLeadModal from './ScheduleFromLeadModal';
 
 type PipelineStatus = 'new_enquiry' | 'quote_sent' | 'accepted' | 'declined' | 'scheduled' | 'in_progress' | 'complete';
 
@@ -439,6 +440,7 @@ function PipelineBtn({ children, primary, onClick }: { children: React.ReactNode
 function PipelineCard({ item, column, navigate, queryClient }: { item: any; column: PipelineStatus; navigate: (path: string) => void; queryClient: any }) {
   const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted', 'declined'].includes(column);
   const pill = STAGE_PILL[column];
+  const [scheduleModal, setScheduleModal] = useState<{ open: boolean; focusCleaner: boolean }>({ open: false, focusCleaner: false });
 
   const invalidatePipeline = () => queryClient.invalidateQueries({ queryKey: ['ops-pipeline'] });
 
@@ -479,14 +481,14 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
     }
   };
 
+  // Open the scheduling modal inline instead of bouncing to /schedule?lead=...
+  // (which used to do nothing — SchedulePage ignored the param).
   const handleScheduleClean = () => {
-    navigate(`/schedule?lead=${item.id}`);
-    window.scrollTo(0, 0);
+    setScheduleModal({ open: true, focusCleaner: false });
   };
 
   const handleAssignCleaner = () => {
-    navigate(`/schedule?lead=${item.id}&assign=true`);
-    window.scrollTo(0, 0);
+    setScheduleModal({ open: true, focusCleaner: true });
   };
 
   if (isQuoteRequest) {
@@ -554,6 +556,14 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
             <PipelineBtn onClick={(e) => { e.stopPropagation(); handleAssignCleaner(); }}>Assign Cleaner</PipelineBtn>
           </div>
         )}
+
+        {/* Inline scheduling modal — opens with client + property + preferred time pre-filled */}
+        <ScheduleFromLeadModal
+          open={scheduleModal.open}
+          lead={item}
+          focusCleaner={scheduleModal.focusCleaner}
+          onOpenChange={(o) => setScheduleModal(s => ({ ...s, open: o }))}
+        />
       </div>
     );
   }
