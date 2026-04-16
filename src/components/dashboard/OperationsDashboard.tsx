@@ -185,16 +185,52 @@ export default function OperationsDashboard() {
 
       const { data: jobs } = await supabase
         .from('jobs')
-        .select('*, properties(property_name, address)')
-        .in('status', ['scheduled', 'confirmed', 'in_progress', 'completed'])
+        .select('*, properties(property_name, client_name, address)')
+        .in('status', [
+          'pending_cleaner',
+          'awaiting_cleaner_acceptance',
+          'confirmed',
+          'scheduled',
+          'in_progress',
+          'completed',
+        ])
         .gte('scheduled_date', format(new Date(Date.now() - 7 * 86400000), 'yyyy-MM-dd'))
         .order('scheduled_date', { ascending: false })
         .limit(100);
 
+      // Yellow state machine mapping:
+      //   pending_cleaner             -> Accepted column (admin needs to assign a cleaner)
+      //   awaiting_cleaner_acceptance -> Scheduled column (cleaner assigned, awaiting their yes/no)
+      //   confirmed / scheduled       -> Scheduled column (locked in)
+      //   in_progress                 -> In Progress
+      //   completed                   -> Complete
       (jobs || []).forEach((j: any) => {
-        if (['scheduled', 'confirmed'].includes(j.status)) result.scheduled.push(j);
-        else if (j.status === 'in_progress') result.in_progress.push(j);
-        else if (j.status === 'completed') result.complete.push(j);
+        if (j.status === 'pending_cleaner') result.accepted.push(j);
+        else if (['awaiting_cleaner_acceptance', 'confirmed', 'scheduled'].includes(j.status)) {
+          result.scheduled.push(j);
+        } else if (j.status === 'in_progress') {
+          result.in_progress.push(j);
+        } else if (j.status === 'completed') {
+          result.complete.push(j);
+        }
+      });
+
+      // De-dup: if a quote_request is in Accepted AND it has a linked job
+      // (via form_data.quote_id -> jobs.linked_quote_id), keep only the job.
+      // This stops the same lead appearing twice when a client accepted via
+      // /quote-view (which auto-creates a job) and the quote_request also
+      // flipped to status='accepted'.
+      const jobQuoteIds = new Set<string>(
+        (jobs || [])
+          .map((j: any) => j.linked_quote_id)
+          .filter(Boolean)
+      );
+      result.accepted = result.accepted.filter((item: any) => {
+        const linkedQuoteId = item?.form_data?.quote_id;
+        // Keep if it's a job (has status field) or no linked quote or no duplicate
+        if (!linkedQuoteId) return true;
+        if (item.status && ['pending_cleaner', 'awaiting_cleaner_acceptance'].includes(item.status)) return true;
+        return !jobQuoteIds.has(linkedQuoteId);
       });
 
       return result;
@@ -438,7 +474,10 @@ function PipelineBtn({ children, primary, onClick }: { children: React.ReactNode
 }
 
 function PipelineCard({ item, column, navigate, queryClient }: { item: any; column: PipelineStatus; navigate: (path: string) => void; queryClient: any }) {
-  const isQuoteRequest = ['new_enquiry', 'quote_sent', 'accepted', 'declined'].includes(column);
+  // Accepted column can now contain BOTH quote_requests (no job yet) and jobs
+  // in pending_cleaner state. Distinguish by schema: jobs have scheduled_date.
+  const isJob = Boolean(item?.scheduled_date) && !item?.first_name;
+  const isQuoteRequest = !isJob && ['new_enquiry', 'quote_sent', 'accepted', 'declined'].includes(column);
   const pill = STAGE_PILL[column];
   const [scheduleModal, setScheduleModal] = useState<{ open: boolean; focusCleaner: boolean }>({ open: false, focusCleaner: false });
 
@@ -662,6 +701,16 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
           )}
         </div>
       </div>
+      {column === 'accepted' && (
+        // Job landed in Accepted column — it's status='pending_cleaner' (no cleaner yet).
+        // The action is "assign a cleaner" on the existing job, not create another one.
+        <div className="mt-2 flex gap-2">
+          <PipelineBtn primary onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${item.id}/edit`); window.scrollTo(0, 0); }}>
+            Assign Cleaner
+          </PipelineBtn>
+          <PipelineBtn onClick={(e) => { e.stopPropagation(); handleViewJob(); }}>View Job</PipelineBtn>
+        </div>
+      )}
       {column === 'scheduled' && (
         <div className="mt-2 flex gap-2">
           <PipelineBtn primary onClick={(e) => { e.stopPropagation(); handleViewJob(); }}>View Job</PipelineBtn>
