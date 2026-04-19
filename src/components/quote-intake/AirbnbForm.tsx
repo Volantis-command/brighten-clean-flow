@@ -85,6 +85,12 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
 
   const handleSubmit = async () => {
     if (!tcsAccepted) { toast.error('Please agree to the Terms & Conditions'); return; }
+    if (!fullName.trim() || !mobile.trim() || !email.trim()) {
+      toast.error('Name, mobile and email are required');
+      setStep(STEPS.indexOf('Contact'));
+      return;
+    }
+    if (!address.trim()) { toast.error('Property address is required'); setStep(STEPS.indexOf('Property')); return; }
     setSubmitting(true);
     try {
       const nameParts = fullName.trim().split(/\s+/);

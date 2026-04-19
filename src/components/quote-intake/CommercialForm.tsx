@@ -73,6 +73,13 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
 
   const handleSubmit = async () => {
     if (!tcsAccepted) { toast.error('Please agree to the Terms & Conditions'); return; }
+    if (!contactName.trim() || !mobile.trim() || !email.trim()) {
+      toast.error('Contact name, mobile and email are required');
+      const idx = STEPS.indexOf('Business Details');
+      if (idx >= 0) setStep(idx);
+      return;
+    }
+    if (!address.trim()) { toast.error('Property address is required'); return; }
     setSubmitting(true);
     try {
       const nameParts = contactName.trim().split(/\s+/);
