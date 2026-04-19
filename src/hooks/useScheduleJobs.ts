@@ -63,7 +63,7 @@ export function useScheduleJobs() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as ScheduleJob[];
+      return (data || []) as unknown as ScheduleJob[];
     },
     enabled: !!user,
   });
