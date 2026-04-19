@@ -86,7 +86,7 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
 
   const handleSubmit = async () => {
     if (!tcsAccepted) { toast.error('Please agree to the Terms & Conditions'); return; }
-    if (!fullName.trim() || !mobile.trim()) { toast.error('Name and mobile are required'); return; }
+    if (!fullName.trim() || !mobile.trim() || !email.trim()) { toast.error('Name, mobile and email are required'); return; }
     setSubmitting(true);
     try {
       const nameParts = fullName.trim().split(/\s+/);
