@@ -664,8 +664,19 @@ function AssignPropertyButton({ clientId, onRefresh, variant = 'default' }: { cl
   );
 }
 
-/** Inline assign property dialog */
+/** Inline create + assign property form */
 function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: string; onRefresh: () => void; onClose: () => void }) {
+  const [mode, setMode] = useState<'create' | 'existing'>('create');
+  const [saving, setSaving] = useState(false);
+
+  // Create-new fields
+  const [propertyName, setPropertyName] = useState('');
+  const [address, setAddress] = useState('');
+  const [bedrooms, setBedrooms] = useState('2');
+  const [bathrooms, setBathrooms] = useState('1');
+  const [clientType, setClientType] = useState('residential');
+
+  // Assign-existing fields
   const [selectedId, setSelectedId] = useState('');
   const { data: allProps = [] } = useQuery({
     queryKey: ['all-properties-for-assign-inline'],
@@ -675,32 +686,141 @@ function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: stri
     },
   });
 
-  const assign = async () => {
+  // Pre-fill property name from client name
+  const { data: clientProfile } = useQuery({
+    queryKey: ['client-profile-for-prop', clientId],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('full_name').eq('id', clientId).maybeSingle();
+      return data;
+    },
+  });
+  useState(() => {
+    if (clientProfile?.full_name && !propertyName) {
+      setPropertyName(`${clientProfile.full_name.split(' ')[0]}'s Property`);
+    }
+  });
+
+  const handleCreate = async () => {
+    if (!address.trim()) { toast.error('Address is required'); return; }
+    setSaving(true);
+    try {
+      const name = propertyName.trim() || `${address.split(',')[0]}`;
+      const { data: newProp, error: propErr } = await supabase.from('properties').insert({
+        property_name: name,
+        address: address.trim(),
+        bedrooms: parseInt(bedrooms) || null,
+        bathrooms: parseInt(bathrooms) || null,
+        client_type: clientType,
+        status: 'active',
+      } as any).select('id').single();
+      if (propErr) throw propErr;
+
+      const { error: linkErr } = await supabase.from('client_properties').insert({
+        client_id: clientId,
+        property_id: newProp.id,
+        property_address: address.trim(),
+        property_name: name,
+      } as any);
+      if (linkErr) throw linkErr;
+
+      toast.success('Property created and linked ✓');
+      onRefresh();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to create property');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAssign = async () => {
     if (!selectedId) return;
-    const { error } = await supabase.from('client_properties').insert({ client_id: clientId, property_id: selectedId });
-    if (error) { toast.error(error.message); return; }
-    toast.success('Property assigned');
+    setSaving(true);
+    const { error } = await supabase.from('client_properties').insert({ client_id: clientId, property_id: selectedId } as any);
+    if (error) { toast.error(error.message); setSaving(false); return; }
+    toast.success('Property assigned ✓');
     onRefresh();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
-        <h3 className="font-bold text-foreground">Assign Property</h3>
-        <select
-          className="w-full rounded-xl border border-border bg-background text-foreground p-3"
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-        >
-          <option value="">Select a property...</option>
-          {allProps.map(p => (
-            <option key={p.id} value={p.id}>{p.property_name} — {p.address || 'No address'}</option>
-          ))}
-        </select>
-        <div className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={assign} disabled={!selectedId}>Assign</Button>
+      <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md space-y-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <h3 className="font-bold text-lg text-foreground">Add Property</h3>
+
+        {/* Mode toggle */}
+        <div className="flex gap-2 bg-muted rounded-xl p-1">
+          <button
+            onClick={() => setMode('create')}
+            className={`flex-1 text-sm font-bold py-2 rounded-lg transition-colors ${mode === 'create' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+          >
+            Create New
+          </button>
+          <button
+            onClick={() => setMode('existing')}
+            className={`flex-1 text-sm font-bold py-2 rounded-lg transition-colors ${mode === 'existing' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+          >
+            Link Existing
+          </button>
         </div>
+
+        {mode === 'create' ? (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Property Name</label>
+              <Input value={propertyName} onChange={e => setPropertyName(e.target.value)} placeholder="e.g. Lynn's Apartment" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Address *</label>
+              <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. 6 La Scala Court, Surfers Paradise" className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Bedrooms</label>
+                <Input type="number" min="0" value={bedrooms} onChange={e => setBedrooms(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Bathrooms</label>
+                <Input type="number" min="0" value={bathrooms} onChange={e => setBathrooms(e.target.value)} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Type</label>
+              <select
+                value={clientType}
+                onChange={e => setClientType(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background text-foreground p-2.5 mt-1 text-sm"
+              >
+                <option value="residential">Residential</option>
+                <option value="airbnb">Airbnb / Short-Stay</option>
+                <option value="commercial">Commercial</option>
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button onClick={handleCreate} disabled={saving || !address.trim()} className="bg-brightly hover:bg-brightly-hover text-white font-bold">
+                {saving ? 'Creating...' : 'Create & Link'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <select
+              className="w-full rounded-xl border border-border bg-background text-foreground p-3"
+              value={selectedId}
+              onChange={e => setSelectedId(e.target.value)}
+            >
+              <option value="">Select a property...</option>
+              {allProps.map(p => (
+                <option key={p.id} value={p.id}>{p.property_name} — {p.address || 'No address'}</option>
+              ))}
+            </select>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button onClick={handleAssign} disabled={!selectedId || saving}>
+                {saving ? 'Linking...' : 'Link Property'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
