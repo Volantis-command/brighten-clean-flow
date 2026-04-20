@@ -21,8 +21,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign, Upload, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRef } from 'react';
 import { format } from 'date-fns';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
@@ -798,9 +799,12 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
 
         {/* OVERVIEW TAB */}
         <TabsContent value="overview" className="space-y-4 mt-4">
+          {/* Editable Profile Details — admin can update inline */}
+          {isAdmin && <EditableProfileSection staffId={staff.id} staff={staff} onSaved={() => onBack()} />}
+
           <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-            {staff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {staff.email}</p>}
-            {staff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {staff.phone}</p>}
+            {!isAdmin && staff.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> {staff.email}</p>}
+            {!isAdmin && staff.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4" /> {staff.phone}</p>}
 
             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
               <div>
@@ -900,17 +904,15 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
             <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><FileCheck className="w-4 h-4" /> Required Documents</h3>
             <div className="space-y-3">
               {PAPERWORK_ITEMS.map(item => (
-                <div key={item.key} className="flex items-center gap-3">
-                  <Checkbox
-                    checked={!!paperworkStatus[item.key]}
-                    onCheckedChange={() => isAdmin && togglePaperwork(item.key)}
-                    disabled={!isAdmin}
-                  />
-                  <span className={`text-sm ${paperworkStatus[item.key] ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {item.label}
-                  </span>
-                  {paperworkStatus[item.key] && <CheckCircle2 className="w-4 h-4 text-brightly ml-auto" />}
-                </div>
+                <PaperworkItemRow
+                  key={item.key}
+                  itemKey={item.key}
+                  label={item.label}
+                  checked={!!paperworkStatus[item.key]}
+                  onToggle={() => isAdmin && togglePaperwork(item.key)}
+                  isAdmin={isAdmin}
+                  staffId={staff.id}
+                />
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-4">
@@ -998,6 +1000,193 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
           <StaffPayRatesSection staffId={staff.id} staffName={staffName} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Editable Profile Section (Overview tab) ───
+function EditableProfileSection({ staffId, staff, onSaved }: { staffId: string; staff: any; onSaved: () => void }) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [fullName, setFullName] = useState(staff.full_name || '');
+  const [email, setEmail] = useState(staff.email || '');
+  const [phone, setPhone] = useState(staff.phone || '');
+  const [address, setAddress] = useState('');
+  const [abn, setAbn] = useState('');
+
+  // Load address + ABN from cleaner_onboarding (not on profiles table)
+  const { data: onboardingData } = useQuery({
+    queryKey: ['staff-onboarding-profile', staffId],
+    queryFn: async () => {
+      const { data } = await supabase.from('staff_onboarding' as any).select('address, abn').eq('user_id', staffId).maybeSingle();
+      return data as any;
+    },
+  });
+
+  // Sync loaded data
+  useState(() => {
+    if (onboardingData?.address) setAddress(onboardingData.address);
+    if (onboardingData?.abn) setAbn(onboardingData.abn);
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Update profiles table (phone, email, full_name)
+      const { error: profErr } = await supabase.from('profiles').update({
+        full_name: fullName || null,
+        email: email || null,
+        phone: phone || null,
+      }).eq('id', staffId);
+      if (profErr) throw profErr;
+
+      // Update staff_onboarding (address, ABN) if the row exists
+      if (onboardingData) {
+        await supabase.from('staff_onboarding' as any).update({
+          address: address || null,
+          abn: abn || null,
+        } as any).eq('user_id', staffId);
+      }
+
+      toast.success('Profile updated');
+      queryClient.invalidateQueries({ queryKey: ['staff-list'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-profile', staffId] });
+      setEditing(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-foreground text-sm">Contact Details</h3>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1 text-xs">
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 gap-1.5 text-sm">
+          {staff.email && <p className="text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4 shrink-0" /> {staff.email}</p>}
+          {staff.phone && <p className="text-muted-foreground flex items-center gap-2"><Phone className="w-4 h-4 shrink-0" /> {staff.phone}</p>}
+          {(onboardingData?.address || address) && <p className="text-muted-foreground flex items-center gap-2"><MapPin className="w-4 h-4 shrink-0" /> {onboardingData?.address || address}</p>}
+          {(onboardingData?.abn || abn) && <p className="text-muted-foreground flex items-center gap-2"><FileCheck className="w-4 h-4 shrink-0" /> ABN: {onboardingData?.abn || abn}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
+      <h3 className="font-bold text-foreground text-sm">Edit Contact Details</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <Label className="text-xs font-bold text-muted-foreground">Full Name</Label>
+          <Input value={fullName} onChange={e => setFullName(e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs font-bold text-muted-foreground">Email</Label>
+          <Input value={email} onChange={e => setEmail(e.target.value)} type="email" className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs font-bold text-muted-foreground">Phone</Label>
+          <Input value={phone} onChange={e => setPhone(e.target.value)} type="tel" className="mt-1" />
+        </div>
+        <div className="col-span-2">
+          <Label className="text-xs font-bold text-muted-foreground">Address</Label>
+          <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. 42 Smith St, Gold Coast QLD" className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs font-bold text-muted-foreground">ABN</Label>
+          <Input value={abn} onChange={e => setAbn(e.target.value)} placeholder="e.g. 12 345 678 901" className="mt-1" />
+        </div>
+      </div>
+      <div className="flex gap-2 justify-end pt-2">
+        <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+        <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brightly hover:bg-brightly-hover text-white">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+          Save
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Paperwork Item with Upload ───
+function PaperworkItemRow({ itemKey, label, checked, onToggle, isAdmin, staffId }: {
+  itemKey: string; label: string; checked: boolean; onToggle: () => void; isAdmin: boolean; staffId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [docUrl, setDocUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Check if a document was already uploaded for this item
+  const { data: existingDoc } = useQuery({
+    queryKey: ['paperwork-doc', staffId, itemKey],
+    queryFn: async () => {
+      const { data } = await supabase.from('job_photos' as any)
+        .select('public_url')
+        .eq('job_id', staffId)
+        .eq('room_label', `paperwork_${itemKey}`)
+        .maybeSingle();
+      return (data as any)?.public_url || null;
+    },
+  });
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split('.').pop() || 'pdf';
+    const path = `staff-documents/paperwork/${staffId}/${itemKey}_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('staff-documents').upload(path, file, { contentType: file.type });
+    if (error) {
+      toast.error('Upload failed: ' + error.message);
+      setUploading(false);
+      e.target.value = '';
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('staff-documents').getPublicUrl(path);
+    setDocUrl(urlData.publicUrl);
+
+    // Store reference
+    await supabase.from('job_photos' as any).insert({
+      job_id: staffId,
+      storage_path: path,
+      public_url: urlData.publicUrl,
+      room_label: `paperwork_${itemKey}`,
+    });
+
+    // Auto-check the paperwork item
+    if (!checked) onToggle();
+
+    toast.success(`${label} uploaded`);
+    setUploading(false);
+    e.target.value = '';
+  };
+
+  const url = docUrl || existingDoc;
+
+  return (
+    <div className="flex items-center gap-3">
+      <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleUpload} />
+      <Checkbox checked={checked} onCheckedChange={onToggle} disabled={!isAdmin} />
+      <span className={`text-sm flex-1 ${checked ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {label}
+      </span>
+      {url ? (
+        <a href={url} target="_blank" rel="noopener" className="text-xs text-primary underline">View</a>
+      ) : null}
+      {isAdmin && (
+        <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 px-2" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+          {url ? 'Replace' : 'Upload'}
+        </Button>
+      )}
+      {checked && <CheckCircle2 className="w-4 h-4 text-brightly shrink-0" />}
     </div>
   );
 }
