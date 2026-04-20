@@ -316,14 +316,24 @@ export async function declineJob(
 }
 
 /**
- * Returns the initial status that should be set on a newly-created job,
- * based on whether cleaners are assigned at creation time.
- * Use this at insert time so the row is born in the right state.
+ * Returns the initial status that should be set on a newly-created job.
+ *
+ * Always returns 'scheduled' — the DB trigger (trg_jobs_enforce_initial_status)
+ * converts it to the correct yellow state (pending_cleaner / awaiting_cleaner_
+ * acceptance) based on cleaner assignment. We use 'scheduled' because it's
+ * guaranteed to be in the jobs_status_check CHECK constraint even if the
+ * migration adding the new yellow statuses hasn't been applied yet by Lovable.
+ *
+ * This is a deliberate graceful-degradation design:
+ *   - If trigger + CHECK migration both applied → job lands yellow ✓
+ *   - If only CHECK applied (no trigger) → job lands 'scheduled' (green, legacy)
+ *   - If neither applied → job lands 'scheduled' (green, legacy)
+ * In all three cases the INSERT succeeds. The worst outcome is a green job
+ * that should be yellow — never a failed insert that blocks the user.
  */
 export function initialJobStatusForAssignment(
-  cleaner1Id: string | null | undefined,
-  cleaner2Id: string | null | undefined
+  _cleaner1Id: string | null | undefined,
+  _cleaner2Id: string | null | undefined
 ): JobStatus {
-  const hasCleaner = Boolean(cleaner1Id) || Boolean(cleaner2Id);
-  return hasCleaner ? 'awaiting_cleaner_acceptance' : 'pending_cleaner';
+  return 'scheduled';
 }
