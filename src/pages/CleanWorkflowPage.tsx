@@ -26,12 +26,14 @@ import { seedDefaultChecklist } from '@/components/clean-workflow/defaultCheckli
 import PreClockOnView from '@/components/clean-workflow/PreClockOnView';
 import PreJobAssessmentModal from '@/components/clean-workflow/PreJobAssessmentModal';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
+import PhotoReportingWizard, { buildPhotoSections } from '@/components/clean-workflow/PhotoReportingWizard';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type View =
   | 'pre_clock_on'   // Clock On button + property info
   | 'assessment'     // Damage + extra time popups (hard gate)
   | 'active'         // SOP checklist + timer + floating damage
+  | 'photo_wizard'   // Sequential room-by-room photo reporting + signatures
   | 'done';          // Job completed — read-only
 
 function resolveView(job: any): View {
@@ -50,6 +52,9 @@ export default function CleanWorkflowPage() {
   const queryClient = useQueryClient();
   const [clockingOn, setClockingOn] = useState(false);
   const [geoDialog, setGeoDialog] = useState<{ type: 'failed' | 'far'; distance?: number } | null>(null);
+  // Manual override: when cleaner taps "COMPLETE JOB" on the active view,
+  // we transition to the photo wizard instead of immediately completing.
+  const [showPhotoWizard, setShowPhotoWizard] = useState(false);
 
   const { data: job, isLoading, refetch } = useQuery({
     queryKey: ['clean-workflow-job', jobId],
@@ -280,13 +285,30 @@ export default function CleanWorkflowPage() {
     );
   }
 
-  // ── Active Clean — SOP checklist, restocking, photos, floating damage, completion ──
-  // Uses the cleaner-portal's ActiveJobView which has the full SOP checklist with
-  // room-by-room tick-off, restocking (Airbnb), photo uploads, and completion flow.
-  // The old clean-workflow/ActiveJobView was just a timer with generic notes.
+  // ── Photo Reporting Wizard (sequential room-by-room after COMPLETE JOB) ──
+  if (showPhotoWizard) {
+    const cleanType = (job as any)?.clean_type || property?.client_type || null;
+    const photoSections = buildPhotoSections(property, cleanType);
+    return (
+      <PhotoReportingWizard
+        job={job}
+        property={property}
+        sections={photoSections}
+        cleanerProfiles={profiles}
+        userId={user!.id}
+        onComplete={() => {
+          refreshJob();
+          // Find next job for today and navigate, or go to /my-jobs
+          navigate('/my-jobs');
+        }}
+      />
+    );
+  }
+
+  // ── Active Clean — SOP checklist, restocking, floating damage, completion ──
   return (
     <div className="min-h-screen bg-background max-w-lg mx-auto">
-      {/* Header with property name + timer info */}
+      {/* Header */}
       <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="text-base font-extrabold truncate">
@@ -304,19 +326,19 @@ export default function CleanWorkflowPage() {
         </button>
       </div>
 
-      {/* Floating damage button — always visible during the clean */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-2">
+      {/* Floating damage button — always visible */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-2 flex items-center justify-between">
         <button
           onClick={() => {
-            // Re-open the damage assessment with just the damage step
-            // by temporarily clearing pre_clean_notes
             navigate(`/clean/${job.id}/complete`);
-            // TODO: in Phase 2, open an inline damage modal instead
           }}
           className="flex items-center gap-2 text-xs font-bold text-destructive hover:bg-destructive/10 px-3 py-2 rounded-xl transition-colors"
         >
           ⚠️ Report Damage / Issue
         </button>
+        <span className="text-xs text-muted-foreground">
+          {property?.bedrooms || '?'} bed · {property?.bathrooms || '?'} bath
+        </span>
       </div>
 
       {/* The full SOP-driven active clean view */}
@@ -325,11 +347,9 @@ export default function CleanWorkflowPage() {
           job={job}
           staff={currentProfile}
           property={property}
-          onComplete={(updatedJob) => {
-            // Job is completed — refresh everything and navigate
-            refreshJob();
-            // After completion, navigate to the completion form for photo sequence
-            navigate(`/clean/${job.id}/complete`);
+          onComplete={() => {
+            // Don't immediately complete — transition to photo wizard
+            setShowPhotoWizard(true);
           }}
         />
       </div>
