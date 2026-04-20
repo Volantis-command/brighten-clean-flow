@@ -64,6 +64,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No phone number on file" }), { status: 400, headers: corsHeaders });
     }
 
+    // Format phone to E.164 (Twilio requires +61...)
+    let formattedPhone = profile.phone.replace(/[\s\-()]/g, '');
+    if (formattedPhone.startsWith('+61')) { /* already E.164 */ }
+    else if (formattedPhone.startsWith('61') && formattedPhone.length >= 11) { formattedPhone = '+' + formattedPhone; }
+    else if (formattedPhone.startsWith('0')) { formattedPhone = '+61' + formattedPhone.slice(1); }
+    else { formattedPhone = '+61' + formattedPhone; }
+
     // Create magic token
     const { data: tokenRow, error: tokenErr } = await adminClient
       .from("staff_magic_tokens")
@@ -75,7 +82,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to create token" }), { status: 500, headers: corsHeaders });
     }
 
-    const appUrl = Deno.env.get("APP_URL") || "https://brighten-clean-flow.lovable.app";
+    const appUrl = Deno.env.get("APP_URL") || "https://app.brightly.cleaning";
     const loginUrl = `${appUrl}/auth/staff?token=${tokenRow.token}`;
 
     // Send SMS via Twilio
@@ -92,7 +99,7 @@ Deno.serve(async (req) => {
           Authorization: `Basic ${btoa(`${twilioSid}:${twilioAuth}`)}`,
         },
         body: new URLSearchParams({
-          To: profile.phone,
+          To: formattedPhone,
           From: twilioFrom,
           Body: `Brightly login: ${loginUrl} — expires in 15 minutes`,
         }),
