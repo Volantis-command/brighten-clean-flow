@@ -87,9 +87,26 @@ Deno.serve(async (req) => {
 
     // Build event
     const startDate = job.scheduled_date;
-    const startTime = job.scheduled_time || '09:00';
+    const TIME_WINDOW_MAP: Record<string, string> = {
+      morning: '09:00', midday: '12:00', afternoon: '14:00', evening: '17:00',
+    };
+    let rawTime = String(job.scheduled_time || '09:00').trim().toLowerCase();
+    let startTime: string;
+    if (/^\d{1,2}:\d{2}/.test(rawTime)) {
+      startTime = rawTime.slice(0, 5);
+    } else if (TIME_WINDOW_MAP[rawTime]) {
+      startTime = TIME_WINDOW_MAP[rawTime];
+    } else {
+      startTime = '09:00';
+    }
+    if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      throw new Error(`Invalid scheduled_date: ${startDate}`);
+    }
     const durationMin = job.estimated_duration || 120;
     const startDt = new Date(`${startDate}T${startTime}:00+10:00`);
+    if (isNaN(startDt.getTime())) {
+      throw new Error(`Invalid date/time: ${startDate} ${startTime}`);
+    }
     const endDt = new Date(startDt.getTime() + durationMin * 60000);
 
     const address = job.properties?.address || '';
