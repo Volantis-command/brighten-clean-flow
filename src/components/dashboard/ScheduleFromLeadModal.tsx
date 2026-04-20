@@ -209,7 +209,10 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
           cleaner_1_id: cleaner1 || null,
           cleaner_2_id: cleaner2 || null,
           notes: notes || null,
-          status: initialJobStatusForAssignment(cleaner1 || null, cleaner2 || null),
+          // Use 'scheduled' — the DB trigger converts to the right yellow state.
+          // Using 'scheduled' avoids CHECK constraint failures if the migration
+          // adding 'pending_cleaner' hasn't been applied yet.
+          status: 'scheduled',
           price_inc_gst: priceIncGst,
           price_ex_gst: priceExGst,
           source: 'pipeline_schedule',

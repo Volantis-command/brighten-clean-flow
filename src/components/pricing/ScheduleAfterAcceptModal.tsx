@@ -135,84 +135,34 @@ export default function ScheduleAfterAcceptModal({
     }
 
 
-    // 2b. Create/upsert client profile
-    let clientProfileId: string | null = null;
+    // 2b. Create/upsert client profile + property via edge function.
+    // This uses the SERVICE_ROLE_KEY on the server side, bypassing RLS
+    // (the profiles table has RLS that blocks client-side inserts by admin).
     let resolvedPropertyId = propertyId;
     try {
       const nameParts = (clientName || '').trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Check if client already exists by phone or email
-      let existing = null;
-      if (clientPhone) {
-        const { data } = await supabase.from('profiles').select('id').eq('phone', clientPhone).maybeSingle();
-        existing = data;
-      }
-      if (!existing && clientEmail) {
-        const { data } = await supabase.from('profiles').select('id').eq('email', clientEmail).maybeSingle();
-        existing = data;
-      }
-
-      if (existing) {
-        clientProfileId = existing.id;
-        // Update with latest info
-        await supabase.from('profiles').update({
-          full_name: clientName || undefined,
-          phone: clientPhone || undefined,
-          email: clientEmail || undefined,
-        }).eq('id', existing.id);
-        stepResults.push({ step: 'Client profile updated', ok: true });
-      } else {
-        // Create new profile — profiles table only has full_name (not first/last),
-        // and role lives in user_roles, not on profiles.
-        const { data: newProfile, error: profileError } = await supabase.from('profiles').insert({
-          full_name: clientName || null,
-          phone: clientPhone || null,
-          email: clientEmail || null,
-        } as any).select('id').single();
-        if (profileError) throw profileError;
-        clientProfileId = newProfile.id;
-
-        // Add client role
-        await supabase.from('user_roles').insert({
-          user_id: clientProfileId,
-          role: 'client',
-        } as any).select().maybeSingle();
-
-        stepResults.push({ step: 'Client profile created', ok: true });
-      }
-
-      // Link property to client — auto-create in properties table if needed
-      if (clientProfileId && propertyAddress) {
-        if (!resolvedPropertyId) {
-          // Auto-create a property record so schedule/detail pages work
-          const propName = clientName ? `${clientName.split(' ')[0]}'s Property` : propertyAddress;
-          const { data: newProp } = await supabase.from('properties').insert({
-            property_name: propName,
-            address: propertyAddress,
-            client_name: clientName || null,
-            client_type: cleanType?.toLowerCase().includes('airbnb') ? 'airbnb' : 'residential',
-          } as any).select('id').maybeSingle();
-          if (newProp?.id) resolvedPropertyId = newProp.id;
+      const { data: linkResult, error: linkError } = await supabase.functions.invoke(
+        'link-intake-to-profile',
+        {
+          body: {
+            first_name: firstName || null,
+            last_name: lastName || null,
+            full_name: clientName || null,
+            phone: clientPhone || null,
+            email: clientEmail || null,
+            property_address: propertyAddress || null,
+            clean_type: cleanType || null,
+          },
         }
-        if (resolvedPropertyId) {
-          // Check if link already exists
-          const { data: existingLink } = await supabase.from('client_properties')
-            .select('id')
-            .eq('client_id', clientProfileId)
-            .eq('property_id', resolvedPropertyId)
-            .maybeSingle();
-          if (!existingLink) {
-            await supabase.from('client_properties').insert({
-              client_id: clientProfileId,
-              property_id: resolvedPropertyId,
-              property_address: propertyAddress,
-              property_name: clientName ? `${clientName.split(' ')[0]}'s Property` : propertyAddress,
-            } as any).select().maybeSingle();
-          }
-        }
+      );
+      if (linkError) throw linkError;
+      if ((linkResult as any)?.property_id) {
+        resolvedPropertyId = (linkResult as any).property_id;
       }
+      stepResults.push({ step: 'Client profile created', ok: true });
     } catch (e: any) {
       stepResults.push({ step: 'Client profile created', ok: false, error: e.message });
     }
@@ -225,6 +175,11 @@ export default function ScheduleAfterAcceptModal({
     try {
       // jobs table has client_name but NOT property_address — the address
       // lives on the linked properties record via property_id.
+      // Use 'scheduled' as the insert status — it's always in the CHECK
+      // constraint. The DB trigger (trg_jobs_enforce_initial_status) will
+      // convert it to pending_cleaner or awaiting_cleaner_acceptance based
+      // on whether a cleaner is assigned. This avoids the CHECK failure
+      // that happens if the migration adding the new statuses wasn't applied.
       const { data: job, error } = await supabase.from('jobs').insert({
         property_id: resolvedPropertyId || null,
         linked_quote_id: quoteId,
@@ -232,7 +187,7 @@ export default function ScheduleAfterAcceptModal({
         scheduled_date: format(date, 'yyyy-MM-dd'),
         scheduled_time: scheduledTime,
         cleaner_1_id: cleanerId || null,
-        status: initialJobStatusForAssignment(cleanerId || null, null),
+        status: 'scheduled',
         notes: jobNotes || null,
         estimated_duration: Math.round(estimatedHours * 60),
         price_inc_gst: priceIncGst,
