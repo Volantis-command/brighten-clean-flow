@@ -332,24 +332,54 @@ export default function StaffPage() {
 
   const isAdmin = currentRole === 'admin';
 
+  // The magic-link confirmation dialog must render regardless of which
+  // view is active (list vs detail). Previously it was below the early-return
+  // for the detail view, so clicking "Send Login Link" on the detail page
+  // set the state but the dialog didn't exist in the DOM.
+  const magicLinkDialog = (
+    <AlertDialog open={!!magicLinkConfirm} onOpenChange={(o) => { if (!o) setMagicLinkConfirm(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Send Login Link</AlertDialogTitle>
+          <AlertDialogDescription>
+            Send a magic login link via SMS to <strong>{magicLinkConfirm?.full_name}</strong> ({magicLinkConfirm?.phone})?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => magicLinkConfirm && sendMagicLinkMutation.mutate(magicLinkConfirm)}
+            disabled={!magicLinkConfirm?.phone || sendMagicLinkMutation.isPending}
+          >
+            {sendMagicLinkMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Send Login Link
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // Selected staff detail view
   if (selectedStaff) {
     return (
-      <StaffDetailView
-        staff={selectedStaff}
-        isAdmin={isAdmin}
-        onBack={() => setSelectedStaff(null)}
-        onboardingStatuses={onboardingStatuses}
-        getOnboardingLink={getOnboardingLink}
-        onboardingLinkCopied={onboardingLinkCopied}
-        copyOnboardingLink={copyOnboardingLink}
-        ensureOnboardingMutation={ensureOnboardingMutation}
-        markReviewedMutation={markReviewedMutation}
-        approveDeploymentMutation={approveDeploymentMutation}
-        setMagicLinkConfirm={setMagicLinkConfirm}
-        sendMagicLinkMutation={sendMagicLinkMutation}
-        resetPasswordMutation={resetPasswordMutation}
-      />
+      <>
+        <StaffDetailView
+          staff={selectedStaff}
+          isAdmin={isAdmin}
+          onBack={() => setSelectedStaff(null)}
+          onboardingStatuses={onboardingStatuses}
+          getOnboardingLink={getOnboardingLink}
+          onboardingLinkCopied={onboardingLinkCopied}
+          copyOnboardingLink={copyOnboardingLink}
+          ensureOnboardingMutation={ensureOnboardingMutation}
+          markReviewedMutation={markReviewedMutation}
+          approveDeploymentMutation={approveDeploymentMutation}
+          setMagicLinkConfirm={setMagicLinkConfirm}
+          sendMagicLinkMutation={sendMagicLinkMutation}
+          resetPasswordMutation={resetPasswordMutation}
+        />
+        {magicLinkDialog}
+      </>
     );
   }
 
@@ -550,29 +580,8 @@ export default function StaffPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Send Magic Link Confirm Dialog */}
-      <AlertDialog open={!!magicLinkConfirm} onOpenChange={(o) => { if (!o) setMagicLinkConfirm(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send Login Link</AlertDialogTitle>
-            <AlertDialogDescription>
-              Send a one-tap login link to {magicLinkConfirm?.full_name} via SMS?
-              {magicLinkConfirm?.phone ? ` (${magicLinkConfirm.phone})` : ''}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => magicLinkConfirm && sendMagicLinkMutation.mutate(magicLinkConfirm)}
-              disabled={!magicLinkConfirm?.phone || sendMagicLinkMutation.isPending}
-              className="bg-brightly hover:bg-brightly-hover text-white font-bold gap-2"
-            >
-              {sendMagicLinkMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Send Login Link
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Magic Link dialog (shared with detail view — defined above the early return) */}
+      {magicLinkDialog}
     </div>
   );
 }

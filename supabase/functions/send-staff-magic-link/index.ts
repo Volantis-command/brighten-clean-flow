@@ -71,19 +71,30 @@ Deno.serve(async (req) => {
     else if (formattedPhone.startsWith('0')) { formattedPhone = '+61' + formattedPhone.slice(1); }
     else { formattedPhone = '+61' + formattedPhone; }
 
-    // Create magic token
-    const { data: tokenRow, error: tokenErr } = await adminClient
-      .from("staff_magic_tokens")
-      .insert({ staff_id })
-      .select("token")
-      .single();
+    // Generate a proper Supabase magic link — this creates a one-time token
+    // that auto-signs the user in when clicked. No password needed.
+    const appUrl = Deno.env.get("APP_URL") || "https://app.brightly.cleaning";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
-    if (tokenErr || !tokenRow) {
-      return new Response(JSON.stringify({ error: "Failed to create token" }), { status: 500, headers: corsHeaders });
+    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email: profile.email,
+      options: { redirectTo: `${appUrl}/dashboard` },
+    });
+
+    if (linkErr || !linkData) {
+      console.error("generateLink error:", linkErr);
+      return new Response(JSON.stringify({ error: "Failed to generate login link" }), { status: 500, headers: corsHeaders });
     }
 
-    const appUrl = Deno.env.get("APP_URL") || "https://app.brightly.cleaning";
-    const loginUrl = `${appUrl}/auth/staff?token=${tokenRow.token}`;
+    // Build the verification URL the cleaner will click
+    const hashedToken = linkData.properties?.hashed_token;
+    const loginUrl = hashedToken
+      ? `${supabaseUrl}/auth/v1/verify?token=${hashedToken}&type=magiclink&redirect_to=${encodeURIComponent(appUrl + '/dashboard')}`
+      : `${appUrl}/auth/staff`;
+
+    // Also store a record in staff_magic_tokens for audit trail
+    await adminClient.from("staff_magic_tokens").insert({ staff_id }).select().maybeSingle();
 
     // Send SMS via Twilio
     const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
@@ -101,7 +112,7 @@ Deno.serve(async (req) => {
         body: new URLSearchParams({
           To: formattedPhone,
           From: twilioFrom,
-          Body: `Brightly login: ${loginUrl} — expires in 15 minutes`,
+          Body: `Brightly login: ${loginUrl}\n\nTap to sign in — no password needed. Link expires in 1 hour.`,
         }),
       }
     );
