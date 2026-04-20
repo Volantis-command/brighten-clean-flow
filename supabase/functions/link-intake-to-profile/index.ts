@@ -96,17 +96,32 @@ Deno.serve(async (req: Request) => {
         } as any)
         .eq('id', clientProfileId);
     } else {
-      const { data: newProfile, error: profileErr } = await supabase
-        .from('profiles')
-        .insert({
-          full_name: fullName,
-          phone: body.phone || null,
-          email: body.email || null,
-        } as any)
-        .select('id')
-        .single();
-      if (profileErr) throw new Error(`profile insert: ${profileErr.message}`);
-      clientProfileId = newProfile.id;
+      // profiles.id is a FK to auth.users — we can't just INSERT into profiles
+      // without a matching auth user. Use the admin API to create an auth user
+      // first; Supabase's on-signup trigger then creates the profiles row.
+      // Generate a random password (client never sees it — they use the SMS
+      // magic-link portal).
+      const randomPassword = crypto.randomUUID() + '!Aa1'; // meets pw complexity
+
+      // Try email first, fall back to phone-based pseudo-email
+      const authEmail = body.email || `${(body.phone || '').replace(/\D/g, '')}@client.brightly.cleaning`;
+
+      const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+        email: authEmail,
+        password: randomPassword,
+        email_confirm: true, // skip confirmation email
+        phone: body.phone || undefined,
+        user_metadata: { full_name: fullName, role: 'client' },
+      });
+      if (authErr) throw new Error(`auth createUser: ${authErr.message}`);
+      clientProfileId = authUser.user.id;
+
+      // The on-signup trigger creates a basic profile — update it with full data
+      await supabase.from('profiles').update({
+        full_name: fullName,
+        phone: body.phone || null,
+        email: body.email || null,
+      } as any).eq('id', clientProfileId);
 
       // Give them the client role (needed for client portal login + RLS policies)
       await supabase.from('user_roles').insert({
