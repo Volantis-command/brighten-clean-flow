@@ -39,13 +39,40 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { job_id, quote_id, contact_name, description, amount, account_code, invoice_prefix, due_days } = body;
+    let { job_id, quote_id, contact_name, description, amount, account_code, invoice_prefix, due_days } = body;
     console.log('xero-create-invoice called with:', JSON.stringify({ job_id, quote_id, contact_name, amount, account_code }));
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // If only job_id was passed, hydrate contact/amount/description from the job
+    if (job_id && (!contact_name || amount === undefined || amount === null)) {
+      const { data: job, error: jobErr } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, properties:property_id(property_name, address, billing_email, client_name)')
+        .eq('id', job_id)
+        .single();
+      if (jobErr || !job) {
+        throw new Error(`Job lookup failed: ${jobErr?.message || 'not found'}`);
+      }
+      const prop: any = (job as any).properties || {};
+      contact_name = contact_name || prop.client_name || (job as any).client_name || prop.property_name || 'Client';
+      const ex = Number((job as any).price_ex_gst || 0);
+      const inc = Number((job as any).price_inc_gst || 0);
+      const fallbackEx = ex > 0 ? ex : (inc > 0 ? +(inc / 1.1).toFixed(2) : 0);
+      if (amount === undefined || amount === null) amount = fallbackEx;
+      const dateLabel = (job as any).scheduled_date || '';
+      description = description || `Cleaning service${prop.property_name ? ` — ${prop.property_name}` : ''}${dateLabel ? ` (${dateLabel})` : ''}`;
+    }
+
+    if (!contact_name) {
+      throw new Error('contact_name is required (no client name found on job/property)');
+    }
+    if (!amount || Number(amount) <= 0) {
+      throw new Error(`Invalid invoice amount: ${amount}. Job must have price_ex_gst or price_inc_gst set.`);
+    }
 
     console.log('Fetching Xero token...');
     const { access_token, tenant_id } = await getValidToken(supabase);
