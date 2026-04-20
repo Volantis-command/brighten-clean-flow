@@ -91,8 +91,6 @@ Deno.serve(async (req: Request) => {
         .from('profiles')
         .update({
           full_name: fullName || undefined,
-          first_name: body.first_name || undefined,
-          last_name: body.last_name || undefined,
           phone: body.phone || undefined,
           email: body.email || undefined,
         } as any)
@@ -102,11 +100,8 @@ Deno.serve(async (req: Request) => {
         .from('profiles')
         .insert({
           full_name: fullName,
-          first_name: body.first_name || null,
-          last_name: body.last_name || null,
           phone: body.phone || null,
           email: body.email || null,
-          role: 'client',
         } as any)
         .select('id')
         .single();
