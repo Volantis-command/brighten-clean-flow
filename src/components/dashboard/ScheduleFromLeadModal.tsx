@@ -198,10 +198,11 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
         if (updErr) throw updErr;
       } else {
         // ── 2b. No existing job — create one ──
+        // jobs table has client_name but NOT property_address — the address
+        // lives on the linked properties record via property_id.
         const { data: inserted, error: jobErr } = await supabase.from('jobs').insert({
           property_id: propertyId,
           client_name: fullName !== '—' ? fullName : null,
-          property_address: lead.address,
           scheduled_date: scheduledDate,
           scheduled_time: time,
           estimated_duration: parseInt(duration),

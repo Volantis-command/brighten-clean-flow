@@ -164,14 +164,12 @@ export default function ScheduleAfterAcceptModal({
         }).eq('id', existing.id);
         stepResults.push({ step: 'Client profile updated', ok: true });
       } else {
-        // Create new profile
+        // Create new profile — profiles table only has full_name (not first/last),
+        // and role lives in user_roles, not on profiles.
         const { data: newProfile, error: profileError } = await supabase.from('profiles').insert({
           full_name: clientName || null,
-          first_name: firstName || null,
-          last_name: lastName || null,
           phone: clientPhone || null,
           email: clientEmail || null,
-          role: 'client',
         } as any).select('id').single();
         if (profileError) throw profileError;
         clientProfileId = newProfile.id;
@@ -225,11 +223,12 @@ export default function ScheduleAfterAcceptModal({
     let jobId: string | null = null;
 
     try {
+      // jobs table has client_name but NOT property_address — the address
+      // lives on the linked properties record via property_id.
       const { data: job, error } = await supabase.from('jobs').insert({
         property_id: resolvedPropertyId || null,
         linked_quote_id: quoteId,
         client_name: clientName || null,
-        property_address: propertyAddress || null,
         scheduled_date: format(date, 'yyyy-MM-dd'),
         scheduled_time: scheduledTime,
         cleaner_1_id: cleanerId || null,
