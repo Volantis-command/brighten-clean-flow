@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Verify the onboarding token is valid
     const { data: onboarding, error: obErr } = await supabase
       .from("staff_onboarding")
-      .select("user_id, full_name")
+      .select("user_id, full_name, email")
       .eq("onboarding_token", onboarding_token)
       .maybeSingle();
 
@@ -45,10 +45,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Set the password on the auth user
-    const { error: pwErr } = await supabase.auth.admin.updateUser(
+    if (!onboarding.user_id) {
+      return new Response(JSON.stringify({ error: "Onboarding record has no user_id" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify the auth user actually exists
+    const { data: authUser, error: userErr } = await supabase.auth.admin.getUserById(onboarding.user_id);
+    if (userErr || !authUser?.user) {
+      return new Response(JSON.stringify({
+        error: "Auth user not found for this staff member. Admin needs to re-create the account.",
+        detail: userErr?.message,
+      }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Set the password AND mark email as confirmed (so the user can sign in immediately)
+    // CRITICAL: use updateUserById, NOT updateUser (which doesn't exist on admin client)
+    const { error: pwErr } = await supabase.auth.admin.updateUserById(
       onboarding.user_id,
-      { password }
+      {
+        password,
+        email_confirm: true, // ensure confirmed so signInWithPassword works
+      }
     );
 
     if (pwErr) {
@@ -57,15 +78,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get email for the sign-in response
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("id", onboarding.user_id)
-      .maybeSingle();
+    // Return the email the auth user actually has (not the form email — they must match for sign-in)
+    const email = authUser.user.email || onboarding.email;
 
     return new Response(
-      JSON.stringify({ success: true, email: profile?.email, user_id: onboarding.user_id }),
+      JSON.stringify({ success: true, email, user_id: onboarding.user_id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
