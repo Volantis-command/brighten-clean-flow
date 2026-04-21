@@ -42,8 +42,14 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json();
+    const raw = await req.text();
+    const body = raw ? JSON.parse(raw) : {};
     const { type } = body;
+    if (!type) {
+      return new Response(JSON.stringify({ error: 'type is required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
