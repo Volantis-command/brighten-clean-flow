@@ -410,6 +410,7 @@ export default function ClientsPage() {
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
+          <BackfillOrphansButton onDone={() => queryClient.invalidateQueries({ queryKey: ['clients-list'] })} />
           <Button onClick={() => setQuoteLinkOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
             <Send className="w-5 h-5" /> Send Quote Request
           </Button>
@@ -630,5 +631,39 @@ export default function ClientsPage() {
 
       <SendQuoteLinkModal open={quoteLinkOpen} onOpenChange={setQuoteLinkOpen} />
     </div>
+  );
+}
+
+// Admin button that calls the backfill-orphan-clients edge function.
+// Turns orphan quote_requests (leads with no profile / property) into real
+// client records with properties linked. Idempotent — safe to run repeatedly.
+// One-shot migration tool, kept in the UI so Brendan can re-run if new
+// orphans appear later.
+function BackfillOrphansButton({ onDone }: { onDone: () => void }) {
+  const [running, setRunning] = useState(false);
+
+  const run = async () => {
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('backfill-orphan-clients', { body: {} });
+      if (error) throw error;
+      const r = data as any;
+      toast.success(
+        `Backfill done: ${r?.created ?? 0} created, ${r?.skipped_existing_profile ?? 0} already had profiles, ${r?.skipped_no_contact ?? 0} skipped (no contact), ${r?.errors?.length ?? 0} errors`,
+        { duration: 8000 }
+      );
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message || 'Backfill failed');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Button onClick={run} disabled={running} variant="outline" className="font-bold rounded-xl gap-2">
+      {running ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
+      Backfill Orphan Clients
+    </Button>
   );
 }
