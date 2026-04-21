@@ -123,11 +123,14 @@ export function calculateLinenCost(
   }
   cost += bathrooms * ((rates.linen_hand_towel || 0) + (rates.linen_bath_mat || 0));
   cost += kitchens * 2 * (rates.linen_tea_towel || 0);
+  // Sofa beds are treated as Queen-equivalent for linen.
+  // A pull-out sofa bed takes the same sheet set and towel count as a queen —
+  // guests sleep on it like any other bed. (Brendan's guidance 2026-04-21.)
   cost += sofaBeds * (
-    3 * (rates.linen_king_single_flat_sheet || 0) +
-    2 * (rates.linen_pillowcase || 0) +
-    1 * (rates.linen_bath_towel || 0) +
-    1 * (rates.linen_face_washer || 0)
+    3 * (rates.linen_queen_flat_sheet || 0) +
+    4 * (rates.linen_pillowcase || 0) +
+    2 * (rates.linen_bath_towel || 0) +
+    2 * (rates.linen_face_washer || 0)
   );
   // Extra toilet surcharge (Airbnb only — hand towel per extra toilet)
   if (cleanType === SERVICE_TYPES.AIRBNB_TURNOVER && extraToilets > 0) {
