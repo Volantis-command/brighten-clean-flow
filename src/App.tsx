@@ -194,7 +194,10 @@ function AppRoutes() {
       <Route path="/report/:token" element={<CleanReportPage />} />
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
-      {/* /airbnb redirect kept — GuestReadyReportPage:144 still navigates here for "Book again" */}
+      {/* Legacy redirects — the marketing SMS + Airbnb rebook button send clients to
+          these paths. Do not delete without also updating send-quote-link-sms edge
+          function and GuestReadyReportPage. */}
+      <Route path="/residential-quote" element={<Navigate to="/quote" replace />} />
       <Route path="/airbnb" element={<Navigate to="/quote" replace />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
