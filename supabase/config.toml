@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.link-intake-to-profile]
 verify_jwt = false
+
+[functions.set-staff-password]
+verify_jwt = false
