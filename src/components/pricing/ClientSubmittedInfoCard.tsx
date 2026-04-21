@@ -29,10 +29,23 @@ export default function ClientSubmittedInfoCard({ formData, cleanType }: Props) 
 
   // Airbnb
   if (isAirbnb) {
+    // Structural fields the client filled in — shown so the quoter sees the
+    // full picture, not just access details. (Previously sofa_beds etc. were
+    // captured in form_data but never displayed — Brendan flagged 2026-04-21.)
+    if (fd.kitchens != null && Number(fd.kitchens) > 0) items.push({ label: 'Kitchens', value: String(fd.kitchens) });
+    if (fd.living_areas != null && Number(fd.living_areas) > 0) items.push({ label: 'Living Areas', value: String(fd.living_areas) });
+    if (fd.balconies != null && Number(fd.balconies) > 0) items.push({ label: 'Balconies', value: String(fd.balconies) });
+    if (fd.sofa_beds != null && Number(fd.sofa_beds) > 0) items.push({ label: 'Sofa Beds', value: String(fd.sofa_beds) });
+    if (fd.outdoor_areas === true) items.push({ label: 'Outdoor Areas', value: 'Yes' });
+    if (fd.bed_config) items.push({ label: 'Bed Config', value: String(fd.bed_config) });
+
     if (fd.checkout_time) items.push({ label: 'Guest Checkout', value: fd.checkout_time });
     if (fd.checkin_time) items.push({ label: 'Next Check-in', value: fd.checkin_time });
     if (fd.platform) items.push({ label: 'Platform', value: fd.platform });
     if (fd.linen_change != null) items.push({ label: 'Linen Required', value: fd.linen_change ? 'Yes' : 'No' });
+    if (fd.amenities_kit === true) items.push({ label: 'Amenities Kit', value: 'Yes' });
+    if (fd.wash_kit === true) items.push({ label: 'Wash Kit', value: 'Yes' });
+    if (fd.tea_coffee_kit === true) items.push({ label: 'Tea/Coffee Kit', value: 'Yes' });
     if (fd.hosting_notes) items.push({ label: 'Hosting Notes', value: fd.hosting_notes });
   }
 
