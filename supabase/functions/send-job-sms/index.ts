@@ -42,7 +42,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json();
+    const raw = await req.text();
+    const body = raw ? JSON.parse(raw) : {};
     const { job_id, to, message } = body;
 
     // Direct SMS mode: send a custom message to a specific number
