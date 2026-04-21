@@ -129,6 +129,31 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         tcs_accepted: true, tcs_accepted_at: new Date().toISOString(), form_data: formData,
       } as any);
       if (error) throw error;
+
+      // Create / reuse a client profile + property + link them so the client
+      // portal immediately shows the property they just registered. Matches
+      // what ResidentialForm and CommercialForm do — previously missing from
+      // AirbnbForm, which is why Airbnb clients landed in the system with
+      // "No properties yet". (Brendan flagged 2026-04-22.) Non-blocking.
+      try {
+        await supabase.functions.invoke('link-intake-to-profile', {
+          body: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: fullName.trim(),
+            phone: mobile,
+            email,
+            property_address: address,
+            property_type: propertyType,
+            bedrooms: parseInt(bedrooms) || null,
+            bathrooms: parseInt(bathrooms) || null,
+            clean_type: 'Airbnb / Short-Stay Turnover',
+          },
+        });
+      } catch (linkErr) {
+        console.error('[airbnb-intake] link-intake-to-profile failed (non-blocking):', linkErr);
+      }
+
       await supabase.functions.invoke('send-quote-notification', {
         body: { type: 'intake_submitted', client_phone: mobile, client_name: firstName, clean_type: 'Airbnb / Short-Stay Turnover', address },
       });
