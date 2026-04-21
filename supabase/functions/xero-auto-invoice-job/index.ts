@@ -97,7 +97,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json();
+    const raw = await req.text();
+    const body = raw ? JSON.parse(raw) : {};
     const { job_id, send_email } = body;
     if (!job_id) throw new Error('job_id is required');
 
