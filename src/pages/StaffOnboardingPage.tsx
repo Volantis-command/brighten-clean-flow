@@ -357,32 +357,33 @@ export default function StaffOnboardingPage() {
       }
 
       // ── Set the password via edge function ──
-      // Uses a direct fetch (not supabase.functions.invoke) to avoid auth issues —
-      // the function has verify_jwt=false and validates via the onboarding token.
       let passwordSet = false;
+      let authEmail = form.email; // may be overridden by edge function response
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       try {
         const pwRes = await fetch(`${supabaseUrl}/functions/v1/set-staff-password`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+          },
           body: JSON.stringify({ onboarding_token: token, password: form.password }),
         });
-        if (pwRes.ok) {
-          const pwData = await pwRes.json();
-          if (pwData.success) {
-            passwordSet = true;
-          } else {
-            console.error('Password set response error:', pwData.error);
-            toast.error('Could not set password: ' + (pwData.error || 'unknown error'));
-          }
+        const pwData = await pwRes.json().catch(() => ({}));
+        if (pwRes.ok && pwData.success) {
+          passwordSet = true;
+          // IMPORTANT: use the email from the edge function (matches auth.users),
+          // not form.email (which may have been edited during onboarding).
+          if (pwData.email) authEmail = pwData.email;
         } else {
-          const errText = await pwRes.text();
-          console.error('Password set HTTP error:', pwRes.status, errText);
-          toast.error(`Password service error (${pwRes.status}). Your form was saved — contact admin to set your login.`);
+          const errMsg = pwData.error || `HTTP ${pwRes.status}`;
+          console.error('Password set failed:', errMsg, pwData);
+          toast.error('Password error: ' + errMsg);
         }
       } catch (e: any) {
         console.error('Password set network error:', e);
-        toast.error('Could not reach password service. Form saved — contact admin.');
+        toast.error('Could not reach password service: ' + (e.message || 'network error'));
       }
 
       // ── Admin notification SMS ──
@@ -395,19 +396,33 @@ export default function StaffOnboardingPage() {
         });
       } catch { /* SMS is best-effort */ }
 
-      // ── Auto-sign in if password was set ──
+      // ── Auto-sign in if password was set (with retry) ──
       if (passwordSet) {
-        const { error: signInErr } = await supabase.auth.signInWithPassword({
-          email: form.email,
-          password: form.password,
-        });
-        if (!signInErr) {
+        // Retry up to 3 times with short delays — Supabase auth sometimes needs
+        // a moment to propagate password changes.
+        let signInOk = false;
+        let lastError = '';
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({
+            email: authEmail,
+            password: form.password,
+          });
+          if (!signInErr) {
+            signInOk = true;
+            break;
+          }
+          lastError = signInErr.message;
+          if (attempt < 3) {
+            await new Promise(r => setTimeout(r, 600));
+          }
+        }
+        if (signInOk) {
           toast.success('Welcome to Brightly! 🎉');
           window.location.href = '/dashboard';
           return;
         } else {
-          console.error('Sign-in failed after password set:', signInErr.message);
-          toast.error('Password set but sign-in failed: ' + signInErr.message);
+          console.error('Sign-in failed after 3 attempts:', lastError);
+          toast.error('Password set, but auto sign-in failed: ' + lastError + '. Use "Go to Login" below.');
         }
       }
 
