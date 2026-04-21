@@ -19,6 +19,7 @@ const STEPS = [
   'Identity Verification',
   'Your Availability',
   'WhatsApp + Policy Acknowledgements',
+  'Set Your Password',
 ];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -73,6 +74,8 @@ interface FormData {
   availability_notes: string;
   has_whatsapp: boolean;
   policy_acks: boolean[];
+  password: string;
+  password_confirm: string;
 }
 
 const initialForm: FormData = {
@@ -85,6 +88,7 @@ const initialForm: FormData = {
   available_days: [], preferred_start_time: '', max_jobs_per_day: '',
   availability_notes: '', has_whatsapp: false,
   policy_acks: POLICIES.map(() => false),
+  password: '', password_confirm: '',
 };
 
 export default function StaffOnboardingPage() {
@@ -251,6 +255,11 @@ export default function StaffOnboardingPage() {
       case 5:
         if (!form.policy_acks.every(Boolean)) return 'All policy acknowledgements must be checked';
         return null;
+      case 6:
+        if (!form.password) return 'Please set a password';
+        if (form.password.length < 6) return 'Password must be at least 6 characters';
+        if (form.password !== form.password_confirm) return 'Passwords do not match';
+        return null;
       default:
         return null;
     }
@@ -347,6 +356,16 @@ export default function StaffOnboardingPage() {
         });
       }
 
+      // Set the password via edge function (service role required)
+      try {
+        const { error: pwErr } = await supabase.functions.invoke('set-staff-password', {
+          body: { onboarding_token: token, password: form.password },
+        });
+        if (pwErr) console.error('Password set failed:', pwErr);
+      } catch (e) {
+        console.error('Password set error:', e);
+      }
+
       try {
         await supabase.functions.invoke('send-job-sms', {
           body: {
@@ -355,6 +374,22 @@ export default function StaffOnboardingPage() {
           },
         });
       } catch { /* SMS is best-effort */ }
+
+      // Auto-sign in with the password they just set
+      try {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        });
+        if (!signInErr) {
+          // Signed in! Redirect straight to the app
+          toast.success('Welcome to Brightly! 🎉');
+          window.location.href = '/dashboard';
+          return;
+        }
+      } catch {
+        // Sign-in failed — show the success screen with manual login option
+      }
 
       setSubmitted(true);
     } catch (err: any) {
@@ -736,12 +771,64 @@ export default function StaffOnboardingPage() {
                 <ArrowLeft className="w-4 h-4" /> Back
               </Button>
               <Button
+                onClick={handleNext}
+                disabled={!form.policy_acks.every(Boolean)}
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-xl"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Section 6: Set Your Password */}
+        {currentStep === 6 && (
+          <div className="space-y-6 bg-card rounded-2xl shadow-lg p-5">
+            <h2 className="text-base font-bold text-primary">6. Set Your Password</h2>
+            <p className="text-sm text-muted-foreground">
+              Create a password to log in to the Brightly app. You'll use your email (<strong>{form.email}</strong>) and this password from now on.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-semibold">Password *</Label>
+                <Input
+                  type="password"
+                  value={form.password}
+                  onChange={e => update('password', e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="mt-1 rounded-xl h-12"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-semibold">Confirm Password *</Label>
+                <Input
+                  type="password"
+                  value={form.password_confirm}
+                  onChange={e => update('password_confirm', e.target.value)}
+                  placeholder="Type it again"
+                  className="mt-1 rounded-xl h-12"
+                />
+                {form.password_confirm && form.password !== form.password_confirm && (
+                  <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+                )}
+                {form.password && form.password.length > 0 && form.password.length < 6 && (
+                  <p className="text-xs text-destructive mt-1">Must be at least 6 characters</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleBack} className="flex-1 rounded-xl gap-1">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </Button>
+              <Button
                 onClick={handleSubmit}
-                disabled={submitting || !form.policy_acks.every(Boolean)}
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-xl gap-2"
+                disabled={submitting || !form.password || form.password.length < 6 || form.password !== form.password_confirm}
+                className="flex-1 bg-brightly hover:bg-brightly-hover text-white font-bold rounded-xl gap-2"
               >
                 {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
-                Complete Onboarding
+                Complete & Sign In
               </Button>
             </div>
           </div>
