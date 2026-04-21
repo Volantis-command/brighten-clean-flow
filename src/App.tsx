@@ -69,6 +69,7 @@ import MapPage from "./pages/MapPage";
 import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
+import SmokeTestPage from "./pages/SmokeTestPage";
 import StaffMagicAuthPage from "./pages/auth/StaffMagicAuthPage";
 // ClientPortalLoginPage deleted — /client-portal now uses ClientLoginPage
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
@@ -251,6 +252,7 @@ function AppRoutes() {
         <Route path="/my-pay" element={<MyPaySummaryPage />} />
         <Route path="/qc" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCPage /></ProtectedRoute>} />
         <Route path="/qc/:jobId" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCAuditPage /></ProtectedRoute>} />
+        <Route path="/smoke-test" element={<ProtectedRoute allowedRoles={['admin']}><SmokeTestPage /></ProtectedRoute>} />
 
 
       </Route>
