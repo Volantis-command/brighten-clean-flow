@@ -100,7 +100,12 @@ Deno.serve(async (req) => {
     const raw = await req.text();
     const body = raw ? JSON.parse(raw) : {};
     const { job_id, send_email } = body;
-    if (!job_id) throw new Error('job_id is required');
+    if (!job_id) {
+      return new Response(JSON.stringify({ error: 'job_id is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     console.log('xero-auto-invoice-job called for job:', job_id);
 
