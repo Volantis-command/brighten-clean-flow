@@ -356,16 +356,36 @@ export default function StaffOnboardingPage() {
         });
       }
 
-      // Set the password via edge function (service role required)
+      // ── Set the password via edge function ──
+      // Uses a direct fetch (not supabase.functions.invoke) to avoid auth issues —
+      // the function has verify_jwt=false and validates via the onboarding token.
+      let passwordSet = false;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       try {
-        const { error: pwErr } = await supabase.functions.invoke('set-staff-password', {
-          body: { onboarding_token: token, password: form.password },
+        const pwRes = await fetch(`${supabaseUrl}/functions/v1/set-staff-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ onboarding_token: token, password: form.password }),
         });
-        if (pwErr) console.error('Password set failed:', pwErr);
-      } catch (e) {
-        console.error('Password set error:', e);
+        if (pwRes.ok) {
+          const pwData = await pwRes.json();
+          if (pwData.success) {
+            passwordSet = true;
+          } else {
+            console.error('Password set response error:', pwData.error);
+            toast.error('Could not set password: ' + (pwData.error || 'unknown error'));
+          }
+        } else {
+          const errText = await pwRes.text();
+          console.error('Password set HTTP error:', pwRes.status, errText);
+          toast.error(`Password service error (${pwRes.status}). Your form was saved — contact admin to set your login.`);
+        }
+      } catch (e: any) {
+        console.error('Password set network error:', e);
+        toast.error('Could not reach password service. Form saved — contact admin.');
       }
 
+      // ── Admin notification SMS ──
       try {
         await supabase.functions.invoke('send-job-sms', {
           body: {
@@ -375,20 +395,20 @@ export default function StaffOnboardingPage() {
         });
       } catch { /* SMS is best-effort */ }
 
-      // Auto-sign in with the password they just set
-      try {
+      // ── Auto-sign in if password was set ──
+      if (passwordSet) {
         const { error: signInErr } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password,
         });
         if (!signInErr) {
-          // Signed in! Redirect straight to the app
           toast.success('Welcome to Brightly! 🎉');
           window.location.href = '/dashboard';
           return;
+        } else {
+          console.error('Sign-in failed after password set:', signInErr.message);
+          toast.error('Password set but sign-in failed: ' + signInErr.message);
         }
-      } catch {
-        // Sign-in failed — show the success screen with manual login option
       }
 
       setSubmitted(true);
@@ -429,12 +449,23 @@ export default function StaffOnboardingPage() {
 
   if (submitted) return (
     <div className="min-h-screen flex items-center justify-center bg-secondary p-6">
-      <div className="bg-card rounded-2xl shadow-lg p-8 text-center max-w-md">
-        <CheckCircle2 className="w-16 h-16 text-primary mx-auto mb-4" />
-        <h1 className="text-2xl font-extrabold mb-3 text-foreground">You're All Done!</h1>
+      <div className="bg-card rounded-2xl shadow-lg p-8 text-center max-w-md space-y-4">
+        <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
+        <h1 className="text-2xl font-extrabold text-foreground">You're All Done!</h1>
         <p className="text-muted-foreground text-base">
-          Brendan will be in touch shortly to schedule your induction and first shadow clean. Welcome to Brightly 🌿
+          Your onboarding form has been submitted. Brendan will be in touch shortly to schedule your induction and first shadow clean.
         </p>
+        <div className="border-t pt-4 space-y-2">
+          <p className="text-sm font-bold text-foreground">Log in to the Brightly app:</p>
+          <p className="text-sm text-muted-foreground">Email: <strong>{form.email}</strong></p>
+          <p className="text-sm text-muted-foreground">Password: the one you just set</p>
+          <a
+            href="/login"
+            className="inline-block mt-2 px-6 py-3 bg-brightly hover:bg-brightly-hover text-white font-bold rounded-xl transition-colors"
+          >
+            Go to Login →
+          </a>
+        </div>
       </div>
     </div>
   );
