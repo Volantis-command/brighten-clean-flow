@@ -18,7 +18,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { job_id, property_name, property_address } = await req.json();
+    const raw = await req.text();
+    const body = raw ? JSON.parse(raw) : {};
+    const { job_id, property_name, property_address } = body;
+    if (!job_id) {
+      return new Response(JSON.stringify({ error: 'job_id is required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
