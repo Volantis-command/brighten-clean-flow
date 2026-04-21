@@ -172,8 +172,6 @@ Deno.serve(async (req: Request) => {
       const { error: linkErr } = await supabase.from('client_properties').insert({
         client_id: clientProfileId,
         property_id: propertyId,
-        property_address: body.property_address,
-        property_name: propertyName,
       } as any);
       if (linkErr) throw new Error(`client_properties link: ${linkErr.message}`);
     }
