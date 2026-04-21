@@ -1113,6 +1113,18 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                   </Select>
                 </div>
               ))}
+              {/* Sofa beds rendered alongside bedrooms so the linen
+                  breakdown reads top-to-bottom as one bed list. Sofa beds
+                  are always Queen-equivalent for linen (see
+                  calculateLinenCost). */}
+              {Array.from({ length: form.sofaBeds || 0 }).map((_, i) => (
+                <div key={`sofa-${i}`} className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-muted-foreground w-24">Sofa Bed {i + 1}</span>
+                  <div className="h-10 rounded-xl flex-1 flex items-center px-3 bg-muted/40 border border-border text-sm text-foreground">
+                    Queen <span className="text-muted-foreground ml-2 text-xs">(counted as queen for linen)</span>
+                  </div>
+                </div>
+              ))}
             </div>
             {form.linenRequired && result.linenCost > 0 && (
               <div className="bg-muted/50 rounded-xl p-3 space-y-1 text-xs border border-border">
@@ -1125,6 +1137,18 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
                   return (
                     <div key={i} className="flex justify-between text-muted-foreground">
                       <span>Bed {i + 1} ({bt}): sheets + pillows + towels</span>
+                      <span className="font-semibold">${(sheetCost + pillowCost + towelCost).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+                {/* Sofa beds — Queen-equivalent linen */}
+                {Array.from({ length: form.sofaBeds || 0 }).map((_, i) => {
+                  const sheetCost = (rates.linen_queen_flat_sheet || 0) * 3;
+                  const pillowCost = (rates.linen_pillowcase || 0) * 4;
+                  const towelCost = (rates.linen_bath_towel || 0) * 2 + (rates.linen_face_washer || 0) * 2;
+                  return (
+                    <div key={`sofa-${i}`} className="flex justify-between text-muted-foreground">
+                      <span>Sofa Bed {i + 1} (Queen): sheets + pillows + towels</span>
                       <span className="font-semibold">${(sheetCost + pillowCost + towelCost).toFixed(2)}</span>
                     </div>
                   );
@@ -1281,7 +1305,15 @@ function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMuta
 }) {
   const quoteId = editQuote?.id || savedQuoteId;
   const quoteStatus = editQuote?.status;
-  const showAcceptBtn = !!quoteId && quoteStatus !== 'accepted' && quoteStatus !== 'scheduled';
+  // Once a quote has moved past "sent" — client accepted, admin scheduled,
+  // or booked — we stop offering "Mark Accepted" (it's done) and show a
+  // read-only status pill instead. Previously only 'accepted'/'scheduled'
+  // were handled, so 'booked' (set by create-booking-from-quote after the
+  // client clicked Accept) still showed the button. Brendan flagged this
+  // 2026-04-21.
+  const acceptedStatuses = ['accepted', 'client_accepted', 'booked', 'scheduled'];
+  const isAcceptedStatus = acceptedStatuses.includes(quoteStatus);
+  const showAcceptBtn = !!quoteId && !isAcceptedStatus;
 
   return (
     <div className="space-y-2">
@@ -1314,6 +1346,18 @@ function ActionButtons({ saveMutation, copyForWhatsApp, editQuote, sendQuoteMuta
         >
           <CheckCircle2 className="h-4 w-4" /> Mark Accepted ✓
         </Button>
+      )}
+      {!!quoteId && isAcceptedStatus && (
+        <div
+          className="w-full rounded-xl py-3 px-4 flex items-center justify-center gap-2 font-bold"
+          style={{
+            background: 'rgba(46, 93, 78, 0.15)',
+            border: '1px solid rgba(58, 117, 96, 0.4)',
+            color: '#4ade80',
+          }}
+        >
+          <CheckCircle2 className="h-4 w-4" /> Accepted
+        </div>
       )}
 
       <Button variant="outline" className="w-full gap-2" onClick={copyForWhatsApp}>

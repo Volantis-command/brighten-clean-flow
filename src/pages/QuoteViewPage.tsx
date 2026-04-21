@@ -116,7 +116,7 @@ function CheckItem({ text, delay }: { text: string; delay: number }) {
 }
 
 /* ─── Success screen after accept ─── */
-function SuccessScreen({ name, date, time }: { name: string; date?: string; time?: string }) {
+function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: string; time?: string; isAirbnb?: boolean }) {
   const formattedDate = date
     ? new Date(date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
     : null;
@@ -148,10 +148,10 @@ function SuccessScreen({ name, date, time }: { name: string; date?: string; time
 
         <h1 className="text-3xl font-extrabold text-white animate-slide-up"
           style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Booking Confirmed!
+          {isAirbnb ? 'Quote Accepted!' : 'Booking Confirmed!'}
         </h1>
 
-        {formattedDate && (
+        {!isAirbnb && formattedDate && (
           <div className="rounded-2xl p-4 animate-slide-up" style={{
             background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.1)',
@@ -168,7 +168,9 @@ function SuccessScreen({ name, date, time }: { name: string; date?: string; time
         )}
 
         <p className="text-white/60 text-base animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          We'll be in touch within 24 hours to confirm your cleaner.
+          {isAirbnb
+            ? "We'll be in touch to set up your onboarding and connect your booking platform. Turnover cleans are scheduled per guest checkout."
+            : "We'll be in touch within 24 hours to confirm your cleaner."}
         </p>
         <div className="pt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
           <a href="tel:0418878707"
@@ -360,14 +362,73 @@ export default function QuoteViewPage() {
     load();
   }, [token]);
 
-  // ─── Step 1: Accept quote (show scheduling) ───
-  const handleAcceptClick = useCallback(() => {
+  // For Airbnb the client never picks a date — cleans happen per guest
+  // checkout via the host's booking platform. So Accept goes straight to
+  // the accepted state and skips the date/time picker + per-clean job creation.
+  const cleanTypeForFlow = quote?.clean_type || quote?.service_type || '';
+  const isAirbnbQuote = (() => {
+    const t = cleanTypeForFlow.toLowerCase();
+    return t.includes('airbnb') || t.includes('short-stay') || t.includes('turnover');
+  })();
+
+  // ─── Step 1: Accept quote ───
+  // Residential / Deep / EOL → show scheduling picker
+  // Airbnb → accept straight away, no job created yet
+  const handleAcceptClick = useCallback(async () => {
     if (!tcsAccepted) {
       toast.error('Please accept the Terms & Conditions first');
       return;
     }
-    setShowScheduling(true);
-  }, [tcsAccepted]);
+
+    if (!isAirbnbQuote) {
+      setShowScheduling(true);
+      return;
+    }
+
+    // Airbnb path — accept without scheduling or job creation.
+    if (!quote) return;
+    setConfirming(true);
+    try {
+      await (supabase as any).from('quotes').update({
+        status: 'accepted',
+        quote_accepted_at: new Date().toISOString(),
+        acceptance_method: 'quote_page',
+        tcs_accepted: true,
+        tcs_accepted_at: new Date().toISOString(),
+        tcs_version: '2026-03',
+      }).eq('quote_token', token);
+
+      if (quote.lead_id) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+          .eq('id', quote.lead_id);
+      }
+      if (quote.client_phone) {
+        await (supabase as any).from('quote_requests')
+          .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+          .eq('phone', quote.client_phone)
+          .in('status', ['quote_sent', 'form_submitted', 'awaiting_quote', 'new_enquiry']);
+      }
+
+      // Admin notification (non-blocking). No job_id because we don't
+      // create a job here — Airbnb jobs come later via the booking platform.
+      supabase.functions.invoke('send-quote-notification', {
+        body: {
+          type: 'quote_accepted',
+          client_name: quote.client_name,
+          clean_type: quote.clean_type,
+          address: quote.property_address,
+          total_inc_gst: quote.sell_price_inc_gst,
+          airbnb_onboarding: true,
+        },
+      }).catch(() => {});
+
+      setAccepted(true);
+    } catch (e: any) {
+      toast.error(e.message || 'Something went wrong. Please try again.');
+    }
+    setConfirming(false);
+  }, [tcsAccepted, isAirbnbQuote, quote, token]);
 
   // ─── Step 2: Confirm booking with date/time ───
   const handleConfirmBooking = useCallback(async () => {
@@ -503,7 +564,7 @@ export default function QuoteViewPage() {
   // ─── State screens ───
   if (loading) return <LoadingScreen />;
   if (notFound) return <NotFoundScreen />;
-  if (accepted) return <SuccessScreen name={(quote?.client_name || '').split(' ')[0]} date={preferredDate} time={preferredTime} />;
+  if (accepted) return <SuccessScreen name={(quote?.client_name || '').split(' ')[0]} date={preferredDate} time={preferredTime} isAirbnb={isAirbnbQuote} />;
   if (declined) return <DeclinedScreen name={(quote?.client_name || '').split(' ')[0]} />;
   if (quote?.quote_accepted_at && quote?.status === 'accepted') return <AlreadyAcceptedScreen />;
   if (quote?.quote_declined_at || quote?.status === 'declined') return <AlreadyDeclinedScreen />;
