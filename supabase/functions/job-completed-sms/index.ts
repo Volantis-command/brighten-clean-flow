@@ -59,7 +59,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { job_id } = await req.json();
+    const raw = await req.text();
+    const body = raw ? JSON.parse(raw) : {};
+    const { job_id } = body;
     if (!job_id) {
       return new Response(JSON.stringify({ error: 'Missing job_id' }), { status: 400, headers: corsHeaders });
     }

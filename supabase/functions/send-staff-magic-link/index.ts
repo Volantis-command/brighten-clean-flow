@@ -74,7 +74,6 @@ Deno.serve(async (req) => {
     // Generate a proper Supabase magic link — this creates a one-time token
     // that auto-signs the user in when clicked. No password needed.
     const appUrl = Deno.env.get("APP_URL") || "https://app.brightly.cleaning";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
     const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
       type: "magiclink",
