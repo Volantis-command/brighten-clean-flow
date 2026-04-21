@@ -33,23 +33,48 @@ const INCLUSIONS: Record<string, string[]> = {
     'Full garage (if applicable)',
     'Bond clean standard',
   ],
-  'Airbnb Turnover': [
-    'Fresh linen made up',
-    'Towel folds',
-    'Bathroom stock replenishment',
-    'Kitchen reset',
-    'Rubbish removal',
-    'Property inspection check',
-  ],
 };
 
-function getInclusions(cleanType: string, bedrooms: number): string[] {
-  // Find best match
+function isAirbnbType(cleanType: string): boolean {
+  const t = (cleanType || '').toLowerCase();
+  return t.includes('airbnb') || t.includes('short-stay') || t.includes('turnover');
+}
+
+/**
+ * Build the "What's Included" list for a quote.
+ * For Airbnb: only show extras the client opted into — no gimmies.
+ * For Standard/Deep/EOL: keep the descriptive list (clients expect to see what they're paying for).
+ */
+function getInclusions(quote: any): string[] {
+  const cleanType = quote?.clean_type || quote?.service_type || '';
+
+  if (isAirbnbType(cleanType)) {
+    const items: string[] = ['Full Airbnb turnover clean'];
+    const cs = (quote?.consumables_selection || {}) as Record<string, any>;
+
+    if (quote?.linen_required === true) items.push('Fresh linen supplied & made up');
+    if (cs.amenities_kit === true) items.push('Guest amenities kit (shampoo, soap, etc.)');
+    if (cs.wash_kit === true) items.push('Laundry / wash kit');
+    if (cs.tea_coffee_kit === true) items.push('Tea & coffee restock');
+    if (cs.include_photo_report === true) items.push('Photo report after every clean');
+
+    return items;
+  }
+
+  // Non-Airbnb: keep the descriptive list
+  const bedrooms = Number(quote?.bedrooms || 0);
   const key = Object.keys(INCLUSIONS).find((k) =>
     cleanType?.toLowerCase().includes(k.toLowerCase())
   );
   const items = INCLUSIONS[key || 'Standard Clean'] || INCLUSIONS['Standard Clean'];
-  return items.map((item) => item.replace('{bedrooms}', String(bedrooms || 0)));
+  const base = items.map((item) => item.replace('{bedrooms}', String(bedrooms)));
+
+  // Append selected add-ons (e.g. inside oven, carpet steam) if present
+  const extras = Array.isArray(quote?.extras) ? quote.extras : [];
+  for (const e of extras) {
+    if (e?.name) base.push(String(e.name));
+  }
+  return base;
 }
 
 /* ─── Animated checkmark item ─── */
@@ -487,7 +512,7 @@ export default function QuoteViewPage() {
   const price = Number(quote.sell_price_inc_gst || quote.price || 0);
   const hours = quote.estimated_hours || quote.hours || null;
   const cleanType = quote.clean_type || quote.service_type || 'Clean';
-  const inclusions = getInclusions(cleanType, quote.bedrooms || 0);
+  const inclusions = getInclusions(quote);
 
   return (
     <div className="min-h-screen" style={{
