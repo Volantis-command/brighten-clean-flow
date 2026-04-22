@@ -124,8 +124,14 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
   }, [property?.id, property?.client_name, property?.client_phone, property?.client_email]);
 
   useEffect(() => {
-    if (property) {
-      setForm({
+    if (!property) return;
+
+    setForm(current => {
+      // Never stomp user edits while editing an existing property.
+      // Only hydrate from props when entering the screen in view mode or create mode.
+      if (mode === 'edit') return current;
+
+      return {
         property_name: property.property_name || '',
         address: property.address || '',
         suburb: property.suburb || '',
@@ -135,14 +141,12 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         client_type: property.client_type || 'residential',
         bedrooms: property.bedrooms || 1,
         bathrooms: property.bathrooms || 1,
-        bed_config: (property.bed_config as BedConfigEntry[]) || [],
+        bed_config: Array.isArray(property.bed_config) ? property.bed_config as BedConfigEntry[] : [],
         status: property.status || 'active',
         access_method: property.access_method || '',
         access_code: property.access_code || '',
         alarm_code: property.alarm_code || '',
         garage_code: property.garage_code || '',
-        // UI state keeps `parking_notes` name for minimal-diff; the real
-        // DB column is parking_instructions (2026-04-22 fix)
         parking_notes: property.parking_instructions || '',
         special_instructions: property.special_instructions || '',
         product_restrictions: property.product_restrictions || '',
@@ -165,9 +169,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         guest_wifi: property.guest_wifi || '',
         is_occupied: property.is_occupied || false,
         occupant_count: property.occupant_count || 0,
-      });
-    }
-  }, [property]);
+      };
+    });
+  }, [property, mode]);
 
   const u = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }));
 
