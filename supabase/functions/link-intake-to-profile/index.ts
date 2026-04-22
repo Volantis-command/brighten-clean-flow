@@ -50,6 +50,24 @@ interface Body {
   checkin_time?: string | null;
   checkout_time?: string | null;
   host_preferences?: string | null;
+  // Full intake-form passthrough (added 2026-04-22 — Option B)
+  clean_frequency?: string | null;
+  preferred_days?: string | null;
+  preferred_time?: string | null;
+  pet_notes?: string | null;
+  first_clean?: boolean | null;
+  focus_areas?: string | null;
+  bed_config?: string | null;
+  sofa_beds?: number | null;
+  kitchens?: number | null;
+  living_areas?: number | null;
+  balconies?: number | null;
+  has_outdoor_area?: boolean | null;
+  linen_required?: boolean | null;
+  amenities_kit?: boolean | null;
+  wash_kit?: boolean | null;
+  tea_coffee_kit?: boolean | null;
+  platform?: string | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -186,6 +204,24 @@ Deno.serve(async (req: Request) => {
           checkin_time: body.checkin_time || null,
           checkout_time: body.checkout_time || null,
           host_preferences: body.host_preferences || null,
+          // Full intake passthrough — Option B, all on properties, one truth.
+          clean_frequency: body.clean_frequency || null,
+          preferred_days: body.preferred_days || null,
+          preferred_time: body.preferred_time || null,
+          pet_notes: body.pet_notes || null,
+          first_clean: body.first_clean ?? null,
+          focus_areas: body.focus_areas || null,
+          bed_config: body.bed_config || null,
+          sofa_beds: body.sofa_beds ?? null,
+          kitchens: body.kitchens ?? null,
+          living_areas: body.living_areas ?? null,
+          balconies: body.balconies ?? null,
+          has_outdoor_area: body.has_outdoor_area ?? null,
+          linen_required: body.linen_required ?? null,
+          amenities_kit: body.amenities_kit ?? null,
+          wash_kit: body.wash_kit ?? null,
+          tea_coffee_kit: body.tea_coffee_kit ?? null,
+          platform: body.platform || null,
         } as any)
         .select('id')
         .single();

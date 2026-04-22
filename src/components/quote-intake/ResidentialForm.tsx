@@ -134,6 +134,15 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
             access_code: accessInstructions || null,
             parking_instructions: parking || null,
             host_preferences: focusAreas || null,
+            // Full Residential intake passthrough (Option B)
+            clean_frequency: frequency || null,
+            preferred_days: preferredDays.length > 0 ? preferredDays.join(', ') : null,
+            preferred_time: preferredTime || null,
+            pet_notes: pets === true ? 'Yes' : (pets === false ? 'No' : null),
+            first_clean: firstClean === true ? true : (firstClean === false ? false : null),
+            focus_areas: focusAreas || null,
+            living_areas: parseInt(livingAreas) || null,
+            has_outdoor_area: outdoorAreas === true ? true : (outdoorAreas === false ? false : null),
           },
         });
       } catch (linkErr) {
