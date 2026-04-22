@@ -86,13 +86,30 @@ Deno.serve(async (req) => {
 
     if (!emailRes.ok) {
       const errText = await emailRes.text();
-      // Xero accepted the AUTHORISED step but the email failed (no email on
-      // contact, Xero email service issue, etc.). Mark the invoice as
-      // 'authorised' (still in Xero, just not emailed) so admin can retry.
+      // Xero accepted the AUTHORISED step but the email failed. Mark the
+      // invoice as 'authorised' (still in Xero, just not emailed) so admin
+      // can retry from /invoices/pending.
       await supabase.from('jobs').update({
         invoice_status: 'authorised',
         invoice_raised_at: new Date().toISOString(),
       }).eq('id', job_id);
+
+      // Detect the common "contact has no email address" case and return a
+      // soft-success 200 so the caller (cleaner completion flow) doesn't blow
+      // up. Any other email failure is still a hard error for visibility.
+      const isNoEmail = /no email address/i.test(errText);
+      if (isNoEmail) {
+        console.warn('xero-send-invoice: contact has no email — marked authorised, skipped send');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            status: 'authorised',
+            warning: 'Contact has no email address; invoice authorised but not emailed.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
       throw new Error(`Invoice authorised but email failed: ${errText}`);
     }
 
