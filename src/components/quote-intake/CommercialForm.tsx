@@ -116,6 +116,21 @@ export default function CommercialForm({ onComplete, onBack }: Props) {
             property_address: address,
             property_type: spaceType,
             clean_type: 'Commercial Clean',
+            // Commercial intake passthrough — every captured field onto the property
+            parking_instructions: parking || null,
+            clean_frequency: frequency || null,
+            preferred_time: preferredTime || null,
+            first_clean: firstClean === true ? true : (firstClean === false ? false : null),
+            special_instructions: specialAttention || null,
+            business_name: businessName || null,
+            abn: abn || null,
+            approx_size: approxSize || null,
+            has_kitchen_breakroom: kitchenBreakroom === true ? true : (kitchenBreakroom === false ? false : null),
+            floor_types: floorTypes || null,
+            after_hours_access: afterHours === true ? true : (afterHours === false ? false : null),
+            has_security_alarm: securityAlarm === true ? true : (securityAlarm === false ? false : null),
+            toilets: parseInt(toiletsBathrooms) || null,
+            property_photos: photos.length > 0 ? photos.map(p => ({ url: p.url, label: '' })) : null,
           },
         });
       } catch (linkErr) {
