@@ -110,24 +110,11 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
         .order("room")
         .order("sort_order");
 
-      // Fallback to default checklist if no SOP items configured
-      if (!sopItems || sopItems.length === 0) {
-        const toInsert = DEFAULT_CHECKLIST.flatMap((group, gi) =>
-          group.tasks.map((task, ti) => ({
-            property_id: property.id,
-            room: group.room,
-            task,
-            sort_order: gi * 100 + ti,
-            active: true,
-          }))
-        );
-        const { data: inserted } = await supabase
-          .from("property_sop_items")
-          .insert(toInsert)
-          .select();
-        sopItems = inserted ?? [];
-      }
-
+      // No auto-default checklist — Brendan 2026-04-22: "this checklist we
+      // do not need. the PDF and the data in there is what we need in our
+      // end-of-clean checklist." Property-specific SOPs added by admin
+      // still show as reference; everything else is captured by the
+      // Master Form at clock-off.
       const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
         id: s.id,
         room: s.room,
@@ -171,24 +158,8 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
         .eq("active", true)
         .order("sort_order");
 
-      if (!sopItems || sopItems.length === 0) {
-        // Create default SOP items for this property
-        const toInsert = DEFAULT_CHECKLIST.flatMap((group, gi) =>
-          group.tasks.map((task, ti) => ({
-            property_id: property.id,
-            room: group.room,
-            task,
-            sort_order: gi * 100 + ti,
-            active: true,
-          }))
-        );
-        const { data: inserted } = await supabase
-          .from("property_sop_items")
-          .insert(toInsert)
-          .select();
-        sopItems = inserted ?? [];
-      }
-
+      // No auto-default checklist for house cleans either. Property-specific
+      // SOPs only. Master Form at end covers the rest.
       const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
         id: s.id,
         room: s.room,

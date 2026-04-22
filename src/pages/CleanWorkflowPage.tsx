@@ -135,7 +135,9 @@ export default function CleanWorkflowPage() {
       return;
     }
 
-    await seedDefaultChecklist(job!.properties?.id || job!.property_id);
+    // Removed seedDefaultChecklist — no auto-default checklist during clean.
+    // Cleaner sees only property-specific SOPs (if any); Master Form at
+    // clock-off covers everything. (Brendan 2026-04-22 directive.)
 
     await supabase.from('time_entries').insert({
       job_id: job!.id,
