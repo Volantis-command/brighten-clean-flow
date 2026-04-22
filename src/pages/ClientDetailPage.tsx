@@ -686,11 +686,19 @@ function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: stri
     },
   });
 
-  // Pre-fill property name from client name
+  // Pre-fill property name AND copy client contact details onto the new
+  // property (so the property profile form isn't blank when the user opens
+  // it after creation). Fixed 2026-04-22 — previously only property_name
+  // was prefilled and the client_name/billing_email/client_phone columns
+  // on `properties` were left null, leaving those fields blank in the form.
   const { data: clientProfile } = useQuery({
     queryKey: ['client-profile-for-prop', clientId],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('full_name').eq('id', clientId).maybeSingle();
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone')
+        .eq('id', clientId)
+        .maybeSingle();
       return data;
     },
   });
@@ -712,6 +720,11 @@ function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: stri
         bathrooms: parseInt(bathrooms) || null,
         client_type: clientType,
         status: 'active',
+        // Copy contact details from the client's profile so the property
+        // profile form is pre-populated when opened.
+        client_name: clientProfile?.full_name || null,
+        billing_email: clientProfile?.email || null,
+        client_phone: clientProfile?.phone || null,
       } as any).select('id').single();
       if (propErr) throw propErr;
 
