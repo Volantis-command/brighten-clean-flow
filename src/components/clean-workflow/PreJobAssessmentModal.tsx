@@ -118,7 +118,12 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
   }
 
   async function handleNoExtraTime() {
-    await supabase.from('jobs').update({ extra_time_requested: false }).eq('id', job.id);
+    // Both questions answered → set the assessment-complete timestamp so
+    // resolveView() releases the gate and shows the active clean.
+    await supabase.from('jobs').update({
+      extra_time_requested: false,
+      pre_clean_assessment_completed_at: new Date().toISOString(),
+    } as any).eq('id', job.id);
     onComplete();
   }
 
@@ -132,7 +137,8 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
       extra_time_requested: true,
       extra_time_photos: extraPhotos,
       extra_time_notes: extraNotes || null,
-    }).eq('id', job.id);
+      pre_clean_assessment_completed_at: new Date().toISOString(),
+    } as any).eq('id', job.id);
 
     for (const url of extraPhotos) {
       const storagePath = url.split('/job-photos/')[1] ?? '';
