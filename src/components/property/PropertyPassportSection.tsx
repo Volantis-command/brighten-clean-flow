@@ -204,18 +204,24 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
     queryClient.invalidateQueries({ queryKey: ['property'] });
   };
 
-  const MaskedField = ({ label, field, value }: { label: string; field: string; value: string }) => {
+  const renderAccessField = (label: string, field: 'access_code' | 'alarm_code' | 'garage_code', value: string) => {
     const isRevealed = revealedFields[field];
+    const fieldIdentity = {
+      access_code: { id: 'passport-detail-a', name: 'passport-detail-a' },
+      alarm_code: { id: 'passport-detail-b', name: 'passport-detail-b' },
+      garage_code: { id: 'passport-detail-c', name: 'passport-detail-c' },
+    }[field];
+
     if (readOnly) {
       return (
-        <div>
+        <div key={field}>
           <span className="text-xs text-muted-foreground">{label}</span>
           <div className="flex items-center gap-2">
             <p className="font-mono font-bold text-sm text-foreground">
               {value ? (isRevealed ? value : '••••••') : '—'}
             </p>
             {value && (
-              <button onClick={() => toggleReveal(field)} className="text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => toggleReveal(field)} className="text-muted-foreground hover:text-foreground">
                 {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             )}
@@ -223,20 +229,26 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
         </div>
       );
     }
+
     return (
-      <div className="space-y-1.5">
-        <Label>{label}</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            type={isRevealed ? 'text' : 'password'}
-            value={value}
-            onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
-            className="rounded-xl"
-          />
-          <button onClick={() => toggleReveal(field)} className="text-muted-foreground hover:text-foreground shrink-0">
-            {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+      <div key={field} className="space-y-1.5">
+        <Label htmlFor={fieldIdentity.id}>{label}</Label>
+        <Input
+          id={fieldIdentity.id}
+          name={fieldIdentity.name}
+          type="text"
+          inputMode="text"
+          value={value}
+          onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
+          className="rounded-xl"
+          autoComplete="nope"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-form-type="other"
+        />
       </div>
     );
   };
