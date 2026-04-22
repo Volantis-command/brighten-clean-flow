@@ -325,9 +325,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
           {form.access_method && (
             <div><span className="text-xs text-muted-foreground">Method</span><p className="font-semibold text-sm">{form.access_method}</p></div>
           )}
-          <MaskedField label="Access Code" field="access_code" value={form.access_code} />
-          <MaskedField label="Alarm Code" field="alarm_code" value={form.alarm_code} />
-          <MaskedField label="Garage Code" field="garage_code" value={form.garage_code} />
+          {renderAccessField('Access Code', 'access_code', form.access_code)}
+          {renderAccessField('Alarm Code', 'alarm_code', form.alarm_code)}
+          {renderAccessField('Garage Code', 'garage_code', form.garage_code)}
           {form.parking_notes && (
             <div><span className="text-xs text-muted-foreground">Parking</span><p className="text-sm">{form.parking_notes}</p></div>
           )}
@@ -480,9 +480,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
               </SelectContent>
             </Select>
           </Field>
-          <MaskedField label="Key Safe / Lockbox Code" field="access_code" value={form.access_code} />
-          <MaskedField label="Alarm Code" field="alarm_code" value={form.alarm_code} />
-          <MaskedField label="Garage Code" field="garage_code" value={form.garage_code} />
+          {renderAccessField('Key Safe / Lockbox Code', 'access_code', form.access_code)}
+          {renderAccessField('Alarm Code', 'alarm_code', form.alarm_code)}
+          {renderAccessField('Garage Code', 'garage_code', form.garage_code)}
           <Field label="Parking Notes">
             <Textarea value={form.parking_notes} onChange={e => u('parking_notes', e.target.value)} className="rounded-xl" placeholder="Where to park..." />
           </Field>
