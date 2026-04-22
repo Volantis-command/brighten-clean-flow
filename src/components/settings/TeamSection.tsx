@@ -120,6 +120,7 @@ export default function TeamSection() {
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState<AppRole>('cleaner');
+  const [editPassword, setEditPassword] = useState('');
 
   const invokeFn = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('invite-staff', { body });
@@ -155,11 +156,22 @@ export default function TeamSection() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const setPasswordMutation = useMutation({
+    mutationFn: () =>
+      invokeFn({ action: 'set_password', user_id: editMember!.id, password: editPassword }),
+    onSuccess: () => {
+      toast.success('Password updated');
+      setEditPassword('');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const openEdit = (m: StaffMember) => {
     setEditMember(m);
     setEditName(m.full_name || '');
     setEditPhone(m.phone || '');
     setEditRole(m.role);
+    setEditPassword('');
   };
 
   const copyMagicLink = (token: string) => {
@@ -318,6 +330,29 @@ export default function TeamSection() {
                   <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="border-t pt-4">
+              <Label>Set / Reset Password</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  type="text"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="New password (min 6 chars)"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => setPasswordMutation.mutate()}
+                  disabled={!editPassword || editPassword.length < 6 || setPasswordMutation.isPending}
+                  className="font-bold whitespace-nowrap"
+                >
+                  {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                  Update Password
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Share the new password securely with the {editMember?.role === 'client' ? 'client' : 'staff member'}.
+              </p>
             </div>
           </div>
           <DialogFooter>
