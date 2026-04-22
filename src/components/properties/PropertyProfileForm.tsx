@@ -237,19 +237,19 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
 
   const isAirbnb = form.client_type === 'airbnb' || form.client_type === 'short_term_rental';
 
-  /* ─── masked code field ─── */
-  const MaskedField = ({ label, field, value }: { label: string; field: string; value: string }) => {
+  const renderAccessField = (label: string, field: 'access_code' | 'alarm_code' | 'garage_code', value: string) => {
     const revealed = revealedFields[field];
+
     if (isView) {
       return (
-        <div>
+        <div key={field}>
           <span className="text-xs text-muted-foreground">{label}</span>
           <div className="flex items-center gap-2">
             <p className="font-mono font-bold text-sm text-foreground">
               {value ? (revealed ? value : '\u25CF\u25CF\u25CF\u25CF\u25CF\u25CF') : '\u2014'}
             </p>
             {value && (
-              <button onClick={() => toggleReveal(field)} className="text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => toggleReveal(field)} className="text-muted-foreground hover:text-foreground">
                 {revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             )}
@@ -257,11 +257,15 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         </div>
       );
     }
+
     return (
-      <div className="space-y-1.5">
-        <Label>{label}</Label>
+      <div key={field} className="space-y-1.5">
+        <Label htmlFor={field}>{label}</Label>
         <Input
+          id={field}
+          name={field}
           type="text"
+          inputMode="text"
           value={value}
           onChange={e => u(field, e.target.value)}
           className="h-12 rounded-xl"
@@ -269,8 +273,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
-          name={`code-${field}-${Math.random().toString(36).slice(2, 8)}`}
-          data-1p-ignore
+          data-1p-ignore="true"
           data-lpignore="true"
           data-form-type="other"
         />
@@ -322,9 +325,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
           {form.access_method && (
             <div><span className="text-xs text-muted-foreground">Method</span><p className="font-semibold text-sm">{form.access_method}</p></div>
           )}
-          <MaskedField label="Access Code" field="access_code" value={form.access_code} />
-          <MaskedField label="Alarm Code" field="alarm_code" value={form.alarm_code} />
-          <MaskedField label="Garage Code" field="garage_code" value={form.garage_code} />
+          {renderAccessField('Access Code', 'access_code', form.access_code)}
+          {renderAccessField('Alarm Code', 'alarm_code', form.alarm_code)}
+          {renderAccessField('Garage Code', 'garage_code', form.garage_code)}
           {form.parking_notes && (
             <div><span className="text-xs text-muted-foreground">Parking</span><p className="text-sm">{form.parking_notes}</p></div>
           )}
@@ -477,9 +480,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
               </SelectContent>
             </Select>
           </Field>
-          <MaskedField label="Key Safe / Lockbox Code" field="access_code" value={form.access_code} />
-          <MaskedField label="Alarm Code" field="alarm_code" value={form.alarm_code} />
-          <MaskedField label="Garage Code" field="garage_code" value={form.garage_code} />
+          {renderAccessField('Key Safe / Lockbox Code', 'access_code', form.access_code)}
+          {renderAccessField('Alarm Code', 'alarm_code', form.alarm_code)}
+          {renderAccessField('Garage Code', 'garage_code', form.garage_code)}
           <Field label="Parking Notes">
             <Textarea value={form.parking_notes} onChange={e => u('parking_notes', e.target.value)} className="rounded-xl" placeholder="Where to park..." />
           </Field>
