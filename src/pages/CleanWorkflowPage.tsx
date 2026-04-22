@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { seedDefaultChecklist } from '@/components/clean-workflow/defaultChecklist';
 import PreClockOnView from '@/components/clean-workflow/PreClockOnView';
 import PreJobAssessmentModal from '@/components/clean-workflow/PreJobAssessmentModal';
+import ClockedOnBanner from '@/components/clean-workflow/ClockedOnBanner';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
 import PhotoReportingWizard, { buildPhotoSections } from '@/components/clean-workflow/PhotoReportingWizard';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -39,9 +40,13 @@ type View =
 function resolveView(job: any): View {
   if (job.status === 'completed') return 'done';
   if (!job.clock_on) return 'pre_clock_on';
-  // Hard gate: both damage AND extra_time must be answered before active clean
-  if (job.pre_clean_notes === null || job.pre_clean_notes === undefined) return 'assessment';
-  if (job.extra_time_requested === null || job.extra_time_requested === undefined) return 'assessment';
+  // Hard gate: the assessment modal sets pre_clean_assessment_completed_at
+  // only after BOTH damage + extra-time questions are answered. Using a
+  // dedicated timestamp (vs. checking null on pre_clean_notes /
+  // extra_time_requested) means defaults on those columns can't accidentally
+  // skip the gate. (Brendan flagged 2026-04-22: Clock On was going straight
+  // to active view.)
+  if (!job.pre_clean_assessment_completed_at) return 'assessment';
   return 'active';
 }
 
@@ -276,12 +281,15 @@ export default function CleanWorkflowPage() {
   // ── Pre-Clean Assessment (hard gate — MUST answer both questions) ──
   if (view === 'assessment') {
     return (
-      <PreJobAssessmentModal
-        job={job}
-        property={property}
-        userId={user!.id}
-        onComplete={refreshJob}
-      />
+      <>
+        <ClockedOnBanner clockOn={job.clock_on} />
+        <PreJobAssessmentModal
+          job={job}
+          property={property}
+          userId={user!.id}
+          onComplete={refreshJob}
+        />
+      </>
     );
   }
 
@@ -308,6 +316,7 @@ export default function CleanWorkflowPage() {
   // ── Active Clean — SOP checklist, restocking, floating damage, completion ──
   return (
     <div className="min-h-screen bg-background max-w-lg mx-auto">
+      <ClockedOnBanner clockOn={job.clock_on} />
       {/* Header */}
       <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between">
         <div className="min-w-0 flex-1">
