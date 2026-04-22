@@ -124,8 +124,14 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
   }, [property?.id, property?.client_name, property?.client_phone, property?.client_email]);
 
   useEffect(() => {
-    if (property) {
-      setForm({
+    if (!property) return;
+
+    setForm(current => {
+      // Never stomp user edits while editing an existing property.
+      // Only hydrate from props when entering the screen in view mode or create mode.
+      if (mode === 'edit') return current;
+
+      return {
         property_name: property.property_name || '',
         address: property.address || '',
         suburb: property.suburb || '',
@@ -135,14 +141,12 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         client_type: property.client_type || 'residential',
         bedrooms: property.bedrooms || 1,
         bathrooms: property.bathrooms || 1,
-        bed_config: (property.bed_config as BedConfigEntry[]) || [],
+        bed_config: Array.isArray(property.bed_config) ? property.bed_config as BedConfigEntry[] : [],
         status: property.status || 'active',
         access_method: property.access_method || '',
         access_code: property.access_code || '',
         alarm_code: property.alarm_code || '',
         garage_code: property.garage_code || '',
-        // UI state keeps `parking_notes` name for minimal-diff; the real
-        // DB column is parking_instructions (2026-04-22 fix)
         parking_notes: property.parking_instructions || '',
         special_instructions: property.special_instructions || '',
         product_restrictions: property.product_restrictions || '',
@@ -165,9 +169,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         guest_wifi: property.guest_wifi || '',
         is_occupied: property.is_occupied || false,
         occupant_count: property.occupant_count || 0,
-      });
-    }
-  }, [property]);
+      };
+    });
+  }, [property, mode]);
 
   const u = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }));
 
@@ -239,6 +243,11 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
 
   const renderAccessField = (label: string, field: 'access_code' | 'alarm_code' | 'garage_code', value: string) => {
     const revealed = revealedFields[field];
+    const fieldIdentity = {
+      access_code: { id: 'property-detail-a', name: 'property-detail-a' },
+      alarm_code: { id: 'property-detail-b', name: 'property-detail-b' },
+      garage_code: { id: 'property-detail-c', name: 'property-detail-c' },
+    }[field];
 
     if (isView) {
       return (
@@ -260,16 +269,16 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
 
     return (
       <div key={field} className="space-y-1.5">
-        <Label htmlFor={field}>{label}</Label>
+        <Label htmlFor={fieldIdentity.id}>{label}</Label>
         <Input
-          id={field}
-          name={field}
+          id={fieldIdentity.id}
+          name={fieldIdentity.name}
           type="text"
           inputMode="text"
           value={value}
           onChange={e => u(field, e.target.value)}
           className="h-12 rounded-xl"
-          autoComplete="off"
+          autoComplete="nope"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
