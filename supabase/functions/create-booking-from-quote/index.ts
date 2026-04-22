@@ -40,8 +40,20 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'create-booking-from-quote' }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    const body = await req.json();
+    const raw = await req.text();
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const body = JSON.parse(raw);
     const {
       quote_id,
       property_id: bodyPropertyId,

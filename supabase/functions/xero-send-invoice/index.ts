@@ -36,8 +36,20 @@ async function getValidToken(supabase: any) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'xero-send-invoice' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
-    const { job_id } = await req.json();
+    const raw = await req.text();
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { job_id } = JSON.parse(raw);
     if (!job_id) throw new Error('job_id is required');
 
     const supabase = createClient(
