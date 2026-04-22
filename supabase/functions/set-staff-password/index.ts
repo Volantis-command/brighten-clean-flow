@@ -13,8 +13,20 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'set-staff-password' }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    const { onboarding_token, password } = await req.json();
+    const raw = await req.text();
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { onboarding_token, password } = JSON.parse(raw);
 
     if (!onboarding_token) {
       return new Response(JSON.stringify({ error: "onboarding_token required" }), {

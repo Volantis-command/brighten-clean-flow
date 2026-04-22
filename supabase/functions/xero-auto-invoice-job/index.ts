@@ -96,9 +96,20 @@ async function findOrCreateContact(
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'xero-auto-invoice-job' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const raw = await req.text();
-    const body = raw ? JSON.parse(raw) : {};
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const body = JSON.parse(raw);
     const { job_id, send_email } = body;
     if (!job_id) {
       return new Response(JSON.stringify({ error: 'job_id is required' }), {

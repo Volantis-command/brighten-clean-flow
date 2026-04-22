@@ -92,8 +92,20 @@ interface Body {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'link-intake-to-profile' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
-    const body = (await req.json()) as Body;
+    const raw = await req.text();
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const body = JSON.parse(raw) as Body;
 
     if (!body.property_address) {
       return new Response(JSON.stringify({ error: 'property_address is required' }), {
