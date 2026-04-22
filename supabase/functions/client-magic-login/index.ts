@@ -31,29 +31,38 @@ Deno.serve(async (req) => {
     let email: string | null = emailInput || null;
     let clientId: string | null = null;
 
+    // Pre-fetch all client user_ids — staff are NEVER eligible for client portal login
+    const { data: clientRoleRows } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "client");
+    const clientUserIds = new Set((clientRoleRows || []).map((r: any) => r.user_id));
+
+    // Pre-fetch staff user_ids so we can explicitly exclude them from any fallback match
+    const { data: staffRoleRows } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "cleaner", "head_cleaner"]);
+    const staffUserIds = new Set((staffRoleRows || []).map((r: any) => r.user_id));
+
     if (phoneInput) {
       // Phone-based lookup: normalize digits
       const phoneDigits = phoneInput.replace(/[\s()\-+]/g, '');
       const phoneSuffix = phoneDigits.length > 9 ? phoneDigits.slice(-9) : phoneDigits;
 
-      // Check profiles with client role
-      const { data: profileMatch } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone, email")
-        .not("phone", "is", null);
-
+      // ONLY look at profiles that have the client role — staff profiles are excluded entirely
       let clientProfile: any = null;
-      if (profileMatch) {
-        for (const p of profileMatch) {
-          const pDigits = (p.phone || '').replace(/[\s()\-+]/g, '');
-          if (pDigits.endsWith(phoneSuffix)) {
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", p.id)
-              .eq("role", "client")
-              .maybeSingle();
-            if (roleData) {
+      if (clientUserIds.size > 0) {
+        const { data: profileMatch } = await supabase
+          .from("profiles")
+          .select("id, full_name, phone, email")
+          .in("id", Array.from(clientUserIds))
+          .not("phone", "is", null);
+
+        if (profileMatch) {
+          for (const p of profileMatch) {
+            const pDigits = (p.phone || '').replace(/[\s()\-+]/g, '');
+            if (pDigits.endsWith(phoneSuffix)) {
               clientProfile = p;
               break;
             }
@@ -68,7 +77,7 @@ Deno.serve(async (req) => {
         clientId = clientProfile.id;
       }
 
-      // Fallback: properties.client_phone
+      // Fallback: properties.client_phone — but skip any property whose billing_email/client matches a staff profile
       if (!clientId) {
         const { data: props } = await supabase
           .from("properties")
@@ -78,18 +87,28 @@ Deno.serve(async (req) => {
         if (props) {
           for (const p of props) {
             const pDigits = (p.client_phone || '').replace(/[\s()\-+]/g, '');
-            if (pDigits.endsWith(phoneSuffix)) {
-              name = p.client_name;
-              phone = p.client_phone;
-              email = p.billing_email;
-              clientId = p.id;
-              break;
-            }
+            if (!pDigits.endsWith(phoneSuffix)) continue;
+
+            // Verify this property is linked to a client (not a staff member) via client_properties
+            const { data: link } = await supabase
+              .from("client_properties")
+              .select("client_id")
+              .eq("property_id", p.id)
+              .maybeSingle();
+
+            // If linked to a staff user_id, skip
+            if (link?.client_id && staffUserIds.has(link.client_id)) continue;
+
+            name = p.client_name;
+            phone = p.client_phone;
+            email = p.billing_email;
+            clientId = link?.client_id || p.id;
+            break;
           }
         }
       }
 
-      // Fallback: quote_requests.phone
+      // Fallback: quote_requests.phone (leads have no auth user_id, safe to use)
       if (!clientId) {
         const { data: qr } = await supabase
           .from("quote_requests")
@@ -113,12 +132,7 @@ Deno.serve(async (req) => {
       // If we still don't have a phone to send to, use the input
       if (!phone) phone = phoneInput;
     } else {
-      // Email-based lookup (existing logic)
-      const { data: props } = await supabase
-        .from("properties")
-        .select("id, client_name, client_phone, billing_email")
-        .ilike("billing_email", emailInput!);
-
+      // Email-based lookup — strictly scoped to client role
       const { data: profileMatch } = await supabase
         .from("profiles")
         .select("id, full_name, phone, email")
@@ -127,16 +141,27 @@ Deno.serve(async (req) => {
       let clientProfile: any = null;
       if (profileMatch && profileMatch.length > 0) {
         for (const p of profileMatch) {
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", p.id)
-            .eq("role", "client")
+          if (staffUserIds.has(p.id)) continue;
+          if (clientUserIds.has(p.id)) { clientProfile = p; break; }
+        }
+      }
+
+      const { data: props } = await supabase
+        .from("properties")
+        .select("id, client_name, client_phone, billing_email")
+        .ilike("billing_email", emailInput!);
+
+      let safeProp: any = null;
+      if (props && props.length > 0) {
+        for (const p of props) {
+          const { data: link } = await supabase
+            .from("client_properties")
+            .select("client_id")
+            .eq("property_id", p.id)
             .maybeSingle();
-          if (roleData) {
-            clientProfile = p;
-            break;
-          }
+          if (link?.client_id && staffUserIds.has(link.client_id)) continue;
+          safeProp = { ...p, linked_client_id: link?.client_id };
+          break;
         }
       }
 
@@ -147,15 +172,16 @@ Deno.serve(async (req) => {
         .limit(1);
 
       name = clientProfile?.full_name
-        || (props && props.length > 0 ? props[0].client_name : null)
+        || safeProp?.client_name
         || (quoteMatch && quoteMatch.length > 0 ? `${quoteMatch[0].first_name || ''} ${quoteMatch[0].last_name || ''}`.trim() : null);
 
       phone = clientProfile?.phone
-        || (props && props.length > 0 ? props[0].client_phone : null)
+        || safeProp?.client_phone
         || (quoteMatch && quoteMatch.length > 0 ? quoteMatch[0].phone : null);
 
       clientId = clientProfile?.id
-        || (props && props.length > 0 ? props[0].id : null)
+        || safeProp?.linked_client_id
+        || safeProp?.id
         || (quoteMatch && quoteMatch.length > 0 ? quoteMatch[0].id : null);
     }
 
