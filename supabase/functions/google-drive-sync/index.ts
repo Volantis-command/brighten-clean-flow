@@ -86,7 +86,7 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
-    strToUint8(unsignedJwt) as unknown as Uint8Array
+    strToUint8(unsignedJwt) as BufferSource
   );
   const signatureB64 = base64url(new Uint8Array(signature));
   const jwt = `${unsignedJwt}.${signatureB64}`;

@@ -73,21 +73,23 @@ Deno.serve(async (req: Request) => {
     let frequency = bodyFrequency || "one-off";
     let jobNotes = notes || "";
     let jobSource = source || "client";
+    let quote: any = null;
 
     // ── Scenario 1: Quote-based booking ──
     if (quote_id) {
-      const { data: quote, error: quoteErr } = await adminClient
+      const { data: quoteData, error: quoteErr } = await adminClient
         .from("quotes")
         .select("id, status, client_name, clean_type, service_type, property_address, sell_price_inc_gst, sell_price_ex_gst, discounted_price, property_id, frequency, client_phone")
         .eq("id", quote_id)
         .single();
 
-      if (quoteErr || !quote) {
+      if (quoteErr || !quoteData) {
         return new Response(
           JSON.stringify({ error: "Quote not found" }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      quote = quoteData;
 
       if (!["client_accepted", "accepted"].includes(quote.status)) {
         return new Response(
