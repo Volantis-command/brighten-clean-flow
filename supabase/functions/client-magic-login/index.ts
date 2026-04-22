@@ -132,12 +132,7 @@ Deno.serve(async (req) => {
       // If we still don't have a phone to send to, use the input
       if (!phone) phone = phoneInput;
     } else {
-      // Email-based lookup (existing logic)
-      const { data: props } = await supabase
-        .from("properties")
-        .select("id, client_name, client_phone, billing_email")
-        .ilike("billing_email", emailInput!);
-
+      // Email-based lookup — strictly scoped to client role
       const { data: profileMatch } = await supabase
         .from("profiles")
         .select("id, full_name, phone, email")
@@ -146,16 +141,27 @@ Deno.serve(async (req) => {
       let clientProfile: any = null;
       if (profileMatch && profileMatch.length > 0) {
         for (const p of profileMatch) {
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", p.id)
-            .eq("role", "client")
+          if (staffUserIds.has(p.id)) continue;
+          if (clientUserIds.has(p.id)) { clientProfile = p; break; }
+        }
+      }
+
+      const { data: props } = await supabase
+        .from("properties")
+        .select("id, client_name, client_phone, billing_email")
+        .ilike("billing_email", emailInput!);
+
+      let safeProp: any = null;
+      if (props && props.length > 0) {
+        for (const p of props) {
+          const { data: link } = await supabase
+            .from("client_properties")
+            .select("client_id")
+            .eq("property_id", p.id)
             .maybeSingle();
-          if (roleData) {
-            clientProfile = p;
-            break;
-          }
+          if (link?.client_id && staffUserIds.has(link.client_id)) continue;
+          safeProp = { ...p, linked_client_id: link?.client_id };
+          break;
         }
       }
 
@@ -166,15 +172,16 @@ Deno.serve(async (req) => {
         .limit(1);
 
       name = clientProfile?.full_name
-        || (props && props.length > 0 ? props[0].client_name : null)
+        || safeProp?.client_name
         || (quoteMatch && quoteMatch.length > 0 ? `${quoteMatch[0].first_name || ''} ${quoteMatch[0].last_name || ''}`.trim() : null);
 
       phone = clientProfile?.phone
-        || (props && props.length > 0 ? props[0].client_phone : null)
+        || safeProp?.client_phone
         || (quoteMatch && quoteMatch.length > 0 ? quoteMatch[0].phone : null);
 
       clientId = clientProfile?.id
-        || (props && props.length > 0 ? props[0].id : null)
+        || safeProp?.linked_client_id
+        || safeProp?.id
         || (quoteMatch && quoteMatch.length > 0 ? quoteMatch[0].id : null);
     }
 
