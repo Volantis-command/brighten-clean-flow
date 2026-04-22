@@ -110,6 +110,7 @@ export default function StaffPage() {
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState<AppRole>('cleaner');
   const [editEmploymentType, setEditEmploymentType] = useState('employee');
+  const [editPassword, setEditPassword] = useState('');
 
   const invokeFn = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('invite-staff', { body });
@@ -228,7 +229,18 @@ export default function StaffPage() {
     setEditPhone(m.phone || '');
     setEditRole(m.role);
     setEditEmploymentType(m.employment_type || 'employee');
+    setEditPassword('');
   };
+
+  const setPasswordMutation = useMutation({
+    mutationFn: () =>
+      invokeFn({ action: 'set_password', user_id: editMember!.id, password: editPassword }),
+    onSuccess: () => {
+      toast.success('Password updated. Share it securely with the staff member.');
+      setEditPassword('');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -553,6 +565,29 @@ export default function StaffPage() {
                   <SelectItem value="contractor">Contractor</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="border-t pt-4">
+              <Label className="flex items-center gap-1.5"><Key className="w-4 h-4" /> Set / Reset Password</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  type="text"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="New password (min 6 chars)"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => setPasswordMutation.mutate()}
+                  disabled={!editPassword || editPassword.length < 6 || setPasswordMutation.isPending}
+                  className="font-bold whitespace-nowrap"
+                >
+                  {setPasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                  Update
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Sets the password immediately. Share it securely with the staff member so they can log in.
+              </p>
             </div>
           </div>
           <DialogFooter>
