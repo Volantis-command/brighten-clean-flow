@@ -41,9 +41,21 @@ async function sendTwilioSms(to: string, body: string): Promise<{ success: boole
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  // Health check / smoke test ping
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'send-job-sms' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const raw = await req.text();
-    const body = raw ? JSON.parse(raw) : {};
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const body = JSON.parse(raw);
     const { job_id, to, message } = body;
 
     // Direct SMS mode: send a custom message to a specific number

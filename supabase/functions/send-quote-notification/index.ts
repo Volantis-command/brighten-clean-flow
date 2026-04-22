@@ -41,9 +41,20 @@ async function sendTwilioSms(to: string, body: string): Promise<{ success: boole
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ ok: true, function: 'send-quote-notification' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const raw = await req.text();
-    const body = raw ? JSON.parse(raw) : {};
+    if (!raw) {
+      return new Response(JSON.stringify({ ok: true, ping: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const body = JSON.parse(raw);
     const { type } = body;
     if (!type) {
       return new Response(JSON.stringify({ error: 'type is required' }), {
