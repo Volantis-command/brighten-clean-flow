@@ -81,7 +81,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
     linen_provided: false,
     linen_sets: 0,
     amenities_restock: false,
-    amenities_list: '',
+    amenities_notes: '',
     sofa_beds: 0,
     guest_access_notes: '',
     guest_wifi: '',
@@ -124,7 +124,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         linen_provided: property.linen_provided || false,
         linen_sets: property.linen_sets || 0,
         amenities_restock: property.amenities_restock || false,
-        amenities_list: property.amenities_list || '',
+        amenities_notes: property.amenities_notes || '',
         sofa_beds: property.sofa_beds || 0,
         guest_access_notes: property.guest_access_notes || '',
         guest_wifi: property.guest_wifi || '',
@@ -174,7 +174,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
       linen_provided: form.linen_provided,
       linen_sets: form.linen_sets,
       amenities_restock: form.amenities_restock,
-      amenities_list: form.amenities_list || null,
+      amenities_notes: form.amenities_notes || null,
       sofa_beds: form.sofa_beds,
       guest_access_notes: form.guest_access_notes || null,
       guest_wifi: form.guest_wifi || null,
@@ -307,7 +307,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
             <h3 className="text-sm font-bold text-foreground">Airbnb Extras</h3>
             <div><span className="text-xs text-muted-foreground">Linen Provided</span><p className="text-sm font-semibold">{form.linen_provided ? `Yes (${form.linen_sets} sets)` : 'No'}</p></div>
             <div><span className="text-xs text-muted-foreground">Amenities Restocking</span><p className="text-sm font-semibold">{form.amenities_restock ? 'Yes' : 'No'}</p></div>
-            {form.amenities_list && <div><span className="text-xs text-muted-foreground">Restock Items</span><p className="text-sm">{form.amenities_list}</p></div>}
+            {form.amenities_notes && <div><span className="text-xs text-muted-foreground">Restock Items</span><p className="text-sm">{form.amenities_notes}</p></div>}
             {form.sofa_beds > 0 && <div><span className="text-xs text-muted-foreground">Sofa Beds</span><p className="text-sm font-semibold">{form.sofa_beds}</p></div>}
             {form.guest_access_notes && <div><span className="text-xs text-muted-foreground">Guest Key Handover</span><p className="text-sm">{form.guest_access_notes}</p></div>}
             {form.guest_wifi && <div><span className="text-xs text-muted-foreground">Guest WiFi</span><p className="text-sm font-mono">{form.guest_wifi}</p></div>}
@@ -545,7 +545,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
             </div>
             {form.amenities_restock && (
               <Field label="Items to Restock">
-                <Textarea value={form.amenities_list} onChange={e => u('amenities_list', e.target.value)} className="rounded-xl" placeholder="Shampoo, conditioner, soap..." rows={2} />
+                <Textarea value={form.amenities_notes} onChange={e => u('amenities_notes', e.target.value)} className="rounded-xl" placeholder="Shampoo, conditioner, soap..." rows={2} />
               </Field>
             )}
             <Field label="Sofa Beds">
