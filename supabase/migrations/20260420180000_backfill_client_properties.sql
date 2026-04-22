@@ -86,13 +86,9 @@ BEGIN
     END IF;
 
     -- Link client <-> property
-    INSERT INTO public.client_properties (client_id, property_id, property_address, property_name)
-    VALUES (
-      profile_id,
-      prop_id,
-      qr.address,
-      (SELECT property_name FROM public.properties WHERE id = prop_id)
-    )
+    -- FIXED 2026-04-22: removed property_address/property_name — not on junction table.
+    INSERT INTO public.client_properties (client_id, property_id)
+    VALUES (profile_id, prop_id)
     ON CONFLICT (client_id, property_id) DO NOTHING;
 
     RAISE NOTICE 'Linked client % to property % (address: %)', profile_id, prop_id, qr.address;

@@ -79,8 +79,11 @@ WHERE NOT EXISTS (
 );
 
 -- Link Lynn to client_properties
-INSERT INTO public.client_properties (client_id, property_id, property_address)
-SELECT p.id, pr.id, pr.address
+-- FIXED 2026-04-22: removed `property_address` — column doesn't exist on
+-- client_properties (pure junction table). Original migration would have
+-- failed at apply time. Junction only needs client_id + property_id.
+INSERT INTO public.client_properties (client_id, property_id)
+SELECT p.id, pr.id
 FROM public.profiles p, public.properties pr
 WHERE p.phone = '0499777597' AND pr.address ILIKE '%La Scala%'
 AND NOT EXISTS (
@@ -89,8 +92,11 @@ AND NOT EXISTS (
 );
 
 -- Link Alexandra to client_properties
-INSERT INTO public.client_properties (client_id, property_id, property_address)
-SELECT p.id, pr.id, pr.address
+-- FIXED 2026-04-22: removed `property_address` — column doesn't exist on
+-- client_properties (pure junction table). Original migration would have
+-- failed at apply time. Junction only needs client_id + property_id.
+INSERT INTO public.client_properties (client_id, property_id)
+SELECT p.id, pr.id
 FROM public.profiles p, public.properties pr
 WHERE p.phone = '0423890994' AND pr.address ILIKE '%Esplanade%'
 AND NOT EXISTS (
