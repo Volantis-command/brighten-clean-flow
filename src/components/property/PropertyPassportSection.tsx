@@ -266,7 +266,7 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
             <p className="font-semibold text-sm text-foreground">{form.access_method}</p>
           </div>
         )}
-        <MaskedField label="Access Code" field="access_code" value={form.access_code} />
+        {renderAccessField('Access Code', 'access_code', form.access_code)}
         {form.parking_notes && (
           <div>
             <span className="text-xs text-muted-foreground">Parking</span>
@@ -335,9 +335,9 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
             </SelectContent>
           </Select>
         </div>
-        <MaskedField label="Access Code" field="access_code" value={form.access_code} />
-        <MaskedField label="Alarm Code" field="alarm_code" value={form.alarm_code} />
-        <MaskedField label="Garage Code" field="garage_code" value={form.garage_code} />
+        {renderAccessField('Access Code', 'access_code', form.access_code)}
+        {renderAccessField('Alarm Code', 'alarm_code', form.alarm_code)}
+        {renderAccessField('Garage Code', 'garage_code', form.garage_code)}
       </div>
 
       {/* Parking / Pets / Preferences */}
