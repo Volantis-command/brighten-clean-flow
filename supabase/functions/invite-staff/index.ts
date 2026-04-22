@@ -119,8 +119,33 @@ Deno.serve(async (req) => {
         newUserId = createData.user.id;
       }
 
-      // For existing users, upsert role; for new users, insert
+      // STRICT SEPARATION: staff and clients must NEVER share a profile.
+      // If an existing auth user has roles on the "other side" of the
+      // staff/client divide, reject — the admin must use a different email.
       if (existingUser) {
+        const STAFF_ROLES = ["admin", "cleaner", "head_cleaner"] as const;
+        const { data: existingRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", newUserId);
+        const roleSet = new Set((existingRoles || []).map((r: any) => r.role));
+        const isCreatingStaff = role !== "client";
+        const hasClientRole = roleSet.has("client");
+        const hasStaffRole = STAFF_ROLES.some((r) => roleSet.has(r));
+
+        if (isCreatingStaff && hasClientRole && !hasStaffRole) {
+          return new Response(
+            JSON.stringify({ error: "This email already belongs to a client account. Use a different email — staff and clients must be kept separate." }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (!isCreatingStaff && hasStaffRole) {
+          return new Response(
+            JSON.stringify({ error: "This email already belongs to a staff account. Use a different email — clients and staff must be kept separate." }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         await adminClient
           .from("user_roles")
           .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
@@ -290,26 +315,31 @@ Deno.serve(async (req) => {
     }
 
     if (action === "find_or_create_client") {
-      // Find existing client by email or phone
+      // STRICT SEPARATION: only reuse an existing profile if it ALREADY has
+      // the client role. A profile with any staff role (admin/cleaner/
+      // head_cleaner) must never be silently re-purposed as a client — that's
+      // how staff names/contact details get overwritten by client data.
       let existingId: string | null = null;
 
-      if (email) {
-        const { data: byEmail } = await adminClient
+      const findExistingClient = async (column: "email" | "phone", value: string) => {
+        const { data: profile } = await adminClient
           .from("profiles")
           .select("id")
-          .eq("email", email)
+          .eq(column, value)
           .maybeSingle();
-        if (byEmail) existingId = byEmail.id;
-      }
+        if (!profile) return null;
+        const { data: roles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", profile.id);
+        const roleSet = new Set((roles || []).map((r: any) => r.role));
+        const hasStaffRole = ["admin", "cleaner", "head_cleaner"].some((r) => roleSet.has(r));
+        if (hasStaffRole) return null; // do NOT reuse staff profiles
+        return profile.id as string;
+      };
 
-      if (!existingId && phone) {
-        const { data: byPhone } = await adminClient
-          .from("profiles")
-          .select("id")
-          .eq("phone", phone)
-          .maybeSingle();
-        if (byPhone) existingId = byPhone.id;
-      }
+      if (email) existingId = await findExistingClient("email", email);
+      if (!existingId && phone) existingId = await findExistingClient("phone", phone);
 
       if (existingId) {
         // Ensure they have the client role
