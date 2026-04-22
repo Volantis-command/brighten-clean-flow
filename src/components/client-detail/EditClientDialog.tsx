@@ -63,6 +63,18 @@ export default function EditClientDialog({
     setSaving(true);
     try {
       if (clientType === 'profile') {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', clientId);
+
+        const roleSet = new Set((roles || []).map((r: any) => r.role));
+        const hasStaffRole = ['admin', 'cleaner', 'head_cleaner'].some((role) => roleSet.has(role));
+
+        if (hasStaffRole) {
+          throw new Error('This record is linked to a staff account and cannot be edited as a client. Create a separate client account instead.');
+        }
+
         const { error } = await supabase.from('profiles').update({ full_name: name, email, phone }).eq('id', clientId);
         if (error) throw error;
       } else if (clientType === 'property') {
