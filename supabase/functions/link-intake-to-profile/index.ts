@@ -39,7 +39,12 @@ interface Body {
   // intake data flows through to the property record (not just captured in
   // quote_requests.form_data). Previously these fields landed on the lead
   // but never reached the Property Passport tab, so admin saw an empty shell.
+  //
+  // access_code: the lockbox/keypad CODE (what the intake form calls
+  // "access_instructions" — e.g. "1234"). Lands on property.access_code
+  // which is what the Profile tab's "Key Safe / Lockbox Code" surface reads.
   access_method?: string | null;
+  access_code?: string | null;
   access_notes?: string | null;
   parking_instructions?: string | null;
   checkin_time?: string | null;
@@ -175,6 +180,7 @@ Deno.serve(async (req: Request) => {
           // Property-detail passthrough (2026-04-22). All nullable — if the
           // intake form didn't collect the field we just leave it null.
           access_method: body.access_method || null,
+          access_code: body.access_code || null,
           access_notes: body.access_notes || null,
           parking_instructions: body.parking_instructions || null,
           checkin_time: body.checkin_time || null,

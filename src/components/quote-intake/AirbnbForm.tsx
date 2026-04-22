@@ -148,9 +148,12 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             bedrooms: parseInt(bedrooms) || null,
             bathrooms: parseInt(bathrooms) || null,
             clean_type: 'Airbnb / Short-Stay Turnover',
-            // Property details so the Passport tab lands populated
+            // Property details so the Passport/Profile tab lands populated.
+            // access_instructions (form) → access_code (property) because
+            // the Profile tab's "Key Safe / Lockbox Code" field reads from
+            // access_code, not access_notes. (Fixed 2026-04-22.)
             access_method: accessMethod || null,
-            access_notes: accessInstructions || null,
+            access_code: accessInstructions || null,
             parking_instructions: parking || null,
             checkin_time: checkinTime || null,
             checkout_time: checkoutTime || null,

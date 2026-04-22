@@ -128,9 +128,10 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
             bedrooms: parseInt(bedrooms) || null,
             bathrooms: parseInt(bathrooms) || null,
             clean_type: cleanType,
-            // Property details → Property Passport (added 2026-04-22)
+            // Property details → Property Passport (added 2026-04-22).
+            // access_instructions → access_code so the Profile tab surfaces it.
             access_method: accessMethod || null,
-            access_notes: accessInstructions || null,
+            access_code: accessInstructions || null,
             parking_instructions: parking || null,
             host_preferences: focusAreas || null,
           },
