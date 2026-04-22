@@ -260,17 +260,20 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
     return (
       <div className="space-y-1.5">
         <Label>{label}</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            type={revealed ? 'text' : 'password'}
-            value={value}
-            onChange={e => u(field, e.target.value)}
-            className="h-12 rounded-xl"
-          />
-          <button onClick={() => toggleReveal(field)} className="text-muted-foreground hover:text-foreground shrink-0">
-            {revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+        <Input
+          type="text"
+          value={value}
+          onChange={e => u(field, e.target.value)}
+          className="h-12 rounded-xl"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          name={`code-${field}-${Math.random().toString(36).slice(2, 8)}`}
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
+        />
       </div>
     );
   };
