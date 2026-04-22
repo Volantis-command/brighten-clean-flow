@@ -39,11 +39,17 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
 
   useEffect(() => {
     async function load() {
+      // Property Passport data lives on `properties` — ONE source of truth for
+      // access codes / parking / pet notes / room-by-room notes. Previously this
+      // component read/wrote from client_properties (junction table), which
+      // meant (a) the Save button errored on fresh properties that had no row
+      // in the junction and (b) data was hidden from cleaners/jobs which read
+      // from properties. Fixed 2026-04-22. The form field `parking_notes` maps
+      // to the real DB column `parking_instructions` so the UI stays unchanged.
       const { data } = await supabase
-        .from('client_properties' as any)
-        .select('access_method, access_code, alarm_code, garage_code, parking_notes, pet_notes, product_restrictions, special_instructions, preferences_notes, room_notes')
-        .eq('property_id', propertyId)
-        .limit(1)
+        .from('properties' as any)
+        .select('access_method, access_code, alarm_code, garage_code, parking_instructions, pet_notes, product_restrictions, special_instructions, preferences_notes, room_notes')
+        .eq('id', propertyId)
         .maybeSingle();
 
       if (data) {
@@ -52,7 +58,7 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
           access_code: (data as any).access_code || '',
           alarm_code: (data as any).alarm_code || '',
           garage_code: (data as any).garage_code || '',
-          parking_notes: (data as any).parking_notes || '',
+          parking_notes: (data as any).parking_instructions || '',
           pet_notes: (data as any).pet_notes || '',
           product_restrictions: (data as any).product_restrictions || '',
           special_instructions: (data as any).special_instructions || '',
@@ -75,20 +81,21 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from('client_properties' as any)
+      .from('properties' as any)
       .update({
         access_method: form.access_method || null,
         access_code: form.access_code || null,
         alarm_code: form.alarm_code || null,
         garage_code: form.garage_code || null,
-        parking_notes: form.parking_notes || null,
+        // UI field `parking_notes` → real column `parking_instructions`
+        parking_instructions: form.parking_notes || null,
         pet_notes: form.pet_notes || null,
         product_restrictions: form.product_restrictions || null,
         special_instructions: form.special_instructions || null,
         preferences_notes: form.preferences_notes || null,
         room_notes: Object.keys(form.room_notes).length > 0 ? form.room_notes : null,
       } as any)
-      .eq('property_id', propertyId);
+      .eq('id', propertyId);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success('Property passport saved');

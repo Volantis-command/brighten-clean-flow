@@ -158,6 +158,19 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             checkin_time: checkinTime || null,
             checkout_time: checkoutTime || null,
             host_preferences: hostingNotes || null,
+            // Full Airbnb intake passthrough
+            bed_config: bedConfigStr || null,
+            sofa_beds: parseInt(sofaBeds) || null,
+            kitchens: parseInt(kitchens) || null,
+            living_areas: parseInt(livingAreas) || null,
+            balconies: parseInt(balconies) || null,
+            has_outdoor_area: outdoorAreas === true ? true : (outdoorAreas === false ? false : null),
+            linen_required: linenChange === true ? true : (linenChange === false ? false : null),
+            amenities_kit: amenitiesKit === true ? true : (amenitiesKit === false ? false : null),
+            wash_kit: washKit === true ? true : (washKit === false ? false : null),
+            tea_coffee_kit: teaCoffeeKit === true ? true : (teaCoffeeKit === false ? false : null),
+            platform: platform || null,
+            first_clean: firstClean === true ? true : (firstClean === false ? false : null),
           },
         });
       } catch (linkErr) {
