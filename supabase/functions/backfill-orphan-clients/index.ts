@@ -33,6 +33,16 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  const STAFF_ROLES = ['admin', 'cleaner', 'head_cleaner'];
+  const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '');
+  const getRoleSet = async (userId: string) => {
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+    return new Set((roles || []).map((r: any) => r.role));
+  };
+
   const report = {
     processed: 0,
     created: 0,
@@ -68,21 +78,37 @@ Deno.serve(async (req: Request) => {
       // ── Step 1: find or create profile ──
       let clientProfileId: string | null = null;
 
-      if (lead.phone) {
-        const { data } = await supabase
+      if (lead.email) {
+        const { data: emailMatches } = await supabase
           .from('profiles')
-          .select('id')
-          .eq('phone', lead.phone)
-          .maybeSingle();
-        if (data) clientProfileId = data.id;
+          .select('id, email')
+          .ilike('email', lead.email);
+        for (const profile of emailMatches || []) {
+          const roleSet = await getRoleSet(profile.id);
+          const hasStaffRole = STAFF_ROLES.some((role) => roleSet.has(role));
+          if (hasStaffRole) continue;
+          if (roleSet.has('client')) {
+            clientProfileId = profile.id;
+            break;
+          }
+        }
       }
-      if (!clientProfileId && lead.email) {
-        const { data } = await supabase
+      if (!clientProfileId && lead.phone) {
+        const phoneDigits = normalizePhone(lead.phone);
+        const { data: phoneMatches } = await supabase
           .from('profiles')
-          .select('id')
-          .eq('email', lead.email)
-          .maybeSingle();
-        if (data) clientProfileId = data.id;
+          .select('id, phone')
+          .not('phone', 'is', null);
+        for (const profile of phoneMatches || []) {
+          if (normalizePhone((profile as any).phone) !== phoneDigits) continue;
+          const roleSet = await getRoleSet(profile.id);
+          const hasStaffRole = STAFF_ROLES.some((role) => roleSet.has(role));
+          if (hasStaffRole) continue;
+          if (roleSet.has('client')) {
+            clientProfileId = profile.id;
+            break;
+          }
+        }
       }
 
       const profileAlreadyExisted = !!clientProfileId;
@@ -96,7 +122,6 @@ Deno.serve(async (req: Request) => {
           email: authEmail,
           password: randomPassword,
           email_confirm: true,
-          phone: lead.phone || undefined,
           user_metadata: { full_name: fullName, role: 'client' },
         });
         if (authErr) {

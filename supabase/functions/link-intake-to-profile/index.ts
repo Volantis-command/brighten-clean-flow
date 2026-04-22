@@ -116,25 +116,60 @@ Deno.serve(async (req: Request) => {
     const fullName = body.full_name ||
       [body.first_name, body.last_name].filter(Boolean).join(' ').trim() ||
       null;
+    const STAFF_ROLES = ['admin', 'cleaner', 'head_cleaner'];
+    const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '');
+    const getRoleSet = async (userId: string) => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      return new Set((roles || []).map((r: any) => r.role));
+    };
 
     // ── 1. Find or create client profile ──────────────────────────────────
     let clientProfileId: string | null = null;
 
-    if (body.phone) {
-      const { data } = await supabase
+    if (body.email) {
+      const { data: emailMatches } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('phone', body.phone)
-        .maybeSingle();
-      if (data) clientProfileId = data.id;
+        .select('id, email')
+        .ilike('email', body.email);
+
+      for (const profile of emailMatches || []) {
+        const roleSet = await getRoleSet(profile.id);
+        const hasStaffRole = STAFF_ROLES.some((role) => roleSet.has(role));
+        if (hasStaffRole) {
+          return new Response(JSON.stringify({
+            error: 'This email already belongs to a staff account. Use a different email for the client account.',
+          }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (roleSet.has('client')) {
+          clientProfileId = profile.id;
+          break;
+        }
+      }
     }
-    if (!clientProfileId && body.email) {
-      const { data } = await supabase
+
+    if (!clientProfileId && body.phone) {
+      const phoneDigits = normalizePhone(body.phone);
+      const { data: phoneMatches } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('email', body.email)
-        .maybeSingle();
-      if (data) clientProfileId = data.id;
+        .select('id, phone')
+        .not('phone', 'is', null);
+
+      for (const profile of phoneMatches || []) {
+        if (normalizePhone((profile as any).phone) !== phoneDigits) continue;
+        const roleSet = await getRoleSet(profile.id);
+        const hasStaffRole = STAFF_ROLES.some((role) => roleSet.has(role));
+        if (hasStaffRole) continue;
+        if (roleSet.has('client')) {
+          clientProfileId = profile.id;
+          break;
+        }
+      }
     }
 
     if (clientProfileId) {
@@ -162,7 +197,6 @@ Deno.serve(async (req: Request) => {
         email: authEmail,
         password: randomPassword,
         email_confirm: true, // skip confirmation email
-        phone: body.phone || undefined,
         user_metadata: { full_name: fullName, role: 'client' },
       });
       if (authErr) throw new Error(`auth createUser: ${authErr.message}`);
