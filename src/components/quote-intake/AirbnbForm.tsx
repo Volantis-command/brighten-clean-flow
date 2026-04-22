@@ -148,6 +148,13 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             bedrooms: parseInt(bedrooms) || null,
             bathrooms: parseInt(bathrooms) || null,
             clean_type: 'Airbnb / Short-Stay Turnover',
+            // Property details so the Passport tab lands populated
+            access_method: accessMethod || null,
+            access_notes: accessInstructions || null,
+            parking_instructions: parking || null,
+            checkin_time: checkinTime || null,
+            checkout_time: checkoutTime || null,
+            host_preferences: hostingNotes || null,
           },
         });
       } catch (linkErr) {

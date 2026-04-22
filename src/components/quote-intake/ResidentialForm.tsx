@@ -128,6 +128,11 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
             bedrooms: parseInt(bedrooms) || null,
             bathrooms: parseInt(bathrooms) || null,
             clean_type: cleanType,
+            // Property details → Property Passport (added 2026-04-22)
+            access_method: accessMethod || null,
+            access_notes: accessInstructions || null,
+            parking_instructions: parking || null,
+            host_preferences: focusAreas || null,
           },
         });
       } catch (linkErr) {
