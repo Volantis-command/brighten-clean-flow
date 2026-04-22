@@ -171,6 +171,8 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             tea_coffee_kit: teaCoffeeKit === true ? true : (teaCoffeeKit === false ? false : null),
             platform: platform || null,
             first_clean: firstClean === true ? true : (firstClean === false ? false : null),
+            // Photos captured during intake — now stored on the property
+            property_photos: photos.length > 0 ? photos.map(p => ({ url: p.url, label: '' })) : null,
           },
         });
       } catch (linkErr) {

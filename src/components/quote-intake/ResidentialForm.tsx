@@ -143,6 +143,19 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
             focus_areas: focusAreas || null,
             living_areas: parseInt(livingAreas) || null,
             has_outdoor_area: outdoorAreas === true ? true : (outdoorAreas === false ? false : null),
+            toilets: parseInt(toilets) || null,
+            has_garage: garage === true ? true : (garage === false ? false : null),
+            // Deep-clean specific (only set when this is a deep clean)
+            ...(isDeepClean ? {
+              deep_clean_oven: ovenClean === true ? true : (ovenClean === false ? false : null),
+              deep_clean_fridge: insideFridge === true ? true : (insideFridge === false ? false : null),
+              deep_clean_cupboards: insideCupboards === true ? true : (insideCupboards === false ? false : null),
+              deep_clean_windows: interiorWindows === true ? true : (interiorWindows === false ? false : null),
+              last_cleaned_when: lastCleaned || null,
+              property_condition: propertyCondition || null,
+            } : {}),
+            // Photos → property record
+            property_photos: photos.length > 0 ? photos.map(p => ({ url: p.url, label: '' })) : null,
           },
         });
       } catch (linkErr) {

@@ -68,6 +68,25 @@ interface Body {
   wash_kit?: boolean | null;
   tea_coffee_kit?: boolean | null;
   platform?: string | null;
+  // Second pass (2026-04-22) — rest of the fields captured by intake
+  toilets?: number | null;
+  has_garage?: boolean | null;
+  property_photos?: Array<{ url: string; label?: string }> | null;
+  // Deep clean specific
+  deep_clean_oven?: boolean | null;
+  deep_clean_fridge?: boolean | null;
+  deep_clean_cupboards?: boolean | null;
+  deep_clean_windows?: boolean | null;
+  last_cleaned_when?: string | null;
+  property_condition?: string | null;
+  // Commercial specific
+  business_name?: string | null;
+  abn?: string | null;
+  approx_size?: string | null;
+  has_kitchen_breakroom?: boolean | null;
+  floor_types?: string | null;
+  after_hours_access?: boolean | null;
+  has_security_alarm?: boolean | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -222,6 +241,23 @@ Deno.serve(async (req: Request) => {
           wash_kit: body.wash_kit ?? null,
           tea_coffee_kit: body.tea_coffee_kit ?? null,
           platform: body.platform || null,
+          // Second pass — rest of intake fields
+          toilets: body.toilets ?? null,
+          has_garage: body.has_garage ?? null,
+          property_photos: body.property_photos && body.property_photos.length > 0 ? body.property_photos : null,
+          deep_clean_oven: body.deep_clean_oven ?? null,
+          deep_clean_fridge: body.deep_clean_fridge ?? null,
+          deep_clean_cupboards: body.deep_clean_cupboards ?? null,
+          deep_clean_windows: body.deep_clean_windows ?? null,
+          last_cleaned_when: body.last_cleaned_when || null,
+          property_condition: body.property_condition || null,
+          business_name: body.business_name || null,
+          abn: body.abn || null,
+          approx_size: body.approx_size || null,
+          has_kitchen_breakroom: body.has_kitchen_breakroom ?? null,
+          floor_types: body.floor_types || null,
+          after_hours_access: body.after_hours_access ?? null,
+          has_security_alarm: body.has_security_alarm ?? null,
         } as any)
         .select('id')
         .single();
