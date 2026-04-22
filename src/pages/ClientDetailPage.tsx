@@ -715,11 +715,13 @@ function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: stri
       } as any).select('id').single();
       if (propErr) throw propErr;
 
+      // client_properties is a pure junction table: client_id + property_id
+      // (+ portal_token). The address and name live on the `properties` row
+      // itself (just inserted above). Writing them here errors in the
+      // schema cache. Fixed 2026-04-22.
       const { error: linkErr } = await supabase.from('client_properties').insert({
         client_id: clientId,
         property_id: newProp.id,
-        property_address: address.trim(),
-        property_name: name,
       } as any);
       if (linkErr) throw linkErr;
 
