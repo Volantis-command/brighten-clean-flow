@@ -35,6 +35,16 @@ interface Body {
   bedrooms?: number | null;
   bathrooms?: number | null;
   clean_type?: string | null;
+  // Property-detail passthrough added 2026-04-22 so Airbnb and Residential
+  // intake data flows through to the property record (not just captured in
+  // quote_requests.form_data). Previously these fields landed on the lead
+  // but never reached the Property Passport tab, so admin saw an empty shell.
+  access_method?: string | null;
+  access_notes?: string | null;
+  parking_instructions?: string | null;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
+  host_preferences?: string | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -162,6 +172,14 @@ Deno.serve(async (req: Request) => {
           bathrooms: body.bathrooms || null,
           client_type: body.clean_type?.toLowerCase().includes('airbnb') ? 'airbnb' : 'residential',
           status: 'onboarding',
+          // Property-detail passthrough (2026-04-22). All nullable — if the
+          // intake form didn't collect the field we just leave it null.
+          access_method: body.access_method || null,
+          access_notes: body.access_notes || null,
+          parking_instructions: body.parking_instructions || null,
+          checkin_time: body.checkin_time || null,
+          checkout_time: body.checkout_time || null,
+          host_preferences: body.host_preferences || null,
         } as any)
         .select('id')
         .single();
