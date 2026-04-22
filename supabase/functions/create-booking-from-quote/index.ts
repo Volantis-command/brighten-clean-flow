@@ -119,11 +119,13 @@ Deno.serve(async (req: Request) => {
     // Quote-accepted jobs land in 'pending_cleaner' (yellow) until an admin assigns a cleaner.
     // See src/lib/jobAssignment.ts for the full state machine.
     const jobStatus = "pending_cleaner";
-    // Capture client_name + property_address on the job row so jobLabel()
-    // never falls back to "Untitled job" even when the quote was built with
-    // "Manual entry" (no property_id) or when the properties join is null.
+    // Capture client_name on the job row so jobLabel() never falls back to
+    // "Untitled job" even when the quote was built with "Manual entry"
+    // (no property_id) or when the properties join is null. NOTE: the jobs
+    // table does NOT have a property_address column — address lives on
+    // properties and is joined via property_id. PR #32 mistakenly tried to
+    // write it here, which broke quote acceptance.
     const jobClientName = (quote as any)?.client_name || client_name || null;
-    const jobPropertyAddress = (quote as any)?.property_address || null;
 
     const { data: job, error: jobErr } = await adminClient
       .from("jobs")
@@ -139,7 +141,6 @@ Deno.serve(async (req: Request) => {
         notes: jobNotes,
         source: jobSource,
         client_name: jobClientName,
-        property_address: jobPropertyAddress,
       })
       .select("id")
       .single();
