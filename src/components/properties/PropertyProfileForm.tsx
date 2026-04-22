@@ -141,7 +141,9 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         access_code: property.access_code || '',
         alarm_code: property.alarm_code || '',
         garage_code: property.garage_code || '',
-        parking_notes: property.parking_notes || '',
+        // UI state keeps `parking_notes` name for minimal-diff; the real
+        // DB column is parking_instructions (2026-04-22 fix)
+        parking_notes: property.parking_instructions || '',
         special_instructions: property.special_instructions || '',
         product_restrictions: property.product_restrictions || '',
         room_notes: (property.room_notes as Record<string, string>) || {},
@@ -191,7 +193,8 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
       access_code: form.access_code || null,
       alarm_code: form.alarm_code || null,
       garage_code: form.garage_code || null,
-      parking_notes: form.parking_notes || null,
+      // UI field parking_notes → real DB column parking_instructions
+      parking_instructions: form.parking_notes || null,
       special_instructions: form.special_instructions || null,
       product_restrictions: form.product_restrictions || null,
       room_notes: Object.keys(form.room_notes).length > 0 ? form.room_notes : null,
