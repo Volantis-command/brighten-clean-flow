@@ -239,6 +239,11 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
 
   const renderAccessField = (label: string, field: 'access_code' | 'alarm_code' | 'garage_code', value: string) => {
     const revealed = revealedFields[field];
+    const fieldIdentity = {
+      access_code: { id: 'property-detail-a', name: 'property-detail-a' },
+      alarm_code: { id: 'property-detail-b', name: 'property-detail-b' },
+      garage_code: { id: 'property-detail-c', name: 'property-detail-c' },
+    }[field];
 
     if (isView) {
       return (
@@ -260,16 +265,16 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
 
     return (
       <div key={field} className="space-y-1.5">
-        <Label htmlFor={field}>{label}</Label>
+        <Label htmlFor={fieldIdentity.id}>{label}</Label>
         <Input
-          id={field}
-          name={field}
+          id={fieldIdentity.id}
+          name={fieldIdentity.name}
           type="text"
           inputMode="text"
           value={value}
           onChange={e => u(field, e.target.value)}
           className="h-12 rounded-xl"
-          autoComplete="off"
+          autoComplete="nope"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
