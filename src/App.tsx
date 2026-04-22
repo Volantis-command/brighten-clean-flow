@@ -197,9 +197,13 @@ function AppRoutes() {
       <Route path="/quote" element={<QuoteIntakePage />} />
       {/* Legacy redirects — the marketing SMS + Airbnb rebook button send clients to
           these paths. Do not delete without also updating send-quote-link-sms edge
-          function and GuestReadyReportPage. */}
+          function and GuestReadyReportPage. The /onboard path is the main marketing
+          site's "Get a Quote" CTA (brightly.cleaning). */}
       <Route path="/residential-quote" element={<Navigate to="/quote" replace />} />
       <Route path="/airbnb" element={<Navigate to="/quote" replace />} />
+      <Route path="/onboard" element={<Navigate to="/quote" replace />} />
+      <Route path="/contact" element={<Navigate to="/quote" replace />} />
+      <Route path="/get-quote" element={<Navigate to="/quote" replace />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
       <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
