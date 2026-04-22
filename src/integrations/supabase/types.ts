@@ -1633,6 +1633,7 @@ export type Database = {
           alarm_code: string | null
           amenities_kit: boolean | null
           amenities_notes: string | null
+          amenities_restock: boolean | null
           approx_size: string | null
           assigned_cleaner_ids: Json | null
           avg_nightly_rate: number | null
@@ -1649,6 +1650,7 @@ export type Database = {
           checkout_time: string | null
           clean_frequency: string | null
           clean_standard: string | null
+          client_email: string | null
           client_name: string | null
           client_phone: string | null
           client_type: string | null
@@ -1660,6 +1662,7 @@ export type Database = {
           deep_clean_windows: boolean | null
           default_cleaner_id: string | null
           default_price: number | null
+          estimated_hours: number | null
           first_clean: boolean | null
           floor_types: string | null
           focus_areas: string | null
@@ -1667,6 +1670,7 @@ export type Database = {
           garage_code: string | null
           guest_access_notes: string | null
           guest_checkin_at: string | null
+          guest_wifi: string | null
           guesty_listing_id: string | null
           has_garage: boolean | null
           has_glass_screens: boolean | null
@@ -1680,21 +1684,26 @@ export type Database = {
           ical_source: string | null
           ical_url: string | null
           id: string
+          is_occupied: boolean | null
           kitchens: number | null
           last_cleaned_when: string | null
           lat: number | null
           linen_changeover: string | null
           linen_config: Json | null
           linen_fold_style: string | null
+          linen_provided: boolean | null
           linen_required: boolean | null
+          linen_sets: number | null
           linen_storage: string | null
           linen_supply: string | null
           living_areas: number | null
           lng: number | null
           lockbox_code: string | null
+          locked_price_inc_gst: number | null
           max_guests: number | null
           min_notice: string | null
           neighbour_notes: string | null
+          occupant_count: number | null
           outdoor_description: string | null
           override_price: boolean | null
           pain_points: string | null
@@ -1747,6 +1756,7 @@ export type Database = {
           alarm_code?: string | null
           amenities_kit?: boolean | null
           amenities_notes?: string | null
+          amenities_restock?: boolean | null
           approx_size?: string | null
           assigned_cleaner_ids?: Json | null
           avg_nightly_rate?: number | null
@@ -1763,6 +1773,7 @@ export type Database = {
           checkout_time?: string | null
           clean_frequency?: string | null
           clean_standard?: string | null
+          client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
           client_type?: string | null
@@ -1774,6 +1785,7 @@ export type Database = {
           deep_clean_windows?: boolean | null
           default_cleaner_id?: string | null
           default_price?: number | null
+          estimated_hours?: number | null
           first_clean?: boolean | null
           floor_types?: string | null
           focus_areas?: string | null
@@ -1781,6 +1793,7 @@ export type Database = {
           garage_code?: string | null
           guest_access_notes?: string | null
           guest_checkin_at?: string | null
+          guest_wifi?: string | null
           guesty_listing_id?: string | null
           has_garage?: boolean | null
           has_glass_screens?: boolean | null
@@ -1794,21 +1807,26 @@ export type Database = {
           ical_source?: string | null
           ical_url?: string | null
           id?: string
+          is_occupied?: boolean | null
           kitchens?: number | null
           last_cleaned_when?: string | null
           lat?: number | null
           linen_changeover?: string | null
           linen_config?: Json | null
           linen_fold_style?: string | null
+          linen_provided?: boolean | null
           linen_required?: boolean | null
+          linen_sets?: number | null
           linen_storage?: string | null
           linen_supply?: string | null
           living_areas?: number | null
           lng?: number | null
           lockbox_code?: string | null
+          locked_price_inc_gst?: number | null
           max_guests?: number | null
           min_notice?: string | null
           neighbour_notes?: string | null
+          occupant_count?: number | null
           outdoor_description?: string | null
           override_price?: boolean | null
           pain_points?: string | null
@@ -1861,6 +1879,7 @@ export type Database = {
           alarm_code?: string | null
           amenities_kit?: boolean | null
           amenities_notes?: string | null
+          amenities_restock?: boolean | null
           approx_size?: string | null
           assigned_cleaner_ids?: Json | null
           avg_nightly_rate?: number | null
@@ -1877,6 +1896,7 @@ export type Database = {
           checkout_time?: string | null
           clean_frequency?: string | null
           clean_standard?: string | null
+          client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
           client_type?: string | null
@@ -1888,6 +1908,7 @@ export type Database = {
           deep_clean_windows?: boolean | null
           default_cleaner_id?: string | null
           default_price?: number | null
+          estimated_hours?: number | null
           first_clean?: boolean | null
           floor_types?: string | null
           focus_areas?: string | null
@@ -1895,6 +1916,7 @@ export type Database = {
           garage_code?: string | null
           guest_access_notes?: string | null
           guest_checkin_at?: string | null
+          guest_wifi?: string | null
           guesty_listing_id?: string | null
           has_garage?: boolean | null
           has_glass_screens?: boolean | null
@@ -1908,21 +1930,26 @@ export type Database = {
           ical_source?: string | null
           ical_url?: string | null
           id?: string
+          is_occupied?: boolean | null
           kitchens?: number | null
           last_cleaned_when?: string | null
           lat?: number | null
           linen_changeover?: string | null
           linen_config?: Json | null
           linen_fold_style?: string | null
+          linen_provided?: boolean | null
           linen_required?: boolean | null
+          linen_sets?: number | null
           linen_storage?: string | null
           linen_supply?: string | null
           living_areas?: number | null
           lng?: number | null
           lockbox_code?: string | null
+          locked_price_inc_gst?: number | null
           max_guests?: number | null
           min_notice?: string | null
           neighbour_notes?: string | null
+          occupant_count?: number | null
           outdoor_description?: string | null
           override_price?: boolean | null
           pain_points?: string | null
