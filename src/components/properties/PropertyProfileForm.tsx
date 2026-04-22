@@ -90,6 +90,39 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
     occupant_count: 0,
   });
 
+  // Prefill client_name/phone/email from the linked client profile when the
+  // property record itself doesn't have those fields populated yet (e.g. when
+  // a property is created from inside a client portal).
+  useEffect(() => {
+    if (!property?.id) return;
+    const needsName = !property.client_name;
+    const needsPhone = !property.client_phone;
+    const needsEmail = !property.client_email;
+    if (!needsName && !needsPhone && !needsEmail) return;
+
+    (async () => {
+      const { data: link } = await supabase
+        .from('client_properties')
+        .select('client_id')
+        .eq('property_id', property.id)
+        .limit(1)
+        .maybeSingle();
+      if (!link?.client_id) return;
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('full_name, phone, email')
+        .eq('id', link.client_id)
+        .maybeSingle();
+      if (!prof) return;
+      setForm(f => ({
+        ...f,
+        client_name: f.client_name || prof.full_name || '',
+        client_phone: f.client_phone || prof.phone || '',
+        client_email: f.client_email || prof.email || '',
+      }));
+    })();
+  }, [property?.id, property?.client_name, property?.client_phone, property?.client_email]);
+
   useEffect(() => {
     if (property) {
       setForm({
