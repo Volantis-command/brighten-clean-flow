@@ -12,6 +12,7 @@ import { Star, Check, X, Send, Loader2, MessageSquare, CalendarPlus, BedDouble, 
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { getAppBaseUrl } from '@/lib/appUrl';
+import { createPropertyAndLink } from '@/lib/propertyWrites';
 
 import ClientHeader from '@/components/client-detail/ClientHeader';
 import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
@@ -713,30 +714,21 @@ function AssignPropertyInline({ clientId, onRefresh, onClose }: { clientId: stri
     setSaving(true);
     try {
       const name = propertyName.trim() || `${address.split(',')[0]}`;
-      const { data: newProp, error: propErr } = await supabase.from('properties').insert({
+
+      // Use the canonical propertyWrites helper (audit S3). Every new
+      // property-creation call site should go through this. Handles both
+      // the properties insert and the client_properties junction link.
+      await createPropertyAndLink(clientId, {
         property_name: name,
         address: address.trim(),
         bedrooms: parseInt(bedrooms) || null,
         bathrooms: parseInt(bathrooms) || null,
         client_type: clientType,
         status: 'active',
-        // Copy contact details from the client's profile so the property
-        // profile form is pre-populated when opened.
         client_name: clientProfile?.full_name || null,
         billing_email: clientProfile?.email || null,
         client_phone: clientProfile?.phone || null,
-      } as any).select('id').single();
-      if (propErr) throw propErr;
-
-      // client_properties is a pure junction table: client_id + property_id
-      // (+ portal_token). The address and name live on the `properties` row
-      // itself (just inserted above). Writing them here errors in the
-      // schema cache. Fixed 2026-04-22.
-      const { error: linkErr } = await supabase.from('client_properties').insert({
-        client_id: clientId,
-        property_id: newProp.id,
-      } as any);
-      if (linkErr) throw linkErr;
+      });
 
       toast.success('Property created and linked ✓');
       onRefresh();
