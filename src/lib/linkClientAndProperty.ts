@@ -39,23 +39,26 @@ export async function linkClientAndProperty({
     let clientId: string | null = null;
 
     if (existingProfiles && existingProfiles.length > 0) {
-      // Find one that has client role
+      // STRICT SEPARATION: only reuse a profile that ALREADY has the client
+      // role. Never silently link a property onto a staff profile (admin /
+      // cleaner / head_cleaner) — that's how staff records get overwritten
+      // with client data.
       for (const p of existingProfiles) {
-        const { data: roleData } = await supabase
+        const { data: roles } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', p.id)
-          .eq('role', 'client')
-          .maybeSingle();
-        if (roleData) {
+          .eq('user_id', p.id);
+        const roleSet = new Set((roles || []).map((r: any) => r.role));
+        const hasStaffRole = ['admin', 'cleaner', 'head_cleaner'].some(r => roleSet.has(r));
+        if (hasStaffRole) continue; // skip — staff must stay separate
+        if (roleSet.has('client')) {
           clientId = p.id;
           break;
         }
       }
-      // Even without client role, use the first match
-      if (!clientId) {
-        clientId = existingProfiles[0].id;
-      }
+      // If we got here with no clientId, do not fall back to a staff profile.
+      // Leave clientId null — the admin will create a fresh client account
+      // when reviewing the quote.
     }
 
     // 2. If no existing client found, we can't create an auth user from the client side.
