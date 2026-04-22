@@ -67,6 +67,41 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create_user") {
+      const STAFF_ROLES = ["admin", "cleaner", "head_cleaner"] as const;
+      const normalizePhone = (value?: string | null) => (value || "").replace(/\D/g, "");
+
+      if (phone) {
+        const { data: phoneProfiles } = await adminClient
+          .from("profiles")
+          .select("id, phone")
+          .not("phone", "is", null);
+
+        for (const profile of phoneProfiles || []) {
+          if (normalizePhone((profile as any).phone) !== normalizePhone(phone)) continue;
+          const { data: roles } = await adminClient
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", profile.id);
+          const roleSet = new Set((roles || []).map((r: any) => r.role));
+          const hasStaffRole = STAFF_ROLES.some((r) => roleSet.has(r));
+          const isCreatingStaff = role !== "client";
+
+          if (isCreatingStaff && roleSet.has("client") && !hasStaffRole) {
+            return new Response(
+              JSON.stringify({ error: "This phone number already belongs to a client account. Use a different phone number — staff and clients must be kept separate." }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          if (!isCreatingStaff && hasStaffRole) {
+            return new Response(
+              JSON.stringify({ error: "This phone number already belongs to a staff account. Use a different phone number — clients and staff must be kept separate." }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      }
+
       const { data: createData, error: createError } =
         await adminClient.auth.admin.createUser({
           email,
@@ -123,7 +158,6 @@ Deno.serve(async (req) => {
       // If an existing auth user has roles on the "other side" of the
       // staff/client divide, reject — the admin must use a different email.
       if (existingUser) {
-        const STAFF_ROLES = ["admin", "cleaner", "head_cleaner"] as const;
         const { data: existingRoles } = await adminClient
           .from("user_roles")
           .select("role")
