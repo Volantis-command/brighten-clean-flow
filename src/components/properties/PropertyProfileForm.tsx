@@ -412,7 +412,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
           {/* Bed Configuration */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Bed Configuration</Label>
-            {form.bed_config.map((bed, idx) => (
+            {(Array.isArray(form.bed_config) ? form.bed_config : []).map((bed, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground w-24 shrink-0">{bed.room}</span>
                 <Select value={bed.bed_type} onValueChange={v => updateBed(idx, v)}>
