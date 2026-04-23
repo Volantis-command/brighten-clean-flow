@@ -64,6 +64,9 @@ Deno.serve(async (req: Request) => {
       source,
       frequency: bodyFrequency,
       price_inc_gst: bodyPriceIncGst,
+      cleaner_1_id: bodyCleaner1Id,
+      cleaner_2_id: bodyCleaner2Id,
+      estimated_duration: bodyEstimatedDuration,
     } = body;
 
     if (!preferred_date) {
@@ -86,6 +89,9 @@ Deno.serve(async (req: Request) => {
     let jobNotes = notes || "";
     let jobSource = source || "client";
     let quote: any = null;
+    const cleaner1Id = bodyCleaner1Id || null;
+    const cleaner2Id = bodyCleaner2Id || null;
+    const estimatedDuration = bodyEstimatedDuration ? Number(bodyEstimatedDuration) : null;
 
     // ── Scenario 1: Quote-based booking ──
     if (quote_id) {
@@ -155,6 +161,9 @@ Deno.serve(async (req: Request) => {
         notes: jobNotes,
         source: jobSource,
         client_name: jobClientName,
+        cleaner_1_id: cleaner1Id,
+        cleaner_2_id: cleaner2Id,
+        estimated_duration: estimatedDuration,
       })
       .select("id")
       .single();
