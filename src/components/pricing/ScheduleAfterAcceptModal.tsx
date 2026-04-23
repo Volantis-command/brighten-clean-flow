@@ -15,7 +15,7 @@ import { CalendarIcon, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
+import { syncJobAssignment } from '@/lib/jobAssignment';
 
 // Map the legacy time-window enum (set on quotes from the old morning/midday/afternoon
 // picker) to a HH:MM the time input can accept. New quotes save a HH:MM directly.
@@ -167,35 +167,29 @@ export default function ScheduleAfterAcceptModal({
       stepResults.push({ step: 'Client profile created', ok: false, error: e.message });
     }
 
-    // 3. Create job
+    // 3. Create job via backend function to bypass jobs RLS
     const scheduledTime = customTime; // specific time e.g. "09:00"
     const jobNotes = notes || null;
     let jobId: string | null = null;
 
     try {
-      // jobs table has client_name but NOT property_address — the address
-      // lives on the linked properties record via property_id.
-      // Use 'scheduled' as the insert status — it's always in the CHECK
-      // constraint. The DB trigger (trg_jobs_enforce_initial_status) will
-      // convert it to pending_cleaner or awaiting_cleaner_acceptance based
-      // on whether a cleaner is assigned. This avoids the CHECK failure
-      // that happens if the migration adding the new statuses wasn't applied.
-      const { data: job, error } = await supabase.from('jobs').insert({
-        property_id: resolvedPropertyId || null,
-        linked_quote_id: quoteId,
-        client_name: clientName || null,
-        scheduled_date: format(date, 'yyyy-MM-dd'),
-        scheduled_time: scheduledTime,
-        cleaner_1_id: cleanerId || null,
-        status: 'scheduled',
-        notes: jobNotes || null,
-        estimated_duration: Math.round(estimatedHours * 60),
-        price_inc_gst: priceIncGst,
-        price_ex_gst: priceExGst,
-        source: 'quote_accepted',
-      } as any).select('id').single();
+      const { data: job, error } = await supabase.functions.invoke('create-booking-from-quote', {
+        body: {
+          quote_id: quoteId,
+          property_id: resolvedPropertyId || null,
+          preferred_date: format(date, 'yyyy-MM-dd'),
+          preferred_time: scheduledTime,
+          client_name: clientName || null,
+          notes: jobNotes || null,
+          source: 'quote_accepted',
+          cleaner_1_id: cleanerId || null,
+          estimated_duration: Math.round(estimatedHours * 60),
+          price_inc_gst: priceIncGst,
+        },
+      });
       if (error) throw error;
-      jobId = job.id;
+      jobId = job?.job_id || null;
+      if (!jobId) throw new Error('Booking created without a job id');
       stepResults.push({ step: 'Job created in schedule', ok: true });
     } catch (e: any) {
       stepResults.push({ step: 'Job created in schedule', ok: false, error: e.message });
