@@ -1100,6 +1100,7 @@ export type Database = {
           no_show_alert_sent: boolean | null
           notes: string | null
           paused_at: string | null
+          pre_clean_assessment_completed_at: string | null
           pre_clean_notes: Json | null
           price_ex_gst: number | null
           price_inc_gst: number | null
@@ -1195,6 +1196,7 @@ export type Database = {
           no_show_alert_sent?: boolean | null
           notes?: string | null
           paused_at?: string | null
+          pre_clean_assessment_completed_at?: string | null
           pre_clean_notes?: Json | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
@@ -1290,6 +1292,7 @@ export type Database = {
           no_show_alert_sent?: boolean | null
           notes?: string | null
           paused_at?: string | null
+          pre_clean_assessment_completed_at?: string | null
           pre_clean_notes?: Json | null
           price_ex_gst?: number | null
           price_inc_gst?: number | null
