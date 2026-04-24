@@ -21,7 +21,7 @@ event_type = COALESCE(event_type, type)
 WHERE event_type IS NULL;
 
 -- 2. booking_suggestions
-CREATE TABLE public.booking_suggestions (
+CREATE TABLE IF NOT EXISTS public.booking_suggestions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id uuid REFERENCES public.properties(id),
   source text NOT NULL,

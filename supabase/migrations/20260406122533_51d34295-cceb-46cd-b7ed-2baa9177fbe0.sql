@@ -1,6 +1,6 @@
 
 -- 1. clock_events table
-CREATE TABLE public.clock_events (
+CREATE TABLE IF NOT EXISTS public.clock_events (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   job_id UUID REFERENCES public.jobs(id) ON DELETE SET NULL,
@@ -25,7 +25,7 @@ CREATE POLICY "Users can insert own clock events"
   WITH CHECK (user_id = auth.uid());
 
 -- 2. cleaner_availability table
-CREATE TABLE public.cleaner_availability (
+CREATE TABLE IF NOT EXISTS public.cleaner_availability (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   date DATE NOT NULL,
@@ -49,7 +49,7 @@ CREATE POLICY "Users can update own availability"
   USING (user_id = auth.uid());
 
 -- 3. cleaner_onboarding table
-CREATE TABLE public.cleaner_onboarding (
+CREATE TABLE IF NOT EXISTS public.cleaner_onboarding (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   full_name TEXT,

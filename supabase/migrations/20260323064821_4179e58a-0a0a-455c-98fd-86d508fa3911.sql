@@ -1,5 +1,5 @@
 
-CREATE TABLE public.quote_requests (
+CREATE TABLE IF NOT EXISTS public.quote_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   token uuid UNIQUE NOT NULL DEFAULT gen_random_uuid(),
   first_name text,

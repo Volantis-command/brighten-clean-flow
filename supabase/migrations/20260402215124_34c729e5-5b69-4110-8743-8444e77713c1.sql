@@ -4,7 +4,7 @@ ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS cancellation_reason text;
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS cancellation_notes text;
 
 -- Create staff_pay_rates table
-CREATE TABLE public.staff_pay_rates (
+CREATE TABLE IF NOT EXISTS public.staff_pay_rates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   staff_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   rate_type text NOT NULL DEFAULT 'hourly',

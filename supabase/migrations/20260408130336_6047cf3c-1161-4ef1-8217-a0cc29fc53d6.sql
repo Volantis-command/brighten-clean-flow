@@ -1,6 +1,6 @@
 
 -- Create business_settings table (key/value like app_settings)
-CREATE TABLE public.business_settings (
+CREATE TABLE IF NOT EXISTS public.business_settings (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   key text NOT NULL UNIQUE,
   value text NOT NULL DEFAULT '',
@@ -29,7 +29,7 @@ INSERT INTO public.business_settings (key, value, label) VALUES
   ('logo_url', '', 'Logo URL');
 
 -- Create sms_templates table
-CREATE TABLE public.sms_templates (
+CREATE TABLE IF NOT EXISTS public.sms_templates (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   key text NOT NULL UNIQUE,
   body text NOT NULL DEFAULT '',
@@ -74,7 +74,7 @@ INSERT INTO public.pricing_settings (key, value, label, category) VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- Create alert_tiers table
-CREATE TABLE public.alert_tiers (
+CREATE TABLE IF NOT EXISTS public.alert_tiers (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   tier text NOT NULL,
   event_type text NOT NULL UNIQUE,

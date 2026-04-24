@@ -1,5 +1,5 @@
 
-CREATE TABLE public.client_tokens (
+CREATE TABLE IF NOT EXISTS public.client_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL,
   token uuid UNIQUE NOT NULL DEFAULT gen_random_uuid(),

@@ -1,6 +1,6 @@
 
 -- Client communication log
-CREATE TABLE public.client_comms (
+CREATE TABLE IF NOT EXISTS public.client_comms (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id uuid NOT NULL,
   job_id uuid REFERENCES public.jobs(id) ON DELETE SET NULL,
@@ -14,7 +14,7 @@ CREATE POLICY "Authenticated users can read client_comms" ON public.client_comms
 CREATE POLICY "Authenticated users can insert client_comms" ON public.client_comms FOR INSERT TO authenticated WITH CHECK (true);
 
 -- SOS alerts table
-CREATE TABLE public.sos_alerts (
+CREATE TABLE IF NOT EXISTS public.sos_alerts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   cleaner_id uuid NOT NULL,
   job_id uuid REFERENCES public.jobs(id) ON DELETE SET NULL,

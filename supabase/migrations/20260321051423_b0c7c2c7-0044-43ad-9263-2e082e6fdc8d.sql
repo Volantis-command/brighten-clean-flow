@@ -1,5 +1,5 @@
 -- Create app_settings table
-CREATE TABLE public.app_settings (
+CREATE TABLE IF NOT EXISTS public.app_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   key text UNIQUE NOT NULL,
   value text NOT NULL,
@@ -18,7 +18,7 @@ CREATE POLICY "Authenticated users can view app_settings" ON public.app_settings
   USING (true);
 
 -- Create notification_settings table
-CREATE TABLE public.notification_settings (
+CREATE TABLE IF NOT EXISTS public.notification_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   key text UNIQUE NOT NULL,
   enabled boolean NOT NULL DEFAULT false,

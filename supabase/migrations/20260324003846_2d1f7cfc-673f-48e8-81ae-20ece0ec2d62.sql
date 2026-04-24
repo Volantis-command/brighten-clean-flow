@@ -1,5 +1,5 @@
 
-CREATE TABLE public.staff_onboarding (
+CREATE TABLE IF NOT EXISTS public.staff_onboarding (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL UNIQUE,
   onboarding_token uuid NOT NULL DEFAULT gen_random_uuid() UNIQUE,

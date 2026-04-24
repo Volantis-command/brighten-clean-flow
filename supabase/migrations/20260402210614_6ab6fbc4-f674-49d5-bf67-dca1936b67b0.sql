@@ -1,6 +1,6 @@
 
 -- Guesty config table
-CREATE TABLE public.guesty_config (
+CREATE TABLE IF NOT EXISTS public.guesty_config (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   api_key text,
   client_id text,
@@ -23,7 +23,7 @@ CREATE POLICY "Admins can manage guesty_config" ON public.guesty_config
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- Google Calendar config table
-CREATE TABLE public.google_calendar_config (
+CREATE TABLE IF NOT EXISTS public.google_calendar_config (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   access_token text,
   refresh_token text,

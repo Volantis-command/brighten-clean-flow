@@ -3,7 +3,7 @@
 ALTER TABLE public.client_properties ADD COLUMN IF NOT EXISTS portal_token uuid UNIQUE DEFAULT gen_random_uuid();
 
 -- Create job_feedback table
-CREATE TABLE public.job_feedback (
+CREATE TABLE IF NOT EXISTS public.job_feedback (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id uuid REFERENCES public.jobs(id) ON DELETE CASCADE,
   property_id uuid REFERENCES public.properties(id),
@@ -27,7 +27,7 @@ CREATE POLICY "Clients view own feedback" ON public.job_feedback FOR SELECT TO a
 CREATE POLICY "Anyone can insert feedback by token" ON public.job_feedback FOR INSERT TO authenticated WITH CHECK (client_id = auth.uid());
 
 -- Create clean_requests table
-CREATE TABLE public.clean_requests (
+CREATE TABLE IF NOT EXISTS public.clean_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id uuid NOT NULL,
   property_id uuid REFERENCES public.properties(id),
@@ -48,7 +48,7 @@ CREATE POLICY "Admins can manage clean_requests" ON public.clean_requests FOR AL
 CREATE POLICY "Clients can manage own requests" ON public.clean_requests FOR ALL TO authenticated USING (client_id = auth.uid()) WITH CHECK (client_id = auth.uid());
 
 -- Create client_messages table
-CREATE TABLE public.client_messages (
+CREATE TABLE IF NOT EXISTS public.client_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id uuid NOT NULL,
   property_id uuid REFERENCES public.properties(id),

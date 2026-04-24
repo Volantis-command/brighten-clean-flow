@@ -17,7 +17,7 @@ ALTER TABLE public.jobs
   ADD COLUMN IF NOT EXISTS late_alert_sent boolean DEFAULT false;
 
 -- 3. property_sop_items
-CREATE TABLE public.property_sop_items (
+CREATE TABLE IF NOT EXISTS public.property_sop_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id uuid REFERENCES public.properties(id) ON DELETE CASCADE NOT NULL,
   room text NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE public.property_sop_items (
 ALTER TABLE public.property_sop_items ENABLE ROW LEVEL SECURITY;
 
 -- 4. property_restocking_items
-CREATE TABLE public.property_restocking_items (
+CREATE TABLE IF NOT EXISTS public.property_restocking_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id uuid REFERENCES public.properties(id) ON DELETE CASCADE NOT NULL,
   item_name text NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE public.property_restocking_items (
 ALTER TABLE public.property_restocking_items ENABLE ROW LEVEL SECURITY;
 
 -- 5. job_checklist_completions
-CREATE TABLE public.job_checklist_completions (
+CREATE TABLE IF NOT EXISTS public.job_checklist_completions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id uuid REFERENCES public.jobs(id) ON DELETE CASCADE NOT NULL,
   sop_item_id uuid REFERENCES public.property_sop_items(id) ON DELETE CASCADE NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE public.job_checklist_completions (
 ALTER TABLE public.job_checklist_completions ENABLE ROW LEVEL SECURITY;
 
 -- 6. job_restocking_completions
-CREATE TABLE public.job_restocking_completions (
+CREATE TABLE IF NOT EXISTS public.job_restocking_completions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id uuid REFERENCES public.jobs(id) ON DELETE CASCADE NOT NULL,
   restocking_item_id uuid REFERENCES public.property_restocking_items(id) ON DELETE CASCADE NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE public.job_restocking_completions (
 ALTER TABLE public.job_restocking_completions ENABLE ROW LEVEL SECURITY;
 
 -- 7. job_photos (note: photos table already exists, this is a separate table per your spec)
-CREATE TABLE public.job_photos (
+CREATE TABLE IF NOT EXISTS public.job_photos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id uuid REFERENCES public.jobs(id) ON DELETE CASCADE NOT NULL,
   storage_path text NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE public.job_photos (
 ALTER TABLE public.job_photos ENABLE ROW LEVEL SECURITY;
 
 -- 8. cleaner_job_tokens (staff_id references profiles)
-CREATE TABLE public.cleaner_job_tokens (
+CREATE TABLE IF NOT EXISTS public.cleaner_job_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id uuid REFERENCES public.jobs(id) ON DELETE CASCADE NOT NULL,
   staff_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,

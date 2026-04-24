@@ -3,7 +3,7 @@
 CREATE TYPE public.app_role AS ENUM ('admin', 'head_cleaner', 'cleaner');
 
 -- Profiles table
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
   full_name TEXT,
@@ -15,7 +15,7 @@ CREATE TABLE public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- User roles table
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role app_role NOT NULL,
@@ -80,7 +80,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Properties table
-CREATE TABLE public.properties (
+CREATE TABLE IF NOT EXISTS public.properties (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   property_name TEXT NOT NULL,
   address TEXT,
@@ -115,7 +115,7 @@ CREATE POLICY "Admins can manage properties" ON public.properties FOR ALL TO aut
   USING (public.has_role(auth.uid(), 'admin'));
 
 -- Jobs table
-CREATE TABLE public.jobs (
+CREATE TABLE IF NOT EXISTS public.jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id UUID REFERENCES public.properties(id) ON DELETE CASCADE,
   scheduled_date DATE NOT NULL,
@@ -141,7 +141,7 @@ CREATE POLICY "Admins can manage jobs" ON public.jobs FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
 -- Job forms table
-CREATE TABLE public.job_forms (
+CREATE TABLE IF NOT EXISTS public.job_forms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id UUID REFERENCES public.jobs(id) ON DELETE CASCADE,
   property_id UUID REFERENCES public.properties(id),
@@ -165,7 +165,7 @@ CREATE POLICY "Cleaners can insert forms" ON public.job_forms FOR INSERT TO auth
   WITH CHECK (cleaner_id = auth.uid());
 
 -- QC Audits table
-CREATE TABLE public.qc_audits (
+CREATE TABLE IF NOT EXISTS public.qc_audits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id UUID REFERENCES public.jobs(id) ON DELETE CASCADE,
   property_id UUID REFERENCES public.properties(id),
@@ -192,7 +192,7 @@ CREATE POLICY "Head cleaners and admins can create audits" ON public.qc_audits F
   WITH CHECK (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'head_cleaner'));
 
 -- Time entries table
-CREATE TABLE public.time_entries (
+CREATE TABLE IF NOT EXISTS public.time_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id UUID REFERENCES public.jobs(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
@@ -216,7 +216,7 @@ CREATE POLICY "Users can update own time entries" ON public.time_entries FOR UPD
   USING (user_id = auth.uid());
 
 -- Photos table
-CREATE TABLE public.photos (
+CREATE TABLE IF NOT EXISTS public.photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id UUID REFERENCES public.jobs(id) ON DELETE CASCADE,
   property_id UUID REFERENCES public.properties(id),
@@ -241,7 +241,7 @@ CREATE POLICY "Users can upload photos" ON public.photos FOR INSERT TO authentic
   WITH CHECK (uploaded_by = auth.uid());
 
 -- Quotes table
-CREATE TABLE public.quotes (
+CREATE TABLE IF NOT EXISTS public.quotes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id UUID REFERENCES public.properties(id),
   client_name TEXT,
@@ -260,7 +260,7 @@ CREATE POLICY "Admins can manage quotes" ON public.quotes FOR ALL TO authenticat
   USING (public.has_role(auth.uid(), 'admin'));
 
 -- Notifications table
-CREATE TABLE public.notifications (
+CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   message TEXT NOT NULL,

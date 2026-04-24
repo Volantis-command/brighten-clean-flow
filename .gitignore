@@ -26,3 +26,4 @@ dist-ssr
 # Migration dumps (contain real client data — never commit)
 migration-work/*.json
 migration-work/dumps/
+supabase/.temp/

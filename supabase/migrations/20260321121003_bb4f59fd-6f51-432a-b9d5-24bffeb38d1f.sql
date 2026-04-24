@@ -1,6 +1,6 @@
 
 -- Client-property linking table
-CREATE TABLE public.client_properties (
+CREATE TABLE IF NOT EXISTS public.client_properties (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id uuid NOT NULL,
   property_id uuid REFERENCES public.properties(id) ON DELETE CASCADE NOT NULL,
@@ -20,7 +20,7 @@ CREATE POLICY "Admins manage client_properties" ON public.client_properties
   FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin')) WITH CHECK (has_role(auth.uid(), 'admin'));
 
 -- Property issues table
-CREATE TABLE public.property_issues (
+CREATE TABLE IF NOT EXISTS public.property_issues (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id uuid REFERENCES public.jobs(id),
   property_id uuid REFERENCES public.properties(id),

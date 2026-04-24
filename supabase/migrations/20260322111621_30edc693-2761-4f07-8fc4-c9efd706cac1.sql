@@ -1,5 +1,5 @@
 
-CREATE TABLE public.job_series (
+CREATE TABLE IF NOT EXISTS public.job_series (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   frequency text NOT NULL DEFAULT 'weekly',
   interval_weeks integer NOT NULL DEFAULT 1,

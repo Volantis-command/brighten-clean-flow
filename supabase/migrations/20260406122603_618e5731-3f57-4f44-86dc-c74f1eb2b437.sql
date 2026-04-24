@@ -3,7 +3,7 @@
 ALTER TABLE public.cleaner_onboarding ADD COLUMN IF NOT EXISTS director_approved BOOLEAN DEFAULT false;
 
 -- Create qc_audit_rooms table
-CREATE TABLE public.qc_audit_rooms (
+CREATE TABLE IF NOT EXISTS public.qc_audit_rooms (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   audit_id UUID REFERENCES public.qc_audits(id) ON DELETE CASCADE NOT NULL,
   room_name TEXT NOT NULL,

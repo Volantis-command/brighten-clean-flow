@@ -1,5 +1,5 @@
 -- Staff leave table
-CREATE TABLE public.staff_leave (
+CREATE TABLE IF NOT EXISTS public.staff_leave (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
   start_date date NOT NULL,
