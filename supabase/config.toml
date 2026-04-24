@@ -54,5 +54,3 @@ verify_jwt = false
 [functions.export-all-data]
 verify_jwt = false
 
-[functions.export-secrets]
-verify_jwt = false
