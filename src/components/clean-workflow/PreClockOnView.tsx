@@ -152,12 +152,50 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                {property?.access_notes ? (
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{property.access_notes}</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No access notes on file — contact admin</p>
-                )}
+              <div className="px-4 pb-4 space-y-3">
+                {(() => {
+                  const codeRows: { label: string; value: string }[] = [];
+                  if (property?.access_method) codeRows.push({ label: 'Method', value: property.access_method });
+                  if (property?.access_code) codeRows.push({ label: 'Access code', value: property.access_code });
+                  if (property?.lockbox_code && property.lockbox_code !== property.access_code) {
+                    codeRows.push({ label: 'Lockbox code', value: property.lockbox_code });
+                  }
+                  if (property?.garage_code) codeRows.push({ label: 'Garage code', value: property.garage_code });
+                  if (property?.alarm_code) codeRows.push({ label: 'Alarm code', value: property.alarm_code });
+                  const hasAnyCodes = codeRows.length > 0;
+                  const hasNotes = !!property?.access_notes;
+
+                  if (!hasAnyCodes && !hasNotes) {
+                    return (
+                      <p className="text-sm text-muted-foreground italic">
+                        No access info on file — contact admin
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {codeRows.map((row) => (
+                        <div key={row.label} className="flex items-baseline justify-between gap-3">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+                            {row.label}
+                          </span>
+                          <span className="text-lg font-extrabold text-foreground font-mono tracking-wide text-right break-all">
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
+                      {hasNotes && (
+                        <div className={hasAnyCodes ? 'pt-3 border-t border-border' : ''}>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                            Notes
+                          </p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{property.access_notes}</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Card>
