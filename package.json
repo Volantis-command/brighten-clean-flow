@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate:import": "npx tsx migration-work/import-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
