@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Migration dumps (contain real client data — never commit)
+migration-work/*.json
+migration-work/dumps/
