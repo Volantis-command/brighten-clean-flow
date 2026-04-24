@@ -91,6 +91,62 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
           </Card>
         )}
 
+        {/* Airbnb Turnaround Window — only for Airbnb properties with timing data */}
+        {property?.client_type === 'airbnb' && (property?.checkout_time || property?.checkin_time) && (() => {
+          const formatTime = (raw: string): string => {
+            const parts = String(raw).split(':');
+            if (parts.length < 2) return raw;
+            const h = parseInt(parts[0], 10);
+            const m = parts[1];
+            if (isNaN(h)) return raw;
+            const period = h >= 12 ? 'PM' : 'AM';
+            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            return `${h12}:${m} ${period}`;
+          };
+          const checkout = property.checkout_time ? formatTime(property.checkout_time) : null;
+          const checkin = property.checkin_time ? formatTime(property.checkin_time) : null;
+          let windowLabel: string | null = null;
+          if (property.checkout_time && property.checkin_time) {
+            const [coH, coM] = property.checkout_time.split(':').map(Number);
+            const [ciH, ciM] = property.checkin_time.split(':').map(Number);
+            const diffMin = (ciH * 60 + (ciM || 0)) - (coH * 60 + (coM || 0));
+            if (diffMin > 0) {
+              const h = Math.floor(diffMin / 60);
+              const m = diffMin % 60;
+              windowLabel = m === 0 ? `${h} hr${h === 1 ? '' : 's'}` : `${h} hr ${m} min`;
+            }
+          }
+          return (
+            <Card className="border-amber-300 bg-amber-50 dark:bg-amber-500/10">
+              <CardContent className="p-4 space-y-2">
+                <p className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" /> Turnaround Window
+                </p>
+                <div className="space-y-1.5 pt-1">
+                  {checkout && (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-sm text-foreground">Guest checkout</span>
+                      <span className="text-base font-extrabold text-foreground font-mono">{checkout}</span>
+                    </div>
+                  )}
+                  {checkin && (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-sm text-foreground">Next check-in</span>
+                      <span className="text-base font-extrabold text-foreground font-mono">{checkin}</span>
+                    </div>
+                  )}
+                  {windowLabel && (
+                    <div className="flex items-baseline justify-between gap-3 pt-1.5 border-t border-amber-300/40">
+                      <span className="text-sm font-bold text-amber-800 dark:text-amber-200">Window</span>
+                      <span className="text-lg font-extrabold text-amber-800 dark:text-amber-200">{windowLabel}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* Job Info */}
         <Card className="border-border">
           <CardContent className="p-4 space-y-2">
@@ -152,12 +208,50 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                {property?.access_notes ? (
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{property.access_notes}</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No access notes on file — contact admin</p>
-                )}
+              <div className="px-4 pb-4 space-y-3">
+                {(() => {
+                  const codeRows: { label: string; value: string }[] = [];
+                  if (property?.access_method) codeRows.push({ label: 'Method', value: property.access_method });
+                  if (property?.access_code) codeRows.push({ label: 'Access code', value: property.access_code });
+                  if (property?.lockbox_code && property.lockbox_code !== property.access_code) {
+                    codeRows.push({ label: 'Lockbox code', value: property.lockbox_code });
+                  }
+                  if (property?.garage_code) codeRows.push({ label: 'Garage code', value: property.garage_code });
+                  if (property?.alarm_code) codeRows.push({ label: 'Alarm code', value: property.alarm_code });
+                  const hasAnyCodes = codeRows.length > 0;
+                  const hasNotes = !!property?.access_notes;
+
+                  if (!hasAnyCodes && !hasNotes) {
+                    return (
+                      <p className="text-sm text-muted-foreground italic">
+                        No access info on file — contact admin
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {codeRows.map((row) => (
+                        <div key={row.label} className="flex items-baseline justify-between gap-3">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+                            {row.label}
+                          </span>
+                          <span className="text-lg font-extrabold text-foreground font-mono tracking-wide text-right break-all">
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
+                      {hasNotes && (
+                        <div className={hasAnyCodes ? 'pt-3 border-t border-border' : ''}>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                            Notes
+                          </p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{property.access_notes}</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Card>
