@@ -17,6 +17,7 @@ import { createPropertyAndLink } from '@/lib/propertyWrites';
 import ClientHeader from '@/components/client-detail/ClientHeader';
 import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
 import OnboardingStatusSection from '@/components/client-detail/OnboardingStatusSection';
+import HostawayIntegrationSection from '@/components/client-detail/HostawayIntegrationSection';
 import EditClientDialog from '@/components/client-detail/EditClientDialog';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
@@ -425,6 +426,11 @@ export default function ClientDetailPage() {
             </Button>
             {!profile?.phone && <p className="text-xs text-muted-foreground mt-2">Add a phone number to enable SMS.</p>}
           </div>
+
+          {/* HOSTAWAY INTEGRATION — only for real profiles */}
+          {isRealProfile && portalClientId && (
+            <HostawayIntegrationSection clientId={portalClientId} />
+          )}
 
           {/* 4. ONBOARDING — always shown */}
           <OnboardingStatusSection

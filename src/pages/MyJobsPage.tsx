@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addDays, startOfDay } from 'date-fns';
 import { MapPin, Clock, ChevronRight, Loader2, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,16 +27,39 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive border-0' },
 };
 
+type View = 'today' | 'tomorrow' | 'week';
+
+const VIEW_LABELS: Record<View, string> = {
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  week: 'This Week',
+};
+
 export default function MyJobsPage() {
   const { user, role } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const today = format(new Date(), 'yyyy-MM-dd');
+  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  const weekEnd = format(addDays(new Date(), 6), 'yyyy-MM-dd');
+
+  const [view, setView] = useState<View>('today');
 
   const [actionJob, setActionJob] = useState<any | null>(null);
   const [actionType, setActionType] = useState<'accept' | 'decline' | null>(null);
   const [declineReason, setDeclineReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Compute the date filter for the current view
+  const { dateFrom, dateTo, headingDate } = (() => {
+    if (view === 'today') {
+      return { dateFrom: today, dateTo: today, headingDate: format(new Date(), 'EEEE, d MMMM yyyy') };
+    }
+    if (view === 'tomorrow') {
+      return { dateFrom: tomorrow, dateTo: tomorrow, headingDate: format(addDays(new Date(), 1), 'EEEE, d MMMM yyyy') };
+    }
+    return { dateFrom: today, dateTo: weekEnd, headingDate: `${format(new Date(), 'd MMM')} – ${format(addDays(new Date(), 6), 'd MMM')}` };
+  })();
 
   // ── Jobs awaiting my acceptance (any date) ──
   const { data: pendingOffers = [], isLoading: loadingPending } = useQuery({
@@ -65,16 +88,18 @@ export default function MyJobsPage() {
     },
   });
 
-  // ── Today's jobs ──
+  // ── Jobs for the selected view (today / tomorrow / this week) ──
   const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ['my-jobs-today', user?.id, role],
+    queryKey: ['my-jobs', view, user?.id, role, dateFrom, dateTo],
     enabled: !!user,
     queryFn: async () => {
       let query = supabase
         .from('jobs')
         .select('id, scheduled_date, scheduled_time, status, estimated_duration, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type, first_clean)')
-        .eq('scheduled_date', today)
+        .gte('scheduled_date', dateFrom)
+        .lte('scheduled_date', dateTo)
         .in('status', ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled'])
+        .order('scheduled_date', { ascending: true })
         .order('scheduled_time', { ascending: true });
 
       if (role === 'cleaner' || role === 'head_cleaner') {
@@ -122,7 +147,7 @@ export default function MyJobsPage() {
       const { confirmed } = await acceptJob(job.id, user.id);
       toast.success(confirmed ? 'Accepted — job confirmed ✓' : 'Accepted — waiting on other cleaner');
       queryClient.invalidateQueries({ queryKey: ['my-pending-acceptances'] });
-      queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
+      queryClient.invalidateQueries({ queryKey: ['my-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     } catch (e: any) {
       toast.error(e.message || 'Could not accept the job');
@@ -140,7 +165,7 @@ export default function MyJobsPage() {
       await declineJob(job.id, user.id, declineReason || undefined);
       toast.success('Declined — admin has been notified to reassign');
       queryClient.invalidateQueries({ queryKey: ['my-pending-acceptances'] });
-      queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
+      queryClient.invalidateQueries({ queryKey: ['my-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     } catch (e: any) {
       toast.error(e.message || 'Could not decline the job');
@@ -244,16 +269,39 @@ export default function MyJobsPage() {
         </div>
       )}
 
-      {/* ── Today's jobs ── */}
+      {/* ── Jobs by view ── */}
       <div>
-        <h1 className="text-2xl font-extrabold text-foreground">Today's Jobs</h1>
-        <p className="text-sm text-muted-foreground mt-1">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
+        <h1 className="text-2xl font-extrabold text-foreground">
+          {view === 'week' ? 'My Jobs' : `${VIEW_LABELS[view]}'s Jobs`}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">{headingDate}</p>
+      </div>
+
+      {/* Segmented control: Today / Tomorrow / This Week */}
+      <div className="bg-card rounded-2xl border border-border p-1 flex gap-1">
+        {(['today', 'tomorrow', 'week'] as View[]).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-colors ${
+              view === v
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {VIEW_LABELS[v]}
+          </button>
+        ))}
       </div>
 
       {jobs.length === 0 ? (
         <div className="bg-card rounded-2xl border border-border p-8 text-center">
           <p className="text-3xl mb-2">🌴</p>
-          <p className="font-bold text-foreground">No jobs scheduled for today.</p>
+          <p className="font-bold text-foreground">
+            {view === 'today' ? 'No jobs scheduled for today.'
+              : view === 'tomorrow' ? 'No jobs scheduled for tomorrow.'
+              : 'No jobs scheduled this week.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -270,6 +318,12 @@ export default function MyJobsPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-1.5">
+                    {/* When showing multiple days, prefix the time with the day */}
+                    {view !== 'today' && (
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        {format(parseISO(job.scheduled_date), 'EEE, d MMM')}
+                      </p>
+                    )}
                     {job.scheduled_time && (
                       <p className="text-lg font-extrabold text-foreground">{job.scheduled_time.slice(0, 5)}</p>
                     )}

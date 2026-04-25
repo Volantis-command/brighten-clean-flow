@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone, BedDouble } from 'lucide-react';
 import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
 
@@ -29,7 +29,13 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
   const navigate = useNavigate();
   const [accessOpen, setAccessOpen] = useState(true);
   const [instructionsOpen, setInstructionsOpen] = useState(true);
-  const [consumablesOpen, setConsumablesOpen] = useState(false);
+  // Default-open the Consumables panel when the property actually has
+  // kits configured — saves a tap on every Airbnb turnover.
+  const hasAnyKit =
+    !!(property as any)?.amenities_kit ||
+    !!(property as any)?.wash_kit ||
+    !!(property as any)?.tea_coffee_kit;
+  const [consumablesOpen, setConsumablesOpen] = useState(hasAnyKit);
 
   const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
   const durationHrs = job.estimated_duration ? job.estimated_duration / 60 : null;
@@ -142,6 +148,77 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Beds & Linen — Airbnb only, when there's any linen/bed config to show */}
+        {property?.client_type === 'airbnb' && (() => {
+          const p = property as any;
+          const hasBedConfig = !!p?.bed_config;
+          const linenRequired = p?.linen_required;
+          const hasLinenInfo =
+            linenRequired === true || linenRequired === false ||
+            !!p?.linen_storage || !!p?.linen_sets || !!p?.linen_fold_style ||
+            !!p?.linen_changeover || !!p?.linen_supply;
+
+          if (!hasBedConfig && !hasLinenInfo) return null;
+
+          return (
+            <Card className="border-border">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <BedDouble className="h-3.5 w-3.5" /> Beds &amp; Linen
+                </p>
+
+                {hasBedConfig && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bed configuration</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.bed_config}</p>
+                  </div>
+                )}
+
+                {linenRequired === true && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Linen</p>
+                    <p className="text-sm text-foreground">Brightly supplies fresh linen for this clean</p>
+                  </div>
+                )}
+                {linenRequired === false && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Linen</p>
+                    <p className="text-sm text-foreground">Host provides linen — check the storage location</p>
+                  </div>
+                )}
+
+                {p?.linen_storage && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Spare linen storage</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.linen_storage}</p>
+                  </div>
+                )}
+
+                {p?.linen_sets != null && p.linen_sets !== '' && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sets per bed</p>
+                    <p className="text-sm text-foreground">{p.linen_sets}</p>
+                  </div>
+                )}
+
+                {p?.linen_fold_style && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fold style</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.linen_fold_style}</p>
+                  </div>
+                )}
+
+                {p?.linen_changeover && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Changeover</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.linen_changeover}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
@@ -269,12 +346,45 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                {property?.special_instructions ? (
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{property.special_instructions}</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No special instructions</p>
-                )}
+              <div className="px-4 pb-4 space-y-4">
+                {(() => {
+                  // Aggregate all instruction fields the property might have.
+                  // Each is either a free-text note or absent. Displayed as
+                  // labelled blocks so the cleaner doesn't miss any.
+                  const blocks: { label: string; body: string }[] = [];
+                  const p = property as any;
+                  if (p?.special_instructions) blocks.push({ label: 'Special instructions', body: p.special_instructions });
+                  if (p?.focus_areas) blocks.push({ label: 'Focus areas', body: p.focus_areas });
+                  if (p?.skip_areas) blocks.push({ label: 'Skip / don\u2019t clean', body: p.skip_areas });
+                  if (p?.preferences_notes) blocks.push({ label: 'Client preferences', body: p.preferences_notes });
+                  if (p?.product_restrictions) blocks.push({ label: 'Product restrictions', body: p.product_restrictions });
+                  // pet_situation may be on properties; pet_notes is a separate text field.
+                  if (p?.pet_situation) blocks.push({ label: 'Pets', body: p.pet_situation });
+                  if (p?.pet_notes && p.pet_notes !== p.pet_situation) {
+                    blocks.push({ label: 'Pet notes', body: p.pet_notes });
+                  }
+
+                  if (blocks.length === 0) {
+                    return (
+                      <p className="text-sm text-muted-foreground italic">
+                        No cleaning instructions for this property
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {blocks.map((block) => (
+                        <div key={block.label} className="space-y-1">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                            {block.label}
+                          </p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{block.body}</p>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Card>
@@ -314,8 +424,50 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                <p className="text-sm text-muted-foreground italic">No consumables this clean</p>
+              <div className="px-4 pb-4 space-y-3">
+                {(() => {
+                  const kits: { name: string; contents: string }[] = [];
+                  if ((property as any)?.amenities_kit) {
+                    kits.push({
+                      name: 'Amenities Kit',
+                      contents: 'Shampoo · Conditioner · Body Wash · Hand Soap',
+                    });
+                  }
+                  if ((property as any)?.wash_kit) {
+                    kits.push({
+                      name: 'Wash Kit',
+                      contents: 'Dishwasher powder + liquid · Detergent · Scourer · Bin liners',
+                    });
+                  }
+                  if ((property as any)?.tea_coffee_kit) {
+                    kits.push({
+                      name: 'Tea / Coffee Kit',
+                      contents: 'Tea · Coffee · Milk · Sugar',
+                    });
+                  }
+
+                  if (kits.length === 0) {
+                    return (
+                      <p className="text-sm text-muted-foreground italic">
+                        No consumables this clean
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Replace / restock for this turnover
+                      </p>
+                      {kits.map((kit) => (
+                        <div key={kit.name} className="space-y-0.5">
+                          <p className="text-sm font-bold text-foreground">{kit.name}</p>
+                          <p className="text-xs text-muted-foreground">{kit.contents}</p>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Card>

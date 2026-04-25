@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.export-all-data]
 verify_jwt = false
+
+[functions.hostaway-connect]
+verify_jwt = true

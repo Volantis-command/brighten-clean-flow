@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ClientLoginPage from "./pages/ClientLoginPage";
 import AppLayout from "./components/AppLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
@@ -176,6 +177,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/auth/staff" element={<StaffMagicAuthPage />} />
       <Route path="/client-login" element={<ClientLoginPage />} />
 
