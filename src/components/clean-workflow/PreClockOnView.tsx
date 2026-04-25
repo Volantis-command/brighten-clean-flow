@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone, BedDouble } from 'lucide-react';
 import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
 
@@ -142,6 +142,77 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Beds & Linen — Airbnb only, when there's any linen/bed config to show */}
+        {property?.client_type === 'airbnb' && (() => {
+          const p = property as any;
+          const hasBedConfig = !!p?.bed_config;
+          const linenRequired = p?.linen_required;
+          const hasLinenInfo =
+            linenRequired === true || linenRequired === false ||
+            !!p?.linen_storage || !!p?.linen_sets || !!p?.linen_fold_style ||
+            !!p?.linen_changeover || !!p?.linen_supply;
+
+          if (!hasBedConfig && !hasLinenInfo) return null;
+
+          return (
+            <Card className="border-border">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <BedDouble className="h-3.5 w-3.5" /> Beds &amp; Linen
+                </p>
+
+                {hasBedConfig && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bed configuration</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.bed_config}</p>
+                  </div>
+                )}
+
+                {linenRequired === true && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Linen</p>
+                    <p className="text-sm text-foreground">Brightly supplies fresh linen for this clean</p>
+                  </div>
+                )}
+                {linenRequired === false && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Linen</p>
+                    <p className="text-sm text-foreground">Host provides linen — check the storage location</p>
+                  </div>
+                )}
+
+                {p?.linen_storage && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Spare linen storage</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.linen_storage}</p>
+                  </div>
+                )}
+
+                {p?.linen_sets != null && p.linen_sets !== '' && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sets per bed</p>
+                    <p className="text-sm text-foreground">{p.linen_sets}</p>
+                  </div>
+                )}
+
+                {p?.linen_fold_style && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fold style</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.linen_fold_style}</p>
+                  </div>
+                )}
+
+                {p?.linen_changeover && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Changeover</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{p.linen_changeover}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
