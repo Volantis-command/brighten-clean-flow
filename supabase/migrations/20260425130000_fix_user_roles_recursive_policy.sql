@@ -1,0 +1,25 @@
+-- Fix infinite-recursion RLS bug on user_roles discovered during the
+-- Lovable Cloud → owned Supabase migration smoke test (2026-04-25).
+--
+-- The "Admin full access" policy added to every operational table by
+-- `20260421180000_admin_full_access_all_tables.sql` was applied to
+-- user_roles itself with the body:
+--
+--   EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
+--
+-- That's a self-referencing subquery — to evaluate the policy, Postgres
+-- has to query user_roles, which triggers the same policy, infinite loop.
+-- PostgREST surfaced it as "42P17 infinite recursion detected in policy
+-- for relation user_roles" for every authenticated request.
+--
+-- user_roles already has non-recursive admin-access policies
+-- ("Admins can manage roles", "Admins can view all roles") that use the
+-- `has_role()` SECURITY DEFINER function, which bypasses RLS and avoids
+-- recursion. So dropping the recursive one loses nothing.
+--
+-- This bug was latent on Lovable Cloud — probably masked by PostgREST
+-- caching or a Lovable-internal patch that didn't make it into the
+-- migration files. It only surfaced cleanly on the new Supabase where
+-- every migration replayed from scratch.
+
+DROP POLICY IF EXISTS "Admin full access" ON public.user_roles;
