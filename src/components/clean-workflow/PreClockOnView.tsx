@@ -29,7 +29,13 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
   const navigate = useNavigate();
   const [accessOpen, setAccessOpen] = useState(true);
   const [instructionsOpen, setInstructionsOpen] = useState(true);
-  const [consumablesOpen, setConsumablesOpen] = useState(false);
+  // Default-open the Consumables panel when the property actually has
+  // kits configured — saves a tap on every Airbnb turnover.
+  const hasAnyKit =
+    !!(property as any)?.amenities_kit ||
+    !!(property as any)?.wash_kit ||
+    !!(property as any)?.tea_coffee_kit;
+  const [consumablesOpen, setConsumablesOpen] = useState(hasAnyKit);
 
   const jobDate = new Date(job.scheduled_date + 'T' + (job.scheduled_time ?? '00:00'));
   const durationHrs = job.estimated_duration ? job.estimated_duration / 60 : null;
@@ -314,8 +320,50 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                <p className="text-sm text-muted-foreground italic">No consumables this clean</p>
+              <div className="px-4 pb-4 space-y-3">
+                {(() => {
+                  const kits: { name: string; contents: string }[] = [];
+                  if ((property as any)?.amenities_kit) {
+                    kits.push({
+                      name: 'Amenities Kit',
+                      contents: 'Shampoo · Conditioner · Body Wash · Hand Soap',
+                    });
+                  }
+                  if ((property as any)?.wash_kit) {
+                    kits.push({
+                      name: 'Wash Kit',
+                      contents: 'Dishwasher powder + liquid · Detergent · Scourer · Bin liners',
+                    });
+                  }
+                  if ((property as any)?.tea_coffee_kit) {
+                    kits.push({
+                      name: 'Tea / Coffee Kit',
+                      contents: 'Tea · Coffee · Milk · Sugar',
+                    });
+                  }
+
+                  if (kits.length === 0) {
+                    return (
+                      <p className="text-sm text-muted-foreground italic">
+                        No consumables this clean
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Replace / restock for this turnover
+                      </p>
+                      {kits.map((kit) => (
+                        <div key={kit.name} className="space-y-0.5">
+                          <p className="text-sm font-bold text-foreground">{kit.name}</p>
+                          <p className="text-xs text-muted-foreground">{kit.contents}</p>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Card>
