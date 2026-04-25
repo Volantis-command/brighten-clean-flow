@@ -154,8 +154,8 @@ async function dumpAuthUsers(client: SupabaseClient): Promise<{ users: unknown[]
 async function inventoryBucket(
   client: SupabaseClient,
   bucket: string,
-): Promise<{ items: { name: string; size: number; public_url: string | null }[]; error?: string }> {
-  const items: { name: string; size: number; public_url: string | null }[] = [];
+): Promise<{ items: { name: string; size: number; public_url: string | null; signed_url: string | null }[]; error?: string }> {
+  const items: { name: string; size: number; public_url: string | null; signed_url: string | null }[] = [];
   // Recursive listing — storage.list returns immediate children, so we
   // traverse prefixes. In practice most buckets are 1-2 levels deep.
   async function walk(prefix: string) {
@@ -171,10 +171,17 @@ async function inventoryBucket(
         await walk(fullPath);
       } else {
         const { data: pub } = client.storage.from(bucket).getPublicUrl(fullPath);
+        // Also generate a 1-hour signed URL so private-bucket files
+        // can be downloaded during migration. Public buckets don't
+        // strictly need this but getting one is harmless.
+        const { data: signed } = await client.storage
+          .from(bucket)
+          .createSignedUrl(fullPath, 60 * 60);
         items.push({
           name: fullPath,
           size: (entry.metadata as { size?: number } | null)?.size ?? 0,
           public_url: pub?.publicUrl ?? null,
+          signed_url: signed?.signedUrl ?? null,
         });
       }
     }
