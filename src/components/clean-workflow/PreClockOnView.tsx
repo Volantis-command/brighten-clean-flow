@@ -269,12 +269,45 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
               </CardContent>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                {property?.special_instructions ? (
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{property.special_instructions}</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No special instructions</p>
-                )}
+              <div className="px-4 pb-4 space-y-4">
+                {(() => {
+                  // Aggregate all instruction fields the property might have.
+                  // Each is either a free-text note or absent. Displayed as
+                  // labelled blocks so the cleaner doesn't miss any.
+                  const blocks: { label: string; body: string }[] = [];
+                  const p = property as any;
+                  if (p?.special_instructions) blocks.push({ label: 'Special instructions', body: p.special_instructions });
+                  if (p?.focus_areas) blocks.push({ label: 'Focus areas', body: p.focus_areas });
+                  if (p?.skip_areas) blocks.push({ label: 'Skip / don\u2019t clean', body: p.skip_areas });
+                  if (p?.preferences_notes) blocks.push({ label: 'Client preferences', body: p.preferences_notes });
+                  if (p?.product_restrictions) blocks.push({ label: 'Product restrictions', body: p.product_restrictions });
+                  // pet_situation may be on properties; pet_notes is a separate text field.
+                  if (p?.pet_situation) blocks.push({ label: 'Pets', body: p.pet_situation });
+                  if (p?.pet_notes && p.pet_notes !== p.pet_situation) {
+                    blocks.push({ label: 'Pet notes', body: p.pet_notes });
+                  }
+
+                  if (blocks.length === 0) {
+                    return (
+                      <p className="text-sm text-muted-foreground italic">
+                        No cleaning instructions for this property
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {blocks.map((block) => (
+                        <div key={block.label} className="space-y-1">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                            {block.label}
+                          </p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{block.body}</p>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Card>
