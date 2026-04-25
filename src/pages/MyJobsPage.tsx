@@ -45,7 +45,7 @@ export default function MyJobsPage() {
     queryFn: async () => {
       const { data: acceptances, error } = await supabase
         .from('job_acceptances')
-        .select('id, job_id, acceptance_status, sms_sent_at, jobs(id, scheduled_date, scheduled_time, estimated_duration, status, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type))')
+        .select('id, job_id, acceptance_status, sms_sent_at, jobs(id, scheduled_date, scheduled_time, estimated_duration, status, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type, first_clean))')
         .eq('cleaner_id', user!.id)
         .eq('acceptance_status', 'pending');
       if (error) throw error;
@@ -59,6 +59,7 @@ export default function MyJobsPage() {
           property_name: j.properties?.property_name ?? 'Property',
           address: j.properties?.address ?? null,
           client_type: j.properties?.client_type ?? null,
+          first_clean: j.properties?.first_clean === true,
         }))
         .sort((a: any, b: any) => (a.scheduled_date + (a.scheduled_time || '')).localeCompare(b.scheduled_date + (b.scheduled_time || '')));
     },
@@ -71,7 +72,7 @@ export default function MyJobsPage() {
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('id, scheduled_date, scheduled_time, status, estimated_duration, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type)')
+        .select('id, scheduled_date, scheduled_time, status, estimated_duration, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type, first_clean)')
         .eq('scheduled_date', today)
         .in('status', ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled'])
         .order('scheduled_time', { ascending: true });
@@ -106,6 +107,7 @@ export default function MyJobsPage() {
         property_name: j.properties?.property_name ?? 'Property',
         address: j.properties?.address ?? null,
         client_type: j.properties?.client_type ?? null,
+        first_clean: j.properties?.first_clean === true,
         cleaners: [j.cleaner_1_id, j.cleaner_2_id]
           .filter(Boolean)
           .map((id: string) => ({ id, name: profileMap[id] || '?' })),
@@ -183,10 +185,15 @@ export default function MyJobsPage() {
                 className="bg-card rounded-2xl border-2 border-yellow-400/60 p-4 space-y-3 shadow-md"
               >
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge className="bg-yellow-100 text-yellow-800 border-0 text-[10px] font-bold">
                       NEW OFFER
                     </Badge>
+                    {job.first_clean && (
+                      <Badge className="bg-amber-200 text-amber-900 border-0 text-[10px] font-bold">
+                        ⭐ FIRST CLEAN
+                      </Badge>
+                    )}
                     <span className="text-xs text-muted-foreground">{dateLabel}</span>
                     {job.scheduled_time && (
                       <span className="text-xs font-bold text-foreground">
@@ -278,6 +285,11 @@ export default function MyJobsPage() {
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" /> {durationHrs}
                         </span>
+                      )}
+                      {job.first_clean && (
+                        <Badge className="bg-amber-200 text-amber-900 border-0 text-[10px] font-bold">
+                          ⭐ FIRST CLEAN
+                        </Badge>
                       )}
                     </div>
                     {job.cleaners.length > 0 && (
