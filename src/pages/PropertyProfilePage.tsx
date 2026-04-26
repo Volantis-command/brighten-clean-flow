@@ -15,6 +15,7 @@ import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil, CalendarPlus, 
 import { JobHistoryTab } from '@/components/property/JobHistoryTab';
 import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
+import PendingChangesPanel from '@/components/property/PendingChangesPanel';
 import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import { toast } from 'sonner';
@@ -128,6 +129,9 @@ export default function PropertyProfilePage() {
           </div>
         </TabsContent>
         <TabsContent value="passport">
+          <div className="mt-4">
+            <PendingChangesPanel propertyId={property.id} />
+          </div>
           <div className="bg-card rounded-2xl border border-border p-5 mt-4">
             <h3 className="font-bold text-foreground mb-4">Property Passport</h3>
             <PropertyPassportSection propertyId={property.id} />
