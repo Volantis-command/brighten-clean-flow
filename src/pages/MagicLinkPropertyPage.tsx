@@ -10,6 +10,7 @@ import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGa
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
 import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
 
 export default function MagicLinkPropertyPage() {
@@ -258,43 +259,17 @@ export default function MagicLinkPropertyPage() {
           />
         )}
 
-        {/* Clean History */}
-        <Section title="Clean History">
-          <button onClick={() => setHistoryExpanded(!historyExpanded)} className="flex items-center gap-1 text-sm font-semibold text-primary mb-3">
-            {completedJobs.length} completed cleans
-          </button>
-          {historyExpanded && (
-            <div className="space-y-2">
-              {completedJobs.map((job: any) => {
-                const audit = audits.find((a: any) => a.job_id === job.id);
-                const isSelected = selectedCleanId === job.id;
-                return (
-                  <div
-                    key={job.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedCleanId(job.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCleanId(job.id); } }}
-                    className={`w-full text-left rounded-xl p-3 border text-sm transition-colors cursor-pointer ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{format(new Date(job.scheduled_date + 'T00:00:00'), 'dd MMM yyyy')}</span>
-                      {audit && <span className={`font-bold text-xs ${(audit.percentage || 0) >= 80 ? 'text-primary' : 'text-orange-500'}`}>{audit.percentage}%</span>}
-                    </div>
-                    {token && (
-                      <div className="mt-2">
-                        <RateCleanStars
-                          token={token}
-                          jobId={job.id}
-                          existingScore={scoreByJob[job.id] || null}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        {/* Clean Forms Archive — every completed clean, with photos,
+            PDF download, ratings and feedback. Date-filterable. */}
+        <Section title="Clean Forms & History">
+          <CleanFormsArchive
+            token={token}
+            propertyId={propertyId!}
+            completedJobs={completedJobs}
+            cleanerProfiles={cleanerProfiles}
+            audits={audits as any[]}
+            scoreByJob={scoreByJob}
+          />
         </Section>
 
         {/* Property Passport — clients edit, admin approves before changes go live */}
@@ -325,13 +300,6 @@ export default function MagicLinkPropertyPage() {
             </div>
           )}
         </Section>
-
-        {/* Download Report */}
-        {lastCompleteJob && (
-          <Button variant="outline" className="w-full gap-2 font-bold" onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank')}>
-            <Download className="w-4 h-4" /> Download Clean Report
-          </Button>
-        )}
 
         <p className="text-center text-muted-foreground text-xs pt-4">Powered by Brightly</p>
       </main>
