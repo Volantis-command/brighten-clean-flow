@@ -175,9 +175,21 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const duration = getDurationHours(job.estimated_duration);
                   const top = (startTime - firstHour) * HOUR_HEIGHT;
                   const height = Math.max(duration * HOUR_HEIGHT, 28);
-                  const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
+                  const cleaner1 = getCleanerName(job.cleaner_1_id, nameMap);
+                  const cleaner2 = getCleanerName(job.cleaner_2_id, nameMap);
                   const clientName = jobLabel(job);
                   const address = job.properties?.address || '';
+                  const isAirbnb = job.properties?.client_type === 'airbnb';
+                  const isFirstClean = job.properties?.first_clean === true;
+                  const isRecurring = !!job.series_id || !!job.recurring_parent_id || (job.frequency && job.frequency !== 'one-off');
+                  // Build a compact cleaner string. Show just first names to fit
+                  // the narrow card. Both cleaners if assigned, "(2)" hint if 2.
+                  const cleanerStr = (() => {
+                    const names = [cleaner1, cleaner2].filter(n => n && n !== 'Unassigned' && n !== '?').map(n => n.split(' ')[0]);
+                    if (names.length === 0) return null;
+                    if (names.length === 1) return names[0];
+                    return `${names[0]} + ${names[1]}`;
+                  })();
 
                   // Status-based colour coding (yellow = waiting, green = locked in, blue = in flight)
                   const isComplete = job.status === 'completed';
@@ -203,27 +215,56 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                       }}
                     >
                       <div className="px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
-                        <p
-                          className={`text-[11px] font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`}
-                          style={{ color: statusText }}
-                        >
-                          {clientName}
-                        </p>
-                        {height >= 44 && address && (
+                        {/* Line 1: name + indicator icons */}
+                        <div className="flex items-center gap-1 min-w-0">
                           <p
-                            className="text-[9px] leading-tight truncate mt-0.5 opacity-85"
+                            className={`text-[11px] font-bold leading-tight truncate flex-1 min-w-0 ${isCancelled ? 'line-through' : ''}`}
                             style={{ color: statusText }}
+                            title={clientName}
                           >
-                            {address}
+                            {clientName}
+                          </p>
+                          <span className="flex items-center gap-0.5 shrink-0" style={{ color: statusText }}>
+                            {isRecurring && <span className="text-[9px]" title="Recurring">🔁</span>}
+                            {isAirbnb && <span className="text-[9px]" title="Airbnb / short-stay">🏠</span>}
+                            {isFirstClean && <span className="text-[9px]" title="First clean">⭐</span>}
+                          </span>
+                        </div>
+                        {/* Line 2: time always shown if there's room */}
+                        {height >= 32 && job.scheduled_time && (
+                          <p
+                            className="text-[9px] leading-tight truncate mt-0.5 font-semibold"
+                            style={{ color: statusText, opacity: 0.85 }}
+                          >
+                            {job.scheduled_time.slice(0, 5)}
+                            {duration ? ` · ${duration}hr` : ''}
                           </p>
                         )}
-                        {height >= 56 && (
+                        {/* Line 3: address */}
+                        {height >= 48 && address && (
                           <p
-                            className="text-[9px] leading-tight truncate mt-0.5 opacity-75"
-                            style={{ color: statusText }}
+                            className="text-[9px] leading-tight truncate mt-0.5"
+                            style={{ color: statusText, opacity: 0.8 }}
+                            title={address}
                           >
-                            {cleanerName.split(' ')[0]}
-                            {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}
+                            📍 {address}
+                          </p>
+                        )}
+                        {/* Line 4: cleaners */}
+                        {height >= 64 && cleanerStr && (
+                          <p
+                            className="text-[9px] leading-tight truncate mt-0.5"
+                            style={{ color: statusText, opacity: 0.8 }}
+                          >
+                            👤 {cleanerStr}
+                          </p>
+                        )}
+                        {height >= 64 && !cleanerStr && (
+                          <p
+                            className="text-[9px] leading-tight truncate mt-0.5 italic"
+                            style={{ color: statusText, opacity: 0.7 }}
+                          >
+                            No cleaner assigned
                           </p>
                         )}
                       </div>
