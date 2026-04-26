@@ -75,7 +75,7 @@ export default function MagicLinkPortalPage() {
     queryKey: ['magic-cleaners', cleanerIds],
     queryFn: async () => {
       if (!cleanerIds.length) return [];
-      const { data } = await supabase.from('profiles').select('id, full_name').in('id', cleanerIds);
+      const { data } = await supabase.from('profiles').select('id, full_name, profile_photo_url').in('id', cleanerIds);
       return data || [];
     },
     enabled: cleanerIds.length > 0,

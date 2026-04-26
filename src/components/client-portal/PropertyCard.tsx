@@ -1,5 +1,6 @@
 import { format, differenceInHours } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarPlus, Star, Wifi, WifiOff, Home } from 'lucide-react';
@@ -99,12 +100,14 @@ export default function PropertyCard({
     ? cleanerProfiles.find((p: any) => p.id === inProgressJob.cleaner_1_id)?.full_name?.split(' ')[0] || null
     : null;
 
+  const getCleanerProfile = (id: string) => cleanerProfiles.find((p: any) => p.id === id) || null;
   const getCleanerName = (id: string) => {
-    const c = cleanerProfiles.find((p: any) => p.id === id);
+    const c = getCleanerProfile(id);
     return c?.full_name?.split(' ')[0] || null;
   };
 
-  const nextCleanerName = nextScheduledJob?.cleaner_1_id ? getCleanerName(nextScheduledJob.cleaner_1_id) : null;
+  const nextCleanerProfile = nextScheduledJob?.cleaner_1_id ? getCleanerProfile(nextScheduledJob.cleaner_1_id) : null;
+  const nextCleanerName = nextCleanerProfile?.full_name?.split(' ')[0] || null;
 
   const ratingAvg = avgStars(feedbackScores);
   const sync = getSyncStatus(property);
@@ -196,7 +199,17 @@ export default function PropertyCard({
                 : '—'}
             </p>
             {nextCleanerName && (
-              <p className="text-xs text-muted-foreground mt-0.5">Your cleaner: {nextCleanerName}</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <Avatar className="w-5 h-5">
+                  {nextCleanerProfile?.profile_photo_url && (
+                    <AvatarImage src={nextCleanerProfile.profile_photo_url} alt={nextCleanerName} />
+                  )}
+                  <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                    {nextCleanerName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground">{nextCleanerName}</span>
+              </div>
             )}
           </div>
           <div>
