@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { acceptJob, declineJob } from '@/lib/jobAssignment';
+import { jobLabel } from '@/lib/jobLabel';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'Upcoming', className: 'bg-muted text-muted-foreground border-0' },
@@ -68,7 +69,7 @@ export default function MyJobsPage() {
     queryFn: async () => {
       const { data: acceptances, error } = await supabase
         .from('job_acceptances')
-        .select('id, job_id, acceptance_status, sms_sent_at, jobs(id, scheduled_date, scheduled_time, estimated_duration, status, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type, first_clean))')
+        .select('id, job_id, acceptance_status, sms_sent_at, jobs(id, scheduled_date, scheduled_time, estimated_duration, status, cleaner_1_id, cleaner_2_id, notes, client_name, properties(property_name, address, client_name, client_type, first_clean))')
         .eq('cleaner_id', user!.id)
         .eq('acceptance_status', 'pending');
       if (error) throw error;
@@ -79,7 +80,7 @@ export default function MyJobsPage() {
         .filter((j: any) => j && j.scheduled_date >= today && j.status === 'awaiting_cleaner_acceptance')
         .map((j: any) => ({
           ...j,
-          property_name: j.properties?.property_name ?? 'Property',
+          property_name: jobLabel(j),
           address: j.properties?.address ?? null,
           client_type: j.properties?.client_type ?? null,
           first_clean: j.properties?.first_clean === true,
@@ -95,7 +96,7 @@ export default function MyJobsPage() {
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('id, scheduled_date, scheduled_time, status, estimated_duration, cleaner_1_id, cleaner_2_id, notes, properties(property_name, address, client_type, first_clean)')
+        .select('id, scheduled_date, scheduled_time, status, estimated_duration, cleaner_1_id, cleaner_2_id, notes, client_name, properties(property_name, address, client_name, client_type, first_clean)')
         .gte('scheduled_date', dateFrom)
         .lte('scheduled_date', dateTo)
         .in('status', ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled'])
@@ -129,7 +130,7 @@ export default function MyJobsPage() {
 
       return (data ?? []).map((j: any) => ({
         ...j,
-        property_name: j.properties?.property_name ?? 'Property',
+        property_name: jobLabel(j),
         address: j.properties?.address ?? null,
         client_type: j.properties?.client_type ?? null,
         first_clean: j.properties?.first_clean === true,
