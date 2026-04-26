@@ -128,15 +128,19 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
     bed_config: '',
     bed_types: {} as Record<number, string>, // per-bedroom map, drives N dropdowns
     bedrooms: 0, // pulled from properties.bedrooms; controls how many dropdowns to render
+    // iCal feed for non-PMS Airbnb hosts — share-an-iCal-URL path
+    ical_url: '',
+    ical_source: '',
     // Client type (for conditional section rendering)
     client_type: '',
   });
+  const [icalSyncing, setIcalSyncing] = useState(false);
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase
         .from('properties' as any)
-        .select('access_method, access_code, alarm_code, garage_code, parking_instructions, pet_notes, product_restrictions, special_instructions, preferences_notes, room_notes, clean_frequency, preferred_days, preferred_time, first_clean, focus_areas, checkin_time, checkout_time, platform, linen_required, amenities_kit, wash_kit, tea_coffee_kit, host_preferences, business_name, abn, approx_size, has_kitchen_breakroom, floor_types, after_hours_access, has_security_alarm, deep_clean_oven, deep_clean_fridge, deep_clean_cupboards, deep_clean_windows, last_cleaned_when, property_condition, has_garage, has_outdoor_area, bed_config, bed_types, bedrooms, client_type')
+        .select('access_method, access_code, alarm_code, garage_code, parking_instructions, pet_notes, product_restrictions, special_instructions, preferences_notes, room_notes, clean_frequency, preferred_days, preferred_time, first_clean, focus_areas, checkin_time, checkout_time, platform, linen_required, amenities_kit, wash_kit, tea_coffee_kit, host_preferences, business_name, abn, approx_size, has_kitchen_breakroom, floor_types, after_hours_access, has_security_alarm, deep_clean_oven, deep_clean_fridge, deep_clean_cupboards, deep_clean_windows, last_cleaned_when, property_condition, has_garage, has_outdoor_area, bed_config, bed_types, bedrooms, ical_url, ical_source, client_type')
         .eq('id', propertyId)
         .maybeSingle();
 
@@ -188,12 +192,36 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
             ? (d.bed_types as Record<number, string>)
             : parseBedConfig(d.bed_config),
           bedrooms: typeof d.bedrooms === 'number' ? d.bedrooms : 0,
+          ical_url: d.ical_url || '',
+          ical_source: d.ical_source || '',
           client_type: d.client_type || '',
         });
       }
     }
     load();
   }, [propertyId]);
+
+  const handleIcalSync = async () => {
+    if (!form.ical_url || !form.ical_url.trim()) {
+      toast.error('Save an iCal URL first');
+      return;
+    }
+    setIcalSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-property-ical');
+      if (error) throw error;
+      const results = (data as any)?.results || [];
+      const newCount = results.filter((r: string) => r.includes('new suggestion')).length;
+      toast.success(newCount > 0
+        ? `Sync done — ${newCount} new booking suggestion${newCount > 1 ? 's' : ''}. Check /bookings/suggestions.`
+        : 'Sync done — no new bookings since last sync.');
+      queryClient.invalidateQueries({ queryKey: ['property'] });
+    } catch (e: any) {
+      toast.error(e.message || 'iCal sync failed');
+    } finally {
+      setIcalSyncing(false);
+    }
+  };
 
   const toggleReveal = (field: string) => {
     if (requireClockIn && !isClockedIn) {
@@ -251,6 +279,8 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
         // view (which already reads bed_config) keeps working.
         bed_types: Object.keys(form.bed_types || {}).length ? form.bed_types : null,
         bed_config: bedTypesToConfig(form.bed_types || {}, form.bedrooms) || form.bed_config || null,
+        ical_url: form.ical_url || null,
+        ical_source: form.ical_source || null,
       } as any)
       .eq('id', propertyId);
     setSaving(false);
@@ -480,6 +510,41 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
           <div className="space-y-1.5">
             <Label>Host Preferences</Label>
             <Textarea value={form.host_preferences} onChange={e => setForm(prev => ({ ...prev, host_preferences: e.target.value }))} placeholder="Hosting style, standards, anything specific..." className="rounded-xl" />
+          </div>
+
+          {/* iCal feed — for solo hosts who don't use a PMS like Hostaway */}
+          <div className="space-y-2 border-t pt-4 mt-2">
+            <div className="space-y-1">
+              <Label className="font-bold">Booking Calendar (iCal feed)</Label>
+              <p className="text-xs text-muted-foreground">
+                For Airbnb hosts not on Hostaway. Ask the client to share their listing&rsquo;s iCal export URL
+                (Airbnb dashboard → Listing → Calendar → Sync calendars → Export Calendar). Brightly auto-pulls
+                checkout dates every 4 hours and creates booking suggestions for admin to approve.
+              </p>
+            </div>
+            <Input
+              value={form.ical_url}
+              onChange={e => setForm(prev => ({ ...prev, ical_url: e.target.value }))}
+              placeholder="https://www.airbnb.com/calendar/ical/..."
+              className="rounded-xl text-sm font-mono"
+            />
+            <div className="flex items-center gap-2">
+              <Input
+                value={form.ical_source}
+                onChange={e => setForm(prev => ({ ...prev, ical_source: e.target.value }))}
+                placeholder="Source label (e.g. Airbnb)"
+                className="rounded-xl flex-1 text-sm"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleIcalSync}
+                disabled={icalSyncing || !form.ical_url}
+                title={!form.ical_url ? 'Save an iCal URL first' : 'Pull latest bookings from this iCal feed now'}
+              >
+                {icalSyncing ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Syncing&hellip;</> : 'Sync now'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
