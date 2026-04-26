@@ -473,6 +473,23 @@ function PipelineBtn({ children, primary, onClick }: { children: React.ReactNode
   );
 }
 
+/**
+ * Returns true if a click event originated from inside a Radix portalled UI
+ * (Dialog, Popover, Select dropdown, Menu, Tooltip, etc). These elements
+ * render OUTSIDE the card's DOM subtree (in a Portal at document.body), but
+ * React synthetic events still bubble through the component tree — so a
+ * click inside a modal would otherwise reach the card's onClick and trigger
+ * navigation. Belt-and-braces backstop for stop-propagation at the modal
+ * level. See PR #67 for the original fix and the bug context.
+ */
+function clickIsInsidePortalledUI(e: React.MouseEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  if (!target) return false;
+  return !!target.closest(
+    '[role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"], [data-radix-popper-content-wrapper]',
+  );
+}
+
 function PipelineCard({ item, column, navigate, queryClient }: { item: any; column: PipelineStatus; navigate: (path: string) => void; queryClient: any }) {
   // Accepted column can now contain BOTH quote_requests (no job yet) and jobs
   // in pending_cleaner state. Distinguish by schema: jobs have scheduled_date.
@@ -546,7 +563,11 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
           borderRadius: '12px',
           ...(isOverdue ? { borderLeft: '3px solid #EF4444' } : {}),
         }}
-        onClick={() => { navigate(`/quoting?lead=${item.id}&clean_type=${encodeURIComponent(item.clean_type || '')}`); window.scrollTo(0,0); }}
+        onClick={(e) => {
+          if (clickIsInsidePortalledUI(e)) return;
+          navigate(`/quoting?lead=${item.id}&clean_type=${encodeURIComponent(item.clean_type || '')}`);
+          window.scrollTo(0, 0);
+        }}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -664,7 +685,11 @@ function PipelineCard({ item, column, navigate, queryClient }: { item: any; colu
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '12px',
       }}
-      onClick={() => { navigate(`/jobs/${item.id}`); window.scrollTo(0, 0); }}
+      onClick={(e) => {
+        if (clickIsInsidePortalledUI(e)) return;
+        navigate(`/jobs/${item.id}`);
+        window.scrollTo(0, 0);
+      }}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
