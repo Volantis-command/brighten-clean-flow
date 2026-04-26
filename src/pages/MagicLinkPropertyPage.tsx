@@ -11,12 +11,16 @@ import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
 import RecurringScheduleControls from '@/components/client-portal/RecurringScheduleControls';
+import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
+import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
+import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
   const navigate = useNavigate();
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   // Resolve the token to a client_id, then check that the requested
   // property belongs to that same client. The portal_token is unique
@@ -156,6 +160,10 @@ export default function MagicLinkPropertyPage() {
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
 
+        {/* Live status — pre-arrival, on-the-way, in-progress, complete.
+            Hides itself when there's nothing happening today. */}
+        <LiveCleanStatus propertyId={propertyId!} cleanerNames={nameMap} />
+
         {/* Status Banner */}
         <div className={`rounded-2xl p-5 ${
           hasIssues ? 'bg-destructive/10 border border-destructive/20' :
@@ -227,49 +235,47 @@ export default function MagicLinkPropertyPage() {
         )}
 
         {/* Issues */}
-        {(issues as any[]).length > 0 && (
-          <Section title="Issues & Flags">
-            <IssuesList issues={issues as any[]} />
-          </Section>
+        <Section title="Issues & Flags">
+          {(issues as any[]).length > 0 ? (
+            <div className="mb-3">
+              <IssuesList issues={issues as any[]} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mb-3">No issues reported. Spot something? Let us know.</p>
+          )}
+          {token && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setReportIssueOpen(true)}
+            >
+              <AlertTriangle className="w-4 h-4" /> Report an issue
+            </Button>
+          )}
+        </Section>
+
+        {token && (
+          <ReportIssueDialog
+            open={reportIssueOpen}
+            onOpenChange={setReportIssueOpen}
+            token={token}
+            propertyId={propertyId!}
+            propertyName={property.property_name}
+          />
         )}
 
-        {/* Clean History */}
-        <Section title="Clean History">
-          <button onClick={() => setHistoryExpanded(!historyExpanded)} className="flex items-center gap-1 text-sm font-semibold text-primary mb-3">
-            {completedJobs.length} completed cleans
-          </button>
-          {historyExpanded && (
-            <div className="space-y-2">
-              {completedJobs.map((job: any) => {
-                const audit = audits.find((a: any) => a.job_id === job.id);
-                const isSelected = selectedCleanId === job.id;
-                return (
-                  <div
-                    key={job.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedCleanId(job.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCleanId(job.id); } }}
-                    className={`w-full text-left rounded-xl p-3 border text-sm transition-colors cursor-pointer ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{format(new Date(job.scheduled_date + 'T00:00:00'), 'dd MMM yyyy')}</span>
-                      {audit && <span className={`font-bold text-xs ${(audit.percentage || 0) >= 80 ? 'text-primary' : 'text-orange-500'}`}>{audit.percentage}%</span>}
-                    </div>
-                    {token && (
-                      <div className="mt-2">
-                        <RateCleanStars
-                          token={token}
-                          jobId={job.id}
-                          existingScore={scoreByJob[job.id] || null}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        {/* Clean Forms Archive — every completed clean, with photos,
+            PDF download, ratings and feedback. Date-filterable. */}
+        <Section title="Clean Forms & History">
+          <CleanFormsArchive
+            token={token}
+            propertyId={propertyId!}
+            completedJobs={completedJobs}
+            cleanerProfiles={cleanerProfiles}
+            audits={audits as any[]}
+            scoreByJob={scoreByJob}
+          />
         </Section>
 
         {/* Property Passport — clients edit, admin approves before changes go live */}
@@ -303,13 +309,6 @@ export default function MagicLinkPropertyPage() {
             <RecurringScheduleControls token={token} propertyId={propertyId!} />
           )}
         </Section>
-
-        {/* Download Report */}
-        {lastCompleteJob && (
-          <Button variant="outline" className="w-full gap-2 font-bold" onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank')}>
-            <Download className="w-4 h-4" /> Download Clean Report
-          </Button>
-        )}
 
         <p className="text-center text-muted-foreground text-xs pt-4">Powered by Brightly</p>
       </main>
