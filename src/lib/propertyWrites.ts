@@ -199,6 +199,12 @@ export async function createPropertyAndLink(
     .insert({
       client_id: clientId,
       property_id: propertyId,
+      // Visible to the client on their portal by default. Admin can hide
+      // a specific link later by toggling portal_active=false. Without
+      // this explicit true, the column defaulted to null and the portal
+      // filter (eq portal_active true) hid every property after the first.
+      // (Brendan flagged 2026-04-26.)
+      portal_active: true,
     } as any);
 
   if (linkErr) throw linkErr;
