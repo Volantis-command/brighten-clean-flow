@@ -48,6 +48,15 @@ verify_jwt = false
 [functions.update-portal-property-settings]
 verify_jwt = false
 
+[functions.property-calendar-ics]
+verify_jwt = false
+
+[functions.request-schedule-change]
+verify_jwt = false
+
+[functions.report-property-issue]
+verify_jwt = false
+
 [functions.request-property-change]
 verify_jwt = false
 
