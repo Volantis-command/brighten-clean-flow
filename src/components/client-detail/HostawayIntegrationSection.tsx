@@ -445,10 +445,18 @@ function ConnectForm({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Enter the client&rsquo;s Hostaway API credentials. They&rsquo;re available in their Hostaway dashboard under{' '}
-        <span className="font-semibold">Settings → API Keys</span>.
-      </p>
+      <div className="rounded-lg bg-secondary/50 border border-border p-3 text-sm text-muted-foreground space-y-2">
+        <p className="font-semibold text-foreground">Easiest path: ask the client to invite you as a user.</p>
+        <p>
+          In <span className="font-semibold">their</span> Hostaway: <span className="font-mono text-xs">Settings → Users → Invite User</span> →
+          send invite to your email. You then log into their Hostaway, go to{' '}
+          <span className="font-mono text-xs">Settings → API Keys → New Key</span>, and paste the values below.
+        </p>
+        <p className="text-xs text-muted-foreground/80">
+          You don&rsquo;t need your own Hostaway account or subscription &mdash; you piggyback on the client&rsquo;s.
+          The client only has to send one invite, you handle the rest.
+        </p>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="hostaway-client-id" className="font-semibold">Hostaway Client ID</Label>
