@@ -348,7 +348,10 @@ export default function CleanWorkflowPage() {
           ⚠️ Report Damage / Issue
         </button>
         <span className="text-xs text-muted-foreground">
-          {property?.bedrooms || '?'} bed · {property?.bathrooms || '?'} bath
+          {property?.bedrooms ? `${property.bedrooms} bed` : null}
+          {property?.bedrooms && property?.bathrooms ? ' · ' : null}
+          {property?.bathrooms ? `${property.bathrooms} bath` : null}
+          {!property?.bedrooms && !property?.bathrooms ? (property?.client_type || 'Clean') : null}
         </span>
       </div>
 
