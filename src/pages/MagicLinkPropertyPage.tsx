@@ -10,6 +10,7 @@ import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGa
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import AutoApprovalSettings from '@/components/client-portal/AutoApprovalSettings';
 import PropertyCalendar from '@/components/client-portal/PropertyCalendar';
 import TurnaroundPanel from '@/components/client-portal/TurnaroundPanel';
 import RecurringScheduleControls from '@/components/client-portal/RecurringScheduleControls';
@@ -318,6 +319,22 @@ export default function MagicLinkPropertyPage() {
           )}
         </Section>
 
+<<<<<<< HEAD
+        {/* Download Report */}
+        {lastCompleteJob && (
+          <Button variant="outline" className="w-full gap-2 font-bold" onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank')}>
+            <Download className="w-4 h-4" /> Download Clean Report
+          </Button>
+        )}
+
+        {token && (
+          <Section title="Automation">
+            <AutoApprovalSettings token={token} propertyId={propertyId!} property={property} />
+          </Section>
+        )}
+
+=======
+>>>>>>> origin/main
         <p className="text-center text-muted-foreground text-xs pt-4">Powered by Brightly</p>
       </main>
     </div>
