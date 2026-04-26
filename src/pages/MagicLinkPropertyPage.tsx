@@ -15,13 +15,27 @@ export default function MagicLinkPropertyPage() {
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
+  // Resolve the token to a client_id, then check that the requested
+  // property belongs to that same client. The portal_token is unique
+  // per client_properties row, so we can't require token + property_id
+  // on the same row — Dali's row has a different token from the one in
+  // the URL, even though Dali belongs to the same client.
   const { data: clientProp, isLoading: loadingToken } = useQuery({
     queryKey: ['magic-validate', token, propertyId],
     queryFn: async () => {
+      const { data: tokenRow, error: tokenErr } = await supabase
+        .from('client_properties' as any)
+        .select('client_id')
+        .eq('portal_token', token!)
+        .eq('portal_active', true)
+        .maybeSingle();
+      if (tokenErr) throw tokenErr;
+      if (!tokenRow) return null;
+
       const { data, error } = await supabase
         .from('client_properties' as any)
         .select('*')
-        .eq('portal_token', token!)
+        .eq('client_id', (tokenRow as any).client_id)
         .eq('property_id', propertyId!)
         .eq('portal_active', true)
         .maybeSingle();
