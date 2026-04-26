@@ -10,6 +10,7 @@ import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGa
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import TipCleanerButton from '@/components/client-portal/TipCleanerButton';
 import AutoApprovalSettings from '@/components/client-portal/AutoApprovalSettings';
 import PropertyCalendar from '@/components/client-portal/PropertyCalendar';
 import TurnaroundPanel from '@/components/client-portal/TurnaroundPanel';
@@ -275,7 +276,7 @@ export default function MagicLinkPropertyPage() {
         )}
 
         {/* Clean Forms Archive — every completed clean, with photos,
-            PDF download, ratings and feedback. Date-filterable. */}
+            PDF download, ratings, feedback, and tipping. Date-filterable. */}
         <Section title="Clean Forms & History">
           <CleanFormsArchive
             token={token}

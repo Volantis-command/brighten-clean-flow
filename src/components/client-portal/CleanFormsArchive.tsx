@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CompletionPhotoGallery from './CompletionPhotoGallery';
 import RateCleanStars from './RateCleanStars';
+import TipCleanerButton from './TipCleanerButton';
 
 interface CleanFormsArchiveProps {
   // Token enables the rating CTA inside the expanded panel.
@@ -197,11 +198,16 @@ export default function CleanFormsArchive({
                     </div>
 
                     {token && (
-                      <div className="rounded-lg bg-card border border-border p-3">
+                      <div className="rounded-lg bg-card border border-border p-3 flex flex-wrap items-center gap-3 justify-between">
                         <RateCleanStars
                           token={token}
                           jobId={job.id}
                           existingScore={scoreByJob[job.id] || null}
+                        />
+                        <TipCleanerButton
+                          token={token}
+                          jobId={job.id}
+                          cleanerName={job.cleaner_1_id ? (cleanerProfiles.find((p: any) => p.id === job.cleaner_1_id)?.full_name || null) : null}
                         />
                       </div>
                     )}
