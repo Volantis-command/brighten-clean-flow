@@ -193,6 +193,7 @@ function AppRoutes() {
       <Route path="/staff-onboarding/:token" element={<StaffOnboardingPage />} />
       <Route path="/client/:token/schedule" element={<ClientSchedulePage />} />
       <Route path="/client/:token/rebook" element={<ClientRebookPage />} />
+      <Route path="/client/:token/property/:id/rebook" element={<ClientRebookPage />} />
       <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
       <Route path="/report/:token" element={<CleanReportPage />} />
       <Route path="/book" element={<BookingPage />} />

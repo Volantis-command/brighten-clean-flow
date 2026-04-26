@@ -17,23 +17,43 @@ const TIME_PREFERENCES = [
 ];
 
 export default function ClientRebookPage() {
-  const { token } = useParams<{ token: string }>();
+  // Two URL shapes supported:
+  //   /client/:token/rebook                    — legacy SMS link, rebooks the
+  //                                              property the token is bound to
+  //   /client/:token/property/:id/rebook       — portal flow, lets the user
+  //                                              rebook ANY of their properties
+  // When `id` is present, we resolve token → client_id → verify the property
+  // is owned by that client (same security guarantee as the legacy path).
+  const { token, id: propertyIdFromUrl } = useParams<{ token: string; id?: string }>();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [timePreference, setTimePreference] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Look up client_properties by portal_token
   const { data: clientProp, isLoading } = useQuery({
-    queryKey: ['rebook-token', token],
+    queryKey: ['rebook-token', token, propertyIdFromUrl],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: tokenRows } = await supabase
         .from('client_properties' as any)
         .select('id, client_id, property_id, portal_token')
         .eq('portal_token', token!)
         .eq('portal_active', true)
         .limit(1);
-      return (data as any[])?.[0] || null;
+      const tokenRow = (tokenRows as any[])?.[0] || null;
+      if (!tokenRow) return null;
+
+      // Legacy URL — use the row the token is bound to.
+      if (!propertyIdFromUrl) return tokenRow;
+
+      // Portal URL — verify the requested property belongs to this client.
+      const { data: targetRows } = await supabase
+        .from('client_properties' as any)
+        .select('id, client_id, property_id, portal_token')
+        .eq('client_id', tokenRow.client_id)
+        .eq('property_id', propertyIdFromUrl)
+        .eq('portal_active', true)
+        .limit(1);
+      return (targetRows as any[])?.[0] || null;
     },
     enabled: !!token,
   });
