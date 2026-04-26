@@ -291,7 +291,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel>Parking available?</QuestionLabel><OptionGrid options={['Driveway', 'Street parking', 'No parking nearby', 'Other']} value={parking} onChange={setParking} cols={2} /></div>
-            <div className="space-y-2"><QuestionLabel>Hosting platform</QuestionLabel><OptionGrid options={['Airbnb', 'Stayz', 'Booking.com', 'Direct', 'Other']} value={platform} onChange={setPlatform} cols={3} /></div>
+            <div className="space-y-2"><QuestionLabel>Hosting platform</QuestionLabel><OptionGrid options={['Airbnb', 'Stayz', 'Booking.com', 'Hostaway', 'Direct', 'Other']} value={platform} onChange={setPlatform} cols={3} /></div>
           </div>
         </FormCard>
       </>
