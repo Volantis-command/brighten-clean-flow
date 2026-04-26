@@ -19,49 +19,52 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center justify-between max-w-2xl mx-auto w-full px-6 pt-6 mb-8">
-        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Brightly<span style={{ color: '#FEDB00' }}>.</span>
+        <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          Brightly<span className="text-brightly-yellow">.</span>
         </h1>
-        <span className="text-[#4ADE80] text-sm font-medium">New Enquiry</span>
+        <span className="text-primary text-sm font-medium">New Enquiry</span>
       </header>
 
       <div className="flex-1 max-w-2xl mx-auto w-full px-6">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-1">Get Your Quote</h2>
-          <p className="text-base text-white/50 mb-8">
+          <h2 className="text-2xl font-bold text-foreground mb-1">Get Your Quote</h2>
+          <p className="text-base text-muted-foreground mb-8">
             Tell us about your space and we'll have a quote to you within 24 hours. 🌿
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-8">
-          {OPTIONS.map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => onSelect(opt.key)}
-              onMouseEnter={() => setHovered(opt.key)}
-              onMouseLeave={() => setHovered(null)}
-              className={`flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 bg-white/5 border ${
-                hovered === opt.key
-                  ? 'border-[#3A7560] bg-white/10 shadow-lg shadow-[#3A7560]/10'
-                  : 'border-white/15 hover:bg-white/10 hover:border-white/20'
-              }`}
-            >
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-colors duration-200 ${
-                hovered === opt.key ? 'bg-[#3A7560]/20' : 'bg-white/5'
-              }`}>
-                <opt.icon className={`w-7 h-7 transition-colors duration-200 ${
-                  hovered === opt.key ? 'text-[#4ADE80]' : 'text-white/70'
-                }`} />
-              </div>
-              <p className="text-base font-semibold text-white text-center leading-tight">{opt.label}</p>
-              <p className="text-sm mt-1.5 leading-snug text-white/40">{opt.desc}</p>
-            </button>
-          ))}
+          {OPTIONS.map(opt => {
+            const isHovered = hovered === opt.key;
+            return (
+              <button
+                key={opt.key}
+                onClick={() => onSelect(opt.key)}
+                onMouseEnter={() => setHovered(opt.key)}
+                onMouseLeave={() => setHovered(null)}
+                className={`group flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 bg-card border ${
+                  isHovered
+                    ? 'border-primary shadow-lg shadow-primary/20 -translate-y-0.5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-all duration-200 ${
+                  isHovered ? 'bg-primary/15 scale-105' : 'bg-secondary'
+                }`}>
+                  <opt.icon className={`w-7 h-7 transition-colors duration-200 ${
+                    isHovered ? 'text-primary' : 'text-foreground/70'
+                  }`} />
+                </div>
+                <p className="text-base font-semibold text-foreground text-center leading-tight">{opt.label}</p>
+                <p className="text-sm mt-1.5 leading-snug text-muted-foreground">{opt.desc}</p>
+              </button>
+            );
+          })}
         </div>
 
-        <p className="text-center text-xs text-white/20 pt-10 pb-6">📞 0418 878 707 · brightly.cleaning 🌿</p>
+        <p className="text-center text-xs text-muted-foreground/60 pt-10 pb-6">📞 0418 878 707 · brightly.cleaning 🌿</p>
       </div>
     </div>
   );
@@ -69,16 +72,16 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
 
 function Confirmation() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-center">
-      <div className="rounded-full p-6 mb-6 bg-[#3A7560]/20">
-        <SprayCan className="w-12 h-12 text-[#4ADE80]" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
+      <div className="rounded-full p-6 mb-6 bg-primary/15">
+        <SprayCan className="w-12 h-12 text-primary" />
       </div>
-      <h1 className="text-3xl font-bold text-white">You're all set!</h1>
-      <p className="mt-3 max-w-sm text-base text-white/50">
+      <h1 className="text-3xl font-bold text-foreground">You're all set!</h1>
+      <p className="mt-3 max-w-sm text-base text-muted-foreground">
         We've received your request and will have a quote to you within 24 hours. Keep an eye on your phone for our SMS. 😊
       </p>
-      <p className="text-sm mt-8 text-white/40">📞 0418 878 707</p>
-      <p className="text-xs mt-1 text-white/30">Brightly Cleaning 🌿</p>
+      <p className="text-sm mt-8 text-muted-foreground">📞 0418 878 707</p>
+      <p className="text-xs mt-1 text-muted-foreground/70">Brightly Cleaning 🌿</p>
     </div>
   );
 }
