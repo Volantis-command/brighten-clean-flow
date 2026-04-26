@@ -10,6 +10,8 @@ import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGa
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import PropertyCalendar from '@/components/client-portal/PropertyCalendar';
+import TurnaroundPanel from '@/components/client-portal/TurnaroundPanel';
 import RecurringScheduleControls from '@/components/client-portal/RecurringScheduleControls';
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
@@ -187,6 +189,12 @@ export default function MagicLinkPropertyPage() {
 
         <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
         <p className="text-sm text-muted-foreground -mt-4">{[property.address, property.suburb].filter(Boolean).join(', ')}</p>
+
+        <TurnaroundPanel property={property} />
+
+        <Section title="Calendar">
+          <PropertyCalendar jobs={jobs} token={token} propertyId={propertyId!} />
+        </Section>
 
         {/* Health Score */}
         {healthScore !== null && (
