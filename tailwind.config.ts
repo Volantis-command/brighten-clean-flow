@@ -15,21 +15,24 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Nunito", "sans-serif"],
+        serif: ["Playfair Display", "Georgia", "serif"],
       },
       colors: {
-        // Direct Brightly brand tokens
+        // Direct Brightly brand tokens — Guesty-inspired forest-green palette.
+        // Keep `yellow` at #FEDB00 for the Clocked On banner (load-bearing UX)
+        // and any other brand-yellow accents that were tuned to that exact hue.
         brightly: {
-          DEFAULT: '#3A7560',
-          hover: '#26503F',
-          light: '#3A7560',
-          glow: 'rgba(46, 93, 78, 0.2)',
-          yellow: "#FEDB00",
-          bg: "#1C1C1E",
-          card: "#2C2C2E",
-          card2: "#3A3A3C",
-          border: "#48484A",
-          text: "#F2F2F7",
-          "text-soft": "#8E8E93",
+          DEFAULT: '#2DA88E',           // teal-green CTA, matches --primary
+          hover: '#258972',
+          light: '#3CC2A6',
+          glow: 'rgba(45, 168, 142, 0.2)',
+          yellow: "#FEDB00",            // unchanged — Clocked On banner
+          bg: "#0E2521",                // forest green page bg
+          card: "#172E29",              // raised card surface
+          card2: "#20413B",             // hover / second-level card
+          border: "#1F3D36",
+          text: "#E8E4C9",              // warm cream
+          "text-soft": "#B5B0A0",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
