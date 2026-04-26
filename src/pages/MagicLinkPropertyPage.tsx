@@ -10,12 +10,14 @@ import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGa
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
   const navigate = useNavigate();
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   // Resolve the token to a client_id, then check that the requested
   // property belongs to that same client. The portal_token is unique
@@ -226,10 +228,34 @@ export default function MagicLinkPropertyPage() {
         )}
 
         {/* Issues */}
-        {(issues as any[]).length > 0 && (
-          <Section title="Issues & Flags">
-            <IssuesList issues={issues as any[]} />
-          </Section>
+        <Section title="Issues & Flags">
+          {(issues as any[]).length > 0 ? (
+            <div className="mb-3">
+              <IssuesList issues={issues as any[]} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mb-3">No issues reported. Spot something? Let us know.</p>
+          )}
+          {token && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setReportIssueOpen(true)}
+            >
+              <AlertTriangle className="w-4 h-4" /> Report an issue
+            </Button>
+          )}
+        </Section>
+
+        {token && (
+          <ReportIssueDialog
+            open={reportIssueOpen}
+            onOpenChange={setReportIssueOpen}
+            token={token}
+            propertyId={propertyId!}
+            propertyName={property.property_name}
+          />
         )}
 
         {/* Clean History */}
