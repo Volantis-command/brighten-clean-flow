@@ -56,7 +56,7 @@ export default function JobDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, properties(property_name, address, suburb, bedrooms, bathrooms, lat, lng, client_name, access_method, access_code, access_notes, guest_checkin_at, host_preferences, product_restrictions, amenities_notes)')
+        .select('*, properties(property_name, address, suburb, bedrooms, bathrooms, lat, lng, client_name, client_type, access_method, access_code, access_notes, parking_instructions, alarm_code, garage_code, guest_checkin_at, host_preferences, product_restrictions, amenities_notes, bed_config, bed_types, sofa_beds, kitchens, living_areas, balconies, has_garage, has_outdoor_area, first_clean, linen_required, linen_sets, linen_provided, amenities_kit, wash_kit, tea_coffee_kit, amenities_restock, checkin_time, checkout_time, platform, clean_frequency, preferred_days, preferred_time, focus_areas, skip_areas, special_instructions, preferences_notes, pet_situation, pet_notes, neighbour_notes, bin_details, guest_wifi, room_notes)')
         .eq('id', jobId!)
         .single();
       if (error) throw error;
@@ -417,10 +417,16 @@ export default function JobDetailPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {address && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
+              title="Open in Google Maps"
+            >
               <MapPin className="h-4 w-4 shrink-0" />
-              <span>{address}</span>
-            </div>
+              <span className="underline-offset-2 group-hover:underline">{address}</span>
+            </a>
           )}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarDays className="h-4 w-4 shrink-0" />
@@ -529,28 +535,117 @@ export default function JobDetailPage() {
         </Card>
       )}
 
-      {/* Host Preferences — for cleaners */}
-      {(property?.host_preferences || property?.product_restrictions) && (
+      {/* Property Details — full passport summary, auto-pulled from properties */}
+      {property && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Property Notes
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Info className="h-5 w-5" />
+                Property Details
+              </CardTitle>
+              {property.id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/properties/${property.id}`)}
+                  className="text-xs"
+                >
+                  Edit on Property Passport
+                </Button>
+              )}
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {property?.host_preferences && (
-              <div>
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Host Preferences</p>
-                <p className="text-sm text-foreground">{property.host_preferences}</p>
+          <CardContent className="space-y-3">
+            {/* Property type + structural */}
+            {(() => {
+              const facts: string[] = [];
+              if (property.bedrooms) facts.push(`${property.bedrooms} bed`);
+              if (property.bathrooms) facts.push(`${property.bathrooms} bath`);
+              if (property.sofa_beds) facts.push(`${property.sofa_beds} sofa bed${property.sofa_beds > 1 ? 's' : ''}`);
+              if (property.kitchens && property.kitchens > 1) facts.push(`${property.kitchens} kitchens`);
+              if (property.living_areas) facts.push(`${property.living_areas} living`);
+              if (property.balconies) facts.push(`${property.balconies} balcon${property.balconies > 1 ? 'ies' : 'y'}`);
+              if (property.has_garage) facts.push('Garage');
+              if (property.has_outdoor_area) facts.push('Outdoor area');
+              return facts.length > 0 ? (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {facts.map(f => (
+                    <span key={f} className="px-2 py-1 rounded-full bg-muted text-muted-foreground font-semibold">{f}</span>
+                  ))}
+                </div>
+              ) : null;
+            })()}
+
+            {/* Airbnb-specific */}
+            {property.client_type === 'airbnb' && (
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <p className="text-xs font-bold text-muted-foreground uppercase">Airbnb / Turnover</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {property.checkout_time && <div><span className="text-muted-foreground">Guest checkout: </span><span className="font-semibold">{property.checkout_time}</span></div>}
+                  {property.checkin_time && <div><span className="text-muted-foreground">Next check-in: </span><span className="font-semibold">{property.checkin_time}</span></div>}
+                  {property.platform && <div><span className="text-muted-foreground">Platform: </span><span className="font-semibold">{property.platform}</span></div>}
+                  {property.first_clean && <div className="col-span-2"><span className="font-bold text-amber-700 dark:text-amber-300">⭐ First clean</span></div>}
+                </div>
+                {(property.linen_required || property.amenities_kit || property.wash_kit || property.tea_coffee_kit) && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {property.linen_required && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">Linen</span>}
+                    {property.amenities_kit && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">Amenities Kit</span>}
+                    {property.wash_kit && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">Wash Kit</span>}
+                    {property.tea_coffee_kit && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">Tea/Coffee</span>}
+                  </div>
+                )}
               </div>
             )}
-            {property?.product_restrictions && (
+
+            {/* Bed config */}
+            {property.bed_config && (
               <div>
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Product Restrictions</p>
-                <p className="text-sm text-foreground">{property.product_restrictions}</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Bed Configuration</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{property.bed_config}</p>
               </div>
             )}
+
+            {/* Schedule preferences */}
+            {(property.clean_frequency || property.preferred_days || property.preferred_time) && (
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {property.clean_frequency && <div><span className="text-muted-foreground">Frequency: </span><span className="font-semibold">{property.clean_frequency}</span></div>}
+                {property.preferred_days && <div><span className="text-muted-foreground">Days: </span><span className="font-semibold">{property.preferred_days}</span></div>}
+                {property.preferred_time && <div className="col-span-2"><span className="text-muted-foreground">Time: </span><span className="font-semibold">{property.preferred_time}</span></div>}
+              </div>
+            )}
+
+            {/* Free-text notes — render every populated field as labelled block */}
+            {(() => {
+              const blocks: { label: string; body: string }[] = [];
+              if (property.host_preferences) blocks.push({ label: 'Host Preferences', body: property.host_preferences });
+              if (property.special_instructions) blocks.push({ label: 'Special Instructions', body: property.special_instructions });
+              if (property.focus_areas) blocks.push({ label: 'Focus Areas', body: property.focus_areas });
+              if (property.skip_areas) blocks.push({ label: 'Skip / Don\u2019t Clean', body: property.skip_areas });
+              if (property.preferences_notes) blocks.push({ label: 'Client Preferences', body: property.preferences_notes });
+              if (property.product_restrictions) blocks.push({ label: 'Product Restrictions', body: property.product_restrictions });
+              if (property.pet_situation) blocks.push({ label: 'Pets', body: property.pet_situation });
+              if (property.pet_notes && property.pet_notes !== property.pet_situation) blocks.push({ label: 'Pet Notes', body: property.pet_notes });
+              if (property.parking_instructions) blocks.push({ label: 'Parking', body: property.parking_instructions });
+              if (property.neighbour_notes) blocks.push({ label: 'Neighbours', body: property.neighbour_notes });
+              if (property.bin_details) blocks.push({ label: 'Bins', body: property.bin_details });
+              if (property.guest_wifi) blocks.push({ label: 'Wi-Fi', body: property.guest_wifi });
+              if (property.amenities_notes) blocks.push({ label: 'Amenities Notes', body: property.amenities_notes });
+              // Per-room notes
+              if (property.room_notes && typeof property.room_notes === 'object') {
+                for (const [room, body] of Object.entries(property.room_notes)) {
+                  if (typeof body === 'string' && body.trim()) {
+                    blocks.push({ label: `${room} notes`, body });
+                  }
+                }
+              }
+              return blocks.map(b => (
+                <div key={b.label}>
+                  <p className="text-xs font-bold text-muted-foreground uppercase mb-1">{b.label}</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{b.body}</p>
+                </div>
+              ));
+            })()}
           </CardContent>
         </Card>
       )}
