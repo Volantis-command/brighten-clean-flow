@@ -9,6 +9,7 @@ import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import CleanerProfileChip from '@/components/client-portal/CleanerProfileChip';
+import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 
 export default function ClientPortalPropertyPage() {
@@ -129,6 +130,12 @@ export default function ClientPortalPropertyPage() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/client-portal/dashboard')} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
+
+        {/* Real-time clock-on indicator — banner appears live when a
+            cleaner taps Clock On at this property. Auto-disappears when
+            they finish (with a brief celebration card). Adds the
+            Uber-style "your cleaner just arrived" moment. */}
+        <LiveCleanStatus propertyId={propertyId!} cleanerNames={nameMap} />
 
         {/* Status Banner */}
         <div className={`rounded-2xl p-5 ${
