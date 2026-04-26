@@ -345,9 +345,23 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(20);
 
+      // The job state machine values that mean "this job is awaiting a cleaner
+      // response": awaiting_cleaner_acceptance is the current canonical state
+      // (see src/lib/jobAssignment.ts and 08-Database-Schema/reference.md).
+      // 'scheduled' and 'pending' are LEGACY values kept for backwards compat
+      // with old rows. Pre-fix this filter only matched the legacy values, so
+      // every modern cleaner reply was rejected with "couldn't match it to a
+      // pending action." Brendan flagged 2026-04-26 (BJ replied YES, got
+      // generic "Please reply YES or NO" back).
+      const PENDING_JOB_STATUSES = [
+        'awaiting_cleaner_acceptance',
+        'scheduled',
+        'pending',
+      ];
+
       const pendingScheduledAcceptances = (pendingAcceptances || []).filter((row: any) => {
         const jobStatus = (row.jobs as any)?.status;
-        return jobStatus === 'scheduled' || jobStatus === 'pending';
+        return PENDING_JOB_STATUSES.includes(jobStatus);
       });
 
       let selectedProfile = matchingProfiles[0];
@@ -362,7 +376,7 @@ Deno.serve(async (req) => {
           .from('jobs')
           .select('id, status, scheduled_date, scheduled_time, created_at, cleaner_1_id, cleaner_2_id, properties(property_name)')
           .or(jobOrFilters)
-          .in('status', ['scheduled', 'pending'])
+          .in('status', PENDING_JOB_STATUSES)
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -383,6 +397,7 @@ Deno.serve(async (req) => {
         const timeStr = matchedJob?.scheduled_time?.slice(0, 5) || '';
 
         if (body === 'YES' || body === 'Y') {
+          // 1. Record the acceptance
           if (matchedAcceptance) {
             await supabase.from('job_acceptances').update({ acceptance_status: 'accepted', responded_at: new Date().toISOString() }).eq('id', matchedAcceptance.id);
           } else {
@@ -391,11 +406,39 @@ Deno.serve(async (req) => {
               responded_at: new Date().toISOString(), sms_sent_at: null,
             });
           }
+
+          // 2. If every assigned cleaner has now accepted, transition the
+          //    job from awaiting_cleaner_acceptance → confirmed. Mirrors the
+          //    in-app acceptJob() in src/lib/jobAssignment.ts so SMS accept
+          //    and in-app accept land in the same state.
+          const { data: jobRow } = await supabase
+            .from('jobs')
+            .select('cleaner_1_id, cleaner_2_id, status')
+            .eq('id', matchedJob.id)
+            .maybeSingle();
+          if (jobRow) {
+            const assignedIds = [jobRow.cleaner_1_id, jobRow.cleaner_2_id].filter(Boolean) as string[];
+            const { data: allAcceptances } = await supabase
+              .from('job_acceptances')
+              .select('cleaner_id, acceptance_status')
+              .eq('job_id', matchedJob.id)
+              .in('cleaner_id', assignedIds.length ? assignedIds : ['__none__']);
+            const allAccepted =
+              assignedIds.length > 0 &&
+              assignedIds.every((cid) =>
+                (allAcceptances || []).find((a: any) => a.cleaner_id === cid)?.acceptance_status === 'accepted'
+              );
+            if (allAccepted && jobRow.status === 'awaiting_cleaner_acceptance') {
+              await supabase.from('jobs').update({ status: 'confirmed' } as any).eq('id', matchedJob.id);
+            }
+          }
+
           await sendTwilioSms(from, `Got it ${firstName}, you're confirmed for ${propertyName}, ${dateStr} at ${timeStr}. See you there! - Brightly`);
           return twimlResponse('');
         }
 
         if (body === 'NO' || body === 'N') {
+          // 1. Record the decline
           if (matchedAcceptance) {
             await supabase.from('job_acceptances').update({ acceptance_status: 'declined', responded_at: new Date().toISOString() }).eq('id', matchedAcceptance.id);
           } else {
@@ -404,6 +447,37 @@ Deno.serve(async (req) => {
               responded_at: new Date().toISOString(), sms_sent_at: null,
             });
           }
+
+          // 2. Remove the cleaner from the job's slot(s) and revert status
+          //    to pending_cleaner if no cleaners are left. Mirrors
+          //    declineJob() in src/lib/jobAssignment.ts so admin can
+          //    reassign.
+          const { data: jobRow } = await supabase
+            .from('jobs')
+            .select('cleaner_1_id, cleaner_2_id')
+            .eq('id', matchedJob.id)
+            .maybeSingle();
+          if (jobRow) {
+            const update: Record<string, any> = {};
+            if (jobRow.cleaner_1_id === selectedProfile.id) update.cleaner_1_id = null;
+            if (jobRow.cleaner_2_id === selectedProfile.id) update.cleaner_2_id = null;
+            const remaining = [
+              update.cleaner_1_id === undefined ? jobRow.cleaner_1_id : update.cleaner_1_id,
+              update.cleaner_2_id === undefined ? jobRow.cleaner_2_id : update.cleaner_2_id,
+            ].filter(Boolean);
+            if (remaining.length === 0) update.status = 'pending_cleaner';
+            if (Object.keys(update).length > 0) {
+              await supabase.from('jobs').update(update as any).eq('id', matchedJob.id);
+            }
+          }
+
+          // 3. Delete the acceptance row so admin can cleanly reassign
+          await supabase
+            .from('job_acceptances')
+            .delete()
+            .eq('job_id', matchedJob.id)
+            .eq('cleaner_id', selectedProfile.id);
+
           await sendTwilioSms(from, `No problem ${firstName}, we'll find cover. Thanks for letting us know. - Brightly`);
           return twimlResponse('');
         }
