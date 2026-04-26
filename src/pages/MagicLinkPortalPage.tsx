@@ -9,13 +9,26 @@ export default function MagicLinkPortalPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
 
+  // Resolve the token to a client_id, then load ALL of that client's
+  // portal-active properties — not just the row matching this token.
+  // portal_token is unique per client_properties row, so a single-token
+  // query would only ever return one property (the bug we're fixing).
   const { data: clientProp, isLoading: loadingToken, error: tokenError } = useQuery({
     queryKey: ['magic-link', token],
     queryFn: async () => {
+      const { data: tokenRow, error: tokenErr } = await supabase
+        .from('client_properties' as any)
+        .select('client_id')
+        .eq('portal_token', token!)
+        .eq('portal_active', true)
+        .maybeSingle();
+      if (tokenErr) throw tokenErr;
+      if (!tokenRow) return [];
+
       const { data, error } = await supabase
         .from('client_properties' as any)
         .select('*')
-        .eq('portal_token', token!)
+        .eq('client_id', (tokenRow as any).client_id)
         .eq('portal_active', true);
       if (error) throw error;
       return (data as any[]) || [];
