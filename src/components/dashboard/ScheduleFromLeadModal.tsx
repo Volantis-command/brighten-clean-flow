@@ -47,6 +47,23 @@ const DURATIONS = [
   { value: '300', label: '5 hr' },
 ];
 
+// Time slot options — 30-minute increments, 6 AM → 9 PM. Replaces the
+// native browser <input type="time"> which renders an awkward 3-column
+// dropdown on macOS Chrome (Brendan flagged 2026-04-26).
+const TIME_SLOTS: { value: string; label: string }[] = (() => {
+  const slots: { value: string; label: string }[] = [];
+  for (let h = 6; h <= 21; h++) {
+    for (const m of [0, 30]) {
+      const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      const label = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+      slots.push({ value, label });
+    }
+  }
+  return slots;
+})();
+
 interface Lead {
   id: string;
   first_name?: string | null;
@@ -322,7 +339,12 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-sm font-semibold">Start Time *</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-xl" />
+              <Select value={time} onValueChange={setTime}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select time" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {TIME_SLOTS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-sm font-semibold">Duration</Label>
