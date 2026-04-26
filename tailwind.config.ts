@@ -27,12 +27,12 @@ export default {
           light: '#3CC2A6',
           glow: 'rgba(45, 168, 142, 0.2)',
           yellow: "#FEDB00",            // unchanged — Clocked On banner
-          bg: "#0E2521",                // forest green page bg
-          card: "#172E29",              // raised card surface
-          card2: "#20413B",             // hover / second-level card
-          border: "#1F3D36",
+          bg: "#0F2D26",                // forest green page bg (reads green)
+          card: "#1E443B",              // raised card surface (lighter)
+          card2: "#27554A",             // hover / second-level card
+          border: "#2C5448",
           text: "#E8E4C9",              // warm cream
-          "text-soft": "#B5B0A0",
+          "text-soft": "#BBB5A2",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -11,85 +11,89 @@
     --font-serif: 'Playfair Display', Georgia, serif;
 
     /* === GUESTY-INSPIRED FOREST GREEN PALETTE ===
-       Background: deep forest green (~#0E2521)
+       v2 — bumped saturation + lightness on the background so it reads
+       as green (not black-with-green-tint). Cards lifted brighter so
+       they sit clearly above the page surface.
+
+       Background: forest green that reads green (~#0F2D26)
+       Card:       lighter green, raised (~#1E443B)
        Foreground: warm cream (~#E8E4C9)
-       Primary action: teal-green (~#2DA88E) — Sign up / CTA buttons
-       Accent: brand yellow #FEDB00 — load-bearing for Clocked On banner,
-       reused for My Jobs day cards. Don't recolour.
+       Primary:    teal-green CTA (~#2DA88E)
+       Accent:     brand yellow #FEDB00 — UNCHANGED, load-bearing
+                   (Clocked On banner + My Jobs day cards in R3).
     */
-    --background: 170 35% 9%;
-    --foreground: 54 35% 85%;
+    --background: 168 45% 12%;
+    --foreground: 54 35% 86%;
 
-    --card: 170 30% 13%;
-    --card-foreground: 54 35% 88%;
+    --card: 168 38% 19%;
+    --card-foreground: 54 35% 90%;
 
-    --popover: 170 30% 13%;
-    --popover-foreground: 54 35% 88%;
+    --popover: 168 38% 19%;
+    --popover-foreground: 54 35% 90%;
 
     --primary: 165 55% 42%;
     --primary-foreground: 0 0% 100%;
     --brightly-green: 165 55% 42%;
 
-    --secondary: 170 25% 17%;
-    --secondary-foreground: 54 30% 88%;
+    --secondary: 168 35% 22%;
+    --secondary-foreground: 54 30% 90%;
 
-    --muted: 170 25% 17%;
-    --muted-foreground: 54 18% 62%;
+    --muted: 168 32% 22%;
+    --muted-foreground: 54 18% 70%;
 
-    /* Brightly yellow — kept identical to old palette so Clocked On
-       banner and brand yellow accents are unchanged. */
+    /* Brightly yellow — unchanged (Clocked On + brand). */
     --accent: 51 100% 50%;
-    --accent-foreground: 170 35% 9%;
+    --accent-foreground: 168 45% 12%;
 
     --destructive: 4 75% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 170 25% 19%;
-    --input: 170 25% 17%;
+    --border: 168 30% 26%;
+    --input: 168 32% 20%;
     --ring: 165 55% 42%;
 
     --radius: 1rem;
 
-    /* Sidebar — slightly darker than page background */
-    --sidebar-background: 170 35% 7%;
-    --sidebar-foreground: 54 18% 65%;
+    /* Sidebar — slightly darker than page so its edge reads */
+    --sidebar-background: 168 45% 9%;
+    --sidebar-foreground: 54 22% 72%;
     --sidebar-primary: 165 55% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 170 30% 13%;
-    --sidebar-accent-foreground: 54 35% 88%;
-    --sidebar-border: 170 25% 19%;
+    --sidebar-accent: 168 38% 19%;
+    --sidebar-accent-foreground: 54 35% 90%;
+    --sidebar-border: 168 30% 22%;
     --sidebar-ring: 165 55% 42%;
   }
 
   .dark {
-    --background: 170 35% 9%;
-    --foreground: 54 35% 85%;
-    --card: 170 30% 13%;
-    --card-foreground: 54 35% 88%;
-    --popover: 170 30% 13%;
-    --popover-foreground: 54 35% 88%;
+    --background: 168 45% 12%;
+    --foreground: 54 35% 86%;
+    --card: 168 38% 19%;
+    --card-foreground: 54 35% 90%;
+    --popover: 168 38% 19%;
+    --popover-foreground: 54 35% 90%;
     --primary: 165 55% 42%;
     --primary-foreground: 0 0% 100%;
     --brightly-green: 165 55% 42%;
-    --secondary: 170 25% 17%;
-    --secondary-foreground: 54 30% 88%;
-    --muted: 170 25% 17%;
-    --muted-foreground: 54 18% 62%;
+    --secondary: 168 35% 22%;
+    --secondary-foreground: 54 30% 90%;
+    --muted: 168 32% 22%;
+    --muted-foreground: 54 18% 70%;
     --accent: 51 100% 50%;
-    --accent-foreground: 170 35% 9%;
+    --accent-foreground: 168 45% 12%;
     --destructive: 4 75% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 170 25% 19%;
-    --input: 170 25% 17%;
+    --border: 168 30% 26%;
+    --input: 168 32% 20%;
     --ring: 165 55% 42%;
     --radius: 1rem;
-    --sidebar-background: 170 35% 7%;
-    --sidebar-foreground: 54 18% 65%;
+    --sidebar-background: 168 45% 9%;
+    --sidebar-foreground: 54 22% 72%;
     --sidebar-primary: 165 55% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 170 30% 13%;
-    --sidebar-accent-foreground: 54 35% 88%;
-    --sidebar-border: 170 25% 19%;
+    --sidebar-accent: 168 38% 19%;
+    --sidebar-accent-foreground: 54 35% 90%;
+    --sidebar-border: 168 30% 22%;
     --sidebar-ring: 165 55% 42%;
   }
 }
