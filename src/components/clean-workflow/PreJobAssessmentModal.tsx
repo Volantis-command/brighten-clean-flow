@@ -194,7 +194,14 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col max-w-lg mx-auto safe-area-top safe-area-bottom">
+    // Outer overlay covers the whole viewport (incl. sidebar on desktop) and
+    // dims the background. Inner card is centered both horizontally and
+    // vertically with breathing room. Previously: fixed inset-0 + max-w-lg
+    // caused the modal to sit awkwardly at the top of a centered narrow
+    // band on desktop, with the sidebar bleeding through alongside.
+    // Brendan flagged 2026-04-26.
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 safe-area-top safe-area-bottom">
+      <div className="w-full max-w-lg max-h-[92vh] flex flex-col bg-background rounded-3xl overflow-hidden shadow-2xl border border-border">
       <div className="bg-primary text-primary-foreground px-5 py-5">
         <p className="text-xs font-semibold text-primary-foreground/60 uppercase tracking-wider">
           Pre-Job Check — {step === 'damage' || step === 'damage_detail' ? '1 of 2' : '2 of 2'}
@@ -259,6 +266,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
           </div>
         )}
       </main>
+      </div>
     </div>
   );
 }

@@ -84,93 +84,115 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
   async function loadData() {
     setLoading(true);
 
-    // Load existing photos
-    const { data: existingPhotos } = await supabase
-      .from("job_photos")
-      .select("id, room_label, public_url")
-      .eq("job_id", job.id);
-    if (existingPhotos) setPhotos(existingPhotos as UploadedPhoto[]);
-
-    // Load existing completions
-    const { data: completions } = await supabase
-      .from("job_checklist_completions")
-      .select("id, sop_item_id, completed")
-      .eq("job_id", job.id);
-    const completionMap = new Map(
-      (completions ?? []).map((c: any) => [c.sop_item_id, { id: c.id, completed: c.completed }])
-    );
-
-    if (isAirbnb) {
-      // Load property SOP items
-      let { data: sopItems } = await supabase
-        .from("property_sop_items")
-        .select("*")
-        .eq("property_id", property.id)
-        .eq("active", true)
-        .order("room")
-        .order("sort_order");
-
-      // No auto-default checklist — Brendan 2026-04-22: "this checklist we
-      // do not need. the PDF and the data in there is what we need in our
-      // end-of-clean checklist." Property-specific SOPs added by admin
-      // still show as reference; everything else is captured by the
-      // Master Form at clock-off.
-      const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
-        id: s.id,
-        room: s.room,
-        task: s.task,
-        completed: completionMap.get(s.id)?.completed ?? false,
-        completionId: completionMap.get(s.id)?.id,
-      }));
-      setChecklist(items);
-
-      // Load restocking items
-      const { data: restockRows } = await supabase
-        .from("property_restocking_items")
-        .select("*")
-        .eq("property_id", property.id)
-        .eq("active", true)
-        .order("sort_order");
-
-      const { data: restockCompletions } = await supabase
-        .from("job_restocking_completions")
-        .select("id, restocking_item_id, completed")
+    // Wrap everything in try/finally — without this, any throw (including
+    // a null property dereference at property.id) leaves the cleaner stuck
+    // on the spinner forever. Brendan flagged 2026-04-26 — the active view
+    // wouldn't load on a test job. Root cause: missing try/catch +
+    // unguarded property.id access.
+    try {
+      // Load existing photos
+      const { data: existingPhotos } = await supabase
+        .from("job_photos")
+        .select("id, room_label, public_url")
         .eq("job_id", job.id);
-      const restockMap = new Map(
-        (restockCompletions ?? []).map((c: any) => [c.restocking_item_id, { id: c.id, completed: c.completed }])
+      if (existingPhotos) setPhotos(existingPhotos as UploadedPhoto[]);
+
+      // Load existing completions
+      const { data: completions } = await supabase
+        .from("job_checklist_completions")
+        .select("id, sop_item_id, completed")
+        .eq("job_id", job.id);
+      const completionMap = new Map(
+        (completions ?? []).map((c: any) => [c.sop_item_id, { id: c.id, completed: c.completed }])
       );
 
-      setRestockItems(
-        (restockRows ?? []).map((r: any) => ({
-          id: r.id,
-          item_name: r.item_name,
-          emoji: r.emoji,
-          completed: restockMap.get(r.id)?.completed ?? false,
-          completionId: restockMap.get(r.id)?.id,
-        }))
-      );
-    } else {
-      // House clean — use default checklist, create SOP items on-the-fly if needed
-      let { data: sopItems } = await supabase
-        .from("property_sop_items")
-        .select("*")
-        .eq("property_id", property.id)
-        .eq("active", true)
-        .order("sort_order");
+      // If the job has no property linked (data inconsistency — shouldn't
+      // happen but defensive), bail out cleanly and let the rest of the
+      // active view render with empty checklist + restock.
+      if (!property?.id) {
+        setChecklist([]);
+        setRestockItems([]);
+        return;
+      }
 
-      // No auto-default checklist for house cleans either. Property-specific
-      // SOPs only. Master Form at end covers the rest.
-      const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
-        id: s.id,
-        room: s.room,
-        task: s.task,
-        completed: completionMap.get(s.id)?.completed ?? false,
-        completionId: completionMap.get(s.id)?.id,
-      }));
-      setChecklist(items);
+      if (isAirbnb) {
+        // Load property SOP items
+        const { data: sopItems } = await supabase
+          .from("property_sop_items")
+          .select("*")
+          .eq("property_id", property.id)
+          .eq("active", true)
+          .order("room")
+          .order("sort_order");
+
+        // No auto-default checklist — Brendan 2026-04-22: "this checklist we
+        // do not need. the PDF and the data in there is what we need in our
+        // end-of-clean checklist." Property-specific SOPs added by admin
+        // still show as reference; everything else is captured by the
+        // Master Form at clock-off.
+        const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
+          id: s.id,
+          room: s.room,
+          task: s.task,
+          completed: completionMap.get(s.id)?.completed ?? false,
+          completionId: completionMap.get(s.id)?.id,
+        }));
+        setChecklist(items);
+
+        // Load restocking items
+        const { data: restockRows } = await supabase
+          .from("property_restocking_items")
+          .select("*")
+          .eq("property_id", property.id)
+          .eq("active", true)
+          .order("sort_order");
+
+        const { data: restockCompletions } = await supabase
+          .from("job_restocking_completions")
+          .select("id, restocking_item_id, completed")
+          .eq("job_id", job.id);
+        const restockMap = new Map(
+          (restockCompletions ?? []).map((c: any) => [c.restocking_item_id, { id: c.id, completed: c.completed }])
+        );
+
+        setRestockItems(
+          (restockRows ?? []).map((r: any) => ({
+            id: r.id,
+            item_name: r.item_name,
+            emoji: r.emoji,
+            completed: restockMap.get(r.id)?.completed ?? false,
+            completionId: restockMap.get(r.id)?.id,
+          }))
+        );
+      } else {
+        // House clean — only show property-specific SOPs (no default
+        // checklist; Master Form at end covers everything else).
+        const { data: sopItems } = await supabase
+          .from("property_sop_items")
+          .select("*")
+          .eq("property_id", property.id)
+          .eq("active", true)
+          .order("sort_order");
+
+        const items: ChecklistItem[] = (sopItems ?? []).map((s: any) => ({
+          id: s.id,
+          room: s.room,
+          task: s.task,
+          completed: completionMap.get(s.id)?.completed ?? false,
+          completionId: completionMap.get(s.id)?.id,
+        }));
+        setChecklist(items);
+      }
+    } catch (err) {
+      // Don't leave the cleaner stuck on the spinner if anything throws.
+      // Log + render the empty state — Master Form at end still covers
+      // the audit trail.
+      console.error("[ActiveJobView] loadData failed:", err);
+      setChecklist([]);
+      setRestockItems([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   async function toggleChecklistItem(index: number) {
