@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Plug, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Plug, CheckCircle2, AlertCircle, RefreshCw, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -33,6 +33,28 @@ interface SyncSummary {
   matched: number;
   created: number;
   errors: number;
+}
+
+interface ReservationResult {
+  reservation_id: string;
+  listing_id: string | null;
+  departure_date: string | null;
+  guest_name: string;
+  status: string;
+  job_id: string | null;
+  error?: string;
+}
+
+interface ReservationSummary {
+  fetched_from_hostaway: number;
+  in_range: number;
+  created: number;
+  updated: number;
+  cancelled: number;
+  no_op: number;
+  no_property: number;
+  errors: number;
+  range: { from_date: string; to_date: string };
 }
 
 interface Props {
@@ -62,6 +84,8 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
   const [showReconnect, setShowReconnect] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ summary: SyncSummary; results: SyncListingResult[] } | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<{ summary: ReservationSummary; results: ReservationResult[] } | null>(null);
 
   const handleConnect = async () => {
     if (!hostawayClientId.trim() || !hostawayClientSecret.trim()) {
@@ -125,6 +149,41 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
     }
   };
 
+  const handleBackfillReservations = async () => {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('hostaway-sync-reservations', {
+        body: { client_id: clientId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const summary = (data as any)?.summary as ReservationSummary | undefined;
+      const results = (data as any)?.results as ReservationResult[] | undefined;
+      if (!summary || !results) throw new Error('Backfill response missing summary or results');
+
+      setBackfillResult({ summary, results });
+
+      const parts: string[] = [];
+      if (summary.created) parts.push(`${summary.created} created`);
+      if (summary.updated) parts.push(`${summary.updated} updated`);
+      if (summary.cancelled) parts.push(`${summary.cancelled} cancelled`);
+      if (summary.no_property) parts.push(`${summary.no_property} unmapped`);
+      if (summary.errors) parts.push(`${summary.errors} failed`);
+      const msg = parts.length ? parts.join(', ') : 'no changes';
+      if (summary.errors > 0 || summary.no_property > 0) toast.warning(`Backfill done — ${msg}`);
+      else toast.success(`Backfill done — ${msg}`);
+
+      queryClient.invalidateQueries({ queryKey: ['hostaway-token', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    } catch (e: any) {
+      toast.error(e.message || 'Backfill failed');
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     if (!token) return;
     if (!confirm('Disconnect Hostaway for this client? They\u2019ll need to re-enter credentials to reconnect.')) return;
@@ -161,6 +220,9 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
             onSync={handleSyncListings}
             syncing={syncing}
             syncResult={syncResult}
+            onBackfill={handleBackfillReservations}
+            backfilling={backfilling}
+            backfillResult={backfillResult}
           />
         ) : (
           <ConnectForm
@@ -186,6 +248,9 @@ function ConnectedView({
   onSync,
   syncing,
   syncResult,
+  onBackfill,
+  backfilling,
+  backfillResult,
 }: {
   token: { hostaway_account_id: string; expires_at: string | null; last_synced_at: string | null; created_at: string };
   onReconnect: () => void;
@@ -193,6 +258,9 @@ function ConnectedView({
   onSync: () => void;
   syncing: boolean;
   syncResult: { summary: SyncSummary; results: SyncListingResult[] } | null;
+  onBackfill: () => void;
+  backfilling: boolean;
+  backfillResult: { summary: ReservationSummary; results: ReservationResult[] } | null;
 }) {
   return (
     <div className="space-y-3">
@@ -213,18 +281,30 @@ function ConnectedView({
       </div>
 
       <div className="flex flex-wrap gap-2 pt-1">
-        <Button size="sm" onClick={onSync} disabled={syncing}>
+        <Button size="sm" onClick={onSync} disabled={syncing || backfilling}>
           {syncing ? (
             <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Syncing listings…</>
           ) : (
             <><RefreshCw className="h-4 w-4 mr-1" /> Sync listings from Hostaway</>
           )}
         </Button>
+        <Button size="sm" variant="secondary" onClick={onBackfill} disabled={syncing || backfilling}>
+          {backfilling ? (
+            <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Backfilling reservations…</>
+          ) : (
+            <><CalendarRange className="h-4 w-4 mr-1" /> Backfill reservations</>
+          )}
+        </Button>
         <Button variant="outline" size="sm" onClick={onReconnect}>Reconnect</Button>
         <Button variant="outline" size="sm" onClick={onDisconnect} className="text-destructive">Disconnect</Button>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        <span className="font-semibold">Sync listings</span> imports properties from Hostaway. <span className="font-semibold">Backfill reservations</span> creates turnover jobs for the last 30 / next 60 days — useful for first-time setup or after webhook downtime.
+      </p>
+
       {syncResult && <SyncResultPanel result={syncResult} />}
+      {backfillResult && <BackfillResultPanel result={backfillResult} />}
     </div>
   );
 }
@@ -266,6 +346,72 @@ function SyncResultPanel({ result }: { result: { summary: SyncSummary; results: 
                   r.status === 'created' ? 'text-green-700' :
                   r.status === 'matched' ? 'text-muted-foreground' :
                   'text-destructive'
+                }`}>
+                  {r.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function BackfillResultPanel({ result }: { result: { summary: ReservationSummary; results: ReservationResult[] } }) {
+  const { summary, results } = result;
+  const meaningful = results.filter((r) => r.status !== 'skipped_out_of_range' && r.status !== 'skipped_no_departure');
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+      <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        Last backfill ({summary.range.from_date} → {summary.range.to_date})
+      </div>
+      <div className="flex flex-wrap gap-3 text-sm">
+        <span><span className="font-semibold">{summary.fetched_from_hostaway}</span> on Hostaway · <span className="font-semibold">{summary.in_range}</span> in range</span>
+        {summary.created > 0 && (
+          <span className="text-green-700"><span className="font-semibold">{summary.created}</span> created</span>
+        )}
+        {summary.updated > 0 && (
+          <span className="text-blue-700"><span className="font-semibold">{summary.updated}</span> updated</span>
+        )}
+        {summary.cancelled > 0 && (
+          <span className="text-amber-700"><span className="font-semibold">{summary.cancelled}</span> cancelled</span>
+        )}
+        {summary.no_op > 0 && (
+          <span className="text-muted-foreground"><span className="font-semibold">{summary.no_op}</span> unchanged</span>
+        )}
+        {summary.no_property > 0 && (
+          <span className="text-amber-700"><span className="font-semibold">{summary.no_property}</span> unmapped (run Sync listings)</span>
+        )}
+        {summary.errors > 0 && (
+          <span className="text-destructive"><span className="font-semibold">{summary.errors}</span> failed</span>
+        )}
+      </div>
+
+      {meaningful.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground">
+            Show details ({meaningful.length})
+          </summary>
+          <ul className="mt-2 space-y-1 max-h-64 overflow-y-auto">
+            {meaningful.map((r) => (
+              <li key={r.reservation_id} className="flex items-start justify-between gap-2 py-1 border-b last:border-0">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{r.guest_name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {r.departure_date ?? 'no departure'}
+                    {r.listing_id ? ` · listing ${r.listing_id}` : ''}
+                  </div>
+                  {r.error && <div className="text-xs text-destructive">{r.error}</div>}
+                </div>
+                <span className={`text-xs whitespace-nowrap ${
+                  r.status === 'created' ? 'text-green-700' :
+                  r.status === 'updated' ? 'text-blue-700' :
+                  r.status === 'cancelled' ? 'text-amber-700' :
+                  r.status === 'no_property' ? 'text-amber-700' :
+                  r.status === 'error' ? 'text-destructive' :
+                  'text-muted-foreground'
                 }`}>
                   {r.status}
                 </span>

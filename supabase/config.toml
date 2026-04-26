@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.receive-hostaway-webhook]
 verify_jwt = false
+
+[functions.hostaway-sync-reservations]
+verify_jwt = true
