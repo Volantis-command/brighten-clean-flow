@@ -354,6 +354,7 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                   const blocks: { label: string; body: string }[] = [];
                   const p = property as any;
                   if (p?.special_instructions) blocks.push({ label: 'Special instructions', body: p.special_instructions });
+                  if (p?.host_preferences) blocks.push({ label: 'Host preferences', body: p.host_preferences });
                   if (p?.focus_areas) blocks.push({ label: 'Focus areas', body: p.focus_areas });
                   if (p?.skip_areas) blocks.push({ label: 'Skip / don\u2019t clean', body: p.skip_areas });
                   if (p?.preferences_notes) blocks.push({ label: 'Client preferences', body: p.preferences_notes });
@@ -362,6 +363,34 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                   if (p?.pet_situation) blocks.push({ label: 'Pets', body: p.pet_situation });
                   if (p?.pet_notes && p.pet_notes !== p.pet_situation) {
                     blocks.push({ label: 'Pet notes', body: p.pet_notes });
+                  }
+                  // Operational extras admin captures on the property passport
+                  // but cleaner needs at the door / on arrival.
+                  if (p?.neighbour_notes) blocks.push({ label: 'Neighbours', body: p.neighbour_notes });
+                  if (p?.bin_details) blocks.push({ label: 'Bins', body: p.bin_details });
+                  if (p?.guest_wifi) blocks.push({ label: 'Wi-Fi (cleaner can verify)', body: p.guest_wifi });
+                  if (p?.amenities_notes) blocks.push({ label: 'Amenities notes', body: p.amenities_notes });
+                  // Per-room notes from the property passport — kitchen,
+                  // bathroom, bedrooms, living, etc.
+                  const roomNotes = p?.room_notes;
+                  if (roomNotes && typeof roomNotes === 'object') {
+                    for (const [room, body] of Object.entries(roomNotes)) {
+                      if (typeof body === 'string' && body.trim()) {
+                        blocks.push({ label: `${room} notes`, body: body });
+                      }
+                    }
+                  }
+                  // Structural flags only render if they tell the cleaner
+                  // something they should know (a property HAS a garage or
+                  // outdoor area, vs. doesn't).
+                  const features: string[] = [];
+                  if (p?.has_garage) features.push('Garage');
+                  if (p?.has_outdoor_area) features.push('Outdoor area');
+                  if (typeof p?.linen_sets === 'number' && p.linen_sets > 0) features.push(`${p.linen_sets} linen set${p.linen_sets > 1 ? 's' : ''}`);
+                  if (p?.linen_provided) features.push('Linen provided');
+                  if (p?.amenities_restock) features.push('Amenities to restock');
+                  if (features.length > 0) {
+                    blocks.push({ label: 'Property features', body: features.join(' · ') });
                   }
 
                   if (blocks.length === 0) {
