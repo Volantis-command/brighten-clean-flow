@@ -1,5 +1,8 @@
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { CalendarPlus } from 'lucide-react';
 
 interface PropertyCardProps {
   property: any;
@@ -7,6 +10,7 @@ interface PropertyCardProps {
   cleanerProfiles: any[];
   latestAuditPct?: number | null;
   onClick?: () => void;
+  rebookHref?: string;
 }
 
 function getPropertyStatus(jobs: any[]) {
@@ -33,7 +37,8 @@ function getPropertyStatus(jobs: any[]) {
   return { label: 'Awaiting Clean', color: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' };
 }
 
-export default function PropertyCard({ property, jobs, cleanerProfiles, latestAuditPct, onClick }: PropertyCardProps) {
+export default function PropertyCard({ property, jobs, cleanerProfiles, latestAuditPct, onClick, rebookHref }: PropertyCardProps) {
+  const navigate = useNavigate();
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const statusInfo = getPropertyStatus(jobs);
   const lastCompleteJob = jobs.find((j: any) => j.status === 'complete' || j.status === 'completed');
@@ -48,10 +53,15 @@ export default function PropertyCard({ property, jobs, cleanerProfiles, latestAu
 
   const nextCleanerName = nextScheduledJob?.cleaner_1_id ? getCleanerName(nextScheduledJob.cleaner_1_id) : null;
 
+  // Outer element is a div (not button) so we can nest a real button for
+  // the rebook CTA — button-in-button is invalid HTML.
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="bg-card rounded-2xl shadow-sm border border-border/50 p-5 text-left hover:shadow-md transition-shadow w-full"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      className="bg-card rounded-2xl shadow-sm border border-border/50 p-5 text-left hover:shadow-md transition-shadow w-full cursor-pointer"
     >
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -100,6 +110,22 @@ export default function PropertyCard({ property, jobs, cleanerProfiles, latestAu
           </div>
         )}
       </div>
-    </button>
+
+      {rebookHref && (
+        <div className="mt-4 pt-4 border-t border-border/50">
+          <Button
+            size="sm"
+            className="w-full gap-2 font-bold"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(rebookHref);
+            }}
+          >
+            <CalendarPlus className="w-4 h-4" />
+            Book Clean
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

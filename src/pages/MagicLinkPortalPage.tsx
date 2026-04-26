@@ -130,6 +130,7 @@ export default function MagicLinkPortalPage() {
                 cleanerProfiles={cleanerProfiles}
                 latestAuditPct={latestAudit?.percentage}
                 onClick={() => navigate(`/client/${token}/property/${prop.id}`)}
+                rebookHref={`/client/${token}/property/${prop.id}/rebook`}
               />
             );
           })}
