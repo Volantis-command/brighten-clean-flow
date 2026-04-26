@@ -58,6 +58,7 @@ interface Body {
   first_clean?: boolean | null;
   focus_areas?: string | null;
   bed_config?: string | null;
+  bed_types?: Record<string, string> | null; // per-bedroom map: { "0": "King", "1": "Queen" }
   sofa_beds?: number | null;
   kitchens?: number | null;
   living_areas?: number | null;
@@ -277,6 +278,7 @@ Deno.serve(async (req: Request) => {
           first_clean: body.first_clean ?? null,
           focus_areas: body.focus_areas || null,
           bed_config: body.bed_config || null,
+          bed_types: body.bed_types || null,
           sofa_beds: body.sofa_beds ?? null,
           kitchens: body.kitchens ?? null,
           living_areas: body.living_areas ?? null,

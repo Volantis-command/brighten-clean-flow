@@ -160,6 +160,7 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
             host_preferences: hostingNotes || null,
             // Full Airbnb intake passthrough
             bed_config: bedConfigStr || null,
+            bed_types: Object.keys(bedTypes).length ? bedTypes : null,
             sofa_beds: parseInt(sofaBeds) || null,
             kitchens: parseInt(kitchens) || null,
             living_areas: parseInt(livingAreas) || null,

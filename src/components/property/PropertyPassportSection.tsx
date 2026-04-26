@@ -31,6 +31,49 @@ const ROOM_TYPES = ['Kitchen', 'Bathrooms', 'Bedrooms', 'Living'];
 const FREQUENCIES = ['One-off', 'Weekly', 'Fortnightly', 'Monthly', 'As needed'];
 const PREFERRED_TIMES = ['Flexible', 'Morning', 'Afternoon', 'Evening', 'Specific time'];
 
+// Bed type options for the per-bedroom dropdowns (replaces a single
+// bed_config free-text field). Brendan flagged 2026-04-26: should be
+// one dropdown per bedroom, prefilled from intake.
+const BED_TYPES = [
+  'King',
+  'Queen',
+  'Double',
+  'Two Singles',
+  'Single',
+  'Bunk',
+  'Sofa Bed',
+  'Other',
+];
+
+// Build a "Bedroom 1: Queen, Bedroom 2: King" string from a per-bedroom
+// map. Kept in sync with bed_types so cleaner views that already read
+// bed_config keep working.
+function bedTypesToConfig(bedTypes: Record<number, string>, bedrooms: number): string {
+  const parts: string[] = [];
+  for (let i = 0; i < bedrooms; i++) {
+    const t = bedTypes[i];
+    if (t) parts.push(`Bedroom ${i + 1}: ${t}`);
+  }
+  return parts.join(', ');
+}
+
+// Defensive parse of legacy bed_config string into a per-bedroom map,
+// for properties that have bed_config text but no bed_types JSON.
+// Format: "Bedroom 1: Queen, Bedroom 2: King". Best-effort.
+function parseBedConfig(bedConfig: string | null | undefined): Record<number, string> {
+  if (!bedConfig) return {};
+  const out: Record<number, string> = {};
+  const parts = bedConfig.split(/[,;\n]/);
+  for (const part of parts) {
+    const m = part.match(/Bedroom\s*(\d+)\s*[:\-]\s*(.+)/i);
+    if (m) {
+      const idx = parseInt(m[1], 10) - 1;
+      out[idx] = m[2].trim();
+    }
+  }
+  return out;
+}
+
 export default function PropertyPassportSection({ propertyId, readOnly = false, requireClockIn = false, isClockedIn = false }: Props) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -83,6 +126,8 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
     has_garage: false,
     has_outdoor_area: false,
     bed_config: '',
+    bed_types: {} as Record<number, string>, // per-bedroom map, drives N dropdowns
+    bedrooms: 0, // pulled from properties.bedrooms; controls how many dropdowns to render
     // Client type (for conditional section rendering)
     client_type: '',
   });
@@ -91,7 +136,7 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
     async function load() {
       const { data } = await supabase
         .from('properties' as any)
-        .select('access_method, access_code, alarm_code, garage_code, parking_instructions, pet_notes, product_restrictions, special_instructions, preferences_notes, room_notes, clean_frequency, preferred_days, preferred_time, first_clean, focus_areas, checkin_time, checkout_time, platform, linen_required, amenities_kit, wash_kit, tea_coffee_kit, host_preferences, business_name, abn, approx_size, has_kitchen_breakroom, floor_types, after_hours_access, has_security_alarm, deep_clean_oven, deep_clean_fridge, deep_clean_cupboards, deep_clean_windows, last_cleaned_when, property_condition, has_garage, has_outdoor_area, bed_config, client_type')
+        .select('access_method, access_code, alarm_code, garage_code, parking_instructions, pet_notes, product_restrictions, special_instructions, preferences_notes, room_notes, clean_frequency, preferred_days, preferred_time, first_clean, focus_areas, checkin_time, checkout_time, platform, linen_required, amenities_kit, wash_kit, tea_coffee_kit, host_preferences, business_name, abn, approx_size, has_kitchen_breakroom, floor_types, after_hours_access, has_security_alarm, deep_clean_oven, deep_clean_fridge, deep_clean_cupboards, deep_clean_windows, last_cleaned_when, property_condition, has_garage, has_outdoor_area, bed_config, bed_types, bedrooms, client_type')
         .eq('id', propertyId)
         .maybeSingle();
 
@@ -137,6 +182,12 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
           has_garage: d.has_garage === true,
           has_outdoor_area: d.has_outdoor_area === true,
           bed_config: d.bed_config || '',
+          // Prefer the structured bed_types JSON if present, fall back
+          // to parsing the legacy bed_config string for older properties.
+          bed_types: (d.bed_types && typeof d.bed_types === 'object')
+            ? (d.bed_types as Record<number, string>)
+            : parseBedConfig(d.bed_config),
+          bedrooms: typeof d.bedrooms === 'number' ? d.bedrooms : 0,
           client_type: d.client_type || '',
         });
       }
@@ -195,7 +246,11 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
         property_condition: form.property_condition || null,
         has_garage: form.has_garage,
         has_outdoor_area: form.has_outdoor_area,
-        bed_config: form.bed_config || null,
+        // Save both: bed_types (structured) drives the dropdowns,
+        // bed_config (string) is kept in sync so cleaner Pre-Clock-On
+        // view (which already reads bed_config) keeps working.
+        bed_types: Object.keys(form.bed_types || {}).length ? form.bed_types : null,
+        bed_config: bedTypesToConfig(form.bed_types || {}, form.bedrooms) || form.bed_config || null,
       } as any)
       .eq('id', propertyId);
     setSaving(false);
@@ -461,7 +516,48 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Property Features</h3>
         <div className="flex items-center justify-between"><Label>Has Garage</Label><Switch checked={form.has_garage} onCheckedChange={v => setForm(prev => ({ ...prev, has_garage: v }))} /></div>
         <div className="flex items-center justify-between"><Label>Has Outdoor Area</Label><Switch checked={form.has_outdoor_area} onCheckedChange={v => setForm(prev => ({ ...prev, has_outdoor_area: v }))} /></div>
-        <div className="space-y-1.5"><Label>Bed Configuration</Label><Textarea value={form.bed_config} onChange={e => setForm(prev => ({ ...prev, bed_config: e.target.value }))} placeholder="e.g. Bedroom 1: Queen, Bedroom 2: Two singles" className="rounded-xl" rows={2} /></div>
+        <div className="space-y-2">
+          <Label className="text-sm font-bold">Bed Configuration</Label>
+          {form.bedrooms > 0 ? (
+            <div className="space-y-2">
+              {Array.from({ length: form.bedrooms }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground w-24 shrink-0">Bedroom {i + 1}</span>
+                  <Select
+                    value={form.bed_types[i] || ''}
+                    onValueChange={(v) =>
+                      setForm(prev => ({
+                        ...prev,
+                        bed_types: { ...prev.bed_types, [i]: v },
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="rounded-xl flex-1"><SelectValue placeholder="Select bed type" /></SelectTrigger>
+                    <SelectContent>
+                      {BED_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                One dropdown per bedroom. Saves to a structured field; cleaners see the summary on their Pre-Clock-On view.
+              </p>
+            </div>
+          ) : (
+            <>
+              <Textarea
+                value={form.bed_config}
+                onChange={e => setForm(prev => ({ ...prev, bed_config: e.target.value }))}
+                placeholder="e.g. Bedroom 1: Queen, Bedroom 2: Two singles"
+                className="rounded-xl"
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                Set the property&rsquo;s <span className="font-semibold">Bedrooms</span> count above to switch to per-bedroom dropdowns.
+              </p>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Room-by-Room Notes */}
