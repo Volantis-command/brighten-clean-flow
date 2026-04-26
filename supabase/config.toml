@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.hostaway-connect]
 verify_jwt = true
+
+[functions.hostaway-sync-listings]
+verify_jwt = true
