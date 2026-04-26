@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
+import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
 import RecurringScheduleControls from '@/components/client-portal/RecurringScheduleControls';
 
@@ -270,6 +271,16 @@ export default function MagicLinkPropertyPage() {
             </div>
           )}
         </Section>
+
+        {/* Property Passport — clients edit, admin approves before changes go live */}
+        {token && (
+          <Section title="Property Details">
+            <p className="text-xs text-muted-foreground -mt-1 mb-3">
+              Updates here go to admin for approval — you'll see "pending" while they're reviewed.
+            </p>
+            <PassportEditor token={token} propertyId={propertyId!} property={property} />
+          </Section>
+        )}
 
         {/* Upcoming */}
         <Section title="Upcoming Schedule">
