@@ -10,6 +10,7 @@ import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGa
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import RecurringScheduleControls from '@/components/client-portal/RecurringScheduleControls';
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
 import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
@@ -290,9 +291,9 @@ export default function MagicLinkPropertyPage() {
         {/* Upcoming */}
         <Section title="Upcoming Schedule">
           {upcomingJobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming cleans scheduled.</p>
+            <p className="text-sm text-muted-foreground mb-3">No upcoming cleans scheduled.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 mb-4">
               {upcomingJobs.map((job: any) => (
                 <div key={job.id} className="rounded-xl border border-border p-3 text-sm flex items-center justify-between">
                   <div>
@@ -303,6 +304,9 @@ export default function MagicLinkPropertyPage() {
                 </div>
               ))}
             </div>
+          )}
+          {token && (
+            <RecurringScheduleControls token={token} propertyId={propertyId!} />
           )}
         </Section>
 

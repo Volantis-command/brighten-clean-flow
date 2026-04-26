@@ -45,6 +45,9 @@ verify_jwt = false
 [functions.create-booking-from-quote]
 verify_jwt = false
 
+[functions.request-schedule-change]
+verify_jwt = false
+
 [functions.report-property-issue]
 verify_jwt = false
 
