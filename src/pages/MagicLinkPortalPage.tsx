@@ -91,6 +91,47 @@ export default function MagicLinkPortalPage() {
     enabled: propertyIds.length > 0,
   });
 
+  const { data: feedback = [] } = useQuery({
+    queryKey: ['magic-feedback', propertyIds],
+    queryFn: async () => {
+      if (!propertyIds.length) return [];
+      const { data } = await supabase
+        .from('job_feedback')
+        .select('property_id, score')
+        .in('property_id', propertyIds)
+        .not('score', 'is', null);
+      return data || [];
+    },
+    enabled: propertyIds.length > 0,
+  });
+
+  // Latest cleaner-uploaded photo per property → hero image on the
+  // card. Falls back to a deterministic gradient when there are no
+  // photos yet (e.g. brand-new property).
+  const { data: photos = [] } = useQuery({
+    queryKey: ['magic-hero-photos', propertyIds],
+    queryFn: async () => {
+      if (!propertyIds.length) return [];
+      const { data } = await supabase
+        .from('photos')
+        .select('property_id, file_url, taken_at')
+        .in('property_id', propertyIds)
+        .order('taken_at', { ascending: false });
+      return data || [];
+    },
+    enabled: propertyIds.length > 0,
+  });
+
+  const scoresByProperty: Record<string, number[]> = {};
+  (feedback as any[]).forEach((f: any) => {
+    if (!scoresByProperty[f.property_id]) scoresByProperty[f.property_id] = [];
+    scoresByProperty[f.property_id].push(f.score);
+  });
+  const heroByProperty: Record<string, string | null> = {};
+  (photos as any[]).forEach((p: any) => {
+    if (!heroByProperty[p.property_id] && p.file_url) heroByProperty[p.property_id] = p.file_url;
+  });
+
   const isLoading = loadingToken || loadingProps;
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const hour = new Date().getHours();
@@ -144,6 +185,8 @@ export default function MagicLinkPortalPage() {
                 latestAuditPct={latestAudit?.percentage}
                 onClick={() => navigate(`/client/${token}/property/${prop.id}`)}
                 rebookHref={`/client/${token}/property/${prop.id}/rebook`}
+                feedbackScores={scoresByProperty[prop.id] || []}
+                heroImageUrl={heroByProperty[prop.id] || null}
               />
             );
           })}

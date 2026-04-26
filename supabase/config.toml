@@ -51,6 +51,10 @@ verify_jwt = false
 [functions.decide-property-change]
 verify_jwt = true
 
+[functions.submit-portal-rating]
+verify_jwt = false
+
+
 [functions.link-intake-to-profile]
 verify_jwt = false
 
