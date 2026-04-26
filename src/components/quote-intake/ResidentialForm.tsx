@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -247,12 +248,11 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
             <div className="space-y-2">
               <QuestionLabel sub="Pick a specific start time, or leave blank if you're flexible">Preferred start time</QuestionLabel>
               <div className="flex items-center gap-2">
-                <Input
-                  type="time"
+                <TimeSelect
                   value={preferredTime === 'Flexible' || !/^\d{1,2}:\d{2}$/.test(preferredTime) ? '' : preferredTime}
-                  onChange={(e) => setPreferredTime(e.target.value || 'Flexible')}
+                  onChange={(v) => setPreferredTime(v || 'Flexible')}
                   className={`${darkInputClass} w-40`}
-                  placeholder="e.g. 14:00"
+                  placeholder="e.g. 2:00 PM"
                 />
                 <button
                   type="button"

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -273,8 +274,8 @@ export default function AirbnbForm({ onComplete, onBack }: Props) {
 
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Typical guest checkout time</QuestionLabel><Input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className={darkInputClass} /></div>
-            <div className="space-y-2"><QuestionLabel>Typical next check-in time</QuestionLabel><Input type="time" value={checkinTime} onChange={e => setCheckinTime(e.target.value)} className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Typical guest checkout time</QuestionLabel><TimeSelect value={checkoutTime} onChange={setCheckoutTime} className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Typical next check-in time</QuestionLabel><TimeSelect value={checkinTime} onChange={setCheckinTime} className={darkInputClass} /></div>
           </div>
         </FormCard>
       </>

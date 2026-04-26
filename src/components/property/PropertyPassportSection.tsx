@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Loader2, Save, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -496,11 +497,11 @@ export default function PropertyPassportSection({ propertyId, readOnly = false, 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Guest Checkout</Label>
-              <Input type="time" value={form.checkout_time} onChange={e => setForm(prev => ({ ...prev, checkout_time: e.target.value }))} className="rounded-xl" />
+              <TimeSelect value={form.checkout_time} onChange={(v) => setForm(prev => ({ ...prev, checkout_time: v }))} className="rounded-xl" />
             </div>
             <div className="space-y-1.5">
               <Label>Next Check-in</Label>
-              <Input type="time" value={form.checkin_time} onChange={e => setForm(prev => ({ ...prev, checkin_time: e.target.value }))} className="rounded-xl" />
+              <TimeSelect value={form.checkin_time} onChange={(v) => setForm(prev => ({ ...prev, checkin_time: v }))} className="rounded-xl" />
             </div>
           </div>
           <div className="flex items-center justify-between"><Label>Linen supplied by Brightly</Label><Switch checked={form.linen_required} onCheckedChange={v => setForm(prev => ({ ...prev, linen_required: v }))} /></div>
