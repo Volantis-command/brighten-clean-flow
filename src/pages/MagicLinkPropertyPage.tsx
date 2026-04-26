@@ -9,6 +9,8 @@ import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import PropertyCalendar from '@/components/client-portal/PropertyCalendar';
+import TurnaroundPanel from '@/components/client-portal/TurnaroundPanel';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
@@ -177,6 +179,12 @@ export default function MagicLinkPropertyPage() {
 
         <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
         <p className="text-sm text-muted-foreground -mt-4">{[property.address, property.suburb].filter(Boolean).join(', ')}</p>
+
+        <TurnaroundPanel property={property} />
+
+        <Section title="Calendar">
+          <PropertyCalendar jobs={jobs} token={token} propertyId={propertyId!} />
+        </Section>
 
         {/* Health Score */}
         {healthScore !== null && (
