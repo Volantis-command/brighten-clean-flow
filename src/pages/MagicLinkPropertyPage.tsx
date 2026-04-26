@@ -9,6 +9,7 @@ import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import TipCleanerButton from '@/components/client-portal/TipCleanerButton';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
@@ -255,12 +256,19 @@ export default function MagicLinkPropertyPage() {
                       {audit && <span className={`font-bold text-xs ${(audit.percentage || 0) >= 80 ? 'text-primary' : 'text-orange-500'}`}>{audit.percentage}%</span>}
                     </div>
                     {token && (
-                      <div className="mt-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
                         <RateCleanStars
                           token={token}
                           jobId={job.id}
                           existingScore={scoreByJob[job.id] || null}
                         />
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <TipCleanerButton
+                            token={token}
+                            jobId={job.id}
+                            cleanerName={job.cleaner_1_id ? (cleanerProfiles.find((p: any) => p.id === job.cleaner_1_id)?.full_name || null) : null}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
