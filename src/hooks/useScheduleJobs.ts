@@ -16,6 +16,7 @@ export interface ScheduleJob {
   notes: string | null;
   invoice_status: string | null;
   series_id: string | null;
+  recurring_parent_id: string | null;
   is_urgent: boolean | null;
   frequency: string | null;
   source: string | null;
@@ -29,6 +30,8 @@ export interface ScheduleJob {
     suburb: string | null;
     lat: number | null;
     lng: number | null;
+    client_type: string | null;
+    first_clean: boolean | null;
   } | null;
 }
 
@@ -53,7 +56,7 @@ export function useScheduleJobs() {
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('*, properties(property_name, client_name, address, suburb, lat, lng)')
+        .select('*, properties(property_name, client_name, address, suburb, lat, lng, client_type, first_clean)')
         .order('scheduled_date', { ascending: true })
         .order('scheduled_time', { ascending: true });
 
