@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, CheckCircle2 } from 'lucide-react';
+import { Clock, CheckCircle2, CalendarCheck, Navigation } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -29,6 +29,7 @@ interface ActiveJob {
   status: string;
   clock_on: string | null;
   clock_off: string | null;
+  on_route_at: string | null;
   cleaner_1_id: string | null;
   cleaner_2_id: string | null;
   scheduled_date: string;
@@ -39,27 +40,27 @@ export default function LiveCleanStatus({ propertyId, cleanerNames }: LiveCleanS
   const [job, setJob] = useState<ActiveJob | null>(null);
   const [now, setNow] = useState(new Date());
 
-  // Initial fetch: any job that's currently in-progress for this property
+  // Initial fetch: any job today (scheduled, on-route, in-progress, or
+  // recently completed). Pre-arrival states surface so the client can
+  // see "Sarah is on her way" / "Clean today at 9:00 AM with Sarah".
   useEffect(() => {
     let cancelled = false;
     async function loadInitial() {
       const today = format(new Date(), 'yyyy-MM-dd');
       const { data } = await supabase
         .from('jobs')
-        .select('id, status, clock_on, clock_off, cleaner_1_id, cleaner_2_id, scheduled_date, scheduled_time')
+        .select('id, status, clock_on, clock_off, on_route_at, cleaner_1_id, cleaner_2_id, scheduled_date, scheduled_time' as any)
         .eq('property_id', propertyId)
-        .gte('scheduled_date', today)
-        .in('status', ['in_progress', 'completed'])
-        .order('scheduled_date', { ascending: false })
+        .eq('scheduled_date', today)
+        .in('status', ['scheduled', 'confirmed', 'in_progress', 'completed'])
+        .order('scheduled_time', { ascending: true })
         .limit(1);
       if (cancelled) return;
-      const j = (data ?? [])[0] as ActiveJob | undefined;
-      // Only surface if it's in_progress, OR completed within the last
-      // 30 minutes (so the celebration card persists briefly after
-      // clock-off and then naturally fades when the page is reloaded).
-      if (j?.status === 'in_progress') {
+      const j = (data ?? [])[0] as unknown as ActiveJob | undefined;
+      if (!j) return;
+      if (j.status === 'in_progress' || j.status === 'scheduled' || j.status === 'confirmed') {
         setJob(j);
-      } else if (j?.status === 'completed' && j.clock_off) {
+      } else if (j.status === 'completed' && j.clock_off) {
         const minsSinceClockOff = (Date.now() - new Date(j.clock_off).getTime()) / 60000;
         if (minsSinceClockOff < 30) setJob(j);
       }
@@ -78,15 +79,17 @@ export default function LiveCleanStatus({ propertyId, cleanerNames }: LiveCleanS
         { event: 'UPDATE', schema: 'public', table: 'jobs', filter: `property_id=eq.${propertyId}` },
         (payload) => {
           const updated = payload.new as ActiveJob;
-          if (updated.status === 'in_progress') {
+          if (updated.status === 'in_progress' || updated.status === 'scheduled' || updated.status === 'confirmed') {
+            // Pre-arrival, on-route, and in-progress all live here —
+            // each transition (on_route_at set → status=in_progress)
+            // updates the same banner.
             setJob(updated);
           } else if (updated.status === 'completed') {
             // Show celebration; auto-clear after 30s
             setJob(updated);
             setTimeout(() => setJob(null), 30_000);
           } else if (job && updated.id === job.id) {
-            // Status moved off in-progress without going to completed
-            // (e.g. cancelled) — clear the banner
+            // Status moved off the surfaced set (e.g. cancelled) — clear.
             setJob(null);
           }
         },
@@ -98,12 +101,14 @@ export default function LiveCleanStatus({ propertyId, cleanerNames }: LiveCleanS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId]);
 
-  // Tick the elapsed timer every 30s while the job is in_progress
+  // Tick the elapsed timer every 30s while the job is in_progress or
+  // the cleaner is en route — both surfaces show a "X mins" counter.
   useEffect(() => {
-    if (job?.status !== 'in_progress') return;
+    const ticking = job?.status === 'in_progress' || (job?.on_route_at && job?.status !== 'completed');
+    if (!ticking) return;
     const interval = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(interval);
-  }, [job?.status]);
+  }, [job?.status, job?.on_route_at]);
 
   if (!job) return null;
 
@@ -111,6 +116,68 @@ export default function LiveCleanStatus({ propertyId, cleanerNames }: LiveCleanS
   const cleaners = cleanerIds.map(id => cleanerNames[id] || 'Your cleaner');
   const primaryName = cleaners[0] || 'Your cleaner';
   const primaryFirst = primaryName.split(' ')[0];
+
+  // Pre-arrival: scheduled/confirmed for today and not yet on-route.
+  if ((job.status === 'scheduled' || job.status === 'confirmed') && !job.on_route_at) {
+    const timeLabel = job.scheduled_time ? format(new Date(`2000-01-01T${job.scheduled_time}`), 'h:mm a') : 'today';
+    return (
+      <div className="rounded-2xl border border-blue-300/50 bg-blue-50 dark:bg-blue-500/10 p-5">
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-blue-100 dark:bg-blue-500/20 p-2">
+            <CalendarCheck className="w-5 h-5 text-blue-700 dark:text-blue-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-extrabold text-blue-900 dark:text-blue-100">
+              Clean today at {timeLabel}
+            </p>
+            <p className="text-sm text-blue-800 dark:text-blue-200/80">
+              {primaryFirst} is your cleaner{cleaners.length > 1 ? `, with ${cleaners[1].split(' ')[0]}` : ''}.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // On the way: cleaner has tapped "I'm on the way" but hasn't clocked on yet.
+  if ((job.status === 'scheduled' || job.status === 'confirmed') && job.on_route_at) {
+    const onRoute = new Date(job.on_route_at);
+    const minsAgo = Math.max(0, Math.floor((now.getTime() - onRoute.getTime()) / 60000));
+    const agoLabel = minsAgo < 1 ? 'just left' : `left ${minsAgo} min${minsAgo === 1 ? '' : 's'} ago`;
+    return (
+      <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-500/10 p-5 shadow-lg shadow-amber-500/10">
+        <div className="flex items-center gap-3">
+          <div className="relative shrink-0">
+            <Avatar className="w-12 h-12 ring-2 ring-amber-400">
+              <AvatarFallback className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 font-extrabold">
+                {primaryFirst.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 border-2 border-amber-50 dark:border-amber-500/10" />
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-extrabold text-amber-900 dark:text-amber-100 text-base">
+              {primaryFirst} is on her way to your property
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-amber-800 dark:text-amber-200/80">
+              <span className="inline-flex items-center gap-1">
+                <Navigation className="w-3.5 h-3.5" /> {agoLabel}
+              </span>
+              {job.scheduled_time && (
+                <>
+                  <span className="opacity-50">·</span>
+                  <span>scheduled {format(new Date(`2000-01-01T${job.scheduled_time}`), 'h:mm a')}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (job.status === 'completed') {
     return (

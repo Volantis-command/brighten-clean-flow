@@ -9,6 +9,7 @@ import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
+import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
@@ -153,6 +154,10 @@ export default function MagicLinkPropertyPage() {
         <Button variant="ghost" size="sm" onClick={() => navigate(`/client/${token}`)} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
+
+        {/* Live status — pre-arrival, on-the-way, in-progress, complete.
+            Hides itself when there's nothing happening today. */}
+        <LiveCleanStatus propertyId={propertyId!} cleanerNames={nameMap} />
 
         {/* Status Banner */}
         <div className={`rounded-2xl p-5 ${

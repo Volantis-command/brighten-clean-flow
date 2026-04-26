@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone, BedDouble } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Navigation, Key, ClipboardList, Users, Package, StickyNote, ChevronDown, ChevronUp, Phone, BedDouble, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Props {
   job: any;
@@ -29,6 +31,23 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
   const navigate = useNavigate();
   const [accessOpen, setAccessOpen] = useState(true);
   const [instructionsOpen, setInstructionsOpen] = useState(true);
+  const [onRouteAt, setOnRouteAt] = useState<string | null>(job.on_route_at || null);
+  const [markingOnRoute, setMarkingOnRoute] = useState(false);
+
+  const markOnRoute = async () => {
+    setMarkingOnRoute(true);
+    try {
+      const ts = new Date().toISOString();
+      const { error } = await supabase.from('jobs').update({ on_route_at: ts } as any).eq('id', job.id);
+      if (error) throw error;
+      setOnRouteAt(ts);
+      toast.success('Client knows you are on the way.');
+    } catch (e: any) {
+      toast.error(e.message || 'Could not update — try again.');
+    } finally {
+      setMarkingOnRoute(false);
+    }
+  };
   // Default-open the Consumables panel when the property actually has
   // kits configured — saves a tap on every Airbnb turnover.
   const hasAnyKit =
@@ -72,16 +91,34 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
           </Card>
         )}
 
-        {/* Clock On Button */}
+        {/* On the way → Clock on flow */}
         {canClockOn && (
-          <Button
-            onClick={onClockOn}
-            disabled={clockingOn}
-            className="w-full h-16 text-lg font-extrabold rounded-2xl bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-primary-foreground gap-2"
-          >
-            <Clock className="h-6 w-6" />
-            {clockingOn ? 'Clocking On…' : 'Clock On'}
-          </Button>
+          <div className="space-y-2">
+            {onRouteAt ? (
+              <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-sm font-bold">
+                <Check className="w-4 h-4" />
+                Client notified — you marked on the way at {format(new Date(onRouteAt), 'h:mm a')}
+              </div>
+            ) : (
+              <Button
+                onClick={markOnRoute}
+                disabled={markingOnRoute}
+                variant="outline"
+                className="w-full h-12 text-base font-bold rounded-2xl gap-2 border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+              >
+                <Navigation className="w-5 h-5" />
+                {markingOnRoute ? 'Sending…' : "I'm on the way"}
+              </Button>
+            )}
+            <Button
+              onClick={onClockOn}
+              disabled={clockingOn}
+              className="w-full h-16 text-lg font-extrabold rounded-2xl bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 text-primary-foreground gap-2"
+            >
+              <Clock className="h-6 w-6" />
+              {clockingOn ? 'Clocking On…' : 'Clock On'}
+            </Button>
+          </div>
         )}
 
         {isCompleted && (
