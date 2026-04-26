@@ -259,7 +259,13 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
+      {/* onClick stopPropagation: this modal is rendered INSIDE PipelineCard
+          which has an onClick that navigates to /quoting. Radix Dialog portals
+          the DOM out, but React synthetic events still bubble through the
+          component tree. Without this, clicking Pick a date / Time / Cleaner
+          select / etc. would bubble back to the card's onClick and navigate
+          away. */}
+      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle className="text-xl font-extrabold text-primary flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
