@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Section, InfoItem } from '@/components/client-portal/Section';
 import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
+import RateCleanStars from '@/components/client-portal/RateCleanStars';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
@@ -108,6 +109,21 @@ export default function MagicLinkPropertyPage() {
     },
     enabled: !!propertyId && !!clientProp,
   });
+
+  const { data: feedback = [] } = useQuery({
+    queryKey: ['magic-feedback', propertyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('job_feedback')
+        .select('job_id, score')
+        .eq('property_id', propertyId!)
+        .not('score', 'is', null);
+      return data || [];
+    },
+    enabled: !!propertyId && !!clientProp,
+  });
+  const scoreByJob: Record<string, number> = {};
+  (feedback as any[]).forEach((f: any) => { scoreByJob[f.job_id] = f.score; });
 
   const completedJobs = jobs.filter((j: any) => j.status === 'complete' || j.status === 'completed');
   const upcomingJobs = jobs.filter((j: any) => ['scheduled', 'confirmed'].includes(j.status)).slice(0, 3);
@@ -224,13 +240,30 @@ export default function MagicLinkPropertyPage() {
             <div className="space-y-2">
               {completedJobs.map((job: any) => {
                 const audit = audits.find((a: any) => a.job_id === job.id);
+                const isSelected = selectedCleanId === job.id;
                 return (
-                  <button key={job.id} onClick={() => setSelectedCleanId(job.id)} className={`w-full text-left rounded-xl p-3 border text-sm transition-colors ${selectedCleanId === job.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}>
+                  <div
+                    key={job.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedCleanId(job.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCleanId(job.id); } }}
+                    className={`w-full text-left rounded-xl p-3 border text-sm transition-colors cursor-pointer ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{format(new Date(job.scheduled_date + 'T00:00:00'), 'dd MMM yyyy')}</span>
                       {audit && <span className={`font-bold text-xs ${(audit.percentage || 0) >= 80 ? 'text-primary' : 'text-orange-500'}`}>{audit.percentage}%</span>}
                     </div>
-                  </button>
+                    {token && (
+                      <div className="mt-2">
+                        <RateCleanStars
+                          token={token}
+                          jobId={job.id}
+                          existingScore={scoreByJob[job.id] || null}
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
