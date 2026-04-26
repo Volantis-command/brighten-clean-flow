@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { syncJobAssignment } from '@/lib/jobAssignment';
+import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
 
 interface JobDetailSlideOverProps {
   job: ScheduleJob | null;
@@ -41,6 +42,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [assigningCleaner, setAssigningCleaner] = useState(false);
+  const [convertingFreq, setConvertingFreq] = useState(false);
   const { data: cleanersList = [] } = useCleanersList();
 
   if (!job) return null;
@@ -68,6 +70,65 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
     job.cleaner_1_id ? { id: job.cleaner_1_id, name: nameMap[job.cleaner_1_id] || 'Unknown' } : null,
     job.cleaner_2_id ? { id: job.cleaner_2_id, name: nameMap[job.cleaner_2_id] || 'Unknown' } : null,
   ].filter(Boolean) as { id: string; name: string }[];
+
+  const handleFrequencyChange = async (newFreq: RecurringFrequency) => {
+    if (newFreq === (job.frequency || 'one-off')) return;
+
+    // Going FROM one-off TO recurring → create job_series + future child jobs
+    if ((job.frequency || 'one-off') === 'one-off' && newFreq !== 'one-off') {
+      if (!confirm(`Convert this job to ${newFreq}? This will auto-create future cleans at the same time and duration. You can edit or cancel each one individually.`)) return;
+      setConvertingFreq(true);
+      try {
+        // Pull the full job row — the slide-over only gets a slim ScheduleJob
+        // shape, but createRecurringJobSeries needs price + property + duration.
+        const { data: full } = await supabase
+          .from('jobs')
+          .select('property_id, scheduled_date, scheduled_time, estimated_duration, price_ex_gst, price_inc_gst, notes, cleaner_1_id, source')
+          .eq('id', job.id)
+          .single();
+        if (!full || !full.scheduled_date) throw new Error('Cannot convert: missing scheduled date');
+
+        const result = await createRecurringJobSeries({
+          parentJobId: job.id,
+          frequency: newFreq,
+          startDate: full.scheduled_date,
+          scheduledTime: full.scheduled_time,
+          propertyId: full.property_id,
+          priceExGst: full.price_ex_gst,
+          priceIncGst: full.price_inc_gst,
+          notes: full.notes,
+          cleanerId: full.cleaner_1_id,
+          estimatedDuration: full.estimated_duration,
+          source: full.source,
+        });
+        toast.success(`Converted to ${newFreq} — ${result.jobCount} future cleans created ✓`);
+        queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+      } catch (e: any) {
+        toast.error(`Failed to convert: ${e.message || 'unknown error'}`);
+      } finally {
+        setConvertingFreq(false);
+      }
+      return;
+    }
+
+    // Going FROM recurring TO one-off, or between recurring frequencies →
+    // just update the parent's frequency. We don't auto-delete future
+    // children — admin can cancel each one individually if they want.
+    setConvertingFreq(true);
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .update({ frequency: newFreq } as any)
+        .eq('id', job.id);
+      if (error) throw error;
+      toast.success(`Frequency set to ${newFreq}. Future cleans (if any) were not changed — cancel them individually.`);
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    } catch (e: any) {
+      toast.error(`Update failed: ${e.message || 'unknown error'}`);
+    } finally {
+      setConvertingFreq(false);
+    }
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     setUpdatingStatus(true);
@@ -162,6 +223,31 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Frequency — convert one-off to recurring (or change cadence) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase">Frequency</label>
+            <Select
+              value={(job.frequency as RecurringFrequency) || 'one-off'}
+              onValueChange={(v) => handleFrequencyChange(v as RecurringFrequency)}
+              disabled={convertingFreq}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one-off">One-off (single clean)</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+            {(job.frequency || 'one-off') === 'one-off' && (
+              <p className="text-[10px] text-muted-foreground">
+                Switching from one-off to recurring auto-creates future cleans at the same time + cleaner. Each is editable individually.
+              </p>
+            )}
           </div>
 
           {/* Date / Time / Duration */}

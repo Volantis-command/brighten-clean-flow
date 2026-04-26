@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
+import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
 
 /**
  * Opens from Dashboard -> Accepted column -> "Schedule Clean" / "Assign Cleaner".
@@ -101,6 +102,7 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
   const [cleaner1, setCleaner1] = useState<string>('');
   const [cleaner2, setCleaner2] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [frequency, setFrequency] = useState<RecurringFrequency>('one-off');
   const [submitting, setSubmitting] = useState(false);
 
   const fullName = [lead?.first_name, lead?.last_name].filter(Boolean).join(' ') || '—';
@@ -142,6 +144,7 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
     setCleaner1('');
     setCleaner2('');
     setNotes('');
+    setFrequency('one-off');
   }, [open, lead]);
 
   if (!lead) return null;
@@ -250,6 +253,32 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
         }
       }
 
+      // ── 3b. If recurring, create job_series + future child jobs ──
+      // Only on NEW jobs (not when updating an existing). To convert an
+      // existing one-off into recurring, use the Frequency dropdown on the
+      // Job Details slide-over (Schedule view → click a job).
+      let recurringJobCount = 0;
+      if (jobId && !existingJobId && frequency !== 'one-off') {
+        try {
+          const result = await createRecurringJobSeries({
+            parentJobId: jobId,
+            frequency,
+            startDate: scheduledDate,
+            scheduledTime: time,
+            propertyId: propertyId || null,
+            priceExGst: priceExGst,
+            priceIncGst: priceIncGst,
+            notes: notes || null,
+            cleanerId: cleaner1 || null,
+            estimatedDuration: parseInt(duration),
+            source: 'pipeline_schedule',
+          });
+          recurringJobCount = result.jobCount;
+        } catch (e: any) {
+          toast.warning(`Job saved but recurring series failed: ${e.message}. You can convert it via Job Details.`);
+        }
+      }
+
       // ── 4. Mark the quote_request as scheduled so it moves out of the Accepted column ──
       await supabase.from('quote_requests').update({
         status: 'scheduled',
@@ -257,10 +286,11 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
         preferred_time: time,
       }).eq('id', lead.id);
 
+      const recurringSuffix = recurringJobCount > 0 ? ` + ${recurringJobCount} recurring` : '';
       toast.success(
         existingJobId
           ? (cleaner1 ? 'Updated — cleaner notified ✓' : 'Updated ✓')
-          : (cleaner1 ? 'Scheduled + cleaner notified ✓' : 'Scheduled — assign a cleaner when ready')
+          : (cleaner1 ? `Scheduled + cleaner notified${recurringSuffix} ✓` : `Scheduled${recurringSuffix} — assign a cleaner when ready`)
       );
       queryClient.invalidateQueries({ queryKey: ['ops-pipeline'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
@@ -355,6 +385,25 @@ export default function ScheduleFromLeadModal({ open, lead, focusCleaner, onOpen
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Frequency — one-off vs recurring */}
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold">Frequency</Label>
+            <Select value={frequency} onValueChange={(v) => setFrequency(v as RecurringFrequency)}>
+              <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one-off">One-off (single clean)</SelectItem>
+                <SelectItem value="weekly">Weekly — repeats every 7 days</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly — repeats every 14 days</SelectItem>
+                <SelectItem value="monthly">Monthly — repeats every 4 weeks</SelectItem>
+              </SelectContent>
+            </Select>
+            {frequency !== 'one-off' && (
+              <p className="text-xs text-muted-foreground pt-1">
+                Future cleans auto-scheduled at the same time and duration. You can edit or cancel each one individually.
+              </p>
+            )}
           </div>
 
           {/* Cleaners — auto-focus if opened in "Assign Cleaner" mode */}
