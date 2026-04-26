@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock, CalendarDays } from 'lucide-react';
+import { TimeSelect } from '@/components/ui/time-select';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TermsModal } from '@/components/quote/TermsModal';
@@ -762,18 +763,13 @@ export default function QuoteViewPage() {
 
                 <div>
                   <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Start Time</label>
-                  <input
-                    type="time"
+                  <TimeSelect
                     value={preferredTime}
-                    onChange={(e) => setPreferredTime(e.target.value)}
-                    className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      colorScheme: 'dark',
-                    }}
+                    onChange={setPreferredTime}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white bg-white/[0.06] border border-white/10"
+                    placeholder="Flexible — we'll confirm"
                   />
-                  <p className="text-white/40 text-xs mt-1.5">Pick a specific start time — or leave it blank if you're flexible and we'll confirm.</p>
+                  <p className="text-white/40 text-xs mt-1.5">Pick a specific start time — or leave it as Flexible and we'll confirm.</p>
                 </div>
               </div>
 

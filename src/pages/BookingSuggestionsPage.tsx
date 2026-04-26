@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCleanersList } from '@/hooks/useCleanersList';
@@ -156,7 +157,7 @@ export default function BookingSuggestionsPage() {
           <div className="space-y-4">
             <div>
               <Label>Clean Time</Label>
-              <Input type="time" value={cleanTime} onChange={(e) => setCleanTime(e.target.value)} />
+              <TimeSelect value={cleanTime} onChange={setCleanTime} />
             </div>
             <div>
               <Label>Assign Cleaner</Label>

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Camera, CheckCircle2, Loader2, AlertTriangle, Phone, ImagePlus, MapPin, Clock, Navigation } from 'lucide-react';
@@ -862,11 +863,11 @@ export default function JobChecklistPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold text-foreground">Time In</Label>
-            <Input type="time" value={form.time_in} onChange={(e) => updateField('time_in', e.target.value)} className="h-14 rounded-2xl" disabled={isSubmitted} />
+            <TimeSelect value={form.time_in} onChange={(v) => updateField('time_in', v)} className="h-14 rounded-2xl" disabled={isSubmitted} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold text-foreground">Time Out</Label>
-            <Input type="time" value={form.time_out} onChange={(e) => updateField('time_out', e.target.value)} className="h-14 rounded-2xl" disabled={isSubmitted} />
+            <TimeSelect value={form.time_out} onChange={(v) => updateField('time_out', v)} className="h-14 rounded-2xl" disabled={isSubmitted} />
           </div>
         </div>
         {totalTime && (

@@ -7,6 +7,7 @@ import { useAllCleanerLeave, useAllCleanerAvailability } from '@/hooks/useCleane
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -369,7 +370,7 @@ export default function AddJobPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Start Time *">
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-14 rounded-2xl" />
+              <TimeSelect value={time} onChange={setTime} className="h-14 rounded-2xl" />
             </FormField>
             <FormField label="Estimated Duration">
               <Select value={duration} onValueChange={setDuration}>

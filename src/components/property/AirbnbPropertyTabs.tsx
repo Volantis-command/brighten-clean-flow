@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -268,10 +269,10 @@ export default function AirbnbPropertyTabs({ form, updateField }: AirbnbProperty
       <TabsContent value="schedule" className="space-y-4 mt-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Standard Checkout Time">
-            <Input type="time" value={form.checkout_time || '10:00'} onChange={(e) => updateField('checkout_time', e.target.value)} className="h-12 rounded-xl" />
+            <TimeSelect value={form.checkout_time || '10:00'} onChange={(v) => updateField('checkout_time', v)} className="h-12 rounded-xl" />
           </Field>
           <Field label="Standard Check-in Time">
-            <Input type="time" value={form.checkin_time || '14:00'} onChange={(e) => updateField('checkin_time', e.target.value)} className="h-12 rounded-xl" />
+            <TimeSelect value={form.checkin_time || '14:00'} onChange={(v) => updateField('checkin_time', v)} className="h-12 rounded-xl" />
           </Field>
         </div>
         {form.checkout_time && form.checkin_time && (

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
@@ -106,10 +107,9 @@ export function RescheduleJobModal({
           </div>
           <div>
             <Label>New Time *</Label>
-            <Input
-              type="time"
+            <TimeSelect
               value={newTime}
-              onChange={e => setNewTime(e.target.value)}
+              onChange={setNewTime}
               className="h-12 rounded-xl"
             />
           </div>

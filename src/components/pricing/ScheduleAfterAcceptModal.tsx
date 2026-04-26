@@ -5,6 +5,7 @@ import { useCleanersList } from '@/hooks/useCleanersList';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -310,11 +311,10 @@ export default function ScheduleAfterAcceptModal({
               {/* Specific Time */}
               <div className="space-y-1">
                 <Label className="text-xs text-gray-400">Start Time</Label>
-                <Input
-                  type="time"
+                <TimeSelect
                   value={customTime}
-                  onChange={(e) => setCustomTime(e.target.value)}
-                  className="bg-[#0A0F0E] border-[#1a2e2a] text-[#F0FDF4] h-12 rounded-xl focus:border-[#FEDB00]"
+                  onChange={setCustomTime}
+                  className="bg-[#0A0F0E] border-[#1a2e2a] text-[#F0FDF4] h-12 rounded-xl"
                 />
                 <p className="text-xs text-gray-500">Calendar event will be created for {customTime} with duration based on estimated hours</p>
               </div>

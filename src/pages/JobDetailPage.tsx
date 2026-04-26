@@ -11,6 +11,7 @@ import { formatDistanceToNow, isPast } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -49,6 +50,7 @@ export default function JobDetailPage() {
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
   const [priceNotes, setPriceNotes] = useState('');
+  const [confirmTime, setConfirmTime] = useState('08:00');
   const [savingPrice, setSavingPrice] = useState(false);
 
   const { data: job, isLoading } = useQuery({
@@ -70,6 +72,7 @@ export default function JobDetailPage() {
     if (job) {
       setPriceInput(job.price_ex_gst ? String(job.price_ex_gst) : '');
       setPriceNotes(job.price_notes || '');
+      if (job.scheduled_time) setConfirmTime(job.scheduled_time.slice(0, 5));
     }
   }, [job]);
 
@@ -941,11 +944,10 @@ export default function JobDetailPage() {
               </div>
               <div>
                 <Label className="text-sm font-semibold">Confirmed Start Time</Label>
-                <Input
-                  type="time"
-                  defaultValue={job.scheduled_time?.slice(0, 5) || '08:00'}
+                <TimeSelect
+                  value={confirmTime}
+                  onChange={setConfirmTime}
                   className="h-12 rounded-xl"
-                  id="confirm-time"
                 />
               </div>
               <div>
@@ -961,7 +963,6 @@ export default function JobDetailPage() {
                 onClick={async () => {
                   setSavingPrice(true);
                   const confirmDate = (document.getElementById('confirm-date') as HTMLInputElement)?.value || job.scheduled_date;
-                  const confirmTime = (document.getElementById('confirm-time') as HTMLInputElement)?.value || '08:00';
 
                   const { error } = await supabase.from('jobs').update({
                     scheduled_date: confirmDate,

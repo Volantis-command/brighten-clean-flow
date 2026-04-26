@@ -6,6 +6,7 @@ import { useAllCleanerAvailability } from '@/hooks/useCleanerConflicts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -280,7 +281,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
             </div>
             <div className="space-y-1">
               <Label className="text-sm font-semibold">Start Time *</Label>
-              <Input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl" />
+              <TimeSelect value={time} onChange={setTime} className="rounded-xl" />
             </div>
           </div>
 

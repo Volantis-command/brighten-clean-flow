@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check, X, ArrowLeft } from 'lucide-react';
@@ -232,7 +233,7 @@ export default function BookingRequestsPage() {
             </div>
             <div>
               <Label>Time</Label>
-              <Input type="time" value={confirmTime} onChange={e => setConfirmTime(e.target.value)} className="rounded-xl" />
+              <TimeSelect value={confirmTime} onChange={setConfirmTime} className="rounded-xl" />
             </div>
             <div>
               <Label>Assign Cleaner</Label>
