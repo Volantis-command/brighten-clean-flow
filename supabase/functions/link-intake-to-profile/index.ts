@@ -203,15 +203,42 @@ Deno.serve(async (req: Request) => {
       // magic-link portal).
       const randomPassword = crypto.randomUUID() + '!Aa1'; // meets pw complexity
 
-      // Try email first, fall back to phone-based pseudo-email
-      const authEmail = body.email || `${(body.phone || '').replace(/\D/g, '')}@client.brightly.cleaning`;
+      // Try the supplied email first, but only if it looks like a real
+      // email. Bad emails (just "jade", "n/a", missing @, etc) used to
+      // cascade-fail the whole accept flow; now we transparently fall
+      // back to the phone-based pseudo-email and keep going. The real
+      // email can be edited on the property/profile later.
+      const looksLikeEmail = (s: string | null | undefined): boolean =>
+        !!s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+      const phoneDigits = (body.phone || '').replace(/\D/g, '');
+      const phonePseudoEmail = phoneDigits ? `${phoneDigits}@client.brightly.cleaning` : null;
+      const authEmail = looksLikeEmail(body.email) ? body.email!.trim() : phonePseudoEmail;
 
-      const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+      if (!authEmail) {
+        throw new Error('Cannot create client account: need a valid email OR a phone number.');
+      }
+
+      let { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
         email: authEmail,
         password: randomPassword,
         email_confirm: true, // skip confirmation email
         user_metadata: { full_name: fullName, role: 'client' },
       });
+
+      // If createUser failed because the chosen email was already taken
+      // (e.g. they retried after a previous attempt), retry once with the
+      // phone pseudo-email so the flow doesn't dead-end.
+      if (authErr && /already registered|already been registered|duplicate/i.test(authErr.message) && authEmail !== phonePseudoEmail && phonePseudoEmail) {
+        const retry = await supabase.auth.admin.createUser({
+          email: phonePseudoEmail,
+          password: randomPassword,
+          email_confirm: true,
+          user_metadata: { full_name: fullName, role: 'client' },
+        });
+        authUser = retry.data;
+        authErr = retry.error;
+      }
+
       if (authErr) throw new Error(`auth createUser: ${authErr.message}`);
       clientProfileId = authUser.user.id;
 
