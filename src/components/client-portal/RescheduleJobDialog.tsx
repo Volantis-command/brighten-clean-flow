@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TimeSelect } from '@/components/ui/time-select';
 import { CalendarIcon, Loader2, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -23,12 +24,6 @@ interface Props {
     scheduled_time: string | null;
   } | null;
 }
-
-const TIME_WINDOWS = [
-  { value: 'morning', label: 'Morning', desc: '7am – 11am' },
-  { value: 'midday', label: 'Midday', desc: '11am – 2pm' },
-  { value: 'afternoon', label: 'Afternoon', desc: '2pm – 5pm' },
-];
 
 export default function RescheduleJobDialog({
   open, onOpenChange, token, propertyId, propertyName, job,
@@ -127,25 +122,16 @@ export default function RescheduleJobDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Time window (optional)</label>
-            <div className="grid grid-cols-3 gap-2">
-              {TIME_WINDOWS.map((tw) => (
-                <button
-                  key={tw.value}
-                  type="button"
-                  onClick={() => setNewTime(newTime === tw.value ? '' : tw.value)}
-                  className={cn(
-                    'rounded-xl border-2 p-2 text-center transition-all',
-                    newTime === tw.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-card hover:border-primary/50',
-                  )}
-                >
-                  <p className="font-bold text-xs">{tw.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{tw.desc}</p>
-                </button>
-              ))}
-            </div>
+            <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Preferred time (optional)</label>
+            <TimeSelect
+              value={newTime}
+              onChange={setNewTime}
+              stepMinutes={30}
+              startHour={6}
+              endHour={20}
+              placeholder="Same time as before"
+              className="h-12 rounded-xl bg-card"
+            />
           </div>
 
           <div className="space-y-2">

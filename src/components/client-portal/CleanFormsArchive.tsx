@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CompletionPhotoGallery from './CompletionPhotoGallery';
 import RateCleanStars from './RateCleanStars';
-import TipCleanerButton from './TipCleanerButton';
+// TipCleanerButton temporarily removed from UI per Brendan 2026-04-27.
+// The component + edge function (create-tip-checkout) + cleaner_tips
+// table are still in place — bring back by re-adding the import + the
+// JSX block in the rating row below.
 
 interface CleanFormsArchiveProps {
   // Token enables the rating CTA inside the expanded panel.
@@ -83,7 +86,8 @@ export default function CleanFormsArchive({
   };
 
   const downloadReport = (jobId: string) => {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${jobId}`;
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${jobId}${tokenParam}`;
     window.open(url, '_blank');
   };
 
@@ -200,16 +204,11 @@ export default function CleanFormsArchive({
                     </div>
 
                     {token && (
-                      <div className="rounded-lg bg-card border border-border p-3 flex flex-wrap items-center gap-3 justify-between">
+                      <div className="rounded-lg bg-card border border-border p-3">
                         <RateCleanStars
                           token={token}
                           jobId={job.id}
                           existingScore={scoreByJob[job.id] || null}
-                        />
-                        <TipCleanerButton
-                          token={token}
-                          jobId={job.id}
-                          cleanerName={job.cleaner_1_id ? (cleanerProfiles.find((p: any) => p.id === job.cleaner_1_id)?.full_name || null) : null}
                         />
                       </div>
                     )}
