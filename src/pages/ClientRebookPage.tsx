@@ -7,14 +7,9 @@ import { Loader2, CalendarIcon, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TimeSelect } from '@/components/ui/time-select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-const TIME_PREFERENCES = [
-  { value: 'morning', label: 'Morning', desc: '7am – 11am' },
-  { value: 'midday', label: 'Midday', desc: '11am – 2pm' },
-  { value: 'afternoon', label: 'Afternoon', desc: '2pm – 5pm' },
-];
 
 export default function ClientRebookPage() {
   // Two URL shapes supported:
@@ -246,26 +241,18 @@ export default function ClientRebookPage() {
           </Popover>
         </div>
 
-        {/* Time preference */}
+        {/* Preferred time */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Time Window</label>
-          <div className="grid grid-cols-3 gap-2">
-            {TIME_PREFERENCES.map((tp) => (
-              <button
-                key={tp.value}
-                onClick={() => setTimePreference(tp.value)}
-                className={cn(
-                  'rounded-2xl border-2 p-3 text-center transition-all',
-                  timePreference === tp.value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-card text-foreground hover:border-primary/50'
-                )}
-              >
-                <p className="font-bold text-sm">{tp.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{tp.desc}</p>
-              </button>
-            ))}
-          </div>
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Preferred Start Time</label>
+          <TimeSelect
+            value={timePreference}
+            onChange={setTimePreference}
+            stepMinutes={30}
+            startHour={6}
+            endHour={20}
+            placeholder="Pick a start time"
+            className="h-14 rounded-2xl text-base bg-card"
+          />
         </div>
 
         <Button

@@ -12,6 +12,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const jobId = url.searchParams.get("job_id");
+    const token = url.searchParams.get("token");
     if (!jobId) return new Response("Missing job_id", { status: 400 });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -20,6 +21,44 @@ Deno.serve(async (req) => {
 
     const { data: job } = await admin.from("jobs").select("*, properties(property_name, address, suburb)").eq("id", jobId).single();
     if (!job) return new Response("Job not found", { status: 404 });
+
+    // Authorization: caller must either be a portal client whose token
+    // links to the job's property, OR an authenticated staff user.
+    // Without one, the endpoint is closed (job_ids are uuids but we
+    // shouldn't rely on URL guessability).
+    if (token) {
+      const { data: tokenRow } = await admin
+        .from("client_properties")
+        .select("client_id")
+        .eq("portal_token", token)
+        .eq("portal_active", true)
+        .maybeSingle();
+      if (!tokenRow) return new Response("Invalid portal token", { status: 403 });
+      const { data: ownership } = await admin
+        .from("client_properties")
+        .select("id")
+        .eq("client_id", (tokenRow as any).client_id)
+        .eq("property_id", (job as any).property_id)
+        .eq("portal_active", true)
+        .maybeSingle();
+      if (!ownership) return new Response("Token does not own this job's property", { status: 403 });
+    } else {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return new Response("Missing token or auth header", { status: 401 });
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) return new Response("Invalid auth token", { status: 401 });
+      const { data: roleRow } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ["admin", "head_cleaner", "cleaner"])
+        .limit(1)
+        .maybeSingle();
+      if (!roleRow) return new Response("Staff role required", { status: 403 });
+    }
 
     const prop = (job as any).properties;
 
