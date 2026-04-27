@@ -392,7 +392,6 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                   const p = property as any;
                   if (p?.parking_instructions) blocks.push({ label: 'Parking', body: p.parking_instructions });
                   if (p?.guest_access_notes) blocks.push({ label: 'Guest access notes', body: p.guest_access_notes });
-                  if (p?.access_details) blocks.push({ label: 'Access details', body: p.access_details });
                   if (p?.special_instructions) blocks.push({ label: 'Special instructions', body: p.special_instructions });
                   if (p?.host_preferences) blocks.push({ label: 'Host preferences', body: p.host_preferences });
                   if (p?.focus_areas) blocks.push({ label: 'Focus areas', body: p.focus_areas });
