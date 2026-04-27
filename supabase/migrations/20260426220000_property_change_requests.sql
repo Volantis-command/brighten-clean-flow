@@ -63,6 +63,15 @@ CREATE POLICY "Clients view own property change requests"
 -- Register the new event type so the notification UI knows how to
 -- render it. Tier = 'important' — admin should see this on the
 -- alerts list, but it's not critical (no clean is blocked).
-INSERT INTO public.alert_tiers (event_type, tier)
-VALUES ('property_change_requested', 'important')
-ON CONFLICT (event_type) DO NOTHING;
+-- Production's alert_tiers may or may not have a unique constraint
+-- on event_type depending on when it was created — use a NOT EXISTS
+-- check rather than ON CONFLICT to be safe.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.alert_tiers WHERE event_type = 'property_change_requested') THEN
+    INSERT INTO public.alert_tiers (event_type, tier)
+    VALUES ('property_change_requested', 'important');
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'alert_tiers seed skipped: %', SQLERRM;
+END $$;
