@@ -67,7 +67,7 @@ export default function TipCleanerButton({ token, jobId, cleanerName }: TipClean
       </Button>
 
       <Dialog open={open} onOpenChange={(o) => { if (!submitting) setOpen(o); }}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Heart className="w-5 h-5 text-pink-500" /> Tip {friendlyName}

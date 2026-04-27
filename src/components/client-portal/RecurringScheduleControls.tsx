@@ -105,7 +105,7 @@ export default function RecurringScheduleControls({ token, propertyId }: Recurri
       </p>
 
       <Dialog open={!!action} onOpenChange={(o) => { if (!o && !submitting) { setAction(null); setNote(''); } }}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{action && ACTION_META[action].label}</DialogTitle>
             <DialogDescription>

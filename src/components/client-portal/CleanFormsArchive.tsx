@@ -93,33 +93,35 @@ export default function CleanFormsArchive({
   return (
     <div className="space-y-3">
       {/* Date filter */}
-      <div className="flex flex-wrap items-end gap-2 p-3 rounded-xl bg-muted/30 border border-border">
-        <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground uppercase tracking-wide mr-auto">
+      <div className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
+        <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground uppercase tracking-wide">
           <Search className="w-3.5 h-3.5" /> Search by date
         </div>
-        <div>
-          <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">From</label>
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="h-9 text-sm"
-          />
+        <div className="grid grid-cols-2 sm:grid-cols-[1fr,1fr,auto] gap-2 items-end">
+          <div>
+            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">From</label>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-10 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">To</label>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-10 text-sm"
+            />
+          </div>
+          {hasFilters && (
+            <Button size="sm" variant="ghost" onClick={clearFilters} className="gap-1 h-10 col-span-2 sm:col-span-1">
+              <X className="w-3.5 h-3.5" /> Clear
+            </Button>
+          )}
         </div>
-        <div>
-          <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">To</label>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="h-9 text-sm"
-          />
-        </div>
-        {hasFilters && (
-          <Button size="sm" variant="ghost" onClick={clearFilters} className="gap-1 h-9">
-            <X className="w-3.5 h-3.5" /> Clear
-          </Button>
-        )}
       </div>
 
       <p className="text-xs text-muted-foreground">
