@@ -16,6 +16,7 @@ import { JobHistoryTab } from '@/components/property/JobHistoryTab';
 import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
 import PendingChangesPanel from '@/components/property/PendingChangesPanel';
+import PropertyHeroPhotoUploader from '@/components/property/PropertyHeroPhotoUploader';
 import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import { toast } from 'sonner';
@@ -119,13 +120,21 @@ export default function PropertyProfilePage() {
           <TabsTrigger value="invoices" className="flex-1">Invoices</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
-          <div className="bg-card rounded-2xl shadow-md p-5 mt-4">
-            <PropertyProfileForm
-              property={property}
-              mode={profileMode}
-              isAdmin={isAdmin}
-              onSaved={() => setProfileMode('view')}
-            />
+          <div className="mt-4 space-y-4">
+            {isAdmin && (
+              <PropertyHeroPhotoUploader
+                propertyId={property.id}
+                currentUrl={(property as any).hero_image_url || null}
+              />
+            )}
+            <div className="bg-card rounded-2xl shadow-md p-5">
+              <PropertyProfileForm
+                property={property}
+                mode={profileMode}
+                isAdmin={isAdmin}
+                onSaved={() => setProfileMode('view')}
+              />
+            </div>
           </div>
         </TabsContent>
         <TabsContent value="passport">

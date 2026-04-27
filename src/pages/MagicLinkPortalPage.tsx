@@ -186,7 +186,7 @@ export default function MagicLinkPortalPage() {
                 onClick={() => navigate(`/client/${token}/property/${prop.id}`)}
                 rebookHref={`/client/${token}/property/${prop.id}/rebook`}
                 feedbackScores={scoresByProperty[prop.id] || []}
-                heroImageUrl={heroByProperty[prop.id] || null}
+                heroImageUrl={prop.hero_image_url || heroByProperty[prop.id] || null}
               />
             );
           })}
