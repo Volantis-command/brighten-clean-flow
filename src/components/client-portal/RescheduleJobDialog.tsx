@@ -87,7 +87,7 @@ export default function RescheduleJobDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!submitting) onOpenChange(o); }}>
-      <DialogContent className="rounded-2xl bg-card">
+      <DialogContent className="rounded-2xl bg-card max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-primary">
             <Repeat className="w-5 h-5" /> Reschedule clean
