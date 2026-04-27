@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import PhoneLoginPage from "./pages/PhoneLoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ClientLoginPage from "./pages/ClientLoginPage";
 import AppLayout from "./components/AppLayout";
@@ -176,10 +177,17 @@ function AuthenticatedArea({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      {/* Phone OTP is the canonical login for everyone. /login-emergency
+          is the legacy email+password page kept as a backdoor in case
+          the OTP flow breaks (Twilio outage, dashboard misconfig, etc).
+          Don't link to it from anywhere — admin uses it via direct URL. */}
+      <Route path="/login" element={<PhoneLoginPage />} />
+      <Route path="/login-emergency" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/auth/staff" element={<StaffMagicAuthPage />} />
-      <Route path="/client-login" element={<ClientLoginPage />} />
+
+      {/* Old auth surfaces redirect to the unified phone login. */}
+      <Route path="/auth/staff" element={<Navigate to="/login" replace />} />
+      <Route path="/client-login" element={<Navigate to="/login" replace />} />
 
       <Route path="/" element={<RootRedirect />} />
 
@@ -213,7 +221,7 @@ function AppRoutes() {
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
 
       {/* Client portal (SMS magic link session) */}
-      <Route path="/client-portal" element={<ClientLoginPage />} />
+      <Route path="/client-portal" element={<Navigate to="/login" replace />} />
       <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
       <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
       <Route path="/client-portal/property/:id" element={<ClientPortalPropertyPage />} />
