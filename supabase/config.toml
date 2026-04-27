@@ -102,3 +102,8 @@ verify_jwt = false
 
 [functions.hostaway-sync-reservations]
 verify_jwt = true
+
+# NOTE: 7-day session lifetime is set in the Supabase Dashboard
+# (Project Settings → Auth → "JWT expiry" / "Refresh token TTL"),
+# not in this file. Local Supabase reads this; hosted Supabase
+# reads dashboard settings.
