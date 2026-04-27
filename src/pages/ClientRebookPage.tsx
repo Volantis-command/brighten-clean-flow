@@ -145,7 +145,7 @@ export default function ClientRebookPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFDFC] flex justify-center items-center">
+      <div className="min-h-screen bg-background flex justify-center items-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -153,7 +153,7 @@ export default function ClientRebookPage() {
 
   if (!clientProp) {
     return (
-      <div className="min-h-screen bg-[#FDFDFC] flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
         <p className="text-4xl mb-3">🔒</p>
         <p className="text-lg font-bold text-foreground">Invalid or inactive link</p>
         <p className="text-sm text-muted-foreground mt-1">Contact Brightly for a new link.</p>
@@ -163,8 +163,8 @@ export default function ClientRebookPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#FDFDFC]">
-        <header className="bg-white border-b border-border/50 sticky top-0 z-40">
+      <div className="min-h-screen bg-background">
+        <header className="bg-card border-b border-border/50 sticky top-0 z-40">
           <div className="max-w-lg mx-auto px-4 py-3">
             <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
               Brightly<span className="text-accent">.</span>
@@ -175,7 +175,7 @@ export default function ClientRebookPage() {
           <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
           <h2 className="text-2xl font-extrabold text-foreground">Request received!</h2>
           <p className="text-muted-foreground">
-            We'll send you a quote and confirm your booking shortly.
+            We'll confirm your booking shortly.
           </p>
           <p className="text-sm text-muted-foreground mt-6">Keep an eye on your SMS. ✨</p>
         </main>
@@ -186,32 +186,32 @@ export default function ClientRebookPage() {
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
 
   return (
-    <div className="min-h-screen bg-[#FDFDFC]">
-      <header className="bg-white border-b border-border/50 sticky top-0 z-40">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border/50 sticky top-0 z-40">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
             Brightly<span className="text-accent">.</span>
           </h1>
-          <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Rebook</span>
+          <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Book a clean</span>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
         <div>
-          <h2 className="text-2xl font-extrabold text-foreground">Book your next clean 🧹</h2>
-          <p className="text-muted-foreground mt-1">Hi {firstName}, ready for another sparkle?</p>
+          <h2 className="text-2xl font-extrabold text-primary">Book your next clean</h2>
+          <p className="text-sm text-muted-foreground mt-1">Hi {firstName} — pick a date and time window.</p>
         </div>
 
         {/* Property info */}
         {property && (
-          <div className="bg-muted/50 rounded-xl p-4 space-y-1">
-            <p className="font-bold text-sm text-foreground">{property.property_name}</p>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-1">
+            <p className="font-bold text-foreground">{property.property_name}</p>
             <p className="text-xs text-muted-foreground">
-              📍 {[property.address, property.suburb].filter(Boolean).join(', ')}
+              {[property.address, property.suburb].filter(Boolean).join(', ')}
             </p>
             {(property.bedrooms || property.bathrooms) && (
               <p className="text-xs text-muted-foreground">
-                🛏 {property.bedrooms || 0} bed · {property.bathrooms || 0} bath
+                {property.bedrooms || 0} bed · {property.bathrooms || 0} bath
               </p>
             )}
           </div>
@@ -219,13 +219,13 @@ export default function ClientRebookPage() {
 
         {/* Date picker */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">Preferred Date</label>
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Preferred Date</label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  'w-full justify-start text-left font-normal',
+                  'w-full h-14 justify-start text-left font-normal rounded-2xl text-base bg-card',
                   !selectedDate && 'text-muted-foreground'
                 )}
               >
@@ -248,21 +248,21 @@ export default function ClientRebookPage() {
 
         {/* Time preference */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">Time Preference</label>
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Time Window</label>
           <div className="grid grid-cols-3 gap-2">
             {TIME_PREFERENCES.map((tp) => (
               <button
                 key={tp.value}
                 onClick={() => setTimePreference(tp.value)}
                 className={cn(
-                  'rounded-xl border-2 p-3 text-center transition-all',
+                  'rounded-2xl border-2 p-3 text-center transition-all',
                   timePreference === tp.value
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-white text-foreground hover:border-primary/50'
+                    : 'border-border bg-card text-foreground hover:border-primary/50'
                 )}
               >
                 <p className="font-bold text-sm">{tp.label}</p>
-                <p className="text-xs text-muted-foreground">{tp.desc}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{tp.desc}</p>
               </button>
             ))}
           </div>
@@ -271,13 +271,13 @@ export default function ClientRebookPage() {
         <Button
           onClick={handleSubmit}
           disabled={!selectedDate || !timePreference || submitting}
-          className="w-full h-12 text-base font-bold rounded-xl"
+          className="w-full h-14 text-base font-extrabold rounded-2xl"
         >
           {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Request Clean'}
         </Button>
 
         <p className="text-center text-muted-foreground text-xs">
-          We'll send you a quote and confirm once reviewed.
+          We'll confirm once the team reviews it.
         </p>
       </main>
     </div>
