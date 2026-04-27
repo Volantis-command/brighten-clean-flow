@@ -15,6 +15,7 @@ import AutoApprovalSettings from '@/components/client-portal/AutoApprovalSetting
 import PropertyCalendar from '@/components/client-portal/PropertyCalendar';
 import TurnaroundPanel from '@/components/client-portal/TurnaroundPanel';
 import RecurringScheduleControls from '@/components/client-portal/RecurringScheduleControls';
+import RescheduleJobDialog from '@/components/client-portal/RescheduleJobDialog';
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
 import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
@@ -25,6 +26,7 @@ export default function MagicLinkPropertyPage() {
   const [selectedCleanId, setSelectedCleanId] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [rescheduleJob, setRescheduleJob] = useState<any | null>(null);
 
   // Resolve the token to a client_id, then check that the requested
   // property belongs to that same client. The portal_token is unique
@@ -305,12 +307,24 @@ export default function MagicLinkPropertyPage() {
           ) : (
             <div className="space-y-2 mb-4">
               {upcomingJobs.map((job: any) => (
-                <div key={job.id} className="rounded-xl border border-border p-3 text-sm flex items-center justify-between">
-                  <div>
+                <div key={job.id} className="rounded-xl border border-border p-3 text-sm flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <p className="font-semibold">{format(new Date(job.scheduled_date + 'T00:00:00'), 'EEEE, dd MMM yyyy')}</p>
                     {job.scheduled_time && <p className="text-xs text-muted-foreground">{job.scheduled_time.slice(0, 5)}</p>}
                   </div>
-                  <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">Scheduled</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">Scheduled</span>
+                    {token && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => setRescheduleJob(job)}
+                      >
+                        Reschedule
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -319,6 +333,17 @@ export default function MagicLinkPropertyPage() {
             <RecurringScheduleControls token={token} propertyId={propertyId!} />
           )}
         </Section>
+
+        {token && (
+          <RescheduleJobDialog
+            open={!!rescheduleJob}
+            onOpenChange={(o) => { if (!o) setRescheduleJob(null); }}
+            token={token}
+            propertyId={propertyId!}
+            propertyName={property.property_name}
+            job={rescheduleJob}
+          />
+        )}
 
         {token && (
           <Section title="Automation">

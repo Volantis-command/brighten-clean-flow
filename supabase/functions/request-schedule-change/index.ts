@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const VALID_ACTIONS = new Set(["pause", "cancel", "skip_next"]);
+const VALID_ACTIONS = new Set(["pause", "cancel", "skip_next", "reschedule"]);
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -17,9 +17,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { token, property_id, action, note } = await req.json();
+    const { token, property_id, action, note, job_id, new_date, new_time } = await req.json();
     if (!token || !property_id || !action || !VALID_ACTIONS.has(action)) {
-      return new Response(JSON.stringify({ error: "token, property_id, action ('pause' | 'cancel' | 'skip_next') required" }), {
+      return new Response(JSON.stringify({ error: "token, property_id, action ('pause' | 'cancel' | 'skip_next' | 'reschedule') required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (action === "reschedule" && (!job_id || !new_date)) {
+      return new Response(JSON.stringify({ error: "reschedule requires job_id and new_date" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -63,11 +69,13 @@ Deno.serve(async (req: Request) => {
       pause: "wants to pause their recurring schedule",
       cancel: "wants to cancel their recurring cleans",
       skip_next: "wants to skip their next clean",
+      reschedule: `wants to reschedule a clean to ${new_date}${new_time ? ` ${new_time}` : ""}`,
     };
     const tierByAction: Record<string, string> = {
       cancel: "critical",
       pause: "important",
       skip_next: "important",
+      reschedule: "important",
     };
 
     try {
@@ -85,6 +93,9 @@ Deno.serve(async (req: Request) => {
           action,
           note: note || null,
           client_id: tokenRow.client_id,
+          job_id: job_id || null,
+          new_date: new_date || null,
+          new_time: new_time || null,
         },
         actor_id: tokenRow.client_id,
         target_role: "admin",
