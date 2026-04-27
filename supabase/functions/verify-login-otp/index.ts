@@ -93,17 +93,43 @@ Deno.serve(async (req: Request) => {
     const phoneDigits = phone.replace(/\D/g, "");
     const last9 = phoneDigits.slice(-9);
 
-    // Look up profile first (we control profiles; auth.users.phone is harder to query).
-    const { data: profile } = await supabase
+    // Look up ALL profiles matching the phone (a user may have a test
+    // cleaner account + an admin account with the same phone — pick the
+    // highest-privilege one so people don't get logged in as a side
+    // account).
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, phone")
-      .or(`phone.eq.${phone},phone.ilike.%${last9}`)
-      .maybeSingle();
-    if (!profile) {
+      .or(`phone.eq.${phone},phone.ilike.%${last9}`);
+    if (!profiles || profiles.length === 0) {
       return new Response(JSON.stringify({ error: "no account found for this phone — contact admin" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Resolve roles for each candidate, then pick the most privileged.
+    // Order: admin > head_cleaner > cleaner > client > (no role).
+    const ROLE_RANK: Record<string, number> = {
+      admin: 4, head_cleaner: 3, cleaner: 2, client: 1,
+    };
+    const ids = profiles.map((p: any) => p.id);
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", ids);
+    const roleByUser: Record<string, string> = {};
+    (roles || []).forEach((r: any) => {
+      const cur = roleByUser[r.user_id];
+      if (!cur || (ROLE_RANK[r.role] || 0) > (ROLE_RANK[cur] || 0)) {
+        roleByUser[r.user_id] = r.role;
+      }
+    });
+    const sorted = [...profiles].sort((a: any, b: any) => {
+      const ra = ROLE_RANK[roleByUser[a.id]] || 0;
+      const rb = ROLE_RANK[roleByUser[b.id]] || 0;
+      return rb - ra;
+    });
+    const profile = sorted[0];
 
     // Get the auth user's email so we can mint a magic link.
     const { data: authUser, error: getUserErr } = await supabase.auth.admin.getUserById(profile.id);
