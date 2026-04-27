@@ -45,6 +45,12 @@ verify_jwt = false
 [functions.create-booking-from-quote]
 verify_jwt = false
 
+[functions.request-login-otp]
+verify_jwt = false
+
+[functions.verify-login-otp]
+verify_jwt = false
+
 [functions.create-tip-checkout]
 verify_jwt = false
 
