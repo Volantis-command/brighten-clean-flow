@@ -390,23 +390,36 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                   // labelled blocks so the cleaner doesn't miss any.
                   const blocks: { label: string; body: string }[] = [];
                   const p = property as any;
-                  if (p?.parking_instructions) blocks.push({ label: 'Parking', body: p.parking_instructions });
-                  if (p?.guest_access_notes) blocks.push({ label: 'Guest access notes', body: p.guest_access_notes });
-                  if (p?.special_instructions) blocks.push({ label: 'Special instructions', body: p.special_instructions });
-                  if (p?.host_preferences) blocks.push({ label: 'Host preferences', body: p.host_preferences });
-                  if (p?.focus_areas) blocks.push({ label: 'Focus areas', body: p.focus_areas });
-                  if (p?.skip_areas) blocks.push({ label: 'Skip / don\u2019t clean', body: p.skip_areas });
-                  if (p?.preferences_notes) blocks.push({ label: 'Client preferences', body: p.preferences_notes });
-                  if (p?.product_restrictions) blocks.push({ label: 'Product restrictions', body: p.product_restrictions });
-                  // pet_situation may be on properties; pet_notes is a separate text field.
-                  if (p?.pet_situation) blocks.push({ label: 'Pets', body: p.pet_situation });
+                  // Coerce every field to a printable string. Some property
+                  // columns are jsonb on prod (e.g. some notes fields can
+                  // be arrays/objects from older intake flows). Rendering
+                  // an object directly in JSX throws React #31 "objects are
+                  // not valid as a React child" — that crashed cleaner
+                  // mobile after PR #107. asStr keeps everything safe.
+                  const asStr = (v: any): string | null => {
+                    if (v == null) return null;
+                    if (typeof v === 'string') return v.trim() || null;
+                    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+                    try { return JSON.stringify(v); } catch { return null; }
+                  };
+                  const push = (label: string, raw: any) => {
+                    const body = asStr(raw);
+                    if (body) blocks.push({ label, body });
+                  };
+                  push('Parking', p?.parking_instructions);
+                  push('Guest access notes', p?.guest_access_notes);
+                  push('Special instructions', p?.special_instructions);
+                  push('Host preferences', p?.host_preferences);
+                  push('Focus areas', p?.focus_areas);
+                  push('Skip / don\u2019t clean', p?.skip_areas);
+                  push('Client preferences', p?.preferences_notes);
+                  push('Product restrictions', p?.product_restrictions);
+                  push('Pets', p?.pet_situation);
                   if (p?.pet_notes && p.pet_notes !== p.pet_situation) {
-                    blocks.push({ label: 'Pet notes', body: p.pet_notes });
+                    push('Pet notes', p?.pet_notes);
                   }
-                  // Operational extras admin captures on the property passport
-                  // but cleaner needs at the door / on arrival.
-                  if (p?.neighbour_notes) blocks.push({ label: 'Neighbours', body: p.neighbour_notes });
-                  if (p?.bin_details) blocks.push({ label: 'Bins', body: p.bin_details });
+                  push('Neighbours', p?.neighbour_notes);
+                  push('Bins', p?.bin_details);
                   if (p?.guest_wifi) blocks.push({ label: 'Wi-Fi (cleaner can verify)', body: p.guest_wifi });
                   if (p?.amenities_notes) blocks.push({ label: 'Amenities notes', body: p.amenities_notes });
                   // Per-room notes from the property passport — kitchen,
