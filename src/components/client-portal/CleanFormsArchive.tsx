@@ -2,10 +2,9 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, Download, Star, ImageOff, MessageSquare, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Star, MessageSquare, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import CompletionPhotoGallery from './CompletionPhotoGallery';
 import RateCleanStars from './RateCleanStars';
 // TipCleanerButton temporarily removed from UI per Brendan 2026-04-27.
 // The component + edge function (create-tip-checkout) + cleaner_tips
@@ -64,23 +63,6 @@ export default function CleanFormsArchive({
       return map;
     },
     enabled: !!propertyId,
-  });
-
-  // Lazy-load photos for the currently-expanded job. Avoids fetching
-  // hundreds of photo rows up-front for long-running properties.
-  // Uses job_photos (the table cleaners actually upload to). The legacy
-  // `photos` table is from the old admin-side checklist flow and was
-  // returning empty results here — that's why every clean read "No
-  // photos uploaded for this clean" even when the cleaner had submitted.
-  const { data: openPhotos = [], isLoading: photosLoading } = useQuery({
-    queryKey: ['archive-photos', openJobId],
-    queryFn: async () => {
-      if (!openJobId) return [];
-      const { data } = await supabase
-        .from('job_photos').select('*').eq('job_id', openJobId).order('room_label');
-      return data || [];
-    },
-    enabled: !!openJobId,
   });
 
   const cleanerName = (id: string | null) => {
@@ -189,6 +171,27 @@ export default function CleanFormsArchive({
                           ))}
                         </div>
                       )}
+                      {/* Inline PDF button — Brendan asked for the PDF
+                          link directly on the row so a client can grab a
+                          report without expanding first. The full
+                          report (incl. print stylesheet) lives at
+                          /report/:report_token. */}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label="View / print clean report"
+                        onClick={(e) => { e.stopPropagation(); openReport(job); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openReport(job);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" /> PDF
+                      </span>
                       {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </div>
@@ -205,20 +208,11 @@ export default function CleanFormsArchive({
                       </div>
                     )}
 
-                    <div>
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                        Photos
-                      </div>
-                      {photosLoading ? (
-                        <p className="text-sm text-muted-foreground">Loading photos…</p>
-                      ) : openPhotos.length > 0 ? (
-                        <CompletionPhotoGallery photos={openPhotos as any[]} />
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <ImageOff className="w-4 h-4" /> No photos uploaded for this clean.
-                        </div>
-                      )}
-                    </div>
+                    {/* Photos live in the clean report (PDF link
+                        above + the bottom button). Showing them in the
+                        archive too was duplication — Brendan
+                        2026-04-28: "they are in the form, so no need
+                        to be here as well". */}
 
                     {token && (
                       <div className="rounded-lg bg-card border border-border p-3">
