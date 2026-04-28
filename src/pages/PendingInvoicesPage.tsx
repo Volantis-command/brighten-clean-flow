@@ -1,19 +1,19 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Send, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 import { format, differenceInDays, differenceInMinutes } from 'date-fns';
-import { toast } from 'sonner';
-import { useState } from 'react';
-import { retrySendInvoice } from '@/lib/jobInvoice';
 
 /**
- * "Invoices needing attention" — auto-send is now the default (Fix 3).
- * This page is the safety net:
- *   - Stuck drafts: invoice_status='draft' for >5 minutes (auto-send presumably failed)
- *   - Authorised but not emailed: invoice_status='authorised' (Xero accepted, email failed)
- *   - Overdue: invoice_status='sent' for >7 days without payment
+ * "Invoices needing attention" —
+ *   - Drafts in Xero: invoice_status='draft' (Brendan sends manually
+ *     from Xero now — see triggerJobAutoInvoice in src/lib/jobInvoice.ts).
+ *     Listed here just so admin has a quick view of which jobs have
+ *     drafts waiting + a deep-link into Xero.
+ *   - Authorised but not emailed: legacy state from when Brightly
+ *     used to auto-send. Surface them so they don't get forgotten.
+ *   - Overdue: invoice_status='sent' for >7 days without payment.
  */
 
 const STUCK_THRESHOLD_MINUTES = 5;
@@ -21,8 +21,6 @@ const OVERDUE_THRESHOLD_DAYS = 7;
 
 export default function PendingInvoicesPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const { data: stuck = [], isLoading: loadingStuck } = useQuery({
     queryKey: ['stuck-invoices'],
@@ -33,10 +31,12 @@ export default function PendingInvoicesPage() {
         .in('invoice_status', ['draft', 'authorised'])
         .not('xero_invoice_id', 'is', null)
         .order('invoice_raised_at', { ascending: true });
-      // Only show those that have actually been "stuck" for a while
+      // Only surface drafts older than the threshold so a freshly-completed
+      // clean isn't immediately flagged. The list is informational now —
+      // admin actions happen in Xero.
       const now = Date.now();
       return (data || []).filter((j: any) => {
-        if (!j.invoice_raised_at) return true; // no raised_at = older / unknown, surface it
+        if (!j.invoice_raised_at) return true;
         return differenceInMinutes(now, new Date(j.invoice_raised_at)) >= STUCK_THRESHOLD_MINUTES;
       });
     },
@@ -56,19 +56,6 @@ export default function PendingInvoicesPage() {
     },
     refetchInterval: 60_000,
   });
-
-  const handleRetry = async (jobId: string) => {
-    setRetryingId(jobId);
-    const res = await retrySendInvoice(jobId);
-    if (res.ok) {
-      toast.success('Invoice sent ✓');
-      queryClient.invalidateQueries({ queryKey: ['stuck-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['outstanding-invoice-total'] });
-    } else {
-      toast.error('Send failed: ' + (res.error || 'unknown'));
-    }
-    setRetryingId(null);
-  };
 
   const isLoading = loadingStuck || loadingOverdue;
   const totalNeedingAttention = stuck.length + overdue.length;
@@ -100,10 +87,10 @@ export default function PendingInvoicesPage() {
               <div>
                 <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  Auto-send failed
+                  Drafts in Xero
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  These drafts didn't send automatically. Tap retry to send now.
+                  Brightly creates the draft, you authorise + send from Xero.
                 </p>
               </div>
 
@@ -129,22 +116,12 @@ export default function PendingInvoicesPage() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
-                      <Button
-                        onClick={() => handleRetry(job.id)}
-                        disabled={retryingId === job.id}
-                        className="gap-2 bg-brightly hover:bg-brightly-hover text-white font-bold"
-                      >
-                        {retryingId === job.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        Retry Send
-                      </Button>
                       {job.xero_invoice_id && (
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs gap-1"
+                          className="gap-2 font-bold"
                           onClick={() => window.open(`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${job.xero_invoice_id}`, '_blank')}
                         >
-                          <ExternalLink className="h-3 w-3" /> View in Xero
+                          <ExternalLink className="h-4 w-4" /> Open in Xero
                         </Button>
                       )}
                     </div>

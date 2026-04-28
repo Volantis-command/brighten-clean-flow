@@ -150,69 +150,35 @@ Deno.serve(async (req) => {
       property.client_type === 'airbnb' ? 'Airbnb Turnover Clean' : 'House Clean';
     const dateStr = job.scheduled_date || new Date().toISOString().slice(0, 10);
 
-    // Build line items
-    const lineItems: any[] = [];
-
-    // Pull breakdown from linked quote if present
-    let labour = 0;
-    let linen = 0;
-    let consumables = 0;
-    let extras = 0;
+    // Sell price ex GST. Prefer the job row (this is what admins see in
+    // the Brightly UI and what should match the invoice). Fall back to
+    // the linked quote's sell_price_ex_gst only when the job is missing
+    // a price — defensive for older jobs predating price-on-job.
+    //
+    // Why we DON'T break the line into labour / linen / consumables
+    // any more: those columns on `quotes` are internal COSTS, not
+    // customer-facing prices. Using them produced invoices that
+    // underbilled by the margin amount (Brendan 2026-04-28: Olivia's
+    // job was $200 inc on the Brightly side but the auto-invoice came
+    // out at $120 because it was summing the cost columns instead of
+    // the sell price). One line item @ sell price = one number that
+    // matches the quote.
     let totalEx = Number(job.price_ex_gst) || 0;
-
-    if (job.linked_quote_id) {
+    if (!(totalEx > 0) && job.linked_quote_id) {
       const { data: quote } = await supabase
         .from('quotes')
-        .select(
-          'labour_cost, linen_cost, consumables_cost, sell_price_ex_gst, total_cost, specialist_chemicals'
-        )
+        .select('sell_price_ex_gst')
         .eq('id', job.linked_quote_id)
         .maybeSingle();
-      if (quote) {
-        labour = Number(quote.labour_cost) || 0;
-        linen = Number(quote.linen_cost) || 0;
-        consumables = Number(quote.consumables_cost) || 0;
-        extras = Number(quote.specialist_chemicals) || 0;
-        totalEx = Number(quote.sell_price_ex_gst) || totalEx;
-      }
+      if (quote) totalEx = Number(quote.sell_price_ex_gst) || 0;
     }
 
-    // If we have a breakdown, use it; otherwise fall back to a single line
-    if (labour + linen + consumables + extras > 0) {
-      if (labour > 0)
-        lineItems.push({
-          Description: `Labour — ${cleanType} at ${property.property_name || 'property'} (${dateStr})`,
-          Quantity: 1,
-          UnitAmount: labour.toFixed(2),
-          AccountCode: '200',
-          TaxType: 'OUTPUT',
-        });
-      if (extras > 0)
-        lineItems.push({
-          Description: 'Extras / specialist chemicals',
-          Quantity: 1,
-          UnitAmount: extras.toFixed(2),
-          AccountCode: '200',
-          TaxType: 'OUTPUT',
-        });
-      if (linen > 0)
-        lineItems.push({
-          Description: 'Linen hire & laundry',
-          Quantity: 1,
-          UnitAmount: linen.toFixed(2),
-          AccountCode: '200',
-          TaxType: 'OUTPUT',
-        });
-      if (consumables > 0)
-        lineItems.push({
-          Description: 'Consumables',
-          Quantity: 1,
-          UnitAmount: consumables.toFixed(2),
-          AccountCode: '200',
-          TaxType: 'OUTPUT',
-        });
-    } else {
-      lineItems.push({
+    if (!(totalEx > 0)) {
+      throw new Error('No price set on job — cannot create invoice');
+    }
+
+    const lineItems = [
+      {
         Description: `${cleanType} — ${property.property_name || 'Property'}${
           property.suburb ? ` (${property.suburb})` : ''
         } — ${dateStr}`,
@@ -220,12 +186,8 @@ Deno.serve(async (req) => {
         UnitAmount: totalEx.toFixed(2),
         AccountCode: '200',
         TaxType: 'OUTPUT',
-      });
-    }
-
-    if (lineItems.length === 0 || totalEx <= 0) {
-      throw new Error('No price set on job — cannot create invoice');
-    }
+      },
+    ];
 
     // Get Xero token
     const { access_token, tenant_id } = await getValidToken(supabase);
