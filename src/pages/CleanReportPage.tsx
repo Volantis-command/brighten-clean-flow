@@ -168,17 +168,50 @@ export default function CleanReportPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background print:bg-white">
+    <div className="min-h-screen bg-background print:bg-white clean-report-root">
+      {/*
+        Print stylesheet — Tailwind's bg-background / text-foreground
+        resolve through CSS variables that are dark in dark mode, so the
+        default print output came out near-black (Brendan: "the PDF
+        download isn't working"). Force the entire page to a light, ink-
+        friendly palette only when printing. Also paginate photos so
+        they don't get cropped halfway across a page break.
+      */}
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          html, body { background: #ffffff !important; color: #1a1a1a !important; }
+          .clean-report-root, .clean-report-root * {
+            background: transparent !important;
+            color: #1a1a1a !important;
+            box-shadow: none !important;
+            border-color: #d1d5db !important;
+          }
+          .clean-report-root .clean-report-header {
+            background: #ffffff !important;
+            color: #1B4332 !important;
+            border-bottom: 2px solid #1B4332 !important;
+          }
+          .clean-report-root .clean-report-header * { color: #1B4332 !important; }
+          .clean-report-root img, .clean-report-root section {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .clean-report-root img { max-width: 100% !important; height: auto !important; }
+          /* Ensure browser prints background colors on photos / signatures */
+          .clean-report-root { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
       {/* Header */}
-      <div className="bg-[#1B4332] text-white px-5 pt-8 pb-6 print:bg-white print:text-[#1B4332] relative">
+      <div className="clean-report-header bg-[#1B4332] text-white px-5 pt-8 pb-6 relative">
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Nunito, sans-serif" }}>
           Brightly<span className="text-[#52B788]">.</span>
         </h1>
-        <p className="text-white/70 text-sm mt-1 print:text-[#1B4332]/70">Clean Report</p>
+        <p className="text-white/70 text-sm mt-1">Clean Report</p>
         <h2 className="text-xl font-bold mt-4">{property?.property_name || "Property"}</h2>
-        <p className="text-white/70 text-sm print:text-[#1B4332]/70">{[property?.address, property?.suburb].filter(Boolean).join(", ")}</p>
-        <p className="text-white/80 text-sm mt-2 print:text-[#1B4332]">{finishedTime}</p>
-        <p className="text-white/70 text-sm print:text-[#1B4332]/70">Cleaned by {cleanerNames}</p>
+        <p className="text-white/70 text-sm">{[property?.address, property?.suburb].filter(Boolean).join(", ")}</p>
+        <p className="text-white/80 text-sm mt-2">{finishedTime}</p>
+        <p className="text-white/70 text-sm">Cleaned by {cleanerNames}</p>
         <button
           onClick={() => window.print()}
           className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold print:hidden"

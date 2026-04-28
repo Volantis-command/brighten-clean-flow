@@ -6,7 +6,6 @@ import { format, differenceInMinutes } from 'date-fns';
 import { ArrowLeft, Loader2, Download, CheckCircle2, AlertTriangle, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Section, InfoItem } from '@/components/client-portal/Section';
-import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import CleanerProfileChip from '@/components/client-portal/CleanerProfileChip';
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
@@ -63,18 +62,6 @@ export default function ClientPortalPropertyPage() {
 
   const lastCompleteJob = jobs.find((j: any) => j.status === 'complete' || j.status === 'completed');
   const activeJobId = selectedCleanId || lastCompleteJob?.id;
-
-  const { data: photos = [] } = useQuery({
-    queryKey: ['cp-photos', activeJobId],
-    queryFn: async () => {
-      if (!activeJobId) return [];
-      // job_photos is what cleaners upload to (the legacy `photos` table
-      // is empty for new cleans, which made this gallery always blank).
-      const { data } = await supabase.from('job_photos').select('*').eq('job_id', activeJobId).order('room_label');
-      return data || [];
-    },
-    enabled: !!activeJobId,
-  });
 
   const { data: audits = [] } = useQuery({
     queryKey: ['cp-qc', propertyId],
@@ -211,12 +198,11 @@ export default function ClientPortalPropertyPage() {
           </Section>
         )}
 
-        {/* Photo Gallery */}
-        {photos.length > 0 && (
-          <Section title="Completion Photos">
-            <CompletionPhotoGallery photos={photos} />
-          </Section>
-        )}
+        {/* Photos live inside the clean report (`/report/:report_token`)
+            alongside the cleaner checklist, signatures, QC score, and
+            issues — the property page links into the report rather than
+            duplicating its content. Brendan 2026-04-28: "we do not need
+            these photos here, we only need the completed cleaner form." */}
 
         {/* Issues */}
         {(issues as any[]).length > 0 && (

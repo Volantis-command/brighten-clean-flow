@@ -6,7 +6,6 @@ import { ArrowLeft, Loader2, Download, CheckCircle2, AlertTriangle, Clock, Trend
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { Section, InfoItem } from '@/components/client-portal/Section';
-import CompletionPhotoGallery from '@/components/client-portal/CompletionPhotoGallery';
 import IssuesList from '@/components/client-portal/IssuesList';
 import PassportEditor from '@/components/client-portal/PassportEditor';
 import RateCleanStars from '@/components/client-portal/RateCleanStars';
@@ -93,18 +92,6 @@ export default function MagicLinkPropertyPage() {
 
   const lastCompleteJob = jobs.find((j: any) => j.status === 'complete' || j.status === 'completed');
   const activeJobId = selectedCleanId || lastCompleteJob?.id;
-
-  const { data: photos = [] } = useQuery({
-    queryKey: ['magic-photos', activeJobId],
-    queryFn: async () => {
-      if (!activeJobId) return [];
-      // job_photos = what cleaners actually upload to (legacy `photos`
-      // table is empty for new cleans).
-      const { data } = await supabase.from('job_photos').select('*').eq('job_id', activeJobId).order('room_label');
-      return data || [];
-    },
-    enabled: !!activeJobId,
-  });
 
   const { data: audits = [] } = useQuery({
     queryKey: ['magic-qc', propertyId],
@@ -250,12 +237,11 @@ export default function MagicLinkPropertyPage() {
           </Section>
         )}
 
-        {/* Photos */}
-        {photos.length > 0 && (
-          <Section title="Completion Photos">
-            <CompletionPhotoGallery photos={photos} />
-          </Section>
-        )}
+        {/* Photos live inside the clean report (`/report/:report_token`)
+            alongside checklist + signatures + QC + cleaner notes. The
+            property page links into the report rather than duplicating
+            it. Brendan 2026-04-28: "we do not need these photos here,
+            we only need the completed cleaner form." */}
 
         {/* Issues */}
         <Section title="Issues & Flags">
