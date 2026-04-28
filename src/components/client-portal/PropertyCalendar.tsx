@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths,
-  format, isSameMonth, isSameDay, isToday,
+  format, isSameMonth, isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Download, FileText, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 interface PropertyCalendarProps {
@@ -20,11 +21,25 @@ const STATUS_DOT: Record<string, string> = {
   in_progress: 'bg-amber-500',
   scheduled: 'bg-blue-500',
   confirmed: 'bg-blue-500',
+  awaiting_cleaner: 'bg-blue-500',
+  awaiting_cleaner_acceptance: 'bg-blue-500',
   cancelled: 'bg-muted-foreground',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  completed: 'Completed',
+  complete: 'Completed',
+  in_progress: 'In progress',
+  scheduled: 'Scheduled',
+  confirmed: 'Confirmed',
+  awaiting_cleaner: 'Scheduled',
+  awaiting_cleaner_acceptance: 'Scheduled',
+  cancelled: 'Cancelled',
 };
 
 export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCalendarProps) {
   const [cursor, setCursor] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Build the month grid: pad to start-of-week / end-of-week so the
   // calendar always renders 5–6 complete rows.
@@ -58,6 +73,11 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
       toast.error('Could not copy. Tap Download instead.');
     }
   };
+
+  const selectedJobs = selectedDate ? (jobsByDate[selectedDate] || []) : [];
+  const selectedDateLabel = selectedDate
+    ? format(new Date(selectedDate + 'T00:00:00'), 'EEEE, d MMMM yyyy')
+    : '';
 
   return (
     <div className="space-y-3">
@@ -98,33 +118,41 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
         ))}
       </div>
 
-      {/* Grid */}
+      {/* Grid — each cell is a button so the client can drill into a
+          day's cleans. Empty days are still buttons (disabled) to keep
+          the grid touch-target consistent. */}
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const ds = format(day, 'yyyy-MM-dd');
           const dayJobs = jobsByDate[ds] || [];
           const isCur = isSameMonth(day, cursor);
           const today = isToday(day);
+          const hasJobs = dayJobs.length > 0;
           return (
-            <div
+            <button
               key={ds}
-              className={`aspect-square rounded-lg border text-xs p-1 flex flex-col ${
+              type="button"
+              disabled={!hasJobs}
+              onClick={() => hasJobs && setSelectedDate(ds)}
+              className={`aspect-square rounded-lg border text-xs p-1 flex flex-col text-left transition-colors ${
                 isCur ? 'bg-card border-border' : 'bg-muted/30 border-transparent text-muted-foreground'
-              } ${today ? 'ring-2 ring-primary' : ''}`}
+              } ${today ? 'ring-2 ring-primary' : ''} ${
+                hasJobs ? 'hover:border-primary hover:bg-primary/5 cursor-pointer' : 'cursor-default'
+              }`}
             >
               <div className="font-bold leading-none">{format(day, 'd')}</div>
-              {dayJobs.length > 0 && (
+              {hasJobs && (
                 <div className="flex flex-wrap gap-0.5 mt-auto">
                   {dayJobs.slice(0, 4).map((j: any) => (
                     <div
                       key={j.id}
                       className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[j.status] || 'bg-muted-foreground'}`}
-                      title={`${j.status} ${j.scheduled_time || ''}`}
+                      title={`${STATUS_LABEL[j.status] || j.status} ${j.scheduled_time || ''}`}
                     />
                   ))}
                 </div>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -136,6 +164,56 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Scheduled</span>
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" /> Cancelled</span>
       </div>
+
+      {/* Day-detail modal — opens when client taps a day with jobs.
+          Each job lists time, status, and (if completed and the job
+          has a report_token) a link to the full clean report. */}
+      <Dialog open={!!selectedDate} onOpenChange={(open) => { if (!open) setSelectedDate(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">{selectedDateLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {selectedJobs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No cleans on this day.</p>
+            ) : (
+              selectedJobs.map((j: any) => {
+                const isCompleted = j.status === 'complete' || j.status === 'completed';
+                const reportHref = isCompleted && j.report_token ? `/report/${j.report_token}` : null;
+                return (
+                  <div key={j.id} className="rounded-xl border border-border p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${STATUS_DOT[j.status] || 'bg-muted-foreground'}`} />
+                        <span className="text-sm font-bold">
+                          {STATUS_LABEL[j.status] || j.status}
+                        </span>
+                      </div>
+                      {j.scheduled_time && (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {j.scheduled_time.slice(0, 5)}
+                        </span>
+                      )}
+                    </div>
+                    {reportHref ? (
+                      <Button asChild size="sm" variant="outline" className="w-full gap-2">
+                        <a href={reportHref} target="_blank" rel="noopener noreferrer">
+                          <FileText className="w-3.5 h-3.5" /> View clean report
+                        </a>
+                      </Button>
+                    ) : isCompleted ? (
+                      <p className="text-xs text-muted-foreground">Report not available for this clean.</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Report will appear here once the clean is finished.</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

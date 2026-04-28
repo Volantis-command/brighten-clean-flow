@@ -66,8 +66,11 @@ Deno.serve(async (req) => {
     const cleanerIds = [job.cleaner_1_id, job.cleaner_2_id].filter(Boolean);
     const { data: cleaners } = cleanerIds.length ? await admin.from("profiles").select("full_name").in("id", cleanerIds) : { data: [] };
 
-    // Fetch photos
-    const { data: photos } = await admin.from("photos").select("*").eq("job_id", jobId).order("room_label");
+    // Fetch photos — job_photos is what cleaners actually upload to.
+    // The legacy `photos` table is from the old admin checklist flow
+    // and has been empty for new cleans, so the report rendered with
+    // no photos despite the cleaner submitting them.
+    const { data: photos } = await admin.from("job_photos").select("*").eq("job_id", jobId).order("room_label");
 
     // Fetch QC audit
     const { data: audit } = await admin.from("qc_audits").select("*").eq("job_id", jobId).maybeSingle();
@@ -131,7 +134,7 @@ Deno.serve(async (req) => {
     <div class="section">
       <div class="room-label">${room}</div>
       <div class="photos">
-        ${roomPhotos.map((p: any) => `<img src="${p.file_url}" alt="${room}" />`).join('')}
+        ${roomPhotos.map((p: any) => `<img src="${p.public_url || p.file_url}" alt="${room}" />`).join('')}
       </div>
     </div>
   `).join('')}

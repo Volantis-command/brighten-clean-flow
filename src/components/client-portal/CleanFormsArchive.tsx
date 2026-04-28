@@ -68,12 +68,16 @@ export default function CleanFormsArchive({
 
   // Lazy-load photos for the currently-expanded job. Avoids fetching
   // hundreds of photo rows up-front for long-running properties.
+  // Uses job_photos (the table cleaners actually upload to). The legacy
+  // `photos` table is from the old admin-side checklist flow and was
+  // returning empty results here — that's why every clean read "No
+  // photos uploaded for this clean" even when the cleaner had submitted.
   const { data: openPhotos = [], isLoading: photosLoading } = useQuery({
     queryKey: ['archive-photos', openJobId],
     queryFn: async () => {
       if (!openJobId) return [];
       const { data } = await supabase
-        .from('photos').select('*').eq('job_id', openJobId).order('room_label');
+        .from('job_photos').select('*').eq('job_id', openJobId).order('room_label');
       return data || [];
     },
     enabled: !!openJobId,
@@ -85,10 +89,23 @@ export default function CleanFormsArchive({
     return p?.full_name?.split(' ')[0] || null;
   };
 
-  const downloadReport = (jobId: string) => {
-    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${jobId}${tokenParam}`;
-    window.open(url, '_blank');
+  // Open the in-app /report/:report_token page (mobile-friendly, fully
+  // styled, includes photos + checklist + completion form + signatures).
+  // The legacy edge function returned raw HTML that browsers sometimes
+  // rendered as plain text and was missing the bulk of the cleaner's
+  // submitted data. The user can use the browser's "Print to PDF" from
+  // the report page if they need a file.
+  const openReport = (job: any) => {
+    if (!job.report_token) {
+      // Older jobs predate the report_token column. Fall back to the
+      // legacy edge function so the button still does something rather
+      // than silently failing.
+      const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${job.id}${tokenParam}`;
+      window.open(url, '_blank');
+      return;
+    }
+    window.open(`/report/${job.report_token}`, '_blank');
   };
 
   const clearFilters = () => { setFromDate(''); setToDate(''); };
@@ -217,9 +234,9 @@ export default function CleanFormsArchive({
                       variant="outline"
                       size="sm"
                       className="gap-1.5"
-                      onClick={() => downloadReport(job.id)}
+                      onClick={() => openReport(job)}
                     >
-                      <Download className="w-4 h-4" /> Download clean report (PDF)
+                      <Download className="w-4 h-4" /> View / print clean report
                     </Button>
                   </div>
                 )}

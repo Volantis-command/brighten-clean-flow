@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     if (propertyIds.length > 0) {
       const { data } = await supabase
         .from("jobs")
-        .select("id, scheduled_date, scheduled_time, status, price_inc_gst, price_ex_gst, property_id, cleaner_1_id, cleaner_2_id, feedback_score, notes, clean_type, invoice_status, invoice_amount, xero_invoice_number, invoice_raised_at, invoice_sent_at, invoice_paid_at")
+        .select("id, scheduled_date, scheduled_time, status, price_inc_gst, price_ex_gst, property_id, cleaner_1_id, cleaner_2_id, feedback_score, notes, clean_type, invoice_status, invoice_amount, xero_invoice_number, invoice_raised_at, invoice_sent_at, invoice_paid_at, report_token")
         .in("property_id", propertyIds)
         .order("scheduled_date", { ascending: false });
       jobs = data || [];

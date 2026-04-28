@@ -98,7 +98,9 @@ export default function MagicLinkPropertyPage() {
     queryKey: ['magic-photos', activeJobId],
     queryFn: async () => {
       if (!activeJobId) return [];
-      const { data } = await supabase.from('photos').select('*').eq('job_id', activeJobId).order('room_label');
+      // job_photos = what cleaners actually upload to (legacy `photos`
+      // table is empty for new cleans).
+      const { data } = await supabase.from('job_photos').select('*').eq('job_id', activeJobId).order('room_label');
       return data || [];
     },
     enabled: !!activeJobId,
@@ -137,8 +139,17 @@ export default function MagicLinkPropertyPage() {
   const scoreByJob: Record<string, number> = {};
   (feedback as any[]).forEach((f: any) => { scoreByJob[f.job_id] = f.score; });
 
+  // See note in ClientPortalDashboardPage — awaiting_cleaner is still
+  // a scheduled job from the client's view.
+  const UPCOMING_STATUSES = [
+    'scheduled',
+    'confirmed',
+    'awaiting_cleaner',
+    'awaiting_cleaner_acceptance',
+    'in_progress',
+  ];
   const completedJobs = jobs.filter((j: any) => j.status === 'complete' || j.status === 'completed');
-  const upcomingJobs = jobs.filter((j: any) => ['scheduled', 'confirmed'].includes(j.status)).slice(0, 3);
+  const upcomingJobs = jobs.filter((j: any) => UPCOMING_STATUSES.includes(j.status)).slice(0, 3);
   const latestAudit = audits[0];
 
   const last5Audits = audits.slice(0, 5);
