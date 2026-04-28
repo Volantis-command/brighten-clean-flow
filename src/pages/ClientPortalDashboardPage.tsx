@@ -66,8 +66,19 @@ export default function ClientPortalDashboardPage() {
   const cleaners = data?.cleaners || [];
   const feedback = data?.feedback || [];
 
+  // awaiting_cleaner / awaiting_cleaner_acceptance are still scheduled
+  // jobs from the client's POV — the cleaner-assignment workflow is an
+  // internal detail. Without them, jobs disappeared from the client
+  // portal between admin scheduling and cleaner accepting.
+  const UPCOMING_STATUSES = [
+    'scheduled',
+    'confirmed',
+    'awaiting_cleaner',
+    'awaiting_cleaner_acceptance',
+    'in_progress',
+  ];
   const upcomingJobs = jobs.filter(
-    (j: any) => ['scheduled', 'confirmed', 'in_progress'].includes(j.status) && j.scheduled_date >= today
+    (j: any) => UPCOMING_STATUSES.includes(j.status) && j.scheduled_date >= today
   );
 
   const firstName = (data?.clientName || clientName || 'there').split(' ')[0];

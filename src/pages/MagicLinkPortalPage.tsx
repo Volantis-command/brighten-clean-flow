@@ -108,16 +108,23 @@ export default function MagicLinkPortalPage() {
   // Latest cleaner-uploaded photo per property → hero image on the
   // card. Falls back to a deterministic gradient when there are no
   // photos yet (e.g. brand-new property).
+  // job_photos doesn't carry property_id directly — the cleaner
+  // uploads are scoped to a job. Join through jobs to get the
+  // property_id so we can pick a hero image per property.
   const { data: photos = [] } = useQuery({
     queryKey: ['magic-hero-photos', propertyIds],
     queryFn: async () => {
       if (!propertyIds.length) return [];
       const { data } = await supabase
-        .from('photos')
-        .select('property_id, file_url, taken_at')
-        .in('property_id', propertyIds)
-        .order('taken_at', { ascending: false });
-      return data || [];
+        .from('job_photos')
+        .select('public_url, uploaded_at, jobs!inner(property_id)')
+        .in('jobs.property_id', propertyIds)
+        .order('uploaded_at', { ascending: false });
+      return (data || []).map((row: any) => ({
+        property_id: row.jobs?.property_id,
+        file_url: row.public_url,
+        taken_at: row.uploaded_at,
+      }));
     },
     enabled: propertyIds.length > 0,
   });

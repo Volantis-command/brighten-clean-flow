@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMinutes } from "date-fns";
-import { CheckCircle2, Minus, X } from "lucide-react";
+import { CheckCircle2, Minus, X, Printer, AlertTriangle } from "lucide-react";
 
 interface ReportData {
   job: any;
@@ -13,6 +13,8 @@ interface ReportData {
   restockingItems: any[];
   restockingCompletions: any[];
   photos: any[];
+  audit: any | null;
+  issues: any[];
 }
 
 export default function CleanReportPage() {
@@ -71,6 +73,19 @@ export default function CleanReportPage() {
         .eq("job_id", job.id)
         .order("room_label");
 
+      // QC audit + issues are part of the completion record the
+      // client expects to see in the report.
+      const { data: audit } = await supabase
+        .from("qc_audits")
+        .select("*")
+        .eq("job_id", job.id)
+        .maybeSingle();
+
+      const { data: issues } = await supabase
+        .from("property_issues")
+        .select("*")
+        .eq("job_id", job.id);
+
       setData({
         job,
         property,
@@ -80,6 +95,8 @@ export default function CleanReportPage() {
         restockingItems: restockingItems || [],
         restockingCompletions: restockingCompletions || [],
         photos: photos || [],
+        audit: audit || null,
+        issues: issues || [],
       });
       setLoading(false);
     })();
@@ -102,7 +119,10 @@ export default function CleanReportPage() {
     );
   }
 
-  const { job, property, cleaners, checklistItems, completions, restockingItems, restockingCompletions, photos } = data;
+  const { job, property, cleaners, checklistItems, completions, restockingItems, restockingCompletions, photos, audit, issues } = data;
+  const signatures = (job.completion_signatures && typeof job.completion_signatures === "object")
+    ? job.completion_signatures as { cleaner_1?: { name: string; signature_data_url: string }; cleaner_2?: { name: string; signature_data_url: string } }
+    : {};
 
   // Duration
   const durationText = (() => {
@@ -148,17 +168,24 @@ export default function CleanReportPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background print:bg-white">
       {/* Header */}
-      <div className="bg-[#1B4332] text-white px-5 pt-8 pb-6">
+      <div className="bg-[#1B4332] text-white px-5 pt-8 pb-6 print:bg-white print:text-[#1B4332] relative">
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Nunito, sans-serif" }}>
           Brightly<span className="text-[#52B788]">.</span>
         </h1>
-        <p className="text-white/70 text-sm mt-1">Clean Report</p>
+        <p className="text-white/70 text-sm mt-1 print:text-[#1B4332]/70">Clean Report</p>
         <h2 className="text-xl font-bold mt-4">{property?.property_name || "Property"}</h2>
-        <p className="text-white/70 text-sm">{[property?.address, property?.suburb].filter(Boolean).join(", ")}</p>
-        <p className="text-white/80 text-sm mt-2">{finishedTime}</p>
-        <p className="text-white/70 text-sm">Cleaned by {cleanerNames}</p>
+        <p className="text-white/70 text-sm print:text-[#1B4332]/70">{[property?.address, property?.suburb].filter(Boolean).join(", ")}</p>
+        <p className="text-white/80 text-sm mt-2 print:text-[#1B4332]">{finishedTime}</p>
+        <p className="text-white/70 text-sm print:text-[#1B4332]/70">Cleaned by {cleanerNames}</p>
+        <button
+          onClick={() => window.print()}
+          className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold print:hidden"
+          aria-label="Print or save as PDF"
+        >
+          <Printer className="w-3.5 h-3.5" /> Print / PDF
+        </button>
       </div>
 
       {/* Summary strip */}
@@ -177,6 +204,12 @@ export default function CleanReportPage() {
           <div className="flex-1 min-w-[100px] bg-card border border-border rounded-xl px-3 py-2.5 text-center shadow-sm">
             <span className="text-lg">📸</span>
             <p className="text-[11px] text-muted-foreground mt-0.5">{photos.length} photo{photos.length !== 1 ? "s" : ""}</p>
+          </div>
+        )}
+        {audit?.percentage != null && (
+          <div className="flex-1 min-w-[100px] bg-card border border-border rounded-xl px-3 py-2.5 text-center shadow-sm">
+            <span className={`text-lg font-extrabold ${audit.percentage >= 80 ? "text-[#52B788]" : "text-orange-500"}`}>{audit.percentage}%</span>
+            <p className="text-[11px] text-muted-foreground mt-0.5">QC score</p>
           </div>
         )}
       </div>
@@ -262,6 +295,64 @@ export default function CleanReportPage() {
             <h3 className="text-base font-bold text-foreground mb-2">Note from your cleaner 📝</h3>
             <div className="bg-muted rounded-xl p-4">
               <p className="text-sm text-foreground whitespace-pre-wrap">{job.cleaner_notes}</p>
+            </div>
+          </section>
+        )}
+
+        {/* Issues reported during the clean — pulled from
+            property_issues. Surfaces broken/damaged/maintenance items
+            the cleaner flagged so the client sees them in one place. */}
+        {issues.length > 0 && (
+          <section>
+            <h3 className="text-base font-bold text-foreground mb-2">Issues reported</h3>
+            <div className="space-y-2">
+              {issues.map((i: any) => (
+                <div key={i.id} className="rounded-xl border border-orange-300 bg-orange-50 dark:bg-orange-500/10 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="w-4 h-4 text-orange-600 shrink-0" />
+                    <p className="text-sm font-bold text-foreground">{i.room || i.title || "Issue"}</p>
+                  </div>
+                  {i.description && (
+                    <p className="text-sm text-foreground whitespace-pre-wrap mb-2">{i.description}</p>
+                  )}
+                  {i.photo_url && (
+                    <img src={i.photo_url} alt="Issue" className="rounded-lg max-h-40 object-cover" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Signatures — captured by the cleaner at clock-off (master
+            form). Both cleaner_1 and (when 2-cleaner crew) cleaner_2
+            sign before the job can be marked complete. */}
+        {(signatures.cleaner_1?.signature_data_url || signatures.cleaner_2?.signature_data_url) && (
+          <section>
+            <h3 className="text-base font-bold text-foreground mb-3">Signed off by</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {signatures.cleaner_1?.signature_data_url && (
+                <div className="rounded-xl border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-bold mb-2">Cleaner</p>
+                  <img
+                    src={signatures.cleaner_1.signature_data_url}
+                    alt={`Signature of ${signatures.cleaner_1.name}`}
+                    className="h-20 object-contain"
+                  />
+                  <p className="text-sm font-semibold text-foreground mt-1">{signatures.cleaner_1.name}</p>
+                </div>
+              )}
+              {signatures.cleaner_2?.signature_data_url && (
+                <div className="rounded-xl border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-bold mb-2">Second cleaner</p>
+                  <img
+                    src={signatures.cleaner_2.signature_data_url}
+                    alt={`Signature of ${signatures.cleaner_2.name}`}
+                    className="h-20 object-contain"
+                  />
+                  <p className="text-sm font-semibold text-foreground mt-1">{signatures.cleaner_2.name}</p>
+                </div>
+              )}
             </div>
           </section>
         )}

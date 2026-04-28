@@ -68,7 +68,9 @@ export default function ClientPortalPropertyPage() {
     queryKey: ['cp-photos', activeJobId],
     queryFn: async () => {
       if (!activeJobId) return [];
-      const { data } = await supabase.from('photos').select('*').eq('job_id', activeJobId).order('room_label');
+      // job_photos is what cleaners upload to (the legacy `photos` table
+      // is empty for new cleans, which made this gallery always blank).
+      const { data } = await supabase.from('job_photos').select('*').eq('job_id', activeJobId).order('room_label');
       return data || [];
     },
     enabled: !!activeJobId,
@@ -92,8 +94,17 @@ export default function ClientPortalPropertyPage() {
     enabled: !!propertyId && !!clientId,
   });
 
+  // See note in ClientPortalDashboardPage — awaiting_cleaner is still
+  // a scheduled job from the client's view.
+  const UPCOMING_STATUSES = [
+    'scheduled',
+    'confirmed',
+    'awaiting_cleaner',
+    'awaiting_cleaner_acceptance',
+    'in_progress',
+  ];
   const completedJobs = jobs.filter((j: any) => j.status === 'complete' || j.status === 'completed');
-  const upcomingJobs = jobs.filter((j: any) => ['scheduled', 'confirmed'].includes(j.status)).slice(0, 3);
+  const upcomingJobs = jobs.filter((j: any) => UPCOMING_STATUSES.includes(j.status)).slice(0, 3);
   const latestAudit = audits[0];
 
   const last5Audits = audits.slice(0, 5);
@@ -268,14 +279,25 @@ export default function ClientPortalPropertyPage() {
           )}
         </Section>
 
-        {/* Download Report */}
+        {/* View Clean Report — opens the in-app /report/:token page
+            which includes photos, checklist, completion form, signatures,
+            and a print-to-PDF option. */}
         {lastCompleteJob && (
           <Button
             variant="outline"
             className="w-full gap-2 font-bold"
-            onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank')}
+            onClick={() => {
+              const job = jobs.find((j: any) => j.id === activeJobId) || lastCompleteJob;
+              if (job?.report_token) {
+                window.open(`/report/${job.report_token}`, '_blank');
+              } else {
+                // Older jobs without a report_token fall back to the
+                // legacy edge function endpoint.
+                window.open(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-clean-report?job_id=${activeJobId}`, '_blank');
+              }
+            }}
           >
-            <Download className="w-4 h-4" /> Download Clean Report
+            <Download className="w-4 h-4" /> View / print clean report
           </Button>
         )}
       </div>

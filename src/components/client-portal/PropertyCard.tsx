@@ -49,12 +49,30 @@ function gradientForName(name: string): string {
   return `linear-gradient(135deg, hsl(${hue} 45% 35%), hsl(${(hue + 40) % 360} 35% 25%))`;
 }
 
+// A job counts as "upcoming/active" for the client when it's been put on
+// the schedule, regardless of whether the cleaner has accepted yet. The
+// admin-side statuses we want surfaced to the client portal:
+//   - scheduled / confirmed       → standard booked clean
+//   - awaiting_cleaner /
+//     awaiting_cleaner_acceptance → admin scheduled it, cleaner not yet
+//                                   confirmed (still shows in portal as
+//                                   "Scheduled" — client doesn't need to
+//                                   know about the assignment dance)
+//   - in_progress                 → cleaner is on site
+const UPCOMING_STATUSES = [
+  'scheduled',
+  'confirmed',
+  'awaiting_cleaner',
+  'awaiting_cleaner_acceptance',
+  'in_progress',
+];
+
 function getPropertyStatus(jobs: any[]) {
   const today = new Date();
   const todayStr = format(today, 'yyyy-MM-dd');
 
   const todayJob = jobs.find(
-    (j: any) => j.scheduled_date === todayStr && ['scheduled', 'confirmed', 'in_progress'].includes(j.status)
+    (j: any) => j.scheduled_date === todayStr && UPCOMING_STATUSES.includes(j.status)
   );
   if (todayJob) return { label: 'Clean Today', color: 'bg-primary/10 text-primary', dot: 'bg-primary' };
 
@@ -66,7 +84,7 @@ function getPropertyStatus(jobs: any[]) {
   }
 
   const nextScheduled = jobs.find(
-    (j: any) => ['scheduled', 'confirmed'].includes(j.status) && j.scheduled_date >= todayStr
+    (j: any) => UPCOMING_STATUSES.includes(j.status) && j.scheduled_date >= todayStr
   );
   if (nextScheduled) return { label: 'Scheduled', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' };
 
@@ -88,7 +106,7 @@ export default function PropertyCard({
   const statusInfo = getPropertyStatus(jobs);
   const lastCompleteJob = jobs.find((j: any) => j.status === 'complete' || j.status === 'completed');
   const nextScheduledJob = jobs.find(
-    (j: any) => ['scheduled', 'confirmed', 'in_progress'].includes(j.status) && j.scheduled_date >= todayStr
+    (j: any) => UPCOMING_STATUSES.includes(j.status) && j.scheduled_date >= todayStr
   );
 
   // Live "cleaning right now" — no realtime subscription needed at the
