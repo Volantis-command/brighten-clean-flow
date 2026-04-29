@@ -18,6 +18,7 @@ import RescheduleJobDialog from '@/components/client-portal/RescheduleJobDialog'
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
 import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
+import PendingBookingsCard from '@/components/client-portal/PendingBookingsCard';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
@@ -123,6 +124,21 @@ export default function MagicLinkPropertyPage() {
     },
     enabled: !!propertyId && !!clientProp,
   });
+
+  // Pending booking suggestions awaiting client decision. Service-role
+  // edge function handles RLS — direct Supabase reads on
+  // booking_suggestions are admin-only.
+  const { data: pendingSuggestions = [] } = useQuery({
+    queryKey: ['portal-pending-suggestions', propertyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('portal-booking-suggestions', {
+        body: { token, property_id: propertyId, action: 'list' },
+      });
+      if (error || (data as any)?.error) return [];
+      return (data as any)?.suggestions || [];
+    },
+    enabled: !!propertyId && !!clientProp && !!token,
+  });
   const scoreByJob: Record<string, number> = {};
   (feedback as any[]).forEach((f: any) => { scoreByJob[f.job_id] = f.score; });
 
@@ -194,8 +210,17 @@ export default function MagicLinkPropertyPage() {
 
         <TurnaroundPanel property={property} />
 
+        {/* Pending Airbnb bookings awaiting client approval — auto-hides
+            when there's nothing to action. */}
+        <PendingBookingsCard propertyId={propertyId!} token={token} />
+
         <Section title="Calendar">
-          <PropertyCalendar jobs={jobs} token={token} propertyId={propertyId!} />
+          <PropertyCalendar
+            jobs={jobs}
+            pendingSuggestions={pendingSuggestions}
+            token={token}
+            propertyId={propertyId!}
+          />
         </Section>
 
         {/* Health Score */}

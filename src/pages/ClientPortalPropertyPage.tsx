@@ -9,6 +9,7 @@ import { Section, InfoItem } from '@/components/client-portal/Section';
 import IssuesList from '@/components/client-portal/IssuesList';
 import CleanerProfileChip from '@/components/client-portal/CleanerProfileChip';
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
+import PendingBookingsCard from '@/components/client-portal/PendingBookingsCard';
 import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 
 export default function ClientPortalPropertyPage() {
@@ -134,6 +135,10 @@ export default function ClientPortalPropertyPage() {
             they finish (with a brief celebration card). Adds the
             Uber-style "your cleaner just arrived" moment. */}
         <LiveCleanStatus propertyId={propertyId!} cleanerNames={nameMap} />
+
+        {/* Pending Airbnb bookings (iCal sync) awaiting client decision.
+            Auto-hides when nothing is pending. */}
+        <PendingBookingsCard propertyId={propertyId!} />
 
         {/* Status Banner */}
         <div className={`rounded-2xl p-5 ${
