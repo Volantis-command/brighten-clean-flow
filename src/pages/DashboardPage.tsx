@@ -226,14 +226,20 @@ export default function DashboardPage() {
 
       {/* Today's Cleans */}
       <div className="space-y-3">
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-0.5">
-          Today's Cleans
+        <button
+          onClick={() => navigate('/schedule')}
+          className="flex items-center gap-2 hover:text-foreground transition-colors group w-full text-left"
+        >
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider group-hover:text-foreground">
+            Today's Cleans
+          </span>
           {jobCards.length > 0 && (
-            <span className="ml-2 bg-primary/15 text-primary rounded-full px-1.5 py-0.5 text-[10px] normal-case font-bold">
+            <span className="bg-primary/15 text-primary rounded-full px-1.5 py-0.5 text-[10px] font-bold">
               {jobCards.length}
             </span>
           )}
-        </p>
+          <span className="text-[10px] text-muted-foreground ml-auto">View schedule →</span>
+        </button>
         {jobCards.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-5 text-center">
             <p className="text-2xl mb-1">☀️</p>
