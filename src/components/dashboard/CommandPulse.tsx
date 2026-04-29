@@ -103,7 +103,7 @@ export function CommandPulse() {
       sublabel: 'New enquiries waiting',
       emoji: '📥',
       urgency: uncontactedCount > 0 ? 'red' : 'clear',
-      path: '/quoting',
+      path: '/actions',
     },
     {
       key: 'uninvoiced',
@@ -121,7 +121,7 @@ export function CommandPulse() {
       sublabel: outstanding.total > 0 ? `$${outstanding.total.toFixed(0)} awaiting payment` : 'All paid up',
       emoji: '💰',
       urgency: outstanding.count > 0 ? 'blue' : 'clear',
-      path: '/financials',
+      path: '/invoices/pending',
       displayValue: outstanding.total > 0 ? `$${outstanding.total.toFixed(0)}` : '—',
     },
     {
