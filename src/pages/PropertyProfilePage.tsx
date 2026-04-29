@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil, CalendarPlus, Camera, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Pencil, CalendarPlus, Camera, FileText, MessageCircle, Send, Loader2 } from 'lucide-react';
 import { JobHistoryTab } from '@/components/property/JobHistoryTab';
 import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
@@ -111,13 +111,16 @@ export default function PropertyProfilePage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="w-full">
+        <TabsList className="w-full flex-wrap">
           <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
           <TabsTrigger value="passport" className="flex-1">Passport</TabsTrigger>
           <TabsTrigger value="sop" className="flex-1">SOP</TabsTrigger>
           <TabsTrigger value="history" className="flex-1">History</TabsTrigger>
           <TabsTrigger value="forms" className="flex-1">Forms</TabsTrigger>
           <TabsTrigger value="invoices" className="flex-1">Invoices</TabsTrigger>
+          <TabsTrigger value="messages" className="flex-1 gap-1">
+            <MessageCircle className="w-3.5 h-3.5" /> Messages
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <div className="mt-4 space-y-4">
@@ -157,6 +160,9 @@ export default function PropertyProfilePage() {
         </TabsContent>
         <TabsContent value="invoices">
           <PropertyInvoicesTab propertyId={property.id} showAdminTools={isAdmin} />
+        </TabsContent>
+        <TabsContent value="messages">
+          <PortalMessagesTab propertyId={property.id} />
         </TabsContent>
       </Tabs>
 
@@ -567,6 +573,96 @@ function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; init
         <span className="text-xs text-muted-foreground">{notes.length} / 500 characters</span>
         {saving && <span className="text-xs text-primary font-semibold">Saving\u2026</span>}
       </div>
+    </div>
+  );
+}
+
+/** Admin view of portal messages for this property — two-way thread. */
+function PortalMessagesTab({ propertyId }: { propertyId: string }) {
+  const queryClient = useQueryClient();
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: ['admin-portal-messages', propertyId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('portal_messages')
+        .select('id, sender, message, created_at, read')
+        .eq('property_id', propertyId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Realtime new messages
+  useEffect(() => {
+    const channel = supabase
+      .channel(`admin-messages-${propertyId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'portal_messages', filter: `property_id=eq.${propertyId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-portal-messages', propertyId] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [propertyId, queryClient]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  const sendReply = async () => {
+    if (!replyText.trim()) return;
+    setSending(true);
+    const { error } = await (supabase as any).from('portal_messages').insert({
+      property_id: propertyId,
+      sender: 'admin',
+      message: replyText.trim(),
+    });
+    if (error) { toast.error('Send failed'); }
+    else { setReplyText(''); queryClient.invalidateQueries({ queryKey: ['admin-portal-messages', propertyId] }); }
+    setSending(false);
+  };
+
+  if (isLoading) return <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="space-y-3 max-h-96 overflow-y-auto bg-muted/20 rounded-2xl p-4">
+        {messages.length === 0 && (
+          <p className="text-sm text-center text-muted-foreground py-6">No messages yet from this client.</p>
+        )}
+        {(messages as any[]).map((msg: any) => (
+          <div key={msg.id} className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+              msg.sender === 'admin'
+                ? 'bg-primary text-primary-foreground rounded-br-md'
+                : 'bg-card border border-border text-foreground rounded-bl-md'
+            }`}>
+              <p>{msg.message}</p>
+              <p className={`text-[10px] mt-1 ${msg.sender === 'admin' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                {msg.sender === 'client' ? 'Client · ' : ''}{format(new Date(msg.created_at), 'dd MMM, h:mm a')}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="flex gap-2">
+        <Textarea
+          value={replyText}
+          onChange={e => setReplyText(e.target.value)}
+          placeholder="Reply to client…"
+          className="flex-1 rounded-xl min-h-[40px] max-h-32 resize-none"
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
+        />
+        <Button onClick={sendReply} disabled={!replyText.trim() || sending} size="icon" className="rounded-xl shrink-0">
+          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">Replies are visible to the client in their portal immediately.</p>
     </div>
   );
 }

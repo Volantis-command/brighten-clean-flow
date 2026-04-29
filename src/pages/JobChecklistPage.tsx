@@ -881,15 +881,44 @@ export default function JobChecklistPage() {
         </div>
       </Section>
 
-      {/* Report Issue */}
+      {/* Supplies / Damage flags */}
       {!isSubmitted && (
-        <Button
-          variant="outline"
-          className="w-full border-destructive text-destructive font-bold rounded-2xl h-14 gap-2"
-          onClick={() => setReportIssueOpen(true)}
-        >
-          <AlertTriangle className="w-5 h-5" /> Report Issue
-        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            className="border-amber-400/60 text-amber-700 dark:text-amber-400 font-bold rounded-2xl h-14 gap-2 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+            onClick={async () => {
+              const { error } = await (supabase as any).from('property_issues').insert({
+                job_id: jobId,
+                property_id: job?.property_id,
+                room: 'Supplies',
+                description: 'Client supplies are running low — please restock before next guest.',
+                reported_by: (await supabase.auth.getUser()).data.user?.id,
+              });
+              if (!error) {
+                const { createAlert } = await import('@/lib/alerts');
+                await createAlert({
+                  event_type: 'supplies_low',
+                  title: 'Supplies Low',
+                  body: `Client supplies running low at ${job?.properties?.property_name || 'property'}`,
+                  link: `/jobs/${jobId}`,
+                });
+                toast.success('Supplies flag sent to admin');
+              } else {
+                toast.error('Could not send flag');
+              }
+            }}
+          >
+            <span className="text-base">📦</span> Supplies Low
+          </Button>
+          <Button
+            variant="outline"
+            className="border-destructive/60 text-destructive font-bold rounded-2xl h-14 gap-2"
+            onClick={() => setReportIssueOpen(true)}
+          >
+            <AlertTriangle className="w-5 h-5" /> Report Issue
+          </Button>
+        </div>
       )}
 
       {/* Photo warning for one-off jobs */}

@@ -60,11 +60,12 @@ export function ReportIssueModal({ open, onOpenChange, jobId, propertyId, roomLa
 
     if (error) { toast.error('Failed to report issue'); setSubmitting(false); return; }
 
-    // Notify admins
+    // Notify admins with a direct link to the job
     await (await import('@/lib/alerts')).createAlert({
       event_type: 'damage_reported',
-      title: 'Issue Reported',
-      body: `Issue reported at ${room}: ${description}`,
+      title: `Issue at ${room}`,
+      body: description,
+      link: `/jobs/${jobId}`,
     });
 
     toast.success('Issue reported');
