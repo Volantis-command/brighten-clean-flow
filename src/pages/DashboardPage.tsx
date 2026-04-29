@@ -1,173 +1,29 @@
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentPosition } from '@/lib/geo';
-import { Button } from '@/components/ui/button';
-import { Bot, AlertTriangle, ClipboardList, Users, ShieldAlert, DollarSign, CalendarCheck, MessageSquare } from 'lucide-react';
+import { AlertTriangle, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { JobCard } from '@/components/dashboard/JobCard';
 import { LiveStatusStrip } from '@/components/dashboard/LiveStatusStrip';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { TopStatsBar } from '@/components/dashboard/TopStatsBar';
+import { CommandPulse } from '@/components/dashboard/CommandPulse';
+import { RevenueStrip } from '@/components/dashboard/RevenueStrip';
+import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { TeamPerformanceTable } from '@/components/dashboard/TeamPerformanceTable';
 import { RevenueTrend } from '@/components/dashboard/RevenueTrend';
 import { RecentFeedback } from '@/components/dashboard/RecentFeedback';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLeaveConflictAlerts } from '@/hooks/useCleanerConflicts';
-import { useAlertsData } from '@/hooks/useAlertsData';
 import OperationsDashboard from '@/components/dashboard/OperationsDashboard';
 import { useProcessScheduledSms } from '@/hooks/useProcessScheduledSms';
+import SendQuoteLinkModal from '@/components/dashboard/SendQuoteLinkModal';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
-function DraftInvoiceCount() {
-  const { data: count = 0 } = useQuery({
-    queryKey: ['draft-invoice-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('jobs')
-        .select('id', { count: 'exact', head: true })
-        .eq('invoice_status', 'draft')
-        .not('xero_invoice_id', 'is', null);
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 60_000,
-  });
-  return <p className="text-3xl font-extrabold text-foreground">{count}</p>;
-}
-
-/** Sum of invoice_amount for invoices that are sent/authorised but not paid. */
-function OutstandingInvoiceTotal() {
-  const navigate = useNavigate();
-  const { data = { total: 0, count: 0 } } = useQuery({
-    queryKey: ['outstanding-invoice-total'],
-    queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('jobs')
-        .select('invoice_amount, price_inc_gst')
-        .in('invoice_status', ['sent', 'authorised']);
-      if (error) throw error;
-      const total = (rows || []).reduce(
-        (s: number, r: any) => s + Number(r.invoice_amount || r.price_inc_gst || 0),
-        0
-      );
-      return { total, count: (rows || []).length };
-    },
-    refetchInterval: 60_000,
-  });
-  return (
-    <button
-      onClick={() => navigate('/financials')}
-      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors w-full"
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <DollarSign className="w-5 h-5 text-blue-600" />
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Outstanding</span>
-      </div>
-      <p className="text-3xl font-extrabold text-foreground">${data.total.toFixed(0)}</p>
-      <p className="text-xs text-muted-foreground mt-1">
-        {data.count} invoice{data.count === 1 ? '' : 's'} awaiting payment →
-      </p>
-    </button>
-  );
-}
-
-/** Sum of invoice_amount for invoices marked paid this calendar month. */
-function PaidThisMonthTotal() {
-  const navigate = useNavigate();
-  const { data = { total: 0, count: 0 } } = useQuery({
-    queryKey: ['paid-this-month'],
-    queryFn: async () => {
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const { data: rows, error } = await supabase
-        .from('jobs')
-        .select('invoice_amount, price_inc_gst')
-        .eq('invoice_status', 'paid')
-        .gte('invoice_paid_at', monthStart);
-      if (error) throw error;
-      const total = (rows || []).reduce(
-        (s: number, r: any) => s + Number(r.invoice_amount || r.price_inc_gst || 0),
-        0
-      );
-      return { total, count: (rows || []).length };
-    },
-    refetchInterval: 60_000,
-  });
-  return (
-    <button
-      onClick={() => navigate('/financials')}
-      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors w-full"
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <DollarSign className="w-5 h-5 text-brightly" />
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Paid This Month</span>
-      </div>
-      <p className="text-3xl font-extrabold text-foreground">${data.total.toFixed(0)}</p>
-      <p className="text-xs text-muted-foreground mt-1">{data.count} invoice{data.count === 1 ? '' : 's'} paid →</p>
-    </button>
-  );
-}
-
-function BookingSuggestionsCount() {
-  const navigate = useNavigate();
-  const { data: count = 0 } = useQuery({
-    queryKey: ['booking-suggestions-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('booking_suggestions' as any)
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending');
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 60_000,
-  });
-  if (count === 0) return null;
-  return (
-    <button onClick={() => navigate('/bookings/suggestions')}
-      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
-        <CalendarCheck className="w-5 h-5 text-primary" />
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bookings</span>
-      </div>
-      <p className="text-3xl font-extrabold text-foreground">{count}</p>
-      <p className="text-xs text-muted-foreground mt-1">To approve →</p>
-    </button>
-  );
-}
-
-function QuoteFollowupsCount() {
-  const navigate = useNavigate();
-  const { data: count = 0 } = useQuery({
-    queryKey: ['quote-followups-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('quote_requests')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'followup_pending');
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 60_000,
-  });
-  if (count === 0) return null;
-  return (
-    <button onClick={() => navigate('/quotes/followups-pending')}
-      className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
-        <MessageSquare className="w-5 h-5 text-primary" />
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Followups</span>
-      </div>
-      <p className="text-3xl font-extrabold text-foreground">{count}</p>
-      <p className="text-xs text-muted-foreground mt-1">Quotes to follow up →</p>
-    </button>
-  );
-}
 
 function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
   const { data: jobs = [] } = useQuery({
@@ -176,9 +32,7 @@ function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select(
-          'id, status, scheduled_time, property_id, properties(property_name, address, lat, lng)'
-        )
+        .select('id, status, scheduled_time, property_id, properties(property_name, address, lat, lng)')
         .in('id', jobIds);
       if (error) throw error;
       return (data ?? []) as any[];
@@ -188,7 +42,26 @@ function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
   return <CleanerClockCard todayJobs={jobs as any} />;
 }
 
-
+/** Collapsible section wrapper for secondary content */
+function Collapsible({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-1 group"
+      >
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
+          {title}
+        </span>
+        {open
+          ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && children}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
@@ -198,8 +71,6 @@ export default function DashboardPage() {
     jobCards,
     upcomingJobCards,
     clockedInCleaners,
-    alerts,
-    kpi,
     isLoading,
     isAdmin,
     teamPerformance,
@@ -207,34 +78,12 @@ export default function DashboardPage() {
     recentFeedback,
   } = useDashboardData();
 
-  // Process any pending scheduled SMS on dashboard load
   useProcessScheduledSms();
 
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
-  const { groups: alertGroups } = useAlertsData();
 
-  // Count active cleaners (clocked on right now)
-  const { data: activeCleanerCount = 0 } = useQuery({
-    queryKey: ['active-cleaner-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('time_entries')
-        .select('id', { count: 'exact', head: true })
-        .is('clock_out_time', null);
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 30_000,
-  });
-
-  // Count critical + important alerts
-  const needsActionCount = useMemo(() => {
-    const criticalGroups = ['not_invoiced', 'overdue', 're_clean'];
-    const importantGroups = ['extra_time', 'not_sent', 'quotes_awaiting', 'not_clocked_on'];
-    return alertGroups
-      .filter(g => criticalGroups.includes(g.key) || importantGroups.includes(g.key))
-      .reduce((sum, g) => sum + g.items.length, 0);
-  }, [alertGroups]);
+  const [sendQuoteOpen, setSendQuoteOpen] = useState(false);
+  const [pipelineOpen, setPipelineOpen] = useState(false);
 
   const { data: pendingOnboarding = [] } = useQuery({
     queryKey: ['pending-staff-onboarding'],
@@ -285,7 +134,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Cleaner dashboard
+  /* ── Cleaner dashboard ───────────────────────────────────────────── */
   if (role === 'cleaner') {
     const upcomingByDate: Record<string, typeof upcomingJobCards> = {};
     upcomingJobCards.forEach((j) => {
@@ -326,11 +175,8 @@ export default function DashboardPage() {
                     {format(new Date(dateStr + 'T00:00:00'), 'EEEE, MMM d')}
                   </p>
                   {dateJobs.map((job) => (
-                    <button
-                      key={job.id}
-                      onClick={() => navigate(`/jobs/${job.id}`)}
-                      className="w-full text-left bg-card rounded-2xl shadow-sm p-4 mb-2 hover:shadow-md transition-shadow border border-border flex items-center gap-4"
-                    >
+                    <button key={job.id} onClick={() => navigate(`/jobs/${job.id}`)}
+                      className="w-full text-left bg-card rounded-2xl shadow-sm p-4 mb-2 hover:shadow-md transition-shadow border border-border flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-foreground text-sm truncate">{job.propertyName}</p>
                         {job.address && <p className="text-xs text-muted-foreground truncate">{job.address}</p>}
@@ -339,9 +185,7 @@ export default function DashboardPage() {
                         {job.scheduledTime && <p className="text-sm font-bold text-foreground">{job.scheduledTime}</p>}
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           job.status === 'scheduled' ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground'
-                        }`}>
-                          {job.status === 'scheduled' ? 'Scheduled' : job.status}
-                        </span>
+                        }`}>{job.status === 'scheduled' ? 'Scheduled' : job.status}</span>
                       </div>
                     </button>
                   ))}
@@ -354,78 +198,55 @@ export default function DashboardPage() {
     );
   }
 
-  // Only admin sees the operations dashboard
-  const showOpsDashboard = role === 'admin';
+  /* ── Admin / Head Cleaner dashboard ─────────────────────────────── */
 
-  // Admin / Head Cleaner dashboard
+  // Group upcoming jobs by date for the upcoming section
+  const upcomingByDate: Record<string, typeof upcomingJobCards> = {};
+  upcomingJobCards.forEach((j) => {
+    if (!upcomingByDate[j.scheduledDate]) upcomingByDate[j.scheduledDate] = [];
+    upcomingByDate[j.scheduledDate].push(j);
+  });
+
   return (
-    <div className="space-y-8 overflow-x-hidden w-full max-w-full">
-      <TodayJobsWidget />
+    <div className="space-y-6 overflow-x-hidden w-full max-w-full">
+
+      {/* Greeting */}
       <DashboardGreeting />
 
-      {/* Operations Pipeline — admin only */}
-      {showOpsDashboard && <OperationsDashboard />}
+      {/* Quick Actions — 4 buttons always at the top */}
+      <QuickActions
+        onSendQuoteSMS={() => setSendQuoteOpen(true)}
+      />
 
-      {/* Row 1: Top Stats */}
-      <TopStatsBar kpi={kpi} />
+      {/* The Pulse — action required tiles */}
+      <CommandPulse />
 
-      {/* Quick KPI: Active Cleaners + Needs Action */}
-      {isAdmin && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate('/map')}
-            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-5 h-5 text-primary" />
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Now</span>
-            </div>
-            <p className="text-3xl font-extrabold text-foreground">{activeCleanerCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">Cleaners clocked in → Map</p>
-          </button>
-          <button
-            onClick={() => navigate('/actions')}
-            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-destructive/50 transition-colors"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldAlert className="w-5 h-5 text-destructive" />
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Needs Action</span>
-            </div>
-            <p className="text-3xl font-extrabold text-foreground">{needsActionCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">Critical + Important alerts</p>
-          </button>
-          <button
-            onClick={() => navigate('/invoices/pending')}
-            className="bg-card rounded-2xl border border-border p-4 text-left hover:border-primary/50 transition-colors"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-5 h-5 text-yellow-600" />
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Stuck Drafts</span>
-            </div>
-            <DraftInvoiceCount />
-            <p className="text-xs text-muted-foreground mt-1">Auto-send failed — retry →</p>
-          </button>
-          <OutstandingInvoiceTotal />
-          <PaidThisMonthTotal />
-          <BookingSuggestionsCount />
-          <QuoteFollowupsCount />
-        </div>
-      )}
+      {/* Revenue — week / month / year */}
+      {isAdmin && <RevenueStrip />}
 
-      {/* TodayAtAGlance removed — covered by TopStatsBar + Quick KPI cards above */}
-
-      {/* Quick Actions */}
-      <QuickActions />
-
-      {/* Today's Jobs */}
-      <div>
-        <h2 className="text-xl font-bold mb-4" style={{ color: '#FEDB00' }}>Today's Jobs</h2>
+      {/* Today's Cleans */}
+      <div className="space-y-3">
+        <button
+          onClick={() => navigate('/schedule')}
+          className="flex items-center gap-2 hover:text-foreground transition-colors group w-full text-left"
+        >
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider group-hover:text-foreground">
+            Today's Cleans
+          </span>
+          {jobCards.length > 0 && (
+            <span className="bg-primary/15 text-primary rounded-full px-1.5 py-0.5 text-[10px] font-bold">
+              {jobCards.length}
+            </span>
+          )}
+          <span className="text-[10px] text-muted-foreground ml-auto">View schedule →</span>
+        </button>
         {jobCards.length === 0 ? (
-          <div className="bg-card rounded-2xl shadow-md p-6">
-            <p className="text-muted-foreground">No jobs scheduled for today.</p>
+          <div className="bg-card rounded-2xl border border-border p-5 text-center">
+            <p className="text-2xl mb-1">☀️</p>
+            <p className="text-sm text-muted-foreground">No cleans scheduled today.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {jobCards.map((job) => (
               <JobCard key={job.id} {...job} onClick={() => navigate(`/jobs/${job.id}`)} />
             ))}
@@ -433,61 +254,102 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Live Status — only show if cleaners are clocked in */}
+      {/* Live cleaner status */}
       {clockedInCleaners.length > 0 && (
         <LiveStatusStrip clockedInCleaners={clockedInCleaners} />
       )}
 
-      {/* Leave conflict alerts */}
+      {/* Upcoming schedule */}
+      {Object.keys(upcomingByDate).length > 0 && (
+        <Collapsible title={`Upcoming (${upcomingJobCards.length} cleans)`} defaultOpen={true}>
+          <div className="space-y-4">
+            {Object.entries(upcomingByDate).slice(0, 7).map(([dateStr, dateJobs]) => (
+              <div key={dateStr}>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">
+                  {format(new Date(dateStr + 'T00:00:00'), 'EEEE, MMM d')}
+                </p>
+                <div className="space-y-2">
+                  {dateJobs.map((job) => (
+                    <button key={job.id} onClick={() => navigate(`/jobs/${job.id}`)}
+                      className="w-full text-left bg-card rounded-xl border border-border p-3 hover:border-primary/40 transition-colors flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground text-sm truncate">{job.propertyName}</p>
+                        {job.address && <p className="text-xs text-muted-foreground truncate">{job.address}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {job.scheduledTime && <p className="text-sm font-bold text-foreground">{job.scheduledTime}</p>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Collapsible>
+      )}
+
+      {/* Alerts — dismissible with 24-hour localStorage persistence */}
+      {isAdmin && <AlertsPanel />}
+
+      {/* Leave conflicts */}
       {leaveAlerts.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold text-primary mb-4">⚠️ Leave Conflicts</h2>
-          <div className="space-y-2">
-            {leaveAlerts.map((a, i) => (
-              <div key={i} className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3 cursor-pointer hover:bg-destructive/15 transition-colors"
-                onClick={() => navigate(`/jobs/${a.jobId}`)}>
-                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-0.5">Leave Conflicts</p>
+          {leaveAlerts.map((a, i) => (
+            <div key={i}
+              className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3 cursor-pointer hover:bg-destructive/15 transition-colors"
+              onClick={() => navigate(`/jobs/${a.jobId}`)}>
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-foreground">
+                {a.cleanerName} is on leave on {format(parseISO(a.date), 'MMM d')} but assigned to {a.propertyName}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Staff onboarding */}
+      {pendingOnboarding.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-0.5">Staff Onboarding</p>
+          {pendingOnboarding.map((s: any) => (
+            <div key={s.user_id}
+              className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-accent/20 transition-colors"
+              onClick={() => navigate('/staff')}>
+              <div className="flex items-center gap-3">
+                <ClipboardList className="h-5 w-5 text-accent shrink-0" />
                 <p className="text-sm font-semibold text-foreground">
-                  {a.cleanerName} is on leave on {format(parseISO(a.date), 'MMM d')} but assigned to {a.propertyName}
+                  {s.full_name || 'Staff member'} submitted their onboarding form
                 </p>
               </div>
-            ))}
-          </div>
+              <span className="text-xs font-bold text-accent bg-accent/20 px-2 py-0.5 rounded-full">Review</span>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Pending staff onboarding */}
-      {pendingOnboarding.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
-            <ClipboardList className="w-5 h-5" /> Staff Onboarding
-          </h2>
-          <div className="space-y-2">
-            {pendingOnboarding.map((s: any) => (
-              <div key={s.user_id}
-                className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-accent/20 transition-colors"
-                onClick={() => navigate('/staff')}>
-                <div className="flex items-center gap-3">
-                  <ClipboardList className="h-5 w-5 text-accent shrink-0" />
-                  <p className="text-sm font-semibold text-foreground">
-                    {s.full_name || 'Staff member'} has submitted their onboarding form — review HR details
-                  </p>
-                </div>
-                <span className="text-xs font-bold text-accent bg-accent/20 px-2 py-0.5 rounded-full">Action Needed</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Operations Pipeline — collapsible, admin only */}
+      {role === 'admin' && (
+        <Collapsible title="Operations Pipeline">
+          <OperationsDashboard />
+        </Collapsible>
       )}
 
-      {/* Row 3: Team Performance */}
-      <TeamPerformanceTable data={teamPerformance} />
+      {/* Secondary metrics — collapsible */}
+      <Collapsible title="Team Performance">
+        <TeamPerformanceTable data={teamPerformance} />
+      </Collapsible>
 
-      {/* Row 4: Revenue Trend */}
-      <RevenueTrend data={revenueTrend} />
+      <Collapsible title="Revenue Trend">
+        <RevenueTrend data={revenueTrend} />
+      </Collapsible>
 
-      {/* Row 5: Recent Feedback */}
-      <RecentFeedback data={recentFeedback} />
+      <Collapsible title="Recent Feedback">
+        <RecentFeedback data={recentFeedback} />
+      </Collapsible>
+
+      {/* Send Quote SMS modal */}
+      <SendQuoteLinkModal open={sendQuoteOpen} onOpenChange={setSendQuoteOpen} />
 
     </div>
   );
