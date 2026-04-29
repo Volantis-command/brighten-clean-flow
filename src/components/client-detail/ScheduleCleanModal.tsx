@@ -36,7 +36,7 @@ interface ScheduleCleanModalProps {
   onOpenChange: (open: boolean) => void;
   clientId: string;
   clientName: string;
-  properties: Array<{ id: string; property_name: string; address?: string | null; default_price?: number | null; price_includes_gst?: boolean | null }>;
+  properties: Array<{ id: string; property_name: string; address?: string | null; default_price?: number | null; price_includes_gst?: boolean | null; price_turnover?: number | null }>;
 }
 
 export default function ScheduleCleanModal({ open, onOpenChange, clientId, clientName, properties }: ScheduleCleanModalProps) {
@@ -69,9 +69,16 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
     setPriceExGst(val && parseFloat(val) > 0 ? (parseFloat(val) / 1.1).toFixed(2) : '');
   };
 
-  // Pre-fill price from property default_price
+  // Pre-fill price from property — prefers price_turnover (ex-GST, used by
+  // iCal/booking approvals) and falls back to default_price for older records.
   const prefillPriceFromProperty = (propId: string) => {
     const prop = properties.find(p => p.id === propId) as any;
+    // price_turnover is always ex-GST
+    if (prop?.price_turnover != null && parseFloat(prop.price_turnover) > 0) {
+      setGstMode('ex');
+      setPriceFromEx(String(prop.price_turnover));
+      return;
+    }
     if (prop?.default_price != null && parseFloat(prop.default_price) > 0) {
       const isInc = prop.price_includes_gst === true;
       setGstMode(isInc ? 'inc' : 'ex');

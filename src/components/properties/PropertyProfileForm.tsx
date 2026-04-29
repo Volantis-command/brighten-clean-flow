@@ -67,6 +67,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
     product_restrictions: '',
     room_notes: {} as Record<string, string>,
     // Pricing
+    price_turnover: '',
     locked_price_inc_gst: '',
     estimated_hours: '',
     pricing_notes: '',
@@ -151,6 +152,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         special_instructions: property.special_instructions || '',
         product_restrictions: property.product_restrictions || '',
         room_notes: (property.room_notes as Record<string, string>) || {},
+        price_turnover: (property as any).price_turnover != null ? String((property as any).price_turnover) : '',
         locked_price_inc_gst: property.locked_price_inc_gst != null ? String(property.locked_price_inc_gst) : '',
         estimated_hours: property.estimated_hours != null ? String(property.estimated_hours) : '',
         pricing_notes: property.pricing_notes || '',
@@ -202,6 +204,7 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
       special_instructions: form.special_instructions || null,
       product_restrictions: form.product_restrictions || null,
       room_notes: Object.keys(form.room_notes).length > 0 ? form.room_notes : null,
+      price_turnover: form.price_turnover ? parseFloat(form.price_turnover) : null,
       locked_price_inc_gst: form.locked_price_inc_gst ? parseFloat(form.locked_price_inc_gst) : null,
       estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
       pricing_notes: form.pricing_notes || null,
@@ -526,6 +529,29 @@ export default function PropertyProfileForm({ property, mode, isAdmin = false, o
         <TabsContent value="pricing" className="space-y-4 mt-4">
           {isAdmin ? (
             <>
+              {/* price_turnover is the ex-GST price used for every Airbnb
+                  turnover clean — it auto-fills jobs created via iCal sync /
+                  booking approval AND via the Schedule Clean modal. Set this
+                  first; the fields below are for edge-cases. */}
+              <Field label="Turnover Clean Price (ex GST) — used for iCal / booking approvals">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.price_turnover}
+                    onChange={e => u('price_turnover', e.target.value)}
+                    className="h-12 rounded-xl pl-8"
+                    placeholder="e.g. 180.00"
+                  />
+                </div>
+                {form.price_turnover && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ${(parseFloat(form.price_turnover) * 1.1).toFixed(2)} inc GST
+                  </p>
+                )}
+              </Field>
               <Field label="Standard Clean Price">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
