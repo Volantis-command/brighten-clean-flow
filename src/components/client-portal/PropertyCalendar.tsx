@@ -3,13 +3,19 @@ import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths,
   format, isSameMonth, isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, Download, FileText, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Download, FileText, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface PropertyCalendarProps {
   jobs: any[];
+  // Pending booking suggestions from iCal sync — shown alongside jobs
+  // with an orange "awaiting your approval" dot. Client can tap a day
+  // and approve from the modal.
+  pendingSuggestions?: any[];
   // For the iCal subscribe URL.
   token?: string;
   propertyId?: string;
@@ -37,9 +43,11 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
-export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCalendarProps) {
+export default function PropertyCalendar({ jobs, pendingSuggestions = [], token, propertyId }: PropertyCalendarProps) {
   const [cursor, setCursor] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Build the month grid: pad to start-of-week / end-of-week so the
   // calendar always renders 5–6 complete rows.
@@ -59,6 +67,45 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
     jobsByDate[j.scheduled_date].push(j);
   }
 
+  // Pending suggestions keyed by their suggested_clean_date (defaults
+  // to checkout_date in the sync function).
+  const pendingByDate: Record<string, any[]> = {};
+  for (const s of pendingSuggestions) {
+    const date = s.suggested_clean_date || s.checkout_date;
+    if (!date) continue;
+    if (!pendingByDate[date]) pendingByDate[date] = [];
+    pendingByDate[date].push(s);
+  }
+
+  const decide = async (suggestion: any, action: 'approve' | 'reject') => {
+    if (!propertyId) return;
+    setDecidingId(suggestion.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('portal-booking-suggestions', {
+        body: {
+          token: token || undefined,
+          property_id: propertyId,
+          action,
+          suggestion_id: suggestion.id,
+        },
+      });
+      if (error || (data as any)?.error) {
+        throw new Error((data as any)?.error || error?.message || 'unknown error');
+      }
+      toast.success(action === 'approve' ? 'Booking approved — clean booked.' : 'Booking rejected.');
+      // Both jobs and pending-suggestions queries need to refresh so
+      // the dot flips colour and the new job appears.
+      queryClient.invalidateQueries({ queryKey: ['magic-prop-jobs', propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['cp-property-jobs', propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['portal-pending-suggestions', propertyId] });
+      setSelectedDate(null);
+    } catch (e: any) {
+      toast.error(e.message || 'Could not update — try again.');
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
   const icsUrl = token && propertyId
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/property-calendar-ics?token=${token}&property_id=${propertyId}`
     : null;
@@ -75,6 +122,7 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
   };
 
   const selectedJobs = selectedDate ? (jobsByDate[selectedDate] || []) : [];
+  const selectedPending = selectedDate ? (pendingByDate[selectedDate] || []) : [];
   const selectedDateLabel = selectedDate
     ? format(new Date(selectedDate + 'T00:00:00'), 'EEEE, d MMMM yyyy')
     : '';
@@ -120,29 +168,42 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
 
       {/* Grid — each cell is a button so the client can drill into a
           day's cleans. Empty days are still buttons (disabled) to keep
-          the grid touch-target consistent. */}
+          the grid touch-target consistent. Pending suggestions render
+          as orange dots so the client can spot bookings awaiting their
+          approval. */}
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const ds = format(day, 'yyyy-MM-dd');
           const dayJobs = jobsByDate[ds] || [];
+          const dayPending = pendingByDate[ds] || [];
           const isCur = isSameMonth(day, cursor);
           const today = isToday(day);
-          const hasJobs = dayJobs.length > 0;
+          const hasItems = dayJobs.length > 0 || dayPending.length > 0;
+          const hasPending = dayPending.length > 0;
           return (
             <button
               key={ds}
               type="button"
-              disabled={!hasJobs}
-              onClick={() => hasJobs && setSelectedDate(ds)}
+              disabled={!hasItems}
+              onClick={() => hasItems && setSelectedDate(ds)}
               className={`aspect-square rounded-lg border text-xs p-1 flex flex-col text-left transition-colors ${
                 isCur ? 'bg-card border-border' : 'bg-muted/30 border-transparent text-muted-foreground'
               } ${today ? 'ring-2 ring-primary' : ''} ${
-                hasJobs ? 'hover:border-primary hover:bg-primary/5 cursor-pointer' : 'cursor-default'
+                hasPending ? 'ring-1 ring-orange-400/60' : ''
+              } ${
+                hasItems ? 'hover:border-primary hover:bg-primary/5 cursor-pointer' : 'cursor-default'
               }`}
             >
               <div className="font-bold leading-none">{format(day, 'd')}</div>
-              {hasJobs && (
+              {hasItems && (
                 <div className="flex flex-wrap gap-0.5 mt-auto">
+                  {dayPending.slice(0, 2).map((s: any) => (
+                    <div
+                      key={s.id}
+                      className="w-1.5 h-1.5 rounded-full bg-orange-500"
+                      title={`Awaiting your approval${s.guest_name ? ` — ${s.guest_name}` : ''}`}
+                    />
+                  ))}
                   {dayJobs.slice(0, 4).map((j: any) => (
                     <div
                       key={j.id}
@@ -162,6 +223,7 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-primary" /> Cleaned</span>
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> In progress</span>
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Scheduled</span>
+        <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> Awaiting your approval</span>
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" /> Cancelled</span>
       </div>
 
@@ -174,7 +236,49 @@ export default function PropertyCalendar({ jobs, token, propertyId }: PropertyCa
             <DialogTitle className="text-base">{selectedDateLabel}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            {selectedJobs.length === 0 ? (
+            {/* Pending suggestions render first so the action sits at
+                the top of the modal — they're the only items requiring
+                a decision from the client. */}
+            {selectedPending.map((s: any) => (
+              <div key={s.id} className="rounded-xl border-2 border-orange-400 bg-orange-50 dark:bg-orange-500/10 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500" />
+                    <span className="text-sm font-bold text-orange-800 dark:text-orange-200">Awaiting your approval</span>
+                  </div>
+                  {s.suggested_clean_time && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      {s.suggested_clean_time.slice(0, 5)}
+                    </span>
+                  )}
+                </div>
+                {s.guest_name && (
+                  <p className="text-xs text-muted-foreground">Guest: {s.guest_name}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    disabled={decidingId === s.id}
+                    onClick={() => decide(s, 'approve')}
+                  >
+                    {decidingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Approve clean
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={decidingId === s.id}
+                    onClick={() => decide(s, 'reject')}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {selectedJobs.length === 0 && selectedPending.length === 0 ? (
               <p className="text-sm text-muted-foreground">No cleans on this day.</p>
             ) : (
               selectedJobs.map((j: any) => {
