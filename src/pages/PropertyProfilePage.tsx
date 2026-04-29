@@ -169,7 +169,7 @@ export default function PropertyProfilePage() {
         onOpenChange={setScheduleOpen}
         clientId={property.id}
         clientName={(property as any).client_name || property.property_name}
-        properties={[{ id: property.id, property_name: property.property_name, address: property.address, default_price: (property as any).default_price, price_includes_gst: (property as any).price_includes_gst }]}
+        properties={[{ id: property.id, property_name: property.property_name, address: property.address, default_price: (property as any).default_price, price_includes_gst: (property as any).price_includes_gst, price_turnover: (property as any).price_turnover }]}
       />
 
       {/* Delete Confirmation Modal */}
@@ -200,7 +200,7 @@ function FormsTab({ propertyId }: { propertyId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from('jobs')
-        .select('id, scheduled_date, scheduled_time, status, cleaner_1_id, cleaner_2_id, completion_notes, completion_photos, completion_form_completed_at, clock_on, clock_off, duration_minutes')
+        .select('id, scheduled_date, scheduled_time, status, cleaner_1_id, cleaner_2_id, completion_notes, completion_photos, completion_form_completed_at, clock_on, clock_off, duration_minutes, report_token')
         .eq('property_id', propertyId)
         .eq('status', 'completed')
         .order('scheduled_date', { ascending: false });
@@ -317,7 +317,21 @@ function FormsTab({ propertyId }: { propertyId: string }) {
                   </div>
                 )}
 
-                <Button variant="outline" size="sm" onClick={() => navigate(`/jobs/${job.id}`)} className="gap-1.5">
+                {/* Navigate to the styled client-facing report page when
+                    available, or fall back to the admin job detail page for
+                    older jobs that predate report_token backfill. */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (job.report_token) {
+                      window.open(`/report/${job.report_token}`, '_blank');
+                    } else {
+                      navigate(`/jobs/${job.id}`);
+                    }
+                  }}
+                  className="gap-1.5"
+                >
                   <FileText className="w-3.5 h-3.5" /> View Full Report
                 </Button>
               </div>
