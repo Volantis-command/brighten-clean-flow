@@ -1,40 +1,66 @@
-import { CalendarPlus, MessageSquare, Users } from 'lucide-react';
+import { UserPlus, CalendarPlus, MessageSquare, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export function QuickActions() {
+interface QuickActionsProps {
+  onScheduleClean?: () => void;
+  onSendQuoteSMS?: () => void;
+}
+
+/**
+ * Four primary quick-action buttons — the first thing an admin reaches for.
+ * Schedule Clean and Send Quote SMS can trigger modals via props;
+ * New Client and New Cleaner navigate to the respective pages.
+ */
+export function QuickActions({ onScheduleClean, onSendQuoteSMS }: QuickActionsProps) {
   const navigate = useNavigate();
 
+  const actions = [
+    {
+      label: 'New Client',
+      icon: UserPlus,
+      onClick: () => navigate('/quote'),
+      primary: true,
+    },
+    {
+      label: 'Schedule Clean',
+      icon: CalendarPlus,
+      onClick: () => onScheduleClean ? onScheduleClean() : navigate('/schedule'),
+      primary: false,
+    },
+    {
+      label: 'Quote SMS',
+      icon: MessageSquare,
+      onClick: () => onSendQuoteSMS ? onSendQuoteSMS() : navigate('/quoting'),
+      primary: false,
+    },
+    {
+      label: 'New Cleaner',
+      icon: Briefcase,
+      onClick: () => navigate('/staff'),
+      primary: false,
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <button
-        onClick={() => navigate('/schedule')}
-        className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col items-center gap-2 hover:shadow-md transition-all min-h-[80px] active:scale-95"
-      >
-        <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(254,219,0,0.12)' }}>
-          <CalendarPlus className="h-5 w-5" style={{ color: '#FEDB00' }} />
-        </div>
-        <span className="text-xs font-bold text-foreground text-center leading-tight">Schedule Job</span>
-      </button>
-
-      <button
-        onClick={() => navigate('/quote')}
-        className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col items-center gap-2 transition-all min-h-[80px] active:scale-95 hover:shadow-[0_0_16px_rgba(254,219,0,0.15)]"
-      >
-        <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(254,219,0,0.12)' }}>
-          <MessageSquare className="h-5 w-5" style={{ color: '#FEDB00' }} />
-        </div>
-        <span className="text-xs font-bold text-foreground text-center leading-tight">New Enquiry</span>
-      </button>
-
-      <button
-        onClick={() => navigate('/staff')}
-        className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col items-center gap-2 transition-all min-h-[80px] active:scale-95 hover:shadow-[0_0_16px_rgba(254,219,0,0.15)]"
-      >
-        <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(254,219,0,0.12)' }}>
-          <Users className="h-5 w-5" style={{ color: '#FEDB00' }} />
-        </div>
-        <span className="text-xs font-bold text-foreground text-center leading-tight">Staff Overview</span>
-      </button>
+    <div className="grid grid-cols-4 gap-2">
+      {actions.map(({ label, icon: Icon, onClick, primary }) => (
+        <button
+          key={label}
+          onClick={onClick}
+          className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 text-center transition-all active:scale-95 hover:scale-[1.02] ${
+            primary
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+              : 'bg-card border border-border hover:border-primary/40 hover:bg-primary/5 text-foreground'
+          }`}
+        >
+          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+            primary ? 'bg-white/20' : 'bg-primary/10'
+          }`}>
+            <Icon className={`h-4 w-4 ${primary ? 'text-primary-foreground' : 'text-primary'}`} style={primary ? {} : { color: '#FEDB00' }} />
+          </div>
+          <span className="text-[11px] font-bold leading-tight">{label}</span>
+        </button>
+      ))}
     </div>
   );
 }
