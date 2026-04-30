@@ -219,7 +219,12 @@ export default function ActionsPage() {
               className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
               onClick={() => {
                 if (!n.read) markAsRead.mutate(n.id);
-                if (n.link) navigate(n.link);
+                const dest =
+                  n.link ||
+                  (n.event_type === 'property_change_requested' && n.metadata?.property_id
+                    ? `/properties/${n.metadata.property_id}`
+                    : null);
+                if (dest) navigate(dest);
               }}
             >
               <div className={`mt-0.5 h-2.5 w-2.5 rounded-full shrink-0 ${
