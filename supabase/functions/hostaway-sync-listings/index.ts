@@ -137,6 +137,19 @@ Deno.serve(async (req) => {
   }
 
   // 3. For each listing, match-or-create
+  //
+  // ALLOWLIST: only sync listings that are explicitly approved for this
+  // Brightly account. Any listing not in this set is silently skipped —
+  // this prevents a client's full Hostaway portfolio from flooding
+  // Brightly when we only manage a subset of their properties.
+  //
+  // To add a new property: append its Hostaway listing ID (as a string)
+  // to ALLOWED_LISTING_IDS and redeploy.
+  const ALLOWED_LISTING_IDS = new Set([
+    '512068', // Broadwater Lux Apartment
+    '512146', // Meriton Suites 4205
+  ]);
+
   const results: ListingResult[] = [];
 
   for (const listing of listings) {
@@ -151,6 +164,11 @@ Deno.serve(async (req) => {
         property_id: null,
         error: 'Listing has no id',
       });
+      continue;
+    }
+
+    // Skip any listing not on the allowlist
+    if (!ALLOWED_LISTING_IDS.has(listingId)) {
       continue;
     }
 
