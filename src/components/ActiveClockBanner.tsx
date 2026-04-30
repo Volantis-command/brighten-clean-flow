@@ -18,7 +18,13 @@ function formatElapsedTime(startTime: string) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-export function ActiveClockBanner() {
+interface ActiveClockBannerProps {
+  /** Override the clean-route suppression — use this when the job is complete
+   *  and the cleaner still needs a way to clock off from inside the job page. */
+  forceShow?: boolean;
+}
+
+export function ActiveClockBanner({ forceShow = false }: ActiveClockBannerProps) {
   const { user } = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -26,8 +32,9 @@ export function ActiveClockBanner() {
   const [elapsed, setElapsed] = useState('00:00:00');
   const [clockingOut, setClockingOut] = useState(false);
 
-  // Hide the global clock-out banner on clean workflow routes
-  // The only way to clock off should be via the completion form
+  // Hide the global clock-out banner on clean workflow routes — the normal
+  // clock-off happens via the completion form. Set forceShow=true to override
+  // (e.g. when job is already completed but cleaner never clocked off).
   const isCleanRoute = location.pathname.startsWith('/clean/');
 
   useEffect(() => {
@@ -38,7 +45,7 @@ export function ActiveClockBanner() {
     return () => clearInterval(interval);
   }, [activeEntry?.clock_in_time]);
 
-  if (!user || !activeEntry || isCleanRoute) return null;
+  if (!user || !activeEntry || (isCleanRoute && !forceShow)) return null;
 
   const handleClockOut = async () => {
     setClockingOut(true);

@@ -188,89 +188,7 @@ export default function MyJobsPage() {
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
-      {/* ── Pending offers — if any, show at the top ── */}
-      {pendingOffers.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />
-              Awaiting your acceptance
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {pendingOffers.length} job{pendingOffers.length === 1 ? '' : 's'} need your response.
-            </p>
-          </div>
-
-          {pendingOffers.map((job: any) => {
-            const serviceLabel = job.client_type === 'airbnb' ? 'Airbnb Turnover' : 'House Clean';
-            const durationHrs = job.estimated_duration ? `${(job.estimated_duration / 60).toFixed(1)} hrs` : null;
-            const dateLabel = format(parseISO(job.scheduled_date), 'EEE, d MMM');
-            return (
-              <div
-                key={job.id}
-                className="bg-card rounded-2xl border-2 border-yellow-400/60 p-4 space-y-3 shadow-md"
-              >
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className="bg-yellow-100 text-yellow-800 border-0 text-[10px] font-bold">
-                      NEW OFFER
-                    </Badge>
-                    {job.first_clean && (
-                      <Badge className="bg-amber-200 text-amber-900 border-0 text-[10px] font-bold">
-                        ⭐ FIRST CLEAN
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground">{dateLabel}</span>
-                    {job.scheduled_time && (
-                      <span className="text-xs font-bold text-foreground">
-                        · {job.scheduled_time.slice(0, 5)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-bold text-foreground text-base truncate">{job.property_name}</p>
-                  {job.address && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                      <MapPin className="h-3 w-3 shrink-0" /> {job.address}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">{serviceLabel}</span>
-                    {durationHrs && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {durationHrs}
-                      </span>
-                    )}
-                  </div>
-                  {job.notes && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{job.notes}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-11 rounded-xl font-bold border-destructive/40 text-destructive hover:bg-destructive/10"
-                    onClick={() => { setActionJob(job); setActionType('decline'); }}
-                  >
-                    <X className="h-4 w-4 mr-1" /> Decline
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-11 rounded-xl font-bold bg-brightly hover:bg-brightly/90"
-                    onClick={() => { setActionJob(job); setActionType('accept'); }}
-                  >
-                    <Check className="h-4 w-4 mr-1" /> Accept
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Jobs by view ── */}
+      {/* ── Jobs by view — today first, always at the top ── */}
       <div>
         <h1 className="text-2xl font-extrabold text-foreground">
           {view === 'week' ? 'My Jobs' : `${VIEW_LABELS[view]}'s Jobs`}
@@ -367,6 +285,88 @@ export default function MyJobsPage() {
                   </div>
                 </div>
               </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Pending offers — below today's jobs ── */}
+      {pendingOffers.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />
+              Awaiting your acceptance
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pendingOffers.length} job{pendingOffers.length === 1 ? '' : 's'} need your response.
+            </p>
+          </div>
+
+          {pendingOffers.map((job: any) => {
+            const serviceLabel = job.client_type === 'airbnb' ? 'Airbnb Turnover' : 'House Clean';
+            const durationHrs = job.estimated_duration ? `${(job.estimated_duration / 60).toFixed(1)} hrs` : null;
+            const dateLabel = format(parseISO(job.scheduled_date), 'EEE, d MMM');
+            return (
+              <div
+                key={job.id}
+                className="bg-card rounded-2xl border-2 border-yellow-400/60 p-4 space-y-3 shadow-md"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-yellow-100 text-yellow-800 border-0 text-[10px] font-bold">
+                      NEW OFFER
+                    </Badge>
+                    {job.first_clean && (
+                      <Badge className="bg-amber-200 text-amber-900 border-0 text-[10px] font-bold">
+                        ⭐ FIRST CLEAN
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">{dateLabel}</span>
+                    {job.scheduled_time && (
+                      <span className="text-xs font-bold text-foreground">
+                        · {job.scheduled_time.slice(0, 5)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-bold text-foreground text-base truncate">{job.property_name}</p>
+                  {job.address && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                      <MapPin className="h-3 w-3 shrink-0" /> {job.address}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{serviceLabel}</span>
+                    {durationHrs && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {durationHrs}
+                      </span>
+                    )}
+                  </div>
+                  {job.notes && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{job.notes}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 rounded-xl font-bold border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => { setActionJob(job); setActionType('decline'); }}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Decline
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-11 rounded-xl font-bold bg-brightly hover:bg-brightly/90"
+                    onClick={() => { setActionJob(job); setActionType('accept'); }}
+                  >
+                    <Check className="h-4 w-4 mr-1" /> Accept
+                  </Button>
+                </div>
+              </div>
             );
           })}
         </div>

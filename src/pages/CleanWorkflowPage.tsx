@@ -18,7 +18,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Key, ChevronDown, ChevronUp } from 'lucide-react';
 import { getCurrentPosition, haversineDistance } from '@/lib/geo';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -26,6 +26,7 @@ import { seedDefaultChecklist } from '@/components/clean-workflow/defaultCheckli
 import PreClockOnView from '@/components/clean-workflow/PreClockOnView';
 import PreJobAssessmentModal from '@/components/clean-workflow/PreJobAssessmentModal';
 import ClockedOnBanner from '@/components/clean-workflow/ClockedOnBanner';
+import { ActiveClockBanner } from '@/components/ActiveClockBanner';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
 import PhotoReportingWizard, { buildPhotoSections } from '@/components/clean-workflow/PhotoReportingWizard';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -60,6 +61,8 @@ export default function CleanWorkflowPage() {
   // Manual override: when cleaner taps "COMPLETE JOB" on the active view,
   // we transition to the photo wizard instead of immediately completing.
   const [showPhotoWizard, setShowPhotoWizard] = useState(false);
+  // Access info panel — start collapsed (cleaner can tap to reveal at the door)
+  const [accessOpen, setAccessOpen] = useState(false);
 
   const { data: job, isLoading, refetch } = useQuery({
     queryKey: ['clean-workflow-job', jobId],
@@ -209,16 +212,21 @@ export default function CleanWorkflowPage() {
   const view = resolveView(job);
 
   // ── Done state ──
+  // Job is completed. If the cleaner never clocked off (time entry still open),
+  // show the ActiveClockBanner with forceShow so they can clock off from here.
   if (view === 'done') {
     return (
-      <PreClockOnView
-        job={job}
-        property={property}
-        profiles={profiles}
-        onClockOn={() => {}}
-        clockingOn={false}
-        clientPhone={clientPhone}
-      />
+      <>
+        <ActiveClockBanner forceShow />
+        <PreClockOnView
+          job={job}
+          property={property}
+          profiles={profiles}
+          onClockOn={() => {}}
+          clockingOn={false}
+          clientPhone={clientPhone}
+        />
+      </>
     );
   }
 
@@ -354,6 +362,57 @@ export default function CleanWorkflowPage() {
           {!property?.bedrooms && !property?.bathrooms ? (property?.client_type || 'Clean') : null}
         </span>
       </div>
+
+      {/* ── Access info — always available during the clean ── */}
+      {(() => {
+        const codeRows: { label: string; value: string }[] = [];
+        if (property?.access_method) codeRows.push({ label: 'Method', value: property.access_method });
+        if (property?.access_code) codeRows.push({ label: 'Access code', value: property.access_code });
+        if (property?.lockbox_code && property.lockbox_code !== property.access_code) {
+          codeRows.push({ label: 'Lockbox code', value: property.lockbox_code });
+        }
+        if (property?.garage_code) codeRows.push({ label: 'Garage code', value: property.garage_code });
+        if (property?.alarm_code) codeRows.push({ label: 'Alarm code', value: property.alarm_code });
+        const hasAccess = codeRows.length > 0 || !!property?.access_notes;
+        if (!hasAccess) return null;
+
+        return (
+          <div className="mx-4 mt-3 rounded-2xl border border-border bg-card overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3"
+              onClick={() => setAccessOpen(o => !o)}
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Key className="h-4 w-4 text-primary" />
+                🔑 Property Access
+              </span>
+              {accessOpen
+                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {accessOpen && (
+              <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                {codeRows.map((row) => (
+                  <div key={row.label} className="flex items-baseline justify-between gap-3">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+                      {row.label}
+                    </span>
+                    <span className="text-lg font-extrabold text-foreground font-mono tracking-wide text-right break-all">
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+                {property?.access_notes && (
+                  <div className={codeRows.length > 0 ? 'pt-3 border-t border-border' : ''}>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Notes</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{property.access_notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* The full SOP-driven active clean view */}
       <div className="px-4 py-4">
