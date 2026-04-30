@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
     );
 
     // If only job_id was passed, hydrate contact/amount/description from the job
+    let contact_email: string | null = null;
     if (job_id && (!contact_name || amount === undefined || amount === null)) {
       const { data: job, error: jobErr } = await supabase
         .from('jobs')
@@ -65,6 +66,18 @@ Deno.serve(async (req) => {
       if (amount === undefined || amount === null) amount = fallbackEx;
       const dateLabel = (job as any).scheduled_date || '';
       description = description || `Cleaning service${prop.property_name ? ` — ${prop.property_name}` : ''}${dateLabel ? ` (${dateLabel})` : ''}`;
+
+      // Resolve client email: billing_email on property, else profiles via client_properties
+      contact_email = prop.billing_email || null;
+      if (!contact_email && (job as any).property_id) {
+        const { data: cpLink } = await supabase
+          .from('client_properties')
+          .select('profiles:client_id(email)')
+          .eq('property_id', (job as any).property_id)
+          .limit(1)
+          .maybeSingle();
+        contact_email = (cpLink as any)?.profiles?.email || null;
+      }
     }
 
     if (!contact_name) {
@@ -91,7 +104,23 @@ Deno.serve(async (req) => {
       const searchData = await searchRes.json();
       if (searchData?.Contacts?.length > 0) {
         contactId = searchData.Contacts[0].ContactID;
+        // If we have an email and the existing Xero contact has none, patch it in
+        const existingEmail = searchData.Contacts[0].EmailAddress || '';
+        if (contact_email && !existingEmail && contactId) {
+          await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${access_token}`,
+              'Xero-Tenant-Id': tenant_id,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ Contacts: [{ ContactID: contactId, EmailAddress: contact_email }] }),
+          });
+        }
       } else {
+        const newContact: any = { Name: contact_name };
+        if (contact_email) newContact.EmailAddress = contact_email;
         const createRes = await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
           method: 'POST',
           headers: {
@@ -100,7 +129,7 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
-          body: JSON.stringify({ Contacts: [{ Name: contact_name }] }),
+          body: JSON.stringify({ Contacts: [newContact] }),
         });
         const createData = await createRes.json();
         contactId = createData?.Contacts?.[0]?.ContactID || null;
