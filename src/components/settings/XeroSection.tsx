@@ -310,6 +310,7 @@ export default function XeroSection() {
                 <SelectItem value="201">201 — Deep Clean Revenue</SelectItem>
                 <SelectItem value="202">202 — Airbnb Revenue</SelectItem>
                 <SelectItem value="203">203 — Commercial Revenue</SelectItem>
+                <SelectItem value="207">207 — House Clean Revenue</SelectItem>
                 <SelectItem value="260">260 — Other Revenue</SelectItem>
               </SelectContent>
             </Select>
@@ -323,6 +324,7 @@ export default function XeroSection() {
                 <SelectItem value="201">201 — Deep Clean Revenue</SelectItem>
                 <SelectItem value="202">202 — Airbnb Revenue</SelectItem>
                 <SelectItem value="203">203 — Commercial Revenue</SelectItem>
+                <SelectItem value="207">207 — House Clean Revenue</SelectItem>
                 <SelectItem value="260">260 — Other Revenue</SelectItem>
               </SelectContent>
             </Select>
@@ -336,6 +338,7 @@ export default function XeroSection() {
                 <SelectItem value="201">201 — Deep Clean Revenue</SelectItem>
                 <SelectItem value="202">202 — Airbnb Revenue</SelectItem>
                 <SelectItem value="203">203 — Commercial Revenue</SelectItem>
+                <SelectItem value="207">207 — House Clean Revenue</SelectItem>
                 <SelectItem value="260">260 — Other Revenue</SelectItem>
               </SelectContent>
             </Select>
@@ -349,6 +352,7 @@ export default function XeroSection() {
                 <SelectItem value="201">201 — Deep Clean Revenue</SelectItem>
                 <SelectItem value="202">202 — Airbnb Revenue</SelectItem>
                 <SelectItem value="203">203 — Commercial Revenue</SelectItem>
+                <SelectItem value="207">207 — House Clean Revenue</SelectItem>
                 <SelectItem value="260">260 — Other Revenue</SelectItem>
               </SelectContent>
             </Select>
