@@ -230,6 +230,8 @@ export default function ClientDetailPage() {
 
   const [notes, setNotes] = useState('');
   const [notesLoaded, setNotesLoaded] = useState(false);
+  const [weeklyInvoice, setWeeklyInvoice] = useState(false);
+  const [weeklyInvoiceLoaded, setWeeklyInvoiceLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [schedulePropertyId, setSchedulePropertyId] = useState<string | null>(null);
@@ -239,6 +241,10 @@ export default function ClientDetailPage() {
   if (data?.profile && !notesLoaded) {
     setNotes((data.profile as any).internal_notes || '');
     setNotesLoaded(true);
+  }
+  if (data?.profile && !weeklyInvoiceLoaded) {
+    setWeeklyInvoice(!!(data.profile as any).weekly_invoice);
+    setWeeklyInvoiceLoaded(true);
   }
 
   const refreshAll = () => queryClient.invalidateQueries({ queryKey: ['client-detail', id] });
@@ -445,23 +451,61 @@ export default function ClientDetailPage() {
             onRefresh={refreshAll}
           />
 
-          {/* 5. INTERNAL NOTES — only for real profiles (pseudo-clients have no profiles row) */}
+          {/* 5. BILLING SETTINGS + INTERNAL NOTES — only for real profiles */}
           {isRealProfile && (
-            <div className="bg-card rounded-2xl border border-border p-5">
-              <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
-              <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={async () => {
-                  const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', parsed.realId);
-                  if (error) { toast.error('Failed to save notes'); return; }
-                  toast.success('Notes saved');
-                }}
-              >
-                Save Notes
-              </Button>
+            <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
+              <div>
+                <h3 className="font-bold text-foreground mb-3">Billing</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Weekly invoice (Monday)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      All cleans Mon–Sun batched onto one invoice each Monday. Disables per-job auto-invoicing.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={weeklyInvoice}
+                    onClick={async () => {
+                      const next = !weeklyInvoice;
+                      setWeeklyInvoice(next);
+                      const { error } = await supabase
+                        .from('profiles')
+                        .update({ weekly_invoice: next } as any)
+                        .eq('id', parsed.realId);
+                      if (error) {
+                        setWeeklyInvoice(!next);
+                        toast.error('Failed to update billing setting');
+                      } else {
+                        toast.success(next ? 'Weekly invoicing enabled' : 'Weekly invoicing disabled');
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none ${weeklyInvoice ? 'bg-primary' : 'bg-muted'}`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transition-transform ${weeklyInvoice ? 'translate-x-5' : 'translate-x-0'}`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>
+                <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add internal notes about this client..." rows={4} className="rounded-xl" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={async () => {
+                    const { error } = await supabase.from('profiles').update({ internal_notes: notes } as any).eq('id', parsed.realId);
+                    if (error) { toast.error('Failed to save notes'); return; }
+                    toast.success('Notes saved');
+                  }}
+                >
+                  Save Notes
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>

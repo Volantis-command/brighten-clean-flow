@@ -145,7 +145,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Skip if client uses weekly batch invoicing — their jobs are handled
+    // by xero-weekly-batch-invoice every Monday.
     const property: any = job.properties || {};
+    if (property.id) {
+      const { data: cpLink } = await supabase
+        .from('client_properties')
+        .select('profiles:client_id(weekly_invoice)')
+        .eq('property_id', property.id)
+        .limit(1)
+        .maybeSingle();
+      const weeklyInvoice = (cpLink as any)?.profiles?.weekly_invoice === true;
+      if (weeklyInvoice) {
+        console.log('Client uses weekly invoicing — skipping per-job auto-invoice for job', job_id);
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: 'weekly_invoice client' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
     const cleanType =
       property.client_type === 'airbnb' ? 'Airbnb Turnover Clean' : 'House Clean';
     const dateStr = job.scheduled_date || new Date().toISOString().slice(0, 10);
