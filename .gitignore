@@ -27,3 +27,9 @@ dist-ssr
 migration-work/*.json
 migration-work/dumps/
 supabase/.temp/
+.gitnexus
+.gitnexus/
+Brightly App - Claude Code/
+.gitnexus/
+.claude/
+AGENTS.md
