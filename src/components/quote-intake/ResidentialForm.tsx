@@ -1,15 +1,11 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Input } from '@/components/ui/input';
 import { TimeSelect } from '@/components/ui/time-select';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   FormCard, SectionHeader, QuestionLabel, OptionGrid, YesNo, DayChips,
-  FormShell, FormNavButtons, darkInputClass, darkTextareaClass,
+  FormShell, FormNavButtons, GreenInput, GreenTextarea,
 } from './FormUI';
 
 interface Props { isDeepClean?: boolean; onComplete: () => void; onBack: () => void; }
@@ -179,9 +175,9 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
         <SectionHeader icon="👤" label="About You" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Full Name *</QuestionLabel><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" className={darkInputClass} /></div>
-            <div className="space-y-2"><QuestionLabel>Mobile Number *</QuestionLabel><Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="0412 345 678" type="tel" className={darkInputClass} /></div>
-            <div className="space-y-2"><QuestionLabel>Email Address *</QuestionLabel><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" type="email" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Full Name *</QuestionLabel><GreenInput value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" /></div>
+            <div className="space-y-2"><QuestionLabel>Mobile Number *</QuestionLabel><GreenInput value={mobile} onChange={e => setMobile(e.target.value)} placeholder="0412 345 678" type="tel" /></div>
+            <div className="space-y-2"><QuestionLabel>Email Address *</QuestionLabel><GreenInput value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" type="email" /></div>
           </div>
         </FormCard>
       </>
@@ -192,7 +188,7 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
         <SectionHeader icon="🏠" label="About Your Property" />
         <FormCard>
           <div className="space-y-5">
-            <div className="space-y-2"><QuestionLabel>Property Address *</QuestionLabel><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Smith St, Richmond VIC 3121" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Property Address *</QuestionLabel><GreenInput value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Smith St, Richmond VIC 3121" /></div>
             <div className="space-y-2"><QuestionLabel>Property Type</QuestionLabel><OptionGrid options={['House', 'Apartment', 'Townhouse', 'Unit']} value={propertyType} onChange={setPropertyType} cols={4} /></div>
           </div>
         </FormCard>
@@ -251,13 +247,19 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
                 <TimeSelect
                   value={preferredTime === 'Flexible' || !/^\d{1,2}:\d{2}$/.test(preferredTime) ? '' : preferredTime}
                   onChange={(v) => setPreferredTime(v || 'Flexible')}
-                  className={`${darkInputClass} w-40`}
+                  className="w-40 h-12 rounded-xl px-3 text-sm text-white"
+                  style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)' } as any}
                   placeholder="e.g. 2:00 PM"
                 />
                 <button
                   type="button"
                   onClick={() => setPreferredTime('Flexible')}
-                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${preferredTime === 'Flexible' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                  className="px-4 h-12 rounded-xl text-sm font-bold transition-all"
+                  style={{
+                    background: preferredTime === 'Flexible' ? '#FEDB00' : 'rgba(0,0,0,0.25)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: preferredTime === 'Flexible' ? '#111' : '#fff',
+                  }}
                 >
                   I'm flexible
                 </button>
@@ -274,7 +276,7 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
         <FormCard>
           <div className="space-y-5">
             <div className="space-y-2"><QuestionLabel>Access method</QuestionLabel><OptionGrid options={['Someone home', 'Key provided', 'Lockbox', 'Other']} value={accessMethod} onChange={setAccessMethod} cols={2} /></div>
-            <div className="space-y-2"><QuestionLabel sub="e.g. lockbox code, buzzer, gate code">Access instructions</QuestionLabel><Input value={accessInstructions} onChange={e => setAccessInstructions(e.target.value)} placeholder="e.g. Lockbox code 1234, side gate" className={darkInputClass} /></div>
+            <div className="space-y-2"><QuestionLabel sub="e.g. lockbox code, buzzer, gate code">Access instructions</QuestionLabel><GreenInput value={accessInstructions} onChange={e => setAccessInstructions(e.target.value)} placeholder="e.g. Lockbox code 1234, side gate" /></div>
           </div>
         </FormCard>
         <FormCard>
@@ -305,20 +307,30 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
               )}
               {photos.length < 3 && (<>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-                <Button type="button" variant="outline" className="w-full h-12 rounded-xl gap-2 border-dashed border-[rgba(255,255,255,0.2)] bg-transparent text-[#F0FDF4] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#F0FDF4]" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <button type="button" className="w-full h-12 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all" style={{ background: 'rgba(0,0,0,0.2)', border: '1.5px dashed rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
                   {uploading ? 'Uploading...' : `Upload Photos (${photos.length}/3)`}
-                </Button></>)}
+                </button></>)}
             </div>
-            <div className="space-y-2"><QuestionLabel>Anything specific you'd like us to focus on? (optional)</QuestionLabel><Textarea value={focusAreas} onChange={e => setFocusAreas(e.target.value)} placeholder="e.g. Extra attention on kitchen grease, mould in bathroom..." className={darkTextareaClass} /></div>
+            <div className="space-y-2"><QuestionLabel>Anything specific you'd like us to focus on? (optional)</QuestionLabel><GreenTextarea value={focusAreas} onChange={e => setFocusAreas(e.target.value)} placeholder="e.g. Extra attention on kitchen grease, mould in bathroom..." /></div>
           </div>
         </FormCard>
         <FormCard>
           <div className="flex items-start gap-3">
-            <Checkbox checked={tcsAccepted} onCheckedChange={(v) => setTcsAccepted(v === true)} id="tcs" className="mt-0.5 border-[rgba(255,255,255,0.3)] data-[state=checked]:bg-[#3A7560] data-[state=checked]:border-[#3A7560] data-[state=checked]:text-white" />
-            <label htmlFor="tcs" className="text-sm" style={{ color: '#F0FDF4' }}>
+            <button
+              type="button"
+              onClick={() => setTcsAccepted(v => !v)}
+              className="mt-0.5 w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all"
+              style={{
+                background: tcsAccepted ? '#FEDB00' : 'rgba(0,0,0,0.25)',
+                border: `1.5px solid ${tcsAccepted ? '#FEDB00' : 'rgba(255,255,255,0.25)'}`,
+              }}
+            >
+              {tcsAccepted && <span style={{ color: '#111', fontSize: 12, fontWeight: 900 }}>✓</span>}
+            </button>
+            <label className="text-sm cursor-pointer" style={{ color: 'rgba(255,255,255,0.8)' }} onClick={() => setTcsAccepted(v => !v)}>
               I agree to Brightly's{' '}
-              <button type="button" onClick={() => setTermsOpen(true)} className="underline font-medium" style={{ color: '#86EFAC' }}>Terms & Conditions</button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setTermsOpen(true); }} className="underline font-semibold" style={{ color: '#FEDB00' }}>Terms & Conditions</button>
             </label>
           </div>
         </FormCard>

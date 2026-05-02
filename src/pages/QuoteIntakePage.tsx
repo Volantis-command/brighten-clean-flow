@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Home, SprayCan, Building2, BedDouble } from 'lucide-react';
+import { Home, SprayCan, Building2, BedDouble, CheckCircle2 } from 'lucide-react';
 import QuoteDetailView from '@/components/quote/QuoteDetailView';
 import ResidentialForm from '@/components/quote-intake/ResidentialForm';
 import AirbnbForm from '@/components/quote-intake/AirbnbForm';
@@ -8,34 +8,71 @@ import CommercialForm from '@/components/quote-intake/CommercialForm';
 
 type CleanType = 'standard' | 'deep' | 'airbnb' | 'commercial' | null;
 
+const BG     = '#173A27';
+const CARD   = '#1F4A32';
+const YELLOW = '#FEDB00';
+const WHITE  = '#FFFFFF';
+const BORDER = 'rgba(255,255,255,0.10)';
+const MUTED  = 'rgba(255,255,255,0.55)';
+
 const OPTIONS = [
-  { key: 'standard' as const, label: 'Standard Clean', icon: Home, desc: 'Regular home cleaning — kitchens, bathrooms & living areas.' },
-  { key: 'deep' as const, label: 'Deep Clean', icon: SprayCan, desc: 'Top-to-bottom clean including ovens, fridges & windows.' },
-  { key: 'airbnb' as const, label: 'Airbnb Turnover', icon: BedDouble, desc: 'Guest-ready turnovers with linen & hosting touches.' },
-  { key: 'commercial' as const, label: 'Commercial', icon: Building2, desc: 'Offices, retail, medical & industrial spaces.' },
+  {
+    key: 'standard' as const,
+    label: 'Standard Clean',
+    icon: Home,
+    desc: 'Regular home cleaning — kitchens, bathrooms & living areas.',
+  },
+  {
+    key: 'deep' as const,
+    label: 'Deep Clean',
+    icon: SprayCan,
+    desc: 'Top-to-bottom clean including ovens, fridges & windows.',
+  },
+  {
+    key: 'airbnb' as const,
+    label: 'Airbnb Turnover',
+    icon: BedDouble,
+    desc: 'Guest-ready turnovers with linen & hosting touches.',
+  },
+  {
+    key: 'commercial' as const,
+    label: 'Commercial',
+    icon: Building2,
+    desc: 'Offices, retail, medical & industrial spaces.',
+  },
 ];
 
 function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="flex items-center justify-between max-w-2xl mx-auto w-full px-6 pt-6 mb-8">
-        <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Brightly<span className="text-brightly-yellow">.</span>
-        </h1>
-        <span className="text-primary text-sm font-medium">New Enquiry</span>
+    <div className="min-h-screen flex flex-col" style={{ background: BG }}>
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 pt-7 pb-2 max-w-2xl mx-auto w-full">
+        <span className="text-2xl font-extrabold tracking-tight" style={{ color: WHITE }}>
+          Brightly<span style={{ color: YELLOW }}>.</span>
+        </span>
+        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: MUTED }}>
+          Get a Quote
+        </span>
       </header>
 
-      <div className="flex-1 max-w-2xl mx-auto w-full px-6">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-1">Get Your Quote</h2>
-          <p className="text-base text-muted-foreground mb-8">
-            Tell us about your space and we'll have a quote to you within 24 hours. 🌿
-          </p>
-        </div>
+      {/* Hero */}
+      <div className="px-6 pt-8 pb-6 max-w-2xl mx-auto w-full">
+        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: YELLOW }}>
+          Free Quote · 24 Hours
+        </p>
+        <h1 className="text-3xl font-extrabold leading-tight mb-2" style={{ color: WHITE }}>
+          What type of clean<br />do you need?
+        </h1>
+        <p className="text-base" style={{ color: MUTED }}>
+          Tell us about your space and we'll have a quote to you within 24 hours.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
+      {/* Service cards */}
+      <div className="px-6 pb-10 max-w-2xl mx-auto w-full">
+        <div className="grid grid-cols-2 gap-4">
           {OPTIONS.map(opt => {
             const isHovered = hovered === opt.key;
             return (
@@ -44,27 +81,43 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
                 onClick={() => onSelect(opt.key)}
                 onMouseEnter={() => setHovered(opt.key)}
                 onMouseLeave={() => setHovered(null)}
-                className={`group flex flex-col items-center justify-center text-center rounded-2xl p-8 min-h-[160px] cursor-pointer transition-all duration-200 bg-card border ${
-                  isHovered
-                    ? 'border-primary shadow-lg shadow-primary/20 -translate-y-0.5'
-                    : 'border-border hover:border-primary/50'
-                }`}
+                className="flex flex-col items-start text-left rounded-2xl p-5 min-h-[160px] cursor-pointer transition-all duration-200"
+                style={{
+                  background: isHovered ? YELLOW : CARD,
+                  border: `1.5px solid ${isHovered ? YELLOW : BORDER}`,
+                  transform: isHovered ? 'translateY(-2px)' : 'none',
+                  boxShadow: isHovered ? '0 12px 32px rgba(254,219,0,0.2)' : 'none',
+                }}
               >
-                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-all duration-200 ${
-                  isHovered ? 'bg-primary/15 scale-105' : 'bg-secondary'
-                }`}>
-                  <opt.icon className={`w-7 h-7 transition-colors duration-200 ${
-                    isHovered ? 'text-primary' : 'text-foreground/70'
-                  }`} />
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-200"
+                  style={{ background: isHovered ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.08)' }}
+                >
+                  <opt.icon
+                    className="w-5 h-5"
+                    style={{ color: isHovered ? '#111' : YELLOW }}
+                  />
                 </div>
-                <p className="text-base font-semibold text-foreground text-center leading-tight">{opt.label}</p>
-                <p className="text-sm mt-1.5 leading-snug text-muted-foreground">{opt.desc}</p>
+                <p
+                  className="text-base font-bold mb-1 leading-tight"
+                  style={{ color: isHovered ? '#111' : WHITE }}
+                >
+                  {opt.label}
+                </p>
+                <p
+                  className="text-xs leading-snug"
+                  style={{ color: isHovered ? 'rgba(0,0,0,0.6)' : MUTED }}
+                >
+                  {opt.desc}
+                </p>
               </button>
             );
           })}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground/60 pt-10 pb-6">📞 0418 878 707 · brightly.cleaning 🌿</p>
+        <p className="text-center text-xs mt-10" style={{ color: MUTED }}>
+          0418 878 707 · brightly.cleaning
+        </p>
       </div>
     </div>
   );
@@ -72,16 +125,39 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
 
 function Confirmation() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-      <div className="rounded-full p-6 mb-6 bg-primary/15">
-        <SprayCan className="w-12 h-12 text-primary" />
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+      style={{ background: BG }}
+    >
+      {/* Logo */}
+      <div className="mb-10">
+        <span className="text-2xl font-extrabold" style={{ color: WHITE }}>
+          Brightly<span style={{ color: YELLOW }}>.</span>
+        </span>
       </div>
-      <h1 className="text-3xl font-bold text-foreground">You're all set!</h1>
-      <p className="mt-3 max-w-sm text-base text-muted-foreground">
-        We've received your request and will have a quote to you within 24 hours. Keep an eye on your phone for our SMS. 😊
+
+      <div
+        className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
+        style={{ background: `rgba(254,219,0,0.15)` }}
+      >
+        <CheckCircle2 className="w-10 h-10" style={{ color: YELLOW }} />
+      </div>
+
+      <h1 className="text-3xl font-extrabold mb-3" style={{ color: WHITE }}>
+        You're all set!
+      </h1>
+      <p className="max-w-sm text-base mb-10" style={{ color: MUTED }}>
+        We've received your request and will have a quote to you within 24 hours.
+        Keep an eye on your phone for our SMS.
       </p>
-      <p className="text-sm mt-8 text-muted-foreground">📞 0418 878 707</p>
-      <p className="text-xs mt-1 text-muted-foreground/70">Brightly Cleaning 🌿</p>
+
+      <div
+        className="rounded-2xl px-8 py-5 text-sm"
+        style={{ background: CARD, border: `1px solid ${BORDER}`, color: MUTED }}
+      >
+        <p className="font-bold mb-0.5" style={{ color: WHITE }}>Questions?</p>
+        <p>Call us on <span style={{ color: YELLOW }}>0418 878 707</span></p>
+      </div>
     </div>
   );
 }
@@ -91,13 +167,19 @@ export default function QuoteIntakePage() {
   const [selectedType, setSelectedType] = useState<CleanType>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // If a token is present, show the quote detail view (not the intake form)
   if (token) return <QuoteDetailView token={token} />;
-
   if (submitted) return <Confirmation />;
   if (!selectedType) return <Welcome onSelect={setSelectedType} />;
 
-  if (selectedType === 'airbnb') return <AirbnbForm onComplete={() => setSubmitted(true)} onBack={() => setSelectedType(null)} />;
-  if (selectedType === 'commercial') return <CommercialForm onComplete={() => setSubmitted(true)} onBack={() => setSelectedType(null)} />;
-  return <ResidentialForm isDeepClean={selectedType === 'deep'} onComplete={() => setSubmitted(true)} onBack={() => setSelectedType(null)} />;
+  if (selectedType === 'airbnb')
+    return <AirbnbForm onComplete={() => setSubmitted(true)} onBack={() => setSelectedType(null)} />;
+  if (selectedType === 'commercial')
+    return <CommercialForm onComplete={() => setSubmitted(true)} onBack={() => setSelectedType(null)} />;
+  return (
+    <ResidentialForm
+      isDeepClean={selectedType === 'deep'}
+      onComplete={() => setSubmitted(true)}
+      onBack={() => setSelectedType(null)}
+    />
+  );
 }
