@@ -3,38 +3,42 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ── Design variant ──────────────────────────────────────────────── */
-// ?v=b  → Option B: white cards, dark text — mirrors brightly.cleaning marketing site
-// default → Option A: white unselected buttons on dark green cards
+// no param  → original approved design (dark green cards, dark buttons)
+// ?v=a      → Option A: white unselected buttons on dark green cards
+// ?v=b      → Option B: white cards, dark text — mirrors brightly.cleaning marketing site
 const _vParam = typeof window !== 'undefined'
   ? new URLSearchParams(window.location.search).get('v')
   : null;
+const IS_A = _vParam === 'a';
 const IS_B = _vParam === 'b';
 
 /* ── Brand tokens ────────────────────────────────────────────────── */
-const BG     = '#173A27';   // deep forest green — page background (both variants)
+const BG     = '#173A27';   // deep forest green — page background (all variants)
 const YELLOW = '#FEDB00';
 const WHITE  = '#FFFFFF';
 
-// ── Variant A (default) — dark green cards, white buttons ──────────
-// ── Variant B — white cards, dark text (matches marketing site) ────
-const CARD         = IS_B ? '#FFFFFF'          : '#1F4A32';
-const CARD_BORDER  = IS_B ? '#E5E7EB'          : 'rgba(255,255,255,0.10)';
-const CARD_SHADOW  = IS_B ? '0 4px 20px rgba(0,0,0,0.10)' : 'none';
+// ── Default — original dark green cards, dark buttons ─────────────
+// ── ?v=a   — white unselected buttons on dark green cards ─────────
+// ── ?v=b   — white cards, dark text (matches marketing site) ──────
+const CARD         = IS_B ? '#FFFFFF'                        : '#1F4A32';
+const CARD_BORDER  = IS_B ? '#E5E7EB'                        : 'rgba(255,255,255,0.10)';
+const CARD_SHADOW  = IS_B ? '0 4px 20px rgba(0,0,0,0.10)'   : 'none';
 
-const LABEL_TEXT   = IS_B ? '#111111'          : WHITE;
-const MUTED        = IS_B ? '#6B7280'          : 'rgba(255,255,255,0.55)';
-const SECTION_LBL  = IS_B ? BG                 : YELLOW;   // dark green label on white card; yellow on dark card
-const DIVIDER      = IS_B ? '#E5E7EB'          : 'rgba(255,255,255,0.10)';
+const LABEL_TEXT   = IS_B ? '#111111'                        : WHITE;
+const MUTED        = IS_B ? '#6B7280'                        : 'rgba(255,255,255,0.55)';
+const SECTION_LBL  = IS_B ? BG                               : YELLOW;
+const DIVIDER      = IS_B ? '#E5E7EB'                        : 'rgba(255,255,255,0.10)';
 
-// Inputs
-const INPUT_BG_CSS = IS_B ? '#F5F5F5'          : 'rgba(0,0,0,0.25)';
-const INPUT_TEXT   = IS_B ? '#111111'          : '#FFFFFF';
-const INPUT_BORDER = IS_B ? '#E5E7EB'          : 'rgba(255,255,255,0.10)';
+// Inputs — only B gets light bg; default and A keep the dark input
+const INPUT_BG_CSS = IS_B ? '#F5F5F5'                        : 'rgba(0,0,0,0.25)';
+const INPUT_TEXT   = IS_B ? '#111111'                        : '#FFFFFF';
+const INPUT_BORDER = IS_B ? '#E5E7EB'                        : 'rgba(255,255,255,0.10)';
 
 // Option buttons (unselected state)
-const BTN_BG       = IS_B ? '#F5F5F5'          : '#FFFFFF';
-const BTN_TEXT     = IS_B ? '#111111'          : '#111111';  // dark text in both (A=white bg, B=light gray bg)
-const BTN_BORDER   = IS_B ? '#E5E7EB'          : 'rgba(0,0,0,0.15)';
+// default: dark green bg, white text  |  ?v=a: white bg, dark text  |  ?v=b: light gray bg, dark text
+const BTN_BG       = IS_B ? '#F5F5F5'   : IS_A ? '#FFFFFF'           : 'rgba(0,0,0,0.25)';
+const BTN_TEXT     = IS_B ? '#111111'   : IS_A ? '#111111'           : WHITE;
+const BTN_BORDER   = IS_B ? '#E5E7EB'   : IS_A ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)';
 
 /* ── Input style ─────────────────────────────────────────────────── */
 const inputStyle: React.CSSProperties = {
