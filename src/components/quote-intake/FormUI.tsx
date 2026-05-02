@@ -3,111 +3,91 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ─────────────────────────────────────────────────────────────────────
-   DESIGN VARIANTS
-   ?v=a  → Option A : white unselected buttons on dark green cards
-   ?v=b  → Option B : white cards + dark text (marketing-site style)
-   none  → original approved design (dark green cards, dark buttons)
+   DESIGN VARIANTS  (read fresh each render via React context)
+   no param → original approved dark design
+   ?v=a     → white unselected buttons on dark card
+   ?v=b     → white card, dark text — marketing-site style
 ───────────────────────────────────────────────────────────────────── */
 const VariantCtx = React.createContext<string>('');
 function useV() { return React.useContext(VariantCtx); }
 
-/* ── Shared brand constants (never change) ──────────────────────── */
-const BG     = '#173A27';
-const YELLOW = '#FEDB00';
-const WHITE  = '#FFFFFF';
+/* ── Unchanged brand constants ──────────────────────────────────── */
+const BG       = '#173A27';
+const CARD     = '#1F4A32';
+const BORDER   = 'rgba(255,255,255,0.10)';
+const YELLOW   = '#FEDB00';
+const WHITE    = '#FFFFFF';
+const MUTED    = 'rgba(255,255,255,0.55)';
+const INPUT_BG = 'rgba(0,0,0,0.25)';
 
 /* ── Legacy shims ───────────────────────────────────────────────── */
 export const darkInputClass = '';
 export const darkTextareaClass = '';
 
-/* ── Per-variant token helpers ──────────────────────────────────── */
-function tokens(v: string) {
-  const isA = v === 'a';
-  const isB = v === 'b';
+/* ── Inputs — default dark style is UNCHANGED ───────────────────── */
+const defaultInputStyle: React.CSSProperties = {
+  background: INPUT_BG,
+  border: `1px solid ${BORDER}`,
+  color: WHITE,
+  borderRadius: '0.75rem',
+  height: '3.5rem',
+  width: '100%',
+  padding: '0 1rem',
+  fontSize: '1rem',
+  outline: 'none',
+};
 
-  return {
-    // Card
-    card:        isB ? '#FFFFFF'                       : '#1F4A32',
-    cardBorder:  isB ? 'none'                          : '1px solid rgba(255,255,255,0.10)',
-    cardShadow:  isB ? '0 8px 32px rgba(0,0,0,0.18)'  : 'none',
+const bInputStyle: React.CSSProperties = {
+  background: '#F0F0F0',
+  border: '1px solid #D1D5DB',
+  color: '#111111',
+  borderRadius: '0.75rem',
+  height: '3.5rem',
+  width: '100%',
+  padding: '0 1rem',
+  fontSize: '1rem',
+  outline: 'none',
+};
 
-    // Section header label
-    sectionLbl:  isB ? BG                              : YELLOW,
-    divider:     isB ? '#E5E7EB'                       : 'rgba(255,255,255,0.10)',
-
-    // Labels / body text inside cards
-    labelText:   isB ? '#111111'                       : WHITE,
-    muted:       isB ? '#6B7280'                       : 'rgba(255,255,255,0.55)',
-
-    // Text inputs
-    inputBg:     isB ? '#F0F0F0'                       : 'rgba(0,0,0,0.25)',
-    inputText:   isB ? '#111111'                       : WHITE,
-    inputBorder: isB ? '#D1D5DB'                       : 'rgba(255,255,255,0.10)',
-
-    // Option buttons — unselected state
-    btnBg:       isB ? '#EEEEEE'    : isA ? WHITE      : 'rgba(0,0,0,0.25)',
-    btnText:     isB ? '#111111'    : isA ? '#111111'  : WHITE,
-    btnBorder:   isB ? '#D1D5DB'    : isA ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)',
-  };
-}
-
-/* ── Input components ───────────────────────────────────────────── */
 export function GreenInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  const t = tokens(useV());
-  const style: React.CSSProperties = {
-    background: t.inputBg,
-    border: `1px solid ${t.inputBorder}`,
-    color: t.inputText,
-    borderRadius: '0.75rem',
-    height: '3.5rem',
-    width: '100%',
-    padding: '0 1rem',
-    fontSize: '1rem',
-    outline: 'none',
-    ...props.style,
-  };
+  const isB = useV() === 'b';
+  const base = isB ? bInputStyle : defaultInputStyle;
+  const blurBorder = isB ? '#D1D5DB' : BORDER;
   return (
     <input
       {...props}
-      style={style}
+      style={{ ...base, ...props.style }}
       onFocus={e => { e.currentTarget.style.borderColor = YELLOW; }}
-      onBlur={e => { e.currentTarget.style.borderColor = t.inputBorder; }}
+      onBlur={e => { e.currentTarget.style.borderColor = blurBorder; }}
     />
   );
 }
 
 export function GreenTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const t = tokens(useV());
-  const style: React.CSSProperties = {
-    background: t.inputBg,
-    border: `1px solid ${t.inputBorder}`,
-    color: t.inputText,
-    borderRadius: '0.75rem',
-    width: '100%',
-    minHeight: '7rem',
-    padding: '0.75rem 1rem',
-    fontSize: '1rem',
-    outline: 'none',
-    resize: 'none',
-    ...props.style,
-  };
+  const isB = useV() === 'b';
+  const base = isB ? bInputStyle : defaultInputStyle;
+  const blurBorder = isB ? '#D1D5DB' : BORDER;
   return (
     <textarea
       {...props}
-      style={style}
+      style={{ ...base, height: 'auto', minHeight: '7rem', padding: '0.75rem 1rem', resize: 'none', ...props.style }}
       onFocus={e => { e.currentTarget.style.borderColor = YELLOW; }}
-      onBlur={e => { e.currentTarget.style.borderColor = t.inputBorder; }}
+      onBlur={e => { e.currentTarget.style.borderColor = blurBorder; }}
     />
   );
 }
 
-/* ── Card wrapper ───────────────────────────────────────────────── */
+/* ── Card wrapper — p-5 padding always preserved ────────────────── */
 export function FormCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const t = tokens(useV());
+  const isB = useV() === 'b';
   return (
     <div
-      className={`rounded-2xl overflow-hidden ${className}`}
-      style={{ background: t.card, border: t.cardBorder, boxShadow: t.cardShadow }}
+      className={`rounded-2xl p-5 ${className}`}
+      style={
+        isB
+          ? { background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }
+          : { background: CARD, border: `1px solid ${BORDER}` }
+      }
     >
       {children}
     </div>
@@ -116,38 +96,35 @@ export function FormCard({ children, className = '' }: { children: React.ReactNo
 
 /* ── Section header ─────────────────────────────────────────────── */
 export function SectionHeader({ icon, label }: { icon: string; label: string }) {
-  const v = useV();
-  const t = tokens(v);
+  const isB = useV() === 'b';
 
-  if (v === 'b') {
-    // Marketing-site style: dark green banner header across full card width
+  if (isB) {
+    // Marketing-site style: dark green text, heavier weight, bottom divider
     return (
-      <div
-        className="flex items-center gap-2.5 -mx-5 -mt-5 mb-4 px-5 py-3"
-        style={{ background: BG }}
-      >
+      <div className="flex items-center gap-2.5 pb-3 mb-1" style={{ borderBottom: '2px solid #E5E7EB' }}>
         <span className="text-base leading-none">{icon}</span>
-        <span className="text-xs font-bold tracking-widest uppercase" style={{ color: YELLOW }}>{label}</span>
+        <span className="text-sm font-extrabold tracking-widest uppercase" style={{ color: BG }}>{label}</span>
       </div>
     );
   }
 
+  // Original style — UNCHANGED
   return (
     <div className="flex items-center gap-2.5 pt-2">
       <span className="text-base leading-none">{icon}</span>
-      <span className="text-xs font-bold tracking-widest uppercase" style={{ color: t.sectionLbl }}>{label}</span>
-      <div className="flex-1 h-px" style={{ background: t.divider }} />
+      <span className="text-xs font-bold tracking-widest uppercase" style={{ color: YELLOW }}>{label}</span>
+      <div className="flex-1 h-px" style={{ background: BORDER }} />
     </div>
   );
 }
 
 /* ── Question label ─────────────────────────────────────────────── */
 export function QuestionLabel({ children, sub }: { children: React.ReactNode; sub?: string }) {
-  const t = tokens(useV());
+  const isB = useV() === 'b';
   return (
     <div className="space-y-0.5">
-      <p className="text-sm font-semibold" style={{ color: t.labelText }}>{children}</p>
-      {sub && <p className="text-xs" style={{ color: t.muted }}>{sub}</p>}
+      <p className="text-sm font-semibold" style={{ color: isB ? '#111111' : WHITE }}>{children}</p>
+      {sub && <p className="text-xs" style={{ color: isB ? '#6B7280' : MUTED }}>{sub}</p>}
     </div>
   );
 }
@@ -156,8 +133,15 @@ export function QuestionLabel({ children, sub }: { children: React.ReactNode; su
 export function OptionGrid({
   options, value, onChange, cols = 3,
 }: { options: string[]; value: string; onChange: (v: string) => void; cols?: number }) {
-  const t = tokens(useV());
+  const v = useV();
+  const isA = v === 'a';
+  const isB = v === 'b';
   const colClass = cols === 2 ? 'grid-cols-2' : cols === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3';
+
+  const unselBg     = isB ? '#EEEEEE'             : isA ? WHITE              : INPUT_BG;
+  const unselText   = isB ? '#111111'             : isA ? '#111111'          : WHITE;
+  const unselBorder = isB ? '#D1D5DB'             : isA ? 'rgba(0,0,0,0.15)': BORDER;
+
   return (
     <div className={`grid gap-3 ${colClass}`}>
       {options.map(opt => {
@@ -167,9 +151,9 @@ export function OptionGrid({
             key={opt} type="button" onClick={() => onChange(opt)}
             className="h-12 px-3 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center"
             style={{
-              background: selected ? YELLOW : t.btnBg,
-              border: `1px solid ${selected ? YELLOW : t.btnBorder}`,
-              color: selected ? '#111' : t.btnText,
+              background: selected ? YELLOW : unselBg,
+              border: `1px solid ${selected ? YELLOW : unselBorder}`,
+              color: selected ? '#111' : unselText,
               boxShadow: selected ? `0 0 16px rgba(254,219,0,0.25)` : 'none',
             }}
           >
@@ -183,23 +167,29 @@ export function OptionGrid({
 
 /* ── Yes / No ────────────────────────────────────────────────────── */
 export function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
-  const t = tokens(useV());
+  const v = useV();
+  const isA = v === 'a';
+  const isB = v === 'b';
+  const unselBg     = isB ? '#EEEEEE'  : isA ? WHITE     : INPUT_BG;
+  const unselText   = isB ? '#111111'  : isA ? '#111111' : WHITE;
+  const unselBorder = isB ? '#D1D5DB'  : isA ? 'rgba(0,0,0,0.15)' : BORDER;
+
   return (
     <div className="grid grid-cols-2 gap-4">
-      {([true, false] as const).map(v => {
-        const selected = value === v;
+      {([true, false] as const).map(bv => {
+        const selected = value === bv;
         return (
           <button
-            key={String(v)} type="button" onClick={() => onChange(v)}
+            key={String(bv)} type="button" onClick={() => onChange(bv)}
             className="h-14 rounded-xl text-base font-semibold cursor-pointer transition-all duration-200"
             style={{
-              background: selected ? YELLOW : t.btnBg,
-              border: `1.5px solid ${selected ? YELLOW : t.btnBorder}`,
-              color: selected ? '#111' : t.btnText,
+              background: selected ? YELLOW : unselBg,
+              border: `1.5px solid ${selected ? YELLOW : unselBorder}`,
+              color: selected ? '#111' : unselText,
               boxShadow: selected ? `0 0 20px rgba(254,219,0,0.2)` : 'none',
             }}
           >
-            {v ? '✓ Yes' : '✗ No'}
+            {bv ? '✓ Yes' : '✗ No'}
           </button>
         );
       })}
@@ -211,7 +201,13 @@ export function YesNo({ value, onChange }: { value: boolean | null; onChange: (v
 export function DayChips({
   days, selected, onChange,
 }: { days: string[]; selected: string[]; onChange: (d: string[]) => void }) {
-  const t = tokens(useV());
+  const v = useV();
+  const isA = v === 'a';
+  const isB = v === 'b';
+  const unselBg     = isB ? '#EEEEEE'  : isA ? WHITE     : INPUT_BG;
+  const unselText   = isB ? '#111111'  : isA ? '#111111' : WHITE;
+  const unselBorder = isB ? '#D1D5DB'  : isA ? 'rgba(0,0,0,0.15)' : BORDER;
+
   return (
     <div className="flex flex-wrap gap-3">
       {days.map(d => {
@@ -222,9 +218,9 @@ export function DayChips({
             onClick={() => onChange(isSelected ? selected.filter(x => x !== d) : [...selected, d])}
             className="h-12 min-w-[52px] px-4 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200"
             style={{
-              background: isSelected ? YELLOW : t.btnBg,
-              border: `1px solid ${isSelected ? YELLOW : t.btnBorder}`,
-              color: isSelected ? '#111' : t.btnText,
+              background: isSelected ? YELLOW : unselBg,
+              border: `1px solid ${isSelected ? YELLOW : unselBorder}`,
+              color: isSelected ? '#111' : unselText,
             }}
           >
             {d}
@@ -235,28 +231,24 @@ export function DayChips({
   );
 }
 
-/* ── Progress header ─────────────────────────────────────────────── */
+/* ── Progress header — UNCHANGED ────────────────────────────────── */
 export function FormProgressHeader({
   step, totalSteps, stepLabel,
 }: { step: number; totalSteps: number; stepLabel: string }) {
   const pct = ((step + 1) / totalSteps) * 100;
   return (
-    // Always dark green — matches marketing site nav bar
-    <div className="sticky top-0 z-10 px-6 py-4" style={{ background: BG, borderBottom: `1px solid rgba(255,255,255,0.10)` }}>
+    <div className="sticky top-0 z-10 px-6 py-4" style={{ background: BG, borderBottom: `1px solid ${BORDER}` }}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-3">
           <span className="text-lg font-extrabold" style={{ color: WHITE }}>
             Brightly<span style={{ color: YELLOW }}>.</span>
           </span>
-          <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          <span className="text-xs font-semibold" style={{ color: MUTED }}>
             Step {step + 1} of {totalSteps} — {stepLabel}
           </span>
         </div>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.12)' }}>
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: YELLOW }}
-          />
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: YELLOW }} />
         </div>
       </div>
     </div>
@@ -270,13 +262,19 @@ export function FormNavButtons({
   step: number; totalSteps: number; canNext: boolean; submitting: boolean; tcsAccepted: boolean;
   onBack: () => void; onNext: () => void; onSubmit: () => void;
 }) {
-  const t = tokens(useV());
+  const v = useV();
+  const isA = v === 'a';
+  const isB = v === 'b';
+  const backBg     = isB ? '#EEEEEE'  : isA ? WHITE     : INPUT_BG;
+  const backText   = isB ? '#111111'  : isA ? '#111111' : WHITE;
+  const backBorder = isB ? '#D1D5DB'  : isA ? 'rgba(0,0,0,0.15)' : BORDER;
+
   return (
     <div className="flex gap-3 mt-8 pb-8">
       <button
         onClick={onBack}
         className="h-14 px-6 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2"
-        style={{ background: t.btnBg, border: `1px solid ${t.btnBorder}`, color: t.btnText }}
+        style={{ background: backBg, border: `1px solid ${backBorder}`, color: backText }}
       >
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
@@ -311,7 +309,6 @@ export function FormShell({
   children: React.ReactNode; step: number; totalSteps: number; stepLabel: string;
   termsOpen: boolean; onTermsClose: () => void;
 }) {
-  // Read variant fresh on every render so SPA navigation picks it up
   const variant = typeof window !== 'undefined'
     ? (new URLSearchParams(window.location.search).get('v') ?? '')
     : '';
