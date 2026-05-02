@@ -84,6 +84,11 @@ export default function SchedulePage() {
   };
 
   const handleJobClick = (job: ScheduleJob) => {
+    // iCal suggestions aren't real jobs — take admin straight to approval page
+    if (job._isSuggestion) {
+      navigate('/bookings/suggestions');
+      return;
+    }
     setSelectedJob(job);
   };
 

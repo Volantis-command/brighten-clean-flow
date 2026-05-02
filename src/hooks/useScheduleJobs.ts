@@ -33,6 +33,8 @@ export interface ScheduleJob {
     client_type: string | null;
     first_clean: boolean | null;
   } | null;
+  // Set to true for iCal booking suggestions shown on calendar before approval
+  _isSuggestion?: boolean;
 }
 
 export interface CleanerProfile {
@@ -70,6 +72,52 @@ export function useScheduleJobs() {
     },
     enabled: !!user,
   });
+
+  // ── Pending iCal booking suggestions (admin only) ─────────────────
+  // Shown on the calendar as orange "Needs Approval" blocks so nothing
+  // slips through. Clicking navigates to /bookings/suggestions.
+  const { data: suggestions = [] } = useQuery({
+    queryKey: ['pending-booking-suggestions'],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from('booking_suggestions' as any)
+        .select('id, property_id, checkout_date, suggested_clean_date, guest_name, properties(property_name, client_name, address, suburb, lat, lng, client_type, first_clean)')
+        .eq('status', 'pending') as any);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!user && isAdmin,
+    refetchInterval: 5 * 60 * 1000, // re-check every 5 min
+  });
+
+  // Map suggestions → synthetic ScheduleJob entries
+  const suggestionJobs: ScheduleJob[] = suggestions.map((s: any) => ({
+    id: `suggestion-${s.id}`,
+    property_id: s.property_id,
+    // Show on the clean date (day after checkout). Fall back to checkout date.
+    scheduled_date: s.suggested_clean_date || s.checkout_date,
+    scheduled_time: null,
+    estimated_duration: null,
+    cleaner_1_id: null,
+    cleaner_2_id: null,
+    status: 'pending_suggestion',
+    price_ex_gst: null,
+    price_inc_gst: null,
+    notes: s.guest_name ? `Guest: ${s.guest_name}` : 'iCal booking — tap to approve',
+    invoice_status: null,
+    series_id: null,
+    recurring_parent_id: null,
+    is_urgent: false,
+    frequency: null,
+    source: 'ical',
+    client_name: null,
+    property_address: null,
+    properties: s.properties || null,
+    _isSuggestion: true,
+  }));
+
+  // Merge: real jobs first, then suggestions (sorted by date in calendar views)
+  const allJobs = [...jobs, ...suggestionJobs];
 
   const cleanerIds = [...new Set(jobs.flatMap(j => [j.cleaner_1_id, j.cleaner_2_id]).filter(Boolean))] as string[];
 
@@ -115,7 +163,8 @@ export function useScheduleJobs() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['pending-booking-suggestions'] });
   };
 
-  return { jobs, isLoading, nameMap, acceptancesByJob, isAdmin, invalidate };
+  return { jobs: allJobs, isLoading, nameMap, acceptancesByJob, isAdmin, invalidate, pendingSuggestionCount: suggestions.length };
 }

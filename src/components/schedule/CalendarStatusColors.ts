@@ -88,6 +88,15 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
     label: 'Flagged',
   },
 
+  // ── Orange: iCal booking waiting for approval (shown on calendar before admin acts) ──
+  pending_suggestion: {
+    bg: 'bg-orange-100',
+    text: 'text-orange-800',
+    dot: 'bg-orange-500',
+    border: 'border-l-orange-500',
+    label: 'Needs Approval',
+  },
+
   // ── Acceptance-only visual (not a job.status value, used by AcceptanceBadge) ──
   declined: {
     bg: 'bg-gray-200',

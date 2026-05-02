@@ -80,6 +80,19 @@ export default function DashboardPage() {
 
   useProcessScheduledSms();
 
+  // Pending iCal booking suggestions — drives the top-of-dashboard alert banner
+  const { data: pendingSuggestions = [] } = useQuery({
+    queryKey: ['pending-booking-suggestions'],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('booking_suggestions' as any).select('id').eq('status', 'pending') as any);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && isAdmin,
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const pendingCount = pendingSuggestions.length;
+
   const { data: leaveAlerts = [] } = useLeaveConflictAlerts();
 
   const [sendQuoteOpen, setSendQuoteOpen] = useState(false);
@@ -209,6 +222,28 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 overflow-x-hidden w-full max-w-full">
+
+      {/* ── Booking approval alert — cannot be missed ─────────────────── */}
+      {isAdmin && pendingCount > 0 && (
+        <button
+          onClick={() => navigate('/bookings/suggestions')}
+          className="w-full flex items-center justify-between rounded-2xl px-5 py-4 text-left transition-all duration-200 hover:opacity-90 active:scale-[0.99]"
+          style={{ background: '#EA580C', color: '#fff', boxShadow: '0 4px 20px rgba(234,88,12,0.35)' }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🗓</span>
+            <div>
+              <p className="font-extrabold text-base leading-tight">
+                {pendingCount} booking{pendingCount > 1 ? 's' : ''} need{pendingCount === 1 ? 's' : ''} your approval
+              </p>
+              <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                iCal sync found new cleans — tap to review and schedule
+              </p>
+            </div>
+          </div>
+          <span className="text-xl font-bold ml-4">→</span>
+        </button>
+      )}
 
       {/* Greeting */}
       <DashboardGreeting />
