@@ -3,32 +3,44 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { TermsModal } from '@/components/quote/TermsModal';
 
 /* ── Design variant ──────────────────────────────────────────────── */
-// ?v=b  → Option B: white card background, dark text inside cards
-// default → Option A: white unselected buttons, dark button text
+// ?v=b  → Option B: white cards, dark text — mirrors brightly.cleaning marketing site
+// default → Option A: white unselected buttons on dark green cards
 const _vParam = typeof window !== 'undefined'
   ? new URLSearchParams(window.location.search).get('v')
   : null;
 const IS_B = _vParam === 'b';
 
 /* ── Brand tokens ────────────────────────────────────────────────── */
-const BG     = '#173A27';           // deep forest green — page background (both variants)
+const BG     = '#173A27';   // deep forest green — page background (both variants)
 const YELLOW = '#FEDB00';
 const WHITE  = '#FFFFFF';
 
-// Variant-switched tokens
-const CARD        = IS_B ? '#FFFFFF' : '#1F4A32';
-const BORDER      = IS_B ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.10)';
-const MUTED       = IS_B ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)';
-const LABEL_TEXT  = IS_B ? '#111111' : WHITE;   // question labels / body text inside cards
-const INPUT_BG    = IS_B ? 'rgba(0,0,0,0.06)' : '#FFFFFF';   // A=white buttons, B=light-gray buttons
-const BTN_TEXT    = IS_B ? WHITE : '#111111';   // A=dark text on white btn, B=white text on dark btn
-const BTN_BORDER  = IS_B ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.15)';
+// ── Variant A (default) — dark green cards, white buttons ──────────
+// ── Variant B — white cards, dark text (matches marketing site) ────
+const CARD         = IS_B ? '#FFFFFF'          : '#1F4A32';
+const CARD_BORDER  = IS_B ? '#E5E7EB'          : 'rgba(255,255,255,0.10)';
+const CARD_SHADOW  = IS_B ? '0 4px 20px rgba(0,0,0,0.10)' : 'none';
+
+const LABEL_TEXT   = IS_B ? '#111111'          : WHITE;
+const MUTED        = IS_B ? '#6B7280'          : 'rgba(255,255,255,0.55)';
+const SECTION_LBL  = IS_B ? BG                 : YELLOW;   // dark green label on white card; yellow on dark card
+const DIVIDER      = IS_B ? '#E5E7EB'          : 'rgba(255,255,255,0.10)';
+
+// Inputs
+const INPUT_BG_CSS = IS_B ? '#F5F5F5'          : 'rgba(0,0,0,0.25)';
+const INPUT_TEXT   = IS_B ? '#111111'          : '#FFFFFF';
+const INPUT_BORDER = IS_B ? '#E5E7EB'          : 'rgba(255,255,255,0.10)';
+
+// Option buttons (unselected state)
+const BTN_BG       = IS_B ? '#F5F5F5'          : '#FFFFFF';
+const BTN_TEXT     = IS_B ? '#111111'          : '#111111';  // dark text in both (A=white bg, B=light gray bg)
+const BTN_BORDER   = IS_B ? '#E5E7EB'          : 'rgba(0,0,0,0.15)';
 
 /* ── Input style ─────────────────────────────────────────────────── */
 const inputStyle: React.CSSProperties = {
-  background: IS_B ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.25)',
-  border: `1px solid ${BORDER}`,
-  color: IS_B ? '#111' : '#fff',
+  background: INPUT_BG_CSS,
+  border: `1px solid ${INPUT_BORDER}`,
+  color: INPUT_TEXT,
   borderRadius: '0.75rem',
   height: '3.5rem',
   width: '100%',
@@ -47,7 +59,7 @@ export function GreenInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
       {...props}
       style={{ ...inputStyle, ...props.style }}
       onFocus={e => { e.currentTarget.style.borderColor = YELLOW; }}
-      onBlur={e => { e.currentTarget.style.borderColor = BORDER; }}
+      onBlur={e => { e.currentTarget.style.borderColor = INPUT_BORDER; }}
     />
   );
 }
@@ -65,7 +77,7 @@ export function GreenTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaEl
         ...props.style,
       }}
       onFocus={e => { e.currentTarget.style.borderColor = YELLOW; }}
-      onBlur={e => { e.currentTarget.style.borderColor = BORDER; }}
+      onBlur={e => { e.currentTarget.style.borderColor = INPUT_BORDER; }}
     />
   );
 }
@@ -75,7 +87,11 @@ export function FormCard({ children, className = '' }: { children: React.ReactNo
   return (
     <div
       className={`rounded-2xl p-5 ${className}`}
-      style={{ background: CARD, border: `1px solid ${BORDER}` }}
+      style={{
+        background: CARD,
+        border: `1px solid ${CARD_BORDER}`,
+        boxShadow: CARD_SHADOW,
+      }}
     >
       {children}
     </div>
@@ -87,8 +103,8 @@ export function SectionHeader({ icon, label }: { icon: string; label: string }) 
   return (
     <div className="flex items-center gap-2.5 pt-2">
       <span className="text-base leading-none">{icon}</span>
-      <span className="text-xs font-bold tracking-widest uppercase" style={{ color: YELLOW }}>{label}</span>
-      <div className="flex-1 h-px" style={{ background: BORDER }} />
+      <span className="text-xs font-bold tracking-widest uppercase" style={{ color: SECTION_LBL }}>{label}</span>
+      <div className="flex-1 h-px" style={{ background: DIVIDER }} />
     </div>
   );
 }
@@ -117,7 +133,7 @@ export function OptionGrid({
             key={opt} type="button" onClick={() => onChange(opt)}
             className="h-12 px-3 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center"
             style={{
-              background: selected ? YELLOW : INPUT_BG,
+              background: selected ? YELLOW : BTN_BG,
               border: `1px solid ${selected ? YELLOW : BTN_BORDER}`,
               color: selected ? '#111' : BTN_TEXT,
               boxShadow: selected ? `0 0 16px rgba(254,219,0,0.25)` : 'none',
@@ -142,7 +158,7 @@ export function YesNo({ value, onChange }: { value: boolean | null; onChange: (v
             key={String(v)} type="button" onClick={() => onChange(v)}
             className="h-14 rounded-xl text-base font-semibold cursor-pointer transition-all duration-200"
             style={{
-              background: selected ? YELLOW : INPUT_BG,
+              background: selected ? YELLOW : BTN_BG,
               border: `1.5px solid ${selected ? YELLOW : BTN_BORDER}`,
               color: selected ? '#111' : BTN_TEXT,
               boxShadow: selected ? `0 0 20px rgba(254,219,0,0.2)` : 'none',
@@ -170,7 +186,7 @@ export function DayChips({
             onClick={() => onChange(isSelected ? selected.filter(x => x !== d) : [...selected, d])}
             className="h-12 min-w-[52px] px-4 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200"
             style={{
-              background: isSelected ? YELLOW : INPUT_BG,
+              background: isSelected ? YELLOW : BTN_BG,
               border: `1px solid ${isSelected ? YELLOW : BTN_BORDER}`,
               color: isSelected ? '#111' : BTN_TEXT,
             }}
@@ -194,7 +210,7 @@ export function FormProgressHeader({
       style={{ background: BG, borderBottom: `1px solid rgba(255,255,255,0.10)` }}
     >
       <div className="max-w-2xl mx-auto">
-        {/* Logo */}
+        {/* Logo — always white on dark green header */}
         <div className="flex items-center justify-between mb-3">
           <span className="text-lg font-extrabold" style={{ color: WHITE }}>
             Brightly<span style={{ color: YELLOW }}>.</span>
@@ -228,7 +244,7 @@ export function FormNavButtons({
         onClick={onBack}
         className="h-14 px-6 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2"
         style={{
-          background: INPUT_BG,
+          background: BTN_BG,
           border: `1px solid ${BTN_BORDER}`,
           color: BTN_TEXT,
         }}
