@@ -2,24 +2,33 @@ import React from 'react';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { TermsModal } from '@/components/quote/TermsModal';
 
+/* ── Design variant ──────────────────────────────────────────────── */
+// ?v=b  → Option B: white card background, dark text inside cards
+// default → Option A: white unselected buttons, dark button text
+const _vParam = typeof window !== 'undefined'
+  ? new URLSearchParams(window.location.search).get('v')
+  : null;
+const IS_B = _vParam === 'b';
+
 /* ── Brand tokens ────────────────────────────────────────────────── */
-// Matches brightly.cleaning marketing site
-const BG        = '#173A27';      // deep forest green — page background
-const CARD      = '#1F4A32';      // slightly lighter green — card surface
-const BORDER    = 'rgba(255,255,255,0.10)';
-const YELLOW    = '#FEDB00';
-const WHITE     = '#FFFFFF';
-const MUTED     = 'rgba(255,255,255,0.55)';
-const INPUT_BG  = 'rgba(0,0,0,0.25)';
+const BG     = '#173A27';           // deep forest green — page background (both variants)
+const YELLOW = '#FEDB00';
+const WHITE  = '#FFFFFF';
 
-/* ── Input class strings (kept for legacy imports) ───────────────── */
-export const darkInputClass = '';
-export const darkTextareaClass = '';
+// Variant-switched tokens
+const CARD        = IS_B ? '#FFFFFF' : '#1F4A32';
+const BORDER      = IS_B ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.10)';
+const MUTED       = IS_B ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)';
+const LABEL_TEXT  = IS_B ? '#111111' : WHITE;   // question labels / body text inside cards
+const INPUT_BG    = IS_B ? 'rgba(0,0,0,0.06)' : '#FFFFFF';   // A=white buttons, B=light-gray buttons
+const BTN_TEXT    = IS_B ? WHITE : '#111111';   // A=dark text on white btn, B=white text on dark btn
+const BTN_BORDER  = IS_B ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.15)';
 
+/* ── Input style ─────────────────────────────────────────────────── */
 const inputStyle: React.CSSProperties = {
-  background: 'rgba(0,0,0,0.25)',
-  border: '1px solid rgba(255,255,255,0.10)',
-  color: '#fff',
+  background: IS_B ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.25)',
+  border: `1px solid ${BORDER}`,
+  color: IS_B ? '#111' : '#fff',
   borderRadius: '0.75rem',
   height: '3.5rem',
   width: '100%',
@@ -28,13 +37,17 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
+/* ── Legacy shims ────────────────────────────────────────────────── */
+export const darkInputClass = '';
+export const darkTextareaClass = '';
+
 export function GreenInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
       style={{ ...inputStyle, ...props.style }}
       onFocus={e => { e.currentTarget.style.borderColor = YELLOW; }}
-      onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; }}
+      onBlur={e => { e.currentTarget.style.borderColor = BORDER; }}
     />
   );
 }
@@ -52,7 +65,7 @@ export function GreenTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaEl
         ...props.style,
       }}
       onFocus={e => { e.currentTarget.style.borderColor = YELLOW; }}
-      onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; }}
+      onBlur={e => { e.currentTarget.style.borderColor = BORDER; }}
     />
   );
 }
@@ -84,7 +97,7 @@ export function SectionHeader({ icon, label }: { icon: string; label: string }) 
 export function QuestionLabel({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-sm font-semibold" style={{ color: WHITE }}>{children}</p>
+      <p className="text-sm font-semibold" style={{ color: LABEL_TEXT }}>{children}</p>
       {sub && <p className="text-xs" style={{ color: MUTED }}>{sub}</p>}
     </div>
   );
@@ -105,8 +118,8 @@ export function OptionGrid({
             className="h-12 px-3 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center"
             style={{
               background: selected ? YELLOW : INPUT_BG,
-              border: `1px solid ${selected ? YELLOW : BORDER}`,
-              color: selected ? '#111' : WHITE,
+              border: `1px solid ${selected ? YELLOW : BTN_BORDER}`,
+              color: selected ? '#111' : BTN_TEXT,
               boxShadow: selected ? `0 0 16px rgba(254,219,0,0.25)` : 'none',
             }}
           >
@@ -130,8 +143,8 @@ export function YesNo({ value, onChange }: { value: boolean | null; onChange: (v
             className="h-14 rounded-xl text-base font-semibold cursor-pointer transition-all duration-200"
             style={{
               background: selected ? YELLOW : INPUT_BG,
-              border: `1.5px solid ${selected ? YELLOW : BORDER}`,
-              color: selected ? '#111' : WHITE,
+              border: `1.5px solid ${selected ? YELLOW : BTN_BORDER}`,
+              color: selected ? '#111' : BTN_TEXT,
               boxShadow: selected ? `0 0 20px rgba(254,219,0,0.2)` : 'none',
             }}
           >
@@ -158,8 +171,8 @@ export function DayChips({
             className="h-12 min-w-[52px] px-4 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200"
             style={{
               background: isSelected ? YELLOW : INPUT_BG,
-              border: `1px solid ${isSelected ? YELLOW : BORDER}`,
-              color: isSelected ? '#111' : WHITE,
+              border: `1px solid ${isSelected ? YELLOW : BTN_BORDER}`,
+              color: isSelected ? '#111' : BTN_TEXT,
             }}
           >
             {d}
@@ -178,7 +191,7 @@ export function FormProgressHeader({
   return (
     <div
       className="sticky top-0 z-10 px-6 py-4"
-      style={{ background: BG, borderBottom: `1px solid ${BORDER}` }}
+      style={{ background: BG, borderBottom: `1px solid rgba(255,255,255,0.10)` }}
     >
       <div className="max-w-2xl mx-auto">
         {/* Logo */}
@@ -186,7 +199,7 @@ export function FormProgressHeader({
           <span className="text-lg font-extrabold" style={{ color: WHITE }}>
             Brightly<span style={{ color: YELLOW }}>.</span>
           </span>
-          <span className="text-xs font-semibold" style={{ color: MUTED }}>
+          <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>
             Step {step + 1} of {totalSteps} — {stepLabel}
           </span>
         </div>
@@ -214,7 +227,11 @@ export function FormNavButtons({
       <button
         onClick={onBack}
         className="h-14 px-6 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2"
-        style={{ background: INPUT_BG, border: `1px solid ${BORDER}`, color: WHITE }}
+        style={{
+          background: INPUT_BG,
+          border: `1px solid ${BTN_BORDER}`,
+          color: BTN_TEXT,
+        }}
       >
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
