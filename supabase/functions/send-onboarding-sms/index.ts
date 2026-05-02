@@ -94,9 +94,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    const onboardUrl = `https://app.brightly.cleaning/onboard/${token}`;
+    const onboardUrl = `https://app.brightly.cleaning/quote`;
     const firstName = (profile.full_name || 'there').split(' ')[0];
-    const smsBody = `Hi ${firstName}, welcome to Brightly Cleaning! Please fill out your property details here — it only takes a few minutes: ${onboardUrl}`;
+    const smsBody = `Hi ${firstName}, welcome to Brightly Cleaning! Please tell us about your property here — it only takes a few minutes: ${onboardUrl}`;
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');

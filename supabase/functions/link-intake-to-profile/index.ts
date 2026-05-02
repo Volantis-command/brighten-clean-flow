@@ -269,7 +269,125 @@ Deno.serve(async (req: Request) => {
     const match = (linkedProps || []).find((lp: any) =>
       lp.properties?.address?.trim().toLowerCase() === body.property_address.trim().toLowerCase()
     );
-    if (match) propertyId = match.property_id;
+    if (match) {
+      propertyId = match.property_id;
+
+      // Non-destructive fill: when an admin manually adds a client and SMSes
+      // them the intake link ("Send Onboarding Form" button), the same form
+      // returns through here. Without this block, every field the client
+      // typed would be silently discarded — the match-and-return above means
+      // we already have a property linked, so the original code just bailed.
+      //
+      // Rule: ONLY fill columns where the existing value is null or empty.
+      // Anything an admin (or earlier submission) typed wins. This preserves
+      // the data-safety contract: never overwrite client data we already
+      // have, in case a re-submit has typos or blanks.
+      try {
+        const { data: existing } = await supabase
+          .from('properties')
+          .select(
+            'access_method, access_code, access_notes, parking_instructions, ' +
+            'checkin_time, checkout_time, host_preferences, clean_frequency, ' +
+            'preferred_days, preferred_time, pet_notes, first_clean, focus_areas, ' +
+            'bed_config, bed_types, sofa_beds, kitchens, living_areas, balconies, ' +
+            'has_outdoor_area, linen_required, amenities_kit, wash_kit, ' +
+            'tea_coffee_kit, platform, toilets, has_garage, property_photos, ' +
+            'deep_clean_oven, deep_clean_fridge, deep_clean_cupboards, ' +
+            'deep_clean_windows, last_cleaned_when, property_condition, ' +
+            'business_name, abn, approx_size, has_kitchen_breakroom, ' +
+            'floor_types, after_hours_access, has_security_alarm, bedrooms, ' +
+            'bathrooms, status'
+          )
+          .eq('id', propertyId)
+          .single();
+
+        if (existing) {
+          // For each candidate field: fill only if existing is empty AND body has a value.
+          const isEmpty = (v: unknown): boolean =>
+            v === null || v === undefined || v === '' ||
+            (Array.isArray(v) && v.length === 0);
+
+          const candidates: Record<string, unknown> = {
+            access_method: body.access_method,
+            access_code: body.access_code,
+            access_notes: body.access_notes,
+            parking_instructions: body.parking_instructions,
+            checkin_time: body.checkin_time,
+            checkout_time: body.checkout_time,
+            host_preferences: body.host_preferences,
+            clean_frequency: body.clean_frequency,
+            preferred_days: body.preferred_days,
+            preferred_time: body.preferred_time,
+            pet_notes: body.pet_notes,
+            first_clean: body.first_clean,
+            focus_areas: body.focus_areas,
+            bed_config: body.bed_config,
+            bed_types: body.bed_types,
+            sofa_beds: body.sofa_beds,
+            kitchens: body.kitchens,
+            living_areas: body.living_areas,
+            balconies: body.balconies,
+            has_outdoor_area: body.has_outdoor_area,
+            linen_required: body.linen_required,
+            amenities_kit: body.amenities_kit,
+            wash_kit: body.wash_kit,
+            tea_coffee_kit: body.tea_coffee_kit,
+            platform: body.platform,
+            toilets: body.toilets,
+            has_garage: body.has_garage,
+            property_photos: body.property_photos,
+            deep_clean_oven: body.deep_clean_oven,
+            deep_clean_fridge: body.deep_clean_fridge,
+            deep_clean_cupboards: body.deep_clean_cupboards,
+            deep_clean_windows: body.deep_clean_windows,
+            last_cleaned_when: body.last_cleaned_when,
+            property_condition: body.property_condition,
+            business_name: body.business_name,
+            abn: body.abn,
+            approx_size: body.approx_size,
+            has_kitchen_breakroom: body.has_kitchen_breakroom,
+            floor_types: body.floor_types,
+            after_hours_access: body.after_hours_access,
+            has_security_alarm: body.has_security_alarm,
+            bedrooms: body.bedrooms,
+            bathrooms: body.bathrooms,
+          };
+
+          const fillPayload: Record<string, unknown> = {};
+          for (const [key, newValue] of Object.entries(candidates)) {
+            if (!isEmpty(newValue) && isEmpty((existing as any)[key])) {
+              fillPayload[key] = newValue;
+            }
+          }
+
+          // Flip a placeholder property out of 'onboarding' once the client
+          // has actually submitted — but never demote an already-active row.
+          if ((existing as any).status === 'onboarding') {
+            fillPayload.status = 'active';
+          }
+
+          if (Object.keys(fillPayload).length > 0) {
+            await supabase
+              .from('properties')
+              .update(fillPayload as any)
+              .eq('id', propertyId);
+          }
+        }
+
+        // Mark the onboarding-form loop closed for this client+property so
+        // the admin's Onboarding Status panel flips to "✓ Submitted".
+        await supabase
+          .from('client_properties')
+          .update({ onboard_used: true } as any)
+          .eq('client_id', clientProfileId)
+          .eq('property_id', propertyId);
+      } catch (e) {
+        // Defensive: if anything in the fill/flip path fails, log and fall
+        // through. We must not break the public intake submission because
+        // of a best-effort enrichment step.
+        console.error('non-destructive property fill failed:', e);
+      }
+    }
 
     if (!propertyId) {
       const propertyName = fullName
