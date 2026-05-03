@@ -20,6 +20,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, ChevronRight, CheckCircle2, Pen, Check } from 'lucide-react';
@@ -320,7 +321,7 @@ export default function PhotoReportingWizard({ job, property, sections, cleanerP
 
       // SMS notifications (non-blocking)
       try {
-        await supabase.functions.invoke('send-job-sms', { body: { job_id: job.id } });
+        await sendJobSms({ job_id: job.id });
       } catch { /* non-blocking */ }
       try {
         await supabase.functions.invoke('job-completed-sms', { body: { job_id: job.id } });

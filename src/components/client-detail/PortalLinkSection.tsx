@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getAppBaseUrl } from '@/lib/appUrl';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 interface PortalLinkSectionProps {
   clientId: string;
@@ -86,11 +87,9 @@ export default function PortalLinkSection({
     setSending(true);
     try {
       if (phone) {
-        const { error } = await supabase.functions.invoke('send-job-sms', {
-          body: {
-            to: phone,
-            message: `Hi ${clientName}, here's your Brightly property portal: ${portalLink}`,
-          },
+        const { error } = await sendJobSms({
+          to: phone,
+          message: `Hi ${clientName}, here's your Brightly property portal: ${portalLink}`,
         });
         if (error) throw error;
       }

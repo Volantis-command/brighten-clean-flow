@@ -12,6 +12,7 @@ import SignaturePad from '@/components/clean-workflow/SignaturePad';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { triggerJobAutoInvoice } from '@/lib/jobInvoice';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 // ─── Photo field definition ───
 interface PhotoField {
@@ -414,8 +415,9 @@ export default function CompletionFormPage() {
       const cleanerName = profile?.full_name || 'A cleaner';
       const addr = property?.address || property?.property_name || 'Unknown';
       const timeStr = format(now, 'h:mm a');
-      await supabase.functions.invoke('send-job-sms', {
-        body: { to: 'ADMIN', message: `Job complete — ${cleanerName} clocked off at ${addr} at ${timeStr}. Duration: ${netMinutes} min.` },
+      await sendJobSms({
+        to: 'ADMIN',
+        message: `Job complete — ${cleanerName} clocked off at ${addr} at ${timeStr}. Duration: ${netMinutes} min.`,
       });
     } catch { /* non-blocking */ }
 

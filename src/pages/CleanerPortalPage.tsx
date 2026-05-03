@@ -8,6 +8,7 @@ import { MapPin, Bed, Bath, Clock, User, CheckCircle2, Loader2, KeyRound } from 
 import { format, isToday, isTomorrow, differenceInHours } from "date-fns";
 import { toast } from "sonner";
 import ActiveJobView from "@/components/cleaner-portal/ActiveJobView";
+import { sendJobSms } from "@/lib/sendJobSms";
 
 type TokenState =
   | { status: "loading" }
@@ -165,9 +166,7 @@ export default function CleanerPortalPage() {
       ? `Hi ${clientFirst}, your Brightly cleaner ${cleanerFirst} has checked in to ${propName}. ${timeStr}. Property will be guest-ready well before checkin. ✓`
       : `Hi ${clientFirst}, your Brightly cleaner ${cleanerFirst} has just arrived at your property. Check-in verified ${timeStr}. 🧹`;
 
-    await supabase.functions.invoke("send-job-sms", {
-      body: { to: formatAuPhone(clientProfile.phone), message },
-    });
+    await sendJobSms({ to: formatAuPhone(clientProfile.phone), message });
   }
 
   // --- RENDER ---

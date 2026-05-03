@@ -80,9 +80,12 @@ Deno.serve(async (req) => {
 
     const message = `📊 Weekly Digest — ${dateRange}\n\n✅ Completed last week: ${completedCount} jobs ($${revenue.toFixed(0)})\n🔄 Currently in progress: ${inProgressCount || 0}\n🧾 Invoices to raise: ${uninvoicedCount || 0}\n📅 Upcoming this week: ${upcomingCount || 0}\n\n— Brightly Ops`
 
-    // Send via send-job-sms
+    // Send via send-job-sms. Pass the shared secret so the locked-down
+    // function accepts our server-to-server call. Reads from the same env
+    // that send-job-sms reads — both are set in Supabase function secrets.
     await supabase.functions.invoke('send-job-sms', {
       body: { to: 'ADMIN', message },
+      headers: { 'x-brightly-secret': Deno.env.get('SEND_JOB_SMS_SECRET') || '' },
     })
 
     return new Response(JSON.stringify({ success: true, message }), {

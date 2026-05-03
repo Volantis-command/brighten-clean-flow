@@ -18,6 +18,7 @@ import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
 import { RecurringSeriesPanel } from '@/components/schedule/RecurringSeriesPanel';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -145,7 +146,7 @@ export default function SchedulePage() {
         onClick: async () => {
           try {
             // Notify cleaner
-            await supabase.functions.invoke('send-job-sms', { body: { job_id: job.id } });
+            await sendJobSms({ job_id: job.id });
             // Notify client
             const { data: cpRows } = await supabase
               .from('client_properties')
@@ -163,9 +164,7 @@ export default function SchedulePage() {
                 const firstName = (clientProfile.full_name || 'there').split(' ')[0];
                 const propName = job.properties?.property_name || 'your property';
                 const msg = `Hi ${firstName}, your clean at ${propName} has been rescheduled to ${formattedDate}${timeLabel}. — Brightly 🌿`;
-                await supabase.functions.invoke('send-job-sms', {
-                  body: { to: clientProfile.phone, message: msg },
-                });
+                await sendJobSms({ to: clientProfile.phone, message: msg });
               }
             }
             toast.success('Cleaner & client notified ✓');

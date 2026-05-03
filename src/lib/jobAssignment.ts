@@ -26,6 +26,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { createAlert, createAlertForUser } from '@/lib/alerts';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 export type JobStatus =
   | 'scheduled'
@@ -170,7 +171,7 @@ export async function syncJobAssignment(
     if (sendSms) {
       try {
         // send-job-sms targets the current cleaner_1_id / cleaner_2_id on the job.
-        await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+        await sendJobSms({ job_id: jobId });
       } catch (err) {
         console.error('[jobAssignment] send-job-sms failed', err);
       }

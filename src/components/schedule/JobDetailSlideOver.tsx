@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { syncJobAssignment } from '@/lib/jobAssignment';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
 
 interface JobDetailSlideOverProps {
@@ -145,9 +146,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const handleResendSms = async () => {
     setResendingSms(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-job-sms', {
-        body: { job_id: job.id },
-      });
+      const { data, error } = await sendJobSms({ job_id: job.id });
       if (error) throw error;
       toast.success('SMS sent to cleaner ✓');
     } catch (e: any) {

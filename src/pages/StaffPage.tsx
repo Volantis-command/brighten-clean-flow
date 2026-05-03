@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAppBaseUrl } from '@/lib/appUrl';
+import { sendJobSms } from '@/lib/sendJobSms';
 import AdminTimeView from '@/components/timeclock/AdminTimeView';
 import { StaffAvailabilitySection } from '@/components/staff/StaffAvailabilitySection';
 import { StaffPaySection } from '@/components/staff/StaffPaySection';
@@ -164,11 +165,9 @@ export default function StaffPage() {
         const link = `${getAppBaseUrl()}/staff-onboarding/${onboardData.token}`;
         const firstName = (invName || 'there').split(' ')[0];
         try {
-          await supabase.functions.invoke('send-job-sms', {
-            body: {
-              to: invPhone,
-              message: `Hi ${firstName}, welcome to Brightly! 🌿 Complete your onboarding here: ${link}`,
-            },
+          await sendJobSms({
+            to: invPhone,
+            message: `Hi ${firstName}, welcome to Brightly! 🌿 Complete your onboarding here: ${link}`,
           });
         } catch { /* best effort */ }
       }
@@ -312,8 +311,9 @@ export default function StaffPage() {
         if (data.phone) {
           try {
             const firstName = (data.full_name || 'there').split(' ')[0];
-            await supabase.functions.invoke('send-job-sms', {
-              body: { to: data.phone, message: `Hi ${firstName}, welcome to Brightly! 🌿 Complete your onboarding here: ${link}` },
+            await sendJobSms({
+              to: data.phone,
+              message: `Hi ${firstName}, welcome to Brightly! 🌿 Complete your onboarding here: ${link}`,
             });
             toast.success('Onboarding link sent via SMS and copied!');
           } catch {

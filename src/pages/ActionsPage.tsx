@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronRight, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { useQueryClient } from '@tanstack/react-query';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { formatDistanceToNow } from 'date-fns';
@@ -108,8 +109,12 @@ export default function ActionsPage() {
       extra_time_requested: !approved ? false : undefined,
     } as any).eq('id', jobId);
     try {
-      await supabase.functions.invoke('send-job-sms', {
-        body: { to: 'CLEANER', job_id: jobId, message: approved ? 'Extra time approved. Take the time you need.' : 'Extra time request denied. Please complete within the allocated time.' },
+      await sendJobSms({
+        to: 'CLEANER',
+        job_id: jobId,
+        message: approved
+          ? 'Extra time approved. Take the time you need.'
+          : 'Extra time request denied. Please complete within the allocated time.',
       });
     } catch { /* non-blocking */ }
     setLoading(item.id, false);

@@ -29,6 +29,7 @@ import ClockedOnBanner from '@/components/clean-workflow/ClockedOnBanner';
 import { ActiveClockBanner } from '@/components/ActiveClockBanner';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
 import PhotoReportingWizard, { buildPhotoSections } from '@/components/clean-workflow/PhotoReportingWizard';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type View =
@@ -167,9 +168,7 @@ export default function CleanWorkflowPage() {
     const timeStr = format(new Date(), 'h:mm a');
 
     try {
-      await supabase.functions.invoke('send-job-sms', {
-        body: { to: 'ADMIN', message: `${cleanerName} clocked on at ${address} at ${timeStr}.` },
-      });
+      await sendJobSms({ to: 'ADMIN', message: `${cleanerName} clocked on at ${address} at ${timeStr}.` });
     } catch { /* non-blocking */ }
 
     toast.success('Clocked on! Timer started.');

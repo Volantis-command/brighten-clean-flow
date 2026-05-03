@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-brightly-secret',
 };
 
 function formatAuPhone(phone: string): string {
@@ -41,11 +41,27 @@ async function sendTwilioSms(to: string, body: string): Promise<{ success: boole
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  // Health check / smoke test ping
+  // Health check / smoke test ping (still public — no SMS spend possible)
   if (req.method === 'GET') {
     return new Response(JSON.stringify({ ok: true, function: 'send-job-sms' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+  }
+
+  // Shared-secret check. Fails open if SEND_JOB_SMS_SECRET is unset (rollout
+  // window — see src/lib/sendJobSms.ts for the full story). Once the env var
+  // is set on this function, calls without a matching x-brightly-secret
+  // header are rejected before any Twilio cost is incurred.
+  const requiredSecret = Deno.env.get('SEND_JOB_SMS_SECRET');
+  if (requiredSecret) {
+    const providedSecret = req.headers.get('x-brightly-secret');
+    if (providedSecret !== requiredSecret) {
+      console.warn('send-job-sms: rejected request with missing/invalid secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   try {

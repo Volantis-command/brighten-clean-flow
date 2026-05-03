@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { createAlert } from '@/lib/alerts';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, ShieldAlert, Clock, CheckCircle2 } from 'lucide-react';
@@ -51,9 +52,7 @@ export default function PreJobAssessmentModal({ job, property, userId, onComplet
 
   async function sendAdminSms(message: string) {
     try {
-      await supabase.functions.invoke('send-job-sms', {
-        body: { to: 'ADMIN', message },
-      });
+      await sendJobSms({ to: 'ADMIN', message });
     } catch { /* Non-blocking */ }
   }
 
