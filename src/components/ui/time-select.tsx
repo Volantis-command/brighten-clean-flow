@@ -41,6 +41,9 @@ interface TimeSelectProps {
   /** Step in minutes — 30 (default), 15, or 60. */
   stepMinutes?: 15 | 30 | 60;
   className?: string;
+  /** Inline styles for the trigger — used by the dark-themed intake forms
+   *  that need a translucent rgba background that's not in the Tailwind palette. */
+  style?: React.CSSProperties;
   placeholder?: string;
   disabled?: boolean;
   /** Some legacy code passes value as 'HH:MM:SS' from the DB; accept and trim. */
@@ -54,6 +57,7 @@ export function TimeSelect({
   endHour = DEFAULT_END,
   stepMinutes = 30,
   className,
+  style,
   placeholder = 'Select time',
   disabled,
   id,
@@ -79,7 +83,7 @@ export function TimeSelect({
 
   return (
     <Select value={normalized} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className={className}>
+      <SelectTrigger id={id} className={className} style={style}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent className="max-h-72">
