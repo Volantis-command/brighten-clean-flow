@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UserPlus, Eye, Copy, Send, Loader2, Mail, Phone, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { sendJobSms } from '@/lib/sendJobSms';
 import LeadsTab from '@/components/clients/LeadsTab';
 import SendQuoteLinkModal from '@/components/dashboard/SendQuoteLinkModal';
 import { getAppBaseUrl } from '@/lib/appUrl';
@@ -217,8 +218,9 @@ export default function ClientsPage() {
         const { data: links } = await supabase.from('client_properties').select('onboard_token').eq('client_id', data.user_id).limit(1);
         const token = links?.[0]?.onboard_token;
         if (token) {
-          await supabase.functions.invoke('send-job-sms', {
-            body: { to: createPhone, message: `Hi ${createName}, welcome to Brightly! Set up your property portal here: ${BASE_URL}/quote` },
+          await sendJobSms({
+            to: createPhone,
+            message: `Hi ${createName}, welcome to Brightly! Set up your property portal here: ${BASE_URL}/quote`,
           }).catch(() => {});
         }
       }
@@ -296,11 +298,9 @@ export default function ClientsPage() {
       const onboardLink = `${BASE_URL}/quote`;
 
       if (onboardMethod === 'sms' && onboardClient.phone) {
-        await supabase.functions.invoke('send-job-sms', {
-          body: {
-            to: onboardClient.phone,
-            message: `Hi ${onboardClient.full_name}, welcome to Brightly! Complete your onboarding here: ${onboardLink}`,
-          },
+        await sendJobSms({
+          to: onboardClient.phone,
+          message: `Hi ${onboardClient.full_name}, welcome to Brightly! Complete your onboarding here: ${onboardLink}`,
         });
       } else {
         // Log to notifications for now

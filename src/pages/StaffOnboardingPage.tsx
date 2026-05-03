@@ -12,6 +12,7 @@ import { Loader2, CheckCircle2, AlertCircle, Upload, ArrowLeft } from 'lucide-re
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 const STEPS = [
   'Personal Details',
@@ -388,11 +389,9 @@ export default function StaffOnboardingPage() {
 
       // ── Admin notification SMS ──
       try {
-        await supabase.functions.invoke('send-job-sms', {
-          body: {
-            to: '0418878707',
-            message: `New staff onboarding submitted — ${form.full_name}. Review in the app.`,
-          },
+        await sendJobSms({
+          to: '0418878707',
+          message: `New staff onboarding submitted — ${form.full_name}. Review in the app.`,
         });
       } catch { /* SMS is best-effort */ }
 

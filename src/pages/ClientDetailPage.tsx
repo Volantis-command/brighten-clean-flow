@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { getAppBaseUrl } from '@/lib/appUrl';
 import { createPropertyAndLink } from '@/lib/propertyWrites';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 import ClientHeader from '@/components/client-detail/ClientHeader';
 import PortalLinkSection from '@/components/client-detail/PortalLinkSection';
@@ -303,9 +304,7 @@ export default function ClientDetailPage() {
     try {
       const baseUrl = getAppBaseUrl();
       const msg = `Hi ${profile?.full_name?.split(' ')[0] || 'there'}, view your Brightly clean history here: ${baseUrl}/client-portal — Your team at Brightly`;
-      await supabase.functions.invoke('send-job-sms', {
-        body: { to: profile.phone, message: msg },
-      });
+      await sendJobSms({ to: profile.phone, message: msg });
       toast.success('Portal login link sent via SMS');
     } catch (err: any) {
       toast.error('Failed to send: ' + err.message);

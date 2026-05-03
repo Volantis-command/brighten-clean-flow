@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 /**
  * Hook that processes pending scheduled SMS records on dashboard mount.
@@ -51,8 +52,9 @@ export function useProcessScheduledSms() {
           }
 
           try {
-            const { error: sendError } = await supabase.functions.invoke('send-job-sms', {
-              body: { to: sms.recipient_phone, message: sms.message },
+            const { error: sendError } = await sendJobSms({
+              to: sms.recipient_phone,
+              message: sms.message,
             });
 
             if (sendError) throw sendError;

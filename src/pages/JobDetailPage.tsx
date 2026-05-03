@@ -7,6 +7,7 @@ import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, St
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { formatDistanceToNow, isPast } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -300,7 +301,7 @@ export default function JobDetailPage() {
       const firstName = (clientProfile.full_name || 'there').split(' ')[0];
       const trackerUrl = `${(await import('@/lib/appUrl')).getAppBaseUrl()}/track/${job.id}`;
       const sms = `Hi ${firstName}, track your clean live here: ${trackerUrl} — Brightly Cleaning 🌿`;
-      await supabase.functions.invoke('send-job-sms', { body: { to: clientProfile.phone, message: sms } });
+      await sendJobSms({ to: clientProfile.phone, message: sms });
       toast.success('Tracker link sent to client!');
     } catch (err: any) {
       toast.error('Failed to send tracker link: ' + err.message);
@@ -748,7 +749,7 @@ export default function JobDetailPage() {
 
                   // Send cleaner SMS
                   try {
-                    await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+                    await sendJobSms({ job_id: jobId });
                   } catch { /* non-blocking */ }
 
                   // Send client confirmation SMS
@@ -877,7 +878,7 @@ export default function JobDetailPage() {
                   // Send cleaner SMS if cleaner assigned
                   if (job.cleaner_1_id) {
                     try {
-                      await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+                      await sendJobSms({ job_id: jobId });
                     } catch (err: any) {
                       toast.error(`⚠️ Cleaner SMS failed: ${err.message}`);
                     }
@@ -982,7 +983,7 @@ export default function JobDetailPage() {
                   // Send cleaner SMS
                   if (job.cleaner_1_id) {
                     try {
-                      await supabase.functions.invoke('send-job-sms', { body: { job_id: jobId } });
+                      await sendJobSms({ job_id: jobId });
                     } catch (err: any) {
                       toast.error(`⚠️ Cleaner SMS failed: ${err.message}`);
                     }

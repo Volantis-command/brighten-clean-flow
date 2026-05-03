@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { sendJobSms } from "@/lib/sendJobSms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -386,9 +387,7 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
       ? `Hi ${clientFirst}, ${propName} is clean and guest-ready ✓ Finished ${timeStr}. Full report with photos: ${reportUrl}`
       : `Hi ${clientFirst}, your Brightly clean is complete! ✓ ${cleanerFirst} finished at ${timeStr}. View your clean report: ${reportUrl}`;
 
-    await supabase.functions.invoke("send-job-sms", {
-      body: { to: formatAuPhone(clientProfile.phone), message },
-    });
+    await sendJobSms({ to: formatAuPhone(clientProfile.phone), message });
   }
 
   // --- Group checklist by room ---

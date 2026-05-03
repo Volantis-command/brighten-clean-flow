@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 const AREA_OPTIONS = ['Bedrooms', 'Bathrooms', 'Kitchen', 'Living Areas', 'Laundry', 'Outdoor', 'General'];
 const OUTCOMES = [
@@ -95,8 +96,9 @@ export default function JobAuditPage() {
         const { data: auditorProfile } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
         const auditorName = auditorProfile?.full_name || 'An auditor';
         const addr = (job.properties as any)?.address || (job.properties as any)?.property_name || 'Unknown';
-        await supabase.functions.invoke('send-job-sms', {
-          body: { to: 'ADMIN', message: `RE-CLEAN REQUIRED — ${addr} failed quality audit by ${auditorName}. Job: app.brightly.cleaning/jobs/${job.id}` },
+        await sendJobSms({
+          to: 'ADMIN',
+          message: `RE-CLEAN REQUIRED — ${addr} failed quality audit by ${auditorName}. Job: app.brightly.cleaning/jobs/${job.id}`,
         });
       } catch { /* non-blocking */ }
 

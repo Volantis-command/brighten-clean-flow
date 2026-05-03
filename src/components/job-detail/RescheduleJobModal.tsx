@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { TimeSelect } from '@/components/ui/time-select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CalendarDays } from 'lucide-react';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -56,18 +57,14 @@ export function RescheduleJobModal({
       if (notifyClient && clientPhone) {
         const msg = `Hi ${firstName}, your clean at ${propertyName || 'your property'} has been rescheduled to ${formattedDate} at ${newTime}. — Brightly 🌿`;
         try {
-          await supabase.functions.invoke('send-job-sms', {
-            body: { to: clientPhone, message: msg },
-          });
+          await sendJobSms({ to: clientPhone, message: msg });
         } catch { /* best effort */ }
       }
 
       // Notify cleaner
       if (notifyCleaner) {
         try {
-          await supabase.functions.invoke('send-job-sms', {
-            body: { job_id: jobId },
-          });
+          await sendJobSms({ job_id: jobId });
         } catch { /* best effort */ }
       }
     },

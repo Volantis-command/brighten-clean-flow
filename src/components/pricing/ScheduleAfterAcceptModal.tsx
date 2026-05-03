@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { sendJobSms } from '@/lib/sendJobSms';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -230,7 +231,7 @@ export default function ScheduleAfterAcceptModal({
         const cleanerFirst = cleanerName ? ((cleanerName as any).first_name || cleanerName.full_name?.split(' ')[0] || '') : '';
         const cleanerLine = cleanerFirst ? ` ${cleanerFirst} will be your cleaner.` : '';
         const message = `Hi ${firstName}, your ${cleanType} is booked in for ${timeStr} on ${dateStr}.${cleanerLine} See you then! 🌿 — Brightly Cleaning`;
-        const { error } = await supabase.functions.invoke('send-job-sms', { body: { to: clientPhone, message } });
+        const { error } = await sendJobSms({ to: clientPhone, message });
         if (error) throw error;
         stepResults.push({ step: 'Client confirmation SMS sent', ok: true });
       } catch (e: any) {
