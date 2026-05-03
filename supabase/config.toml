@@ -1,4 +1,4 @@
-project_id = "mkknrxoqturkmpcmhvtt"
+project_id = "ueomxjsqvmbjfufjauhe"
 
 [functions.google-drive-sync]
 verify_jwt = false
