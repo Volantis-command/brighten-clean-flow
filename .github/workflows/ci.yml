@@ -1,0 +1,36 @@
+# Gates every PR + every push to main on a TypeScript type-check and a
+# successful Vite build. The single highest-leverage protection against the
+# schema-drift bugs that historically reached production silently.
+#
+# If you want to add tests later (vitest or playwright are already present
+# as dev deps), add a job here.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck-and-build:
+    name: Type-check + Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type-check
+        run: npm run typecheck
+
+      - name: Vite build
+        run: npm run build
