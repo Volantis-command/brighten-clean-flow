@@ -248,7 +248,7 @@ export default function ResidentialForm({ isDeepClean, onComplete, onBack }: Pro
                   value={preferredTime === 'Flexible' || !/^\d{1,2}:\d{2}$/.test(preferredTime) ? '' : preferredTime}
                   onChange={(v) => setPreferredTime(v || 'Flexible')}
                   className="w-40 h-12 rounded-xl px-3 text-sm text-white"
-                  style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)' } as any}
+                  style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)' }}
                   placeholder="e.g. 2:00 PM"
                 />
                 <button
