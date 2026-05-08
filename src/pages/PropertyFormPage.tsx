@@ -63,6 +63,13 @@ const EMPTY_FORM: Record<string, any> = {
   status: 'active',
   lat: '',
   lng: '',
+  // default_price is the canonical "price per clean" used by AddJobPage,
+  // Hostaway sync, and xero-auto-invoice-job. price_includes_gst toggles
+  // whether the entered figure is inc-GST (true) or ex-GST (false).
+  // price_turnover stays in form state only so legacy data displays;
+  // we don't write it on save (Brendan 2026-05-08 cleanup).
+  default_price: '',
+  price_includes_gst: false,
   price_turnover: '',
   price_deep_clean: '',
   price_end_of_lease: '',
@@ -156,6 +163,12 @@ export default function PropertyFormPage() {
         status: existing.status || 'active',
         lat: existing.lat != null ? String(existing.lat) : '',
         lng: existing.lng != null ? String(existing.lng) : '',
+        // Canonical price field. Fall back to legacy price_turnover so
+        // properties saved before this change still display.
+        default_price: (existing as any).default_price != null
+          ? String((existing as any).default_price)
+          : (existing.price_turnover != null ? String(existing.price_turnover) : ''),
+        price_includes_gst: !!(existing as any).price_includes_gst,
         price_turnover: existing.price_turnover != null ? String(existing.price_turnover) : '',
         price_deep_clean: existing.price_deep_clean != null ? String(existing.price_deep_clean) : '',
         price_end_of_lease: existing.price_end_of_lease != null ? String(existing.price_end_of_lease) : '',
@@ -273,14 +286,26 @@ export default function PropertyFormPage() {
     }
 
     setSaving(true);
-    const { lat, lng, has_product_restrictions, price_turnover, price_deep_clean, price_end_of_lease, price_post_build, avg_nightly_rate, ...rest } = form;
+    const {
+      lat, lng, has_product_restrictions,
+      default_price, price_includes_gst,
+      price_turnover, // legacy; we no longer write to it (Brendan 2026-05-08)
+      price_deep_clean, price_end_of_lease, price_post_build,
+      avg_nightly_rate,
+      ...rest
+    } = form;
     const payload: Record<string, any> = {
       ...rest,
       default_cleaner_id: form.default_cleaner_id || null,
       backup_cleaner_id: form.backup_cleaner_id || null,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
-      price_turnover: price_turnover ? parseFloat(price_turnover) : null,
+      // Canonical price (replaces price_turnover). default_price stores
+      // exactly the figure the admin typed; price_includes_gst flags whether
+      // it's inc-GST. The Hostaway sync + xero-auto-invoice-job convert
+      // to ex-GST as needed.
+      default_price: default_price ? parseFloat(default_price) : null,
+      price_includes_gst: !!price_includes_gst,
       price_deep_clean: price_deep_clean ? parseFloat(price_deep_clean) : null,
       price_end_of_lease: price_end_of_lease ? parseFloat(price_end_of_lease) : null,
       price_post_build: price_post_build ? parseFloat(price_post_build) : null,
@@ -647,13 +672,59 @@ function PriceField({ label, value, onChange }: { label: string; value: string; 
 }
 
 function StepPricing({ form, updateField }: { form: any; updateField: (f: string, v: any) => void }) {
+  const dp = parseFloat(form.default_price) || 0;
+  const inc = form.price_includes_gst;
+  const exGst = inc ? dp / 1.1 : dp;
+  const incGst = inc ? dp : dp * 1.1;
   return (
     <>
-      <p className="text-sm text-muted-foreground">Set default pricing for each clean type. These prices auto-fill when jobs are created for this property.</p>
-      <PriceField label="Airbnb / Short-Stay Turnover (ex GST)" value={form.price_turnover} onChange={(v) => updateField('price_turnover', v)} />
-      <PriceField label="Deep Clean (ex GST)" value={form.price_deep_clean} onChange={(v) => updateField('price_deep_clean', v)} />
-      <PriceField label="Bond / End of Lease Clean (ex GST)" value={form.price_end_of_lease} onChange={(v) => updateField('price_end_of_lease', v)} />
-      <PriceField label="Post-Renovation Clean (ex GST)" value={form.price_post_build} onChange={(v) => updateField('price_post_build', v)} />
+      <p className="text-sm text-muted-foreground">
+        Set the default price per clean. This is the single source of truth — it flows to every job
+        created for this property (Hostaway turnovers, manual jobs, and the auto-invoice).
+      </p>
+
+      {/* Hero: default price + GST toggle */}
+      <div className="bg-primary/5 border-2 border-primary/30 rounded-2xl p-4 space-y-3">
+        <Label className="text-sm font-bold text-foreground">Default price per clean</Label>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
+          <Input
+            type="number"
+            step="0.01"
+            value={form.default_price}
+            onChange={(e) => updateField('default_price', e.target.value)}
+            className="h-14 rounded-2xl pl-8 text-lg font-bold"
+            placeholder="0.00"
+          />
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!form.price_includes_gst}
+            onChange={(e) => updateField('price_includes_gst', e.target.checked)}
+            className="h-4 w-4"
+          />
+          <span className="text-sm text-foreground">This price <strong>includes</strong> GST</span>
+        </label>
+        {dp > 0 && (
+          <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-primary/20">
+            <div><p className="text-muted-foreground">Ex GST</p><p className="font-bold">${exGst.toFixed(2)}</p></div>
+            <div><p className="text-muted-foreground">GST</p><p className="font-bold">${(incGst - exGst).toFixed(2)}</p></div>
+            <div><p className="text-muted-foreground">Inc GST</p><p className="font-bold text-primary">${incGst.toFixed(2)}</p></div>
+          </div>
+        )}
+      </div>
+
+      {/* Optional secondary pricing */}
+      <details className="rounded-2xl border border-border p-4">
+        <summary className="text-sm font-bold cursor-pointer">Other clean-type pricing (optional)</summary>
+        <div className="mt-3 space-y-3">
+          <PriceField label="Deep Clean (ex GST)" value={form.price_deep_clean} onChange={(v) => updateField('price_deep_clean', v)} />
+          <PriceField label="Bond / End of Lease Clean (ex GST)" value={form.price_end_of_lease} onChange={(v) => updateField('price_end_of_lease', v)} />
+          <PriceField label="Post-Renovation Clean (ex GST)" value={form.price_post_build} onChange={(v) => updateField('price_post_build', v)} />
+        </div>
+      </details>
+
       <Field label="Pricing Notes">
         <Textarea value={form.pricing_notes} onChange={(e) => updateField('pricing_notes', e.target.value)} className="rounded-2xl min-h-[80px]" placeholder="e.g. 3 bed, 2 bath, standard rate" />
       </Field>

@@ -102,6 +102,12 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Lift these out of the try so the catch block can persist failure state
+  // to the job (Brendan 2026-05-08: silent failures were the main reason
+  // missed cleans went invisible — failures must be visible).
+  let job_id: string | undefined;
+  let supabase: any;
+
   try {
     const raw = await req.text();
     if (!raw) {
@@ -110,7 +116,8 @@ Deno.serve(async (req) => {
       });
     }
     const body = JSON.parse(raw);
-    const { job_id, send_email } = body;
+    job_id = body.job_id;
+    const send_email = body.send_email;
     if (!job_id) {
       return new Response(JSON.stringify({ error: 'job_id is required' }), {
         status: 400,
@@ -120,7 +127,7 @@ Deno.serve(async (req) => {
 
     console.log('xero-auto-invoice-job called for job:', job_id);
 
-    const supabase = createClient(
+    supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
@@ -267,7 +274,7 @@ Deno.serve(async (req) => {
     const xeroInvoiceId = invoice?.InvoiceID;
     const totalIncGst = Number(invoice?.Total) || totalEx * 1.1;
 
-    // Update job
+    // Update job — clear any prior failure state so retries flip clean.
     await supabase
       .from('jobs')
       .update({
@@ -275,6 +282,8 @@ Deno.serve(async (req) => {
         xero_invoice_number: invoiceNumber,
         invoice_status: 'draft',
         invoice_amount: totalEx,
+        invoice_error: null,
+        invoice_raised_at: new Date().toISOString(),
       })
       .eq('id', job_id);
 
@@ -293,6 +302,23 @@ Deno.serve(async (req) => {
     );
   } catch (err: any) {
     console.error('xero-auto-invoice-job error:', err);
+
+    // Persist the failure to the job so it's visible on PendingInvoicesPage.
+    // Don't blow up the response if this write fails — log and move on.
+    if (job_id && supabase) {
+      try {
+        await supabase
+          .from('jobs')
+          .update({
+            invoice_status: 'failed',
+            invoice_error: String(err?.message ?? err).slice(0, 500),
+          })
+          .eq('id', job_id);
+      } catch (writeErr) {
+        console.error('xero-auto-invoice-job: failed to persist failure state', writeErr);
+      }
+    }
+
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -130,9 +130,35 @@ export function ScheduleJobCard({
     return '';
   };
 
+  // Admin-only invoice-status tint — the visual scan-pass on the schedule:
+  //   paid    → bright green (Brendan's "give me the green hit" requirement)
+  //   sent    → orange (invoiced, awaiting payment)
+  //   draft   → yellow (Xero draft awaiting send)
+  //   failed  → red (action needed)
+  //   skipped → muted (handled outside the system)
+  // Cleaners never see any of this — gated on isAdmin (Brendan 2026-05-08).
+  const getInvoiceTintClass = () => {
+    if (!isAdmin) return '';
+    if (!isComplete) return '';
+    if (!invoiceStatus || invoiceStatus === 'none') return '';
+    if (invoiceStatus === 'paid')
+      return 'bg-emerald-50 border-emerald-400 ring-1 ring-emerald-300';
+    if (invoiceStatus === 'sent')
+      return 'bg-orange-50 border-orange-300';
+    if (invoiceStatus === 'draft' || invoiceStatus === 'authorised')
+      return 'bg-yellow-50 border-yellow-300';
+    if (invoiceStatus === 'failed')
+      return 'bg-red-50 border-red-300';
+    if (invoiceStatus === 'skipped')
+      return 'bg-muted/40 border-border';
+    return '';
+  };
+
+  const tintClass = getInvoiceTintClass();
+
   return (
     <div
-      className={`bg-card rounded-2xl shadow-md p-5 border border-border cursor-pointer transition-shadow hover:shadow-lg ${isPastJob ? 'opacity-60' : ''} ${status === 'cancelled' ? 'opacity-50' : ''} ${getBorderClass()}`}
+      className={`rounded-2xl shadow-md p-5 border cursor-pointer transition-shadow hover:shadow-lg ${tintClass || 'bg-card border-border'} ${isPastJob ? 'opacity-60' : ''} ${status === 'cancelled' ? 'opacity-50' : ''} ${getBorderClass()}`}
       onClick={() => navigate(`/jobs/${id}`)}
       role="button"
       tabIndex={0}

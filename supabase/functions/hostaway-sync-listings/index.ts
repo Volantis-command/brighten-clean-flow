@@ -148,6 +148,8 @@ Deno.serve(async (req) => {
   const ALLOWED_LISTING_IDS = new Set([
     '512068', // Broadwater Lux Apartment
     '512146', // Meriton Suites 4205
+    '503911', // Villa 112
+    '235155', // VILLA 64
   ]);
 
   const results: ListingResult[] = [];

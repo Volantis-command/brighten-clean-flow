@@ -156,10 +156,13 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // 5. Look up the property by hostaway_listing_id
+  // 5. Look up the property by hostaway_listing_id.
+  // We also pull default_price + price_includes_gst so the new job is born
+  // with a price — without this, xero-auto-invoice-job throws "No price set
+  // on job" and the failure is silently swallowed (Brendan 2026-05-08 fix).
   const { data: property, error: propErr } = await sb
     .from('properties')
-    .select('id, property_name, address, client_name, checkout_time, default_cleaner_id')
+    .select('id, property_name, address, client_name, checkout_time, default_cleaner_id, default_price, price_includes_gst')
     .eq('hostaway_listing_id', listingId)
     .maybeSingle();
 
@@ -278,6 +281,19 @@ Deno.serve(async (req) => {
   // Mirrors the field set used by create-booking-from-quote. Status flows
   // through the BEFORE INSERT trigger (enforce_initial_job_status):
   // no cleaner assigned → 'pending_cleaner' (yellow, awaits assignment).
+  //
+  // Price inheritance: read property.default_price and convert to ex/inc-GST
+  // pair so xero-auto-invoice-job has a price to bill against on completion.
+  const propAny: any = property;
+  const rawPrice = Number(propAny.default_price) || 0;
+  const includesGst = !!propAny.price_includes_gst;
+  const priceExGst = rawPrice > 0
+    ? (includesGst ? +(rawPrice / 1.1).toFixed(2) : +rawPrice.toFixed(2))
+    : null;
+  const priceIncGst = rawPrice > 0
+    ? (includesGst ? +rawPrice.toFixed(2) : +(rawPrice * 1.1).toFixed(2))
+    : null;
+
   const { data: newJob, error: insErr } = await sb
     .from('jobs')
     .insert({
@@ -290,6 +306,8 @@ Deno.serve(async (req) => {
       hostaway_reservation_id: reservationId,
       client_name: property.client_name,
       notes,
+      price_ex_gst: priceExGst,
+      price_inc_gst: priceIncGst,
     })
     .select('id')
     .single();

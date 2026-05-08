@@ -110,6 +110,17 @@ export default function PropertyProfilePage() {
         )}
       </div>
 
+      {/* Prominent editable price card — admin-only.
+          Single source of truth for this property's clean price. Flows to
+          AddJobPage default, Hostaway-synced jobs, and xero-auto-invoice-job. */}
+      {isAdmin && (
+        <PropertyPriceCard
+          propertyId={property.id}
+          defaultPrice={(property as any).default_price ?? (property as any).price_turnover ?? null}
+          includesGst={!!(property as any).price_includes_gst}
+        />
+      )}
+
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="w-full">
           <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
@@ -580,6 +591,175 @@ function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; init
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{notes.length} / 500 characters</span>
         {saving && <span className="text-xs text-primary font-semibold">Saving\u2026</span>}
+      </div>
+    </div>
+  );
+}
+
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// PropertyPriceCard
+// Admin-only hero card showing the property's default clean price.
+// Edit-in-place, GST toggle, immediate save.
+// This is the SINGLE source of truth that flows to:
+//   - AddJobPage (default fill)
+//   - hostaway-sync-reservations + receive-hostaway-webhook (auto turnovers)
+//   - xero-auto-invoice-job (line item amount)
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function PropertyPriceCard({
+  propertyId,
+  defaultPrice,
+  includesGst,
+}: {
+  propertyId: string;
+  defaultPrice: number | string | null;
+  includesGst: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const initialNum = defaultPrice != null && defaultPrice !== '' ? Number(defaultPrice) : null;
+  const [priceInput, setPriceInput] = useState(initialNum != null ? String(initialNum) : '');
+  const [incToggle, setIncToggle] = useState(includesGst);
+
+  // Re-sync when prop changes (after a save / refetch)
+  useEffect(() => {
+    setPriceInput(initialNum != null ? String(initialNum) : '');
+    setIncToggle(includesGst);
+  }, [defaultPrice, includesGst]);
+
+  const num = parseFloat(priceInput) || 0;
+  const exGst = incToggle ? num / 1.1 : num;
+  const incGstVal = incToggle ? num : num * 1.1;
+
+  const save = async () => {
+    const parsed = parseFloat(priceInput);
+    if (!isFinite(parsed) || parsed <= 0) {
+      toast.error('Price must be a positive number');
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from('properties')
+      .update({ default_price: parsed, price_includes_gst: incToggle })
+      .eq('id', propertyId);
+    setSaving(false);
+    if (error) {
+      toast.error(`Failed: ${error.message}`);
+      return;
+    }
+    toast.success('Price updated');
+    setEditing(false);
+    queryClient.invalidateQueries({ queryKey: ['property', propertyId] });
+    queryClient.invalidateQueries({ queryKey: ['properties'] });
+  };
+
+  // \u2500\u2500 Display state \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  if (!editing) {
+    const hasPrice = initialNum != null && initialNum > 0;
+    const displayEx = includesGst ? Number(initialNum) / 1.1 : Number(initialNum);
+    const displayInc = includesGst ? Number(initialNum) : Number(initialNum) * 1.1;
+    return (
+      <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-2xl p-5 shadow-md">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              Default price per clean
+            </p>
+            {hasPrice ? (
+              <>
+                <p className="text-3xl font-extrabold text-primary mt-1 leading-none">
+                  ${Number(initialNum).toFixed(2)}
+                  <span className="text-sm font-bold text-muted-foreground ml-2">
+                    {includesGst ? 'inc GST' : 'ex GST'}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ex GST ${displayEx.toFixed(2)} \u00b7 Inc GST ${displayInc.toFixed(2)}
+                </p>
+              </>
+            ) : (
+              <p className="text-2xl font-extrabold text-red-600 mt-1 leading-none">
+                NOT SET
+                <span className="block text-xs font-semibold text-muted-foreground mt-1">
+                  Cleans for this property won't auto-invoice without a price.
+                </span>
+              </p>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant={hasPrice ? 'outline' : 'default'}
+            className="gap-1 shrink-0"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            {hasPrice ? 'Edit' : 'Set price'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // \u2500\u2500 Edit state \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  return (
+    <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-2xl p-5 shadow-md space-y-3">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+        Default price per clean
+      </p>
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-lg">
+          $
+        </span>
+        <Input
+          type="number"
+          step="0.01"
+          value={priceInput}
+          onChange={(e) => setPriceInput(e.target.value)}
+          className="h-14 rounded-2xl pl-9 text-2xl font-extrabold"
+          placeholder="0.00"
+          autoFocus
+        />
+      </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={incToggle}
+          onChange={(e) => setIncToggle(e.target.checked)}
+          className="h-4 w-4"
+        />
+        <span className="text-sm">This price <strong>includes</strong> GST</span>
+      </label>
+      {num > 0 && (
+        <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-primary/20">
+          <div>
+            <p className="text-muted-foreground">Ex GST</p>
+            <p className="font-bold">${exGst.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">GST</p>
+            <p className="font-bold">${(incGstVal - exGst).toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Inc GST</p>
+            <p className="font-bold text-primary">${incGstVal.toFixed(2)}</p>
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2 pt-1">
+        <Button onClick={save} disabled={saving} className="flex-1 font-bold">
+          {saving ? 'Saving\u2026' : 'Save price'}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setEditing(false);
+            setPriceInput(initialNum != null ? String(initialNum) : '');
+            setIncToggle(includesGst);
+          }}
+          disabled={saving}
+        >
+          Cancel
+        </Button>
       </div>
     </div>
   );

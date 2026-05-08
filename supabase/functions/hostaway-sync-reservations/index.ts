@@ -286,10 +286,14 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Look up property (need it for both create and to skip if unmapped)
+    // Look up property (need it for both create and to skip if unmapped).
+    // We pull default_price + price_includes_gst here so the job is born
+    // with a price — without this, xero-auto-invoice-job throws "No price
+    // set on job" and the error is silently swallowed (Brendan 2026-05-08
+    // fix: missed-cleans bug).
     const { data: property, error: propErr } = await sb
       .from('properties')
-      .select('id, client_name, checkout_time')
+      .select('id, client_name, checkout_time, default_price, price_includes_gst')
       .eq('hostaway_listing_id', listingId)
       .maybeSingle();
 
@@ -387,6 +391,18 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    // Compute price from property defaults so the auto-invoice has something
+    // to bill against. AU GST: convert to ex-GST if the stored value is inc.
+    const propAny: any = property;
+    const rawPrice = Number(propAny.default_price) || 0;
+    const includesGst = !!propAny.price_includes_gst;
+    const priceExGst = rawPrice > 0
+      ? (includesGst ? +(rawPrice / 1.1).toFixed(2) : +rawPrice.toFixed(2))
+      : null;
+    const priceIncGst = rawPrice > 0
+      ? (includesGst ? +rawPrice.toFixed(2) : +(rawPrice * 1.1).toFixed(2))
+      : null;
+
     // Create new turnover job
     const { data: newJob, error: insErr } = await sb
       .from('jobs')
@@ -400,6 +416,8 @@ Deno.serve(async (req) => {
         hostaway_reservation_id: reservationId,
         client_name: property.client_name,
         notes,
+        price_ex_gst: priceExGst,
+        price_inc_gst: priceIncGst,
       })
       .select('id')
       .single();
