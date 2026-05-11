@@ -238,7 +238,7 @@ function AppRoutes() {
         <Route path="/properties/:id/edit" element={<ProtectedRoute allowedRoles={['admin']}><PropertyFormPage /></ProtectedRoute>} />
         <Route path="/forms/:formId" element={<FormDetailPage />} />
         <Route path="/jobs/:jobId" element={<JobDetailPage />} />
-        <Route path="/jobs/:jobId/edit" element={<ProtectedRoute allowedRoles={['admin']}><EditJobPage /></ProtectedRoute>} />
+        <Route path="/jobs/:jobId/edit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><EditJobPage /></ProtectedRoute>} />
         <Route path="/jobs/:jobId/checklist" element={<JobChecklistPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
         <Route path="/quoting" element={<ProtectedRoute allowedRoles={['admin']}><QuotingPage /></ProtectedRoute>} />
