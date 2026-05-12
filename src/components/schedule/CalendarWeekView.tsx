@@ -31,6 +31,55 @@ function getDurationHours(minutes: number | null): number {
   return Math.max(0.5, minutes / 60);
 }
 
+/**
+ * Compute side-by-side column layout for overlapping jobs within a day.
+ * Returns a map of jobId → { col, totalCols } so each job can be
+ * positioned as left=(col/totalCols)*100%, width=(1/totalCols)*100%.
+ */
+function computeLayout(jobs: ScheduleJob[]): Record<string, { col: number; totalCols: number }> {
+  if (jobs.length <= 1) {
+    const result: Record<string, { col: number; totalCols: number }> = {};
+    jobs.forEach(j => { result[j.id] = { col: 0, totalCols: 1 }; });
+    return result;
+  }
+
+  const items = jobs.map(j => ({
+    id: j.id,
+    start: parseTime(j.scheduled_time),
+    end: parseTime(j.scheduled_time) + getDurationHours(j.estimated_duration),
+    col: 0,
+    totalCols: 1,
+  }));
+
+  // Sort by start time, then by longer duration first (fills columns more cleanly)
+  items.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+  // Assign each job to the first column it doesn't overlap with
+  const colEnds: number[] = [];
+  items.forEach(item => {
+    let col = 0;
+    while (colEnds[col] !== undefined && colEnds[col] > item.start + 0.02) col++;
+    item.col = col;
+    colEnds[col] = item.end;
+  });
+
+  // For each job, totalCols = max column index of any job that overlaps with it, + 1
+  items.forEach(item => {
+    let maxCol = item.col;
+    items.forEach(other => {
+      if (other.id !== item.id) {
+        const overlaps = item.start < other.end - 0.02 && other.start < item.end - 0.02;
+        if (overlaps && other.col > maxCol) maxCol = other.col;
+      }
+    });
+    item.totalCols = maxCol + 1;
+  });
+
+  const result: Record<string, { col: number; totalCols: number }> = {};
+  items.forEach(item => { result[item.id] = { col: item.col, totalCols: item.totalCols }; });
+  return result;
+}
+
 function formatHour(hour: number): string {
   if (hour === 0 || hour === 24) return '12 AM';
   if (hour === 12) return '12 PM';
@@ -50,6 +99,15 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
     });
     return map;
   }, [jobs, days]);
+
+  // Side-by-side layout for overlapping jobs within each day
+  const layoutByDay = useMemo(() => {
+    const result: Record<string, Record<string, { col: number; totalCols: number }>> = {};
+    Object.entries(jobsByDay).forEach(([day, dayJobs]) => {
+      result[day] = computeLayout(dayJobs);
+    });
+    return result;
+  }, [jobsByDay]);
 
   const handleDragStart = useCallback((e: React.DragEvent, job: ScheduleJob) => {
     e.dataTransfer.setData('application/json', JSON.stringify({ jobId: job.id }));
@@ -175,6 +233,10 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const duration = getDurationHours(job.estimated_duration);
                   const top = (startTime - firstHour) * HOUR_HEIGHT;
                   const height = Math.max(duration * HOUR_HEIGHT, 28);
+                  const { col = 0, totalCols = 1 } = layoutByDay[key]?.[job.id] || {};
+                  const GAP = 2; // px gap between columns
+                  const colWidthPct = 100 / totalCols;
+                  const leftPct = col * colWidthPct;
                   const cleaner1 = getCleanerName(job.cleaner_1_id, nameMap);
                   const cleaner2 = getCleanerName(job.cleaner_2_id, nameMap);
                   const clientName = jobLabel(job);
@@ -206,10 +268,12 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                       draggable
                       onDragStart={(e) => handleDragStart(e, job)}
                       onClick={() => onJobClick(job)}
-                      className="absolute left-0.5 right-0.5 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event"
+                      className="absolute z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event"
                       style={{
                         top: Math.max(top, 0),
                         height,
+                        left: `calc(${leftPct}% + ${GAP}px)`,
+                        width: `calc(${colWidthPct}% - ${GAP * 2}px)`,
                         backgroundColor: statusBg,
                         borderLeft: `3px solid ${statusBorder}`,
                       }}
