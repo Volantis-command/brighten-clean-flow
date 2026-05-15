@@ -110,6 +110,7 @@ const EMPTY_FORM: Record<string, any> = {
   override_price: false,
   pricing_agreement_notes: '',
   guesty_listing_id: '',
+  linen_requirements: '',
 };
 
 export default function PropertyFormPage() {
@@ -209,6 +210,7 @@ export default function PropertyFormPage() {
         override_price: (existing as any).override_price || false,
         pricing_agreement_notes: (existing as any).pricing_agreement_notes || '',
         guesty_listing_id: (existing as any).guesty_listing_id || '',
+        linen_requirements: (existing as any).linen_requirements || '',
       });
     }
   }, [existing]);
@@ -634,6 +636,18 @@ function Step4({ form, updateField }: { form: any; updateField: (f: string, v: a
       </Field>
       <Field label="Preferred Linen Fold Style">
         <Input value={form.linen_fold_style} onChange={(e) => updateField('linen_fold_style', e.target.value)} className="h-14 rounded-2xl" placeholder="e.g. Hotel fold with ribbon" />
+      </Field>
+      <Field label="Linen Requirements (for linen company)">
+        <Textarea
+          value={form.linen_requirements || ''}
+          onChange={(e) => updateField('linen_requirements', e.target.value)}
+          className="rounded-2xl min-h-[120px]"
+          placeholder={"List the linen needed for this property — e.g.\n2x queen sheet sets\n4x bath towels\n2x hand towels\n1x bath mat\nDelivery to storage unit B"}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          This is sent to the linen company via SMS each time an Airbnb job is created for this property.
+          Leave blank if linen is not required.
+        </p>
       </Field>
       <Field label="Guest Amenities to be Restocked">
         <Textarea value={form.amenities_notes} onChange={(e) => updateField('amenities_notes', e.target.value)} className="rounded-2xl min-h-[100px]" placeholder="List amenities that should be restocked each clean" />

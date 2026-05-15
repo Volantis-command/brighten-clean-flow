@@ -393,8 +393,60 @@ function SOPTab({ property }: { property: any }) {
           House Clean properties use the standard default checklist. You can still add custom SOP items below if needed.
         </div>
       )}
+      {/* Linen requirements — shown for all properties, editable inline */}
+      <LinenRequirementsCard property={property} />
       <SOPSection propertyId={property.id} items={sopItems} loading={sopLoading} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['sop-items', property.id] })} />
       <RestockingSection propertyId={property.id} items={restockItems} loading={restockLoading} isAirbnb={isAirbnb} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['restock-items', property.id] })} />
+    </div>
+  );
+}
+
+function LinenRequirementsCard({ property }: { property: any }) {
+  const [value, setValue] = useState<string>((property as any).linen_requirements || '');
+  const [saving, setSaving] = useState(false);
+  const initial = (property as any).linen_requirements || '';
+
+  const handleSave = async () => {
+    if (value === initial) return;
+    setSaving(true);
+    await supabase
+      .from('properties')
+      .update({ linen_requirements: value || null } as any)
+      .eq('id', property.id);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-bold text-foreground">Linen Requirements</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sent to the linen company via SMS when a job is created for this property.
+            Leave blank if linen is not required.
+          </p>
+        </div>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleSave}
+        placeholder={"e.g.\n2x queen sheet sets\n4x bath towels\n2x hand towels\n1x bath mat\nDelivery to storage unit B"}
+        rows={5}
+        className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{value.length} characters</span>
+        {value !== initial && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

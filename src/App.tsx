@@ -33,6 +33,8 @@ import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
 import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
 import FeedbackPage from "./pages/FeedbackPage";
 
+import LinenPortalLoginPage from "./pages/LinenPortalLoginPage";
+import LinenPortalDashboardPage from "./pages/LinenPortalDashboardPage";
 import BookingRequestsPage from "./pages/BookingRequestsPage";
 import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
@@ -219,6 +221,10 @@ function AppRoutes() {
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
       <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
       <Route path="/passport/:propertyId" element={<PropertyPassportPage />} />
+
+      {/* Linen company portal (phone OTP, no Supabase session) */}
+      <Route path="/linen-portal" element={<LinenPortalLoginPage />} />
+      <Route path="/linen-portal/dashboard" element={<LinenPortalDashboardPage />} />
 
       {/* Client portal (SMS magic link session) */}
       <Route path="/client-portal" element={<Navigate to="/login" replace />} />
