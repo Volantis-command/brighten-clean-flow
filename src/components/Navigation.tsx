@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
 
@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { label: 'Staff', path: '/staff', icon: Users, roles: ['admin'] },
   { label: 'Timesheets', path: '/timesheets', icon: ClipboardList, roles: ['admin'] },
   { label: 'Financials', path: '/financials', icon: DollarSign, roles: ['admin'] },
+  { label: 'Linen', path: '/linen', icon: Package, roles: ['admin'] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['admin'] },
 ];
 

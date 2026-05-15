@@ -35,6 +35,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 
 import LinenPortalLoginPage from "./pages/LinenPortalLoginPage";
 import LinenPortalDashboardPage from "./pages/LinenPortalDashboardPage";
+import LinenAdminPage from "./pages/LinenAdminPage";
 import BookingRequestsPage from "./pages/BookingRequestsPage";
 import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
 import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
@@ -256,6 +257,7 @@ function AppRoutes() {
         <Route path="/qc-audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><QCAuditPage /></ProtectedRoute>} />
         <Route path="/bookings/suggestions" element={<ProtectedRoute allowedRoles={['admin']}><BookingSuggestionsPage /></ProtectedRoute>} />
         <Route path="/quotes/followups-pending" element={<ProtectedRoute allowedRoles={['admin']}><QuoteFollowupsPage /></ProtectedRoute>} />
+        <Route path="/linen" element={<ProtectedRoute allowedRoles={['admin']}><LinenAdminPage /></ProtectedRoute>} />
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
         <Route path="/invoices/pending" element={<ProtectedRoute allowedRoles={['admin']}><PendingInvoicesPage /></ProtectedRoute>} />
         <Route path="/financials" element={<ProtectedRoute allowedRoles={['admin']}><FinancialsPage /></ProtectedRoute>} />
