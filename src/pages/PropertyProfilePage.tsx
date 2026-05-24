@@ -401,9 +401,9 @@ function SOPTab({ property }: { property: any }) {
   );
 }
 
-function bedConfigToLinen(bedConfig: string): string {
+function bedConfigToLinen(bedConfig: string, bathrooms: number = 0): string {
   // Convert "Bedroom 1: King, Bedroom 2: Queen, Bedroom 3: Two Singles, ..."
-  // into a linen order list like "1x King sheet set\n1x Queen sheet set\n..."
+  // + bathroom count into a full linen order list.
   const counts: Record<string, number> = {};
   const parts = bedConfig.split(',').map(s => s.trim());
   for (const part of parts) {
@@ -412,12 +412,16 @@ function bedConfigToLinen(bedConfig: string): string {
     const bedType = match[1].trim();
     counts[bedType] = (counts[bedType] || 0) + 1;
   }
-  return Object.entries(counts)
-    .map(([type, count]) => {
-      if (type === 'Two Singles') return `${count * 2}x Single sheet set`;
-      return `${count}x ${type} sheet set`;
-    })
-    .join('\n');
+  const lines = Object.entries(counts).map(([type, count]) => {
+    if (type === 'Two Singles' || type === 'Bunk Beds') return `${count * 2}x Single sheet set`;
+    return `${count}x ${type} sheet set`;
+  });
+  if (bathrooms > 0) {
+    lines.push(`${bathrooms * 2}x Bath towel`);
+    lines.push(`${bathrooms}x Hand towel`);
+    lines.push(`${bathrooms}x Bath mat`);
+  }
+  return lines.join('\n');
 }
 
 function LinenRequirementsCard({ property }: { property: any }) {
@@ -425,6 +429,7 @@ function LinenRequirementsCard({ property }: { property: any }) {
   const [saving, setSaving] = useState(false);
   const savedRef = useRef<string>((property as any).linen_requirements || '');
   const bedConfig: string = (property as any).bed_config || '';
+  const bathrooms: number = Number((property as any).bathrooms) || 0;
 
   const handleSave = async () => {
     if (value === savedRef.current) return;
@@ -443,7 +448,7 @@ function LinenRequirementsCard({ property }: { property: any }) {
   };
 
   const generateFromBedConfig = () => {
-    const generated = bedConfigToLinen(bedConfig);
+    const generated = bedConfigToLinen(bedConfig, bathrooms);
     if (generated) setValue(generated);
   };
 

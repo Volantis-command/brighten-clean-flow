@@ -134,6 +134,50 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── get_week_schedule ─────────────────────────────────────────────────────
+    if (action === "get_week_schedule") {
+      // Return all jobs Mon–Sun of next calendar week
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dow = today.getDay(); // 0=Sun
+      const daysToMonday = dow === 0 ? 1 : 8 - dow;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + daysToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const fromStr = monday.toISOString().split("T")[0];
+      const toStr = sunday.toISOString().split("T")[0];
+
+      const { data: jobs, error: jobsErr } = await supabase
+        .from("jobs")
+        .select(`
+          id, scheduled_date, scheduled_time, status,
+          properties:property_id ( id, address, property_name, linen_requirements, bed_config, bathrooms )
+        `)
+        .gte("scheduled_date", fromStr)
+        .lte("scheduled_date", toStr)
+        .neq("status", "cancelled")
+        .order("scheduled_date", { ascending: true })
+        .order("scheduled_time", { ascending: true, nullsFirst: false });
+
+      if (jobsErr) throw jobsErr;
+
+      // Only jobs for properties that have linen or bed config
+      const linenJobs = (jobs || []).filter((j: any) => {
+        const p = j.properties;
+        return p?.linen_requirements || p?.bed_config;
+      });
+
+      return new Response(JSON.stringify({
+        jobs: linenJobs,
+        week_start: fromStr,
+        week_end: toStr,
+        company_name: settings?.company_name || "Linen Company",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "unknown action" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

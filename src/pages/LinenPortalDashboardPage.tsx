@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, LogOut, CheckCircle2, Clock, Package, RefreshCw } from 'lucide-react';
+import { Loader2, LogOut, CheckCircle2, Clock, Package, RefreshCw, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, isPast } from 'date-fns';
 
@@ -172,12 +172,60 @@ function DeliveryCard({
   );
 }
 
+interface WeekJob {
+  id: string;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  status: string;
+  properties: {
+    id: string;
+    address: string;
+    property_name: string | null;
+    linen_requirements: string | null;
+    bed_config: string | null;
+    bathrooms: number | null;
+  } | null;
+}
+
+function bedConfigToLinen(bedConfig: string, bathrooms: number = 0): string {
+  const counts: Record<string, number> = {};
+  for (const part of bedConfig.split(',').map(s => s.trim())) {
+    const m = part.match(/:\s*(.+)$/);
+    if (!m) continue;
+    const t = m[1].trim();
+    counts[t] = (counts[t] || 0) + 1;
+  }
+  const lines = Object.entries(counts).map(([type, count]) =>
+    (type === 'Two Singles' || type === 'Bunk Beds')
+      ? `${count * 2}x Single sheet set`
+      : `${count}x ${type} sheet set`
+  );
+  if (bathrooms > 0) {
+    lines.push(`${bathrooms * 2}x Bath towel`);
+    lines.push(`${bathrooms}x Hand towel`);
+    lines.push(`${bathrooms}x Bath mat`);
+  }
+  return lines.join('\n');
+}
+
+function getLinenList(job: WeekJob): string {
+  const p = job.properties;
+  if (!p) return '';
+  if (p.linen_requirements) return p.linen_requirements;
+  if (p.bed_config) return bedConfigToLinen(p.bed_config, p.bathrooms ?? 0);
+  return '';
+}
+
 export default function LinenPortalDashboardPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'next-week'>('deliveries');
   const [phone, setPhone] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [weekJobs, setWeekJobs] = useState<WeekJob[]>([]);
+  const [weekRange, setWeekRange] = useState<{ start: string; end: string } | null>(null);
   const [companyName, setCompanyName] = useState('Linen Company');
   const [loading, setLoading] = useState(true);
+  const [weekLoading, setWeekLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Auth check
@@ -214,9 +262,31 @@ export default function LinenPortalDashboardPage() {
     }
   }, [navigate]);
 
+  const loadWeekSchedule = useCallback(async (ph: string) => {
+    setWeekLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('linen-portal-data', {
+        body: { action: 'get_week_schedule', phone: ph },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setWeekJobs((data as any).jobs || []);
+      if ((data as any).week_start && (data as any).week_end) {
+        setWeekRange({ start: (data as any).week_start, end: (data as any).week_end });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to load week schedule');
+    } finally {
+      setWeekLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (phone) loadDeliveries(phone);
-  }, [phone, loadDeliveries]);
+    if (phone) {
+      loadDeliveries(phone);
+      loadWeekSchedule(phone);
+    }
+  }, [phone, loadDeliveries, loadWeekSchedule]);
 
   const handleToggle = async (deliveryId: string, newStatus: 'pending' | 'delivered') => {
     if (!phone) return;
@@ -284,84 +354,185 @@ export default function LinenPortalDashboardPage() {
         </button>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin" style={{ color: GREEN }} />
-          </div>
-        ) : deliveries.length === 0 ? (
-          <div
-            className="rounded-2xl p-8 text-center"
-            style={{ background: CARD, border: `1px solid ${BORDER}` }}
-          >
-            <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: GREEN }} />
-            <p className="font-bold text-white">All clear!</p>
-            <p className="text-sm mt-1" style={{ color: MUTED }}>
-              No upcoming linen deliveries right now.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Stats strip */}
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                className="rounded-2xl p-4 text-center"
-                style={{ background: CARD, border: `1px solid ${BORDER}` }}
-              >
-                <p className="text-2xl font-extrabold" style={{ color: YELLOW }}>
-                  {pending.length}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: MUTED }}>
-                  Pending
-                </p>
-              </div>
-              <div
-                className="rounded-2xl p-4 text-center"
-                style={{ background: CARD, border: `1px solid ${BORDER}` }}
-              >
-                <p className="text-2xl font-extrabold" style={{ color: GREEN }}>
-                  {delivered.length}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: MUTED }}>
-                  Delivered
-                </p>
-              </div>
+      {/* Tab switcher */}
+      <div className="max-w-lg mx-auto px-4 pt-4">
+        <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
+          {([
+            { id: 'deliveries', label: 'Deliveries', icon: Package },
+            { id: 'next-week', label: 'Next Week', icon: CalendarDays },
+          ] as const).map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-all"
+              style={{
+                background: activeTab === tab.id ? GREEN : 'transparent',
+                color: activeTab === tab.id ? '#000' : MUTED,
+              }}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 pt-4 space-y-6">
+        {/* ── Next Week tab ── */}
+        {activeTab === 'next-week' && (
+          weekLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: GREEN }} />
             </div>
+          ) : weekJobs.length === 0 ? (
+            <div className="rounded-2xl p-8 text-center" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+              <CalendarDays className="h-10 w-10 mx-auto mb-3" style={{ color: GREEN }} />
+              <p className="font-bold text-white">Nothing scheduled</p>
+              <p className="text-sm mt-1" style={{ color: MUTED }}>
+                No linen jobs for next week
+                {weekRange ? ` (${format(parseISO(weekRange.start), 'd MMM')} – ${format(parseISO(weekRange.end), 'd MMM')})` : ''}.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {weekRange && (
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: MUTED }}>
+                  {format(parseISO(weekRange.start), 'd MMM')} – {format(parseISO(weekRange.end), 'd MMM yyyy')}
+                </p>
+              )}
+              {/* Group by date */}
+              {Object.entries(
+                weekJobs.reduce<Record<string, WeekJob[]>>((acc, j) => {
+                  const d = j.scheduled_date;
+                  if (!acc[d]) acc[d] = [];
+                  acc[d].push(j);
+                  return acc;
+                }, {})
+              ).map(([date, jobs]) => (
+                <div key={date} className="space-y-2">
+                  <p className="text-sm font-bold" style={{ color: YELLOW }}>
+                    {format(parseISO(date), 'EEEE d MMM')}
+                  </p>
+                  {jobs.map(job => {
+                    const linen = getLinenList(job);
+                    const p = job.properties;
+                    return (
+                      <div
+                        key={job.id}
+                        className="rounded-2xl p-4 space-y-3"
+                        style={{ background: CARD, border: `1px solid ${BORDER}` }}
+                      >
+                        <div>
+                          <p className="font-bold text-white">{p?.address || 'Unknown property'}</p>
+                          <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                            Clean at {job.scheduled_time ? job.scheduled_time.slice(0, 5) : 'TBC'}
+                          </p>
+                        </div>
+                        {linen ? (
+                          <div
+                            className="rounded-xl px-4 py-3"
+                            style={{ background: 'rgba(0,0,0,0.2)', border: `1px solid ${BORDER}` }}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <Package className="h-4 w-4" style={{ color: GREEN }} />
+                              <p className="text-xs font-bold" style={{ color: GREEN }}>Linen required</p>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: MUTED }}>
+                              {linen}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs" style={{ color: MUTED }}>No linen requirements set</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )
+        )}
 
-            {/* Pending deliveries */}
-            {pending.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: MUTED }}>
-                  Upcoming deliveries
-                </h2>
-                {pending.map(d => (
-                  <DeliveryCard
-                    key={d.id}
-                    delivery={d}
-                    onToggle={handleToggle}
-                    toggling={togglingId === d.id}
-                  />
-                ))}
+        {/* ── Deliveries tab ── */}
+        {activeTab === 'deliveries' && (
+          loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: GREEN }} />
+            </div>
+          ) : deliveries.length === 0 ? (
+            <div
+              className="rounded-2xl p-8 text-center"
+              style={{ background: CARD, border: `1px solid ${BORDER}` }}
+            >
+              <CheckCircle2 className="h-10 w-10 mx-auto mb-3" style={{ color: GREEN }} />
+              <p className="font-bold text-white">All clear!</p>
+              <p className="text-sm mt-1" style={{ color: MUTED }}>
+                No upcoming linen deliveries right now.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Stats strip */}
+              <div className="grid grid-cols-2 gap-3">
+                <div
+                  className="rounded-2xl p-4 text-center"
+                  style={{ background: CARD, border: `1px solid ${BORDER}` }}
+                >
+                  <p className="text-2xl font-extrabold" style={{ color: YELLOW }}>
+                    {pending.length}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                    Pending
+                  </p>
+                </div>
+                <div
+                  className="rounded-2xl p-4 text-center"
+                  style={{ background: CARD, border: `1px solid ${BORDER}` }}
+                >
+                  <p className="text-2xl font-extrabold" style={{ color: GREEN }}>
+                    {delivered.length}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                    Delivered
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* Delivered */}
-            {delivered.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: MUTED }}>
-                  Delivered
-                </h2>
-                {delivered.map(d => (
-                  <DeliveryCard
-                    key={d.id}
-                    delivery={d}
-                    onToggle={handleToggle}
-                    toggling={togglingId === d.id}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+              {/* Pending deliveries */}
+              {pending.length > 0 && (
+                <div className="space-y-3">
+                  <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: MUTED }}>
+                    Upcoming deliveries
+                  </h2>
+                  {pending.map(d => (
+                    <DeliveryCard
+                      key={d.id}
+                      delivery={d}
+                      onToggle={handleToggle}
+                      toggling={togglingId === d.id}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Delivered */}
+              {delivered.length > 0 && (
+                <div className="space-y-3">
+                  <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: MUTED }}>
+                    Delivered
+                  </h2>
+                  {delivered.map(d => (
+                    <DeliveryCard
+                      key={d.id}
+                      delivery={d}
+                      onToggle={handleToggle}
+                      toggling={togglingId === d.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )
         )}
       </div>
     </div>
