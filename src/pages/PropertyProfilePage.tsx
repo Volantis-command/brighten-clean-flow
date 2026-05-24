@@ -401,10 +401,30 @@ function SOPTab({ property }: { property: any }) {
   );
 }
 
+function bedConfigToLinen(bedConfig: string): string {
+  // Convert "Bedroom 1: King, Bedroom 2: Queen, Bedroom 3: Two Singles, ..."
+  // into a linen order list like "1x King sheet set\n1x Queen sheet set\n..."
+  const counts: Record<string, number> = {};
+  const parts = bedConfig.split(',').map(s => s.trim());
+  for (const part of parts) {
+    const match = part.match(/:\s*(.+)$/);
+    if (!match) continue;
+    const bedType = match[1].trim();
+    counts[bedType] = (counts[bedType] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .map(([type, count]) => {
+      if (type === 'Two Singles') return `${count * 2}x Single sheet set`;
+      return `${count}x ${type} sheet set`;
+    })
+    .join('\n');
+}
+
 function LinenRequirementsCard({ property }: { property: any }) {
   const [value, setValue] = useState<string>((property as any).linen_requirements || '');
   const [saving, setSaving] = useState(false);
   const savedRef = useRef<string>((property as any).linen_requirements || '');
+  const bedConfig: string = (property as any).bed_config || '';
 
   const handleSave = async () => {
     if (value === savedRef.current) return;
@@ -422,6 +442,11 @@ function LinenRequirementsCard({ property }: { property: any }) {
     }
   };
 
+  const generateFromBedConfig = () => {
+    const generated = bedConfigToLinen(bedConfig);
+    if (generated) setValue(generated);
+  };
+
   return (
     <div className="bg-card rounded-2xl shadow-sm border border-border p-5 space-y-3">
       <div className="flex items-center justify-between">
@@ -432,6 +457,14 @@ function LinenRequirementsCard({ property }: { property: any }) {
             Leave blank if linen is not required.
           </p>
         </div>
+        {bedConfig && !value && (
+          <button
+            onClick={generateFromBedConfig}
+            className="text-xs font-semibold text-primary border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/10 transition-colors"
+          >
+            Generate from bed config
+          </button>
+        )}
       </div>
       <textarea
         value={value}
@@ -443,7 +476,7 @@ function LinenRequirementsCard({ property }: { property: any }) {
       />
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{value.length} characters</span>
-        {value !== initial && (
+        {value !== savedRef.current && (
           <button
             onClick={handleSave}
             disabled={saving}
