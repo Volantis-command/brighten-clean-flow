@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -404,16 +404,22 @@ function SOPTab({ property }: { property: any }) {
 function LinenRequirementsCard({ property }: { property: any }) {
   const [value, setValue] = useState<string>((property as any).linen_requirements || '');
   const [saving, setSaving] = useState(false);
-  const initial = (property as any).linen_requirements || '';
+  const savedRef = useRef<string>((property as any).linen_requirements || '');
 
   const handleSave = async () => {
-    if (value === initial) return;
+    if (value === savedRef.current) return;
     setSaving(true);
-    await supabase
+    const { error } = await supabase
       .from('properties')
       .update({ linen_requirements: value || null } as any)
       .eq('id', property.id);
     setSaving(false);
+    if (error) {
+      toast.error('Failed to save linen requirements: ' + error.message);
+    } else {
+      savedRef.current = value;
+      toast.success('Linen requirements saved.');
+    }
   };
 
   return (
