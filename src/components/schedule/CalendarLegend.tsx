@@ -8,11 +8,12 @@ interface CleanerCalendarLegendProps {
 }
 
 const STATUS_LEGEND = [
-  { color: 'bg-yellow-400', label: 'Pending Approval' },
+  { color: 'bg-yellow-400', label: 'Needs Cleaner' },
   { color: 'bg-emerald-500', label: 'Scheduled' },
   { color: 'bg-blue-500', label: 'In Progress' },
-  { color: 'bg-red-500', label: 'Overdue / Issue' },
-  { color: 'bg-gray-400', label: 'Completed' },
+  { color: 'bg-gray-400', label: 'Done — not invoiced' },
+  { color: 'bg-purple-500', label: 'Done + invoiced' },
+  { color: 'bg-red-500', label: 'Cancelled / Issue' },
 ];
 
 export function CalendarLegend({ jobs, nameMap }: CleanerCalendarLegendProps) {
