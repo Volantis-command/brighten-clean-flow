@@ -13,15 +13,16 @@ type Step = 'phone' | 'code';
 export default function PhoneLoginPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-
-  // Already logged in — skip the login page entirely.
-  if (!loading && user) {
-    return <Navigate to="/dashboard" replace />;
-  }
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Already logged in — skip the login page entirely.
+  // Must be after all hook calls (Rules of Hooks).
+  if (!loading && user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const requestCode = async (e: React.FormEvent) => {
     e.preventDefault();
