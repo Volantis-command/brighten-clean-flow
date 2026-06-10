@@ -149,6 +149,7 @@ function SpaRedirectHandler() {
 
 function RootRedirect() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const redirect = sessionStorage.getItem('spa-redirect');
 
   useEffect(() => {
@@ -158,10 +159,11 @@ function RootRedirect() {
     }
   }, [redirect, navigate]);
 
-  if (redirect) {
+  if (redirect || loading) {
     return <BrandedLoading />;
   }
-  return <Navigate to="/login" replace />;
+  // Logged in → go straight to dashboard; not logged in → login page.
+  return <Navigate to={user ? '/dashboard' : '/login'} replace />;
 }
 
 function QuoteAcceptRedirect() {

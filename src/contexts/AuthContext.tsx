@@ -51,8 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // 1. Set up listener FIRST (before getSession)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    let initialised = false;
+
+    // Use INITIAL_SESSION event — fires immediately from localStorage, no network wait.
+    // The old approach raced getSession() against a 3-second timeout; on mobile that
+    // timeout could fire before a legitimate token refresh completed, bouncing logged-in
+    // users back to /login. INITIAL_SESSION resolves from storage synchronously so
+    // there is nothing to race.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
@@ -63,41 +69,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(null);
         setLoading(false);
       }
+      if (event === 'INITIAL_SESSION') {
+        initialised = true;
+      }
     });
 
-    // 2. Bootstrap: race getSession against a 3-second timeout
-    const bootstrap = async () => {
-      try {
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-          window.setTimeout(() => resolve({ data: { session: null } }), 3000)
-        );
-
-        const { data: { session: s } } = await Promise.race([sessionPromise, timeoutPromise]);
-
-        setSession(s);
-        setUser(s?.user ?? null);
-
-        if (!s?.user) {
-          // No session — immediately mark as not loading so /login renders
-          setProfile(null);
-          setRole(null);
-          setLoading(false);
-        }
-        // If there IS a user, the useEffect[user] below will fetch profile/role
-      } catch (err) {
-        console.error('Auth bootstrap failed:', err);
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setRole(null);
+    // Safety net: if INITIAL_SESSION never fires (shouldn't happen with v2+),
+    // stop the loading spinner after 8 seconds so the app doesn't hang.
+    const safety = window.setTimeout(() => {
+      if (!initialised) {
+        console.warn('Auth INITIAL_SESSION never fired — releasing loading state');
         setLoading(false);
       }
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      window.clearTimeout(safety);
     };
-
-    bootstrap();
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch profile & role whenever user changes
