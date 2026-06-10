@@ -186,7 +186,7 @@ function AppRoutes() {
           is the legacy email+password page kept as a backdoor in case
           the OTP flow breaks (Twilio outage, dashboard misconfig, etc).
           Don't link to it from anywhere — admin uses it via direct URL. */}
-      <Route path="/login" element={<PhoneLoginPage />} />
+      <Route path="/login" element={<AuthenticatedArea><PhoneLoginPage /></AuthenticatedArea>} />
       <Route path="/login-emergency" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -194,7 +194,7 @@ function AppRoutes() {
       <Route path="/auth/staff" element={<Navigate to="/login" replace />} />
       <Route path="/client-login" element={<Navigate to="/login" replace />} />
 
-      <Route path="/" element={<RootRedirect />} />
+      <Route path="/" element={<AuthenticatedArea><RootRedirect /></AuthenticatedArea>} />
 
       {/* Public token routes */}
       <Route path="/client/:token" element={<MagicLinkPortalPage />} />
