@@ -2,7 +2,7 @@ import { format, differenceInHours } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarPlus, Star, Wifi, WifiOff, Home } from 'lucide-react';
+import { CalendarPlus, Star, Wifi, WifiOff, Home, ChevronRight } from 'lucide-react';
 
 interface PropertyCardProps {
   property: any;
@@ -235,11 +235,14 @@ export default function PropertyCard({
           )}
         </div>
 
-        {rebookHref && (
-          <div className="mt-4 pt-4 border-t border-border/50">
+        <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
+          <span className="text-xs font-bold text-primary flex items-center gap-1">
+            View clean history & reports <ChevronRight className="w-3.5 h-3.5" />
+          </span>
+          {rebookHref && (
             <Button
               size="sm"
-              className="w-full gap-2 font-bold"
+              className="gap-1.5 font-bold"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(rebookHref);
@@ -248,8 +251,8 @@ export default function PropertyCard({
               <CalendarPlus className="w-4 h-4" />
               Book Clean
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
