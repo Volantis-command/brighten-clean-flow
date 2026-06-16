@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, Clock, Timer, Users, Send, Trash2, ExternalLink } from 'lucide-react';
+import { X, MapPin, Clock, Timer, Users, Send, Trash2, ExternalLink, CheckSquare, Square } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [assigningCleaner, setAssigningCleaner] = useState(false);
   const [convertingFreq, setConvertingFreq] = useState(false);
+  const [togglingInvoiceSent, setTogglingInvoiceSent] = useState(false);
   const { data: cleanersList = [] } = useCleanersList();
 
   if (!job) return null;
@@ -141,6 +142,25 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     }
     setUpdatingStatus(false);
+  };
+
+  const handleToggleInvoiceSent = async () => {
+    setTogglingInvoiceSent(true);
+    const alreadySent = !!(job as any).invoice_sent_at;
+    const { error } = await supabase
+      .from('jobs')
+      .update(alreadySent
+        ? { invoice_sent_at: null, invoice_status: 'none' } as any
+        : { invoice_sent_at: new Date().toISOString(), invoice_status: 'sent' } as any
+      )
+      .eq('id', job.id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(alreadySent ? 'Invoice sent mark removed' : 'Marked as invoice sent ✓');
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    }
+    setTogglingInvoiceSent(false);
   };
 
   const handleResendSms = async () => {
@@ -283,6 +303,34 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
               </div>
             )}
           </div>
+
+          {/* Invoice sent toggle — admin quick-mark for manual invoicing */}
+          {(job.status === 'completed' || job.status === 'complete') && (
+            <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Invoice</label>
+              <button
+                onClick={handleToggleInvoiceSent}
+                disabled={togglingInvoiceSent}
+                className={cn(
+                  'mt-1.5 w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors font-bold text-sm',
+                  (job as any).invoice_sent_at
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-muted/40 border-border text-muted-foreground hover:border-primary/50'
+                )}
+              >
+                {(job as any).invoice_sent_at
+                  ? <CheckSquare className="h-5 w-5 shrink-0" />
+                  : <Square className="h-5 w-5 shrink-0" />
+                }
+                <span>Invoice sent</span>
+                {(job as any).invoice_sent_at && (
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    {format(new Date((job as any).invoice_sent_at), 'd MMM')}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Cleaners — assignable inline */}
           <div className="space-y-2">
