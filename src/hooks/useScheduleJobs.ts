@@ -34,6 +34,7 @@ export interface ScheduleJob {
     first_clean: boolean | null;
   } | null;
   invoice_sent_at: string | null;
+  xero_invoice_id: string | null;
   // Set to true for iCal booking suggestions shown on calendar before approval
   _isSuggestion?: boolean;
 }
@@ -107,6 +108,7 @@ export function useScheduleJobs() {
     notes: s.guest_name ? `Guest: ${s.guest_name}` : 'iCal booking — tap to approve',
     invoice_status: null,
     invoice_sent_at: null,
+    xero_invoice_id: null,
     series_id: null,
     recurring_parent_id: null,
     is_urgent: false,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, Clock, Timer, Users, Send, Trash2, ExternalLink, CheckSquare, Square } from 'lucide-react';
+import { X, MapPin, Clock, Timer, Users, Send, Trash2, ExternalLink, CheckSquare, Square, FileText, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +45,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [assigningCleaner, setAssigningCleaner] = useState(false);
   const [convertingFreq, setConvertingFreq] = useState(false);
   const [togglingInvoiceSent, setTogglingInvoiceSent] = useState(false);
+  const [creatingXeroInvoice, setCreatingXeroInvoice] = useState(false);
   const { data: cleanersList = [] } = useCleanersList();
 
   if (!job) return null;
@@ -161,6 +162,22 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     }
     setTogglingInvoiceSent(false);
+  };
+
+  const handleCreateXeroInvoice = async () => {
+    setCreatingXeroInvoice(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('xero-auto-invoice-job', {
+        body: { job_id: job.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Xero draft created — ${data?.invoice_number || 'check Xero'}`);
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+    } catch (e: any) {
+      toast.error(`Invoice failed: ${e.message}`);
+    }
+    setCreatingXeroInvoice(false);
   };
 
   const handleResendSms = async () => {
@@ -304,31 +321,73 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
             )}
           </div>
 
-          {/* Invoice sent toggle — admin quick-mark for manual invoicing */}
+          {/* Invoice section — admin quick-mark + Xero create button */}
           {(job.status === 'completed' || job.status === 'complete') && (
-            <div>
+            <div className="space-y-2">
               <label className="text-xs font-bold text-muted-foreground uppercase">Invoice</label>
-              <button
-                onClick={handleToggleInvoiceSent}
-                disabled={togglingInvoiceSent}
-                className={cn(
-                  'mt-1.5 w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors font-bold text-sm',
-                  (job as any).invoice_sent_at
-                    ? 'bg-primary/10 border-primary text-primary'
-                    : 'bg-muted/40 border-border text-muted-foreground hover:border-primary/50'
-                )}
-              >
-                {(job as any).invoice_sent_at
-                  ? <CheckSquare className="h-5 w-5 shrink-0" />
-                  : <Square className="h-5 w-5 shrink-0" />
-                }
-                <span>Invoice sent</span>
-                {(job as any).invoice_sent_at && (
-                  <span className="ml-auto text-xs font-normal text-muted-foreground">
-                    {format(new Date((job as any).invoice_sent_at), 'd MMM')}
+
+              {/* Xero invoice status pill */}
+              {job.xero_invoice_id ? (
+                <div className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold',
+                  job.invoice_status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                  job.invoice_status === 'sent' || job.invoice_status === 'authorised' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                  'bg-orange-50 text-orange-700 border border-orange-200'
+                )}>
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span>
+                    {job.invoice_status === 'paid' ? 'Paid in Xero' :
+                     job.invoice_status === 'sent' ? 'Invoice sent (Xero)' :
+                     job.invoice_status === 'authorised' ? 'Approved in Xero' :
+                     'Draft in Xero — approve & send'}
                   </span>
-                )}
-              </button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 justify-start"
+                  onClick={handleCreateXeroInvoice}
+                  disabled={creatingXeroInvoice}
+                >
+                  {creatingXeroInvoice
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <FileText className="h-4 w-4" />
+                  }
+                  {creatingXeroInvoice ? 'Creating…' : 'Create Xero invoice'}
+                </Button>
+              )}
+
+              {/* Manual "invoice sent" tick — for jobs invoiced outside Xero */}
+              {!job.xero_invoice_id && (
+                <button
+                  onClick={handleToggleInvoiceSent}
+                  disabled={togglingInvoiceSent}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors font-bold text-sm',
+                    (job as any).invoice_sent_at
+                      ? 'bg-primary/10 border-primary text-primary'
+                      : 'bg-muted/40 border-border text-muted-foreground hover:border-primary/50'
+                  )}
+                >
+                  {(job as any).invoice_sent_at
+                    ? <CheckSquare className="h-5 w-5 shrink-0" />
+                    : <Square className="h-5 w-5 shrink-0" />
+                  }
+                  <span>Sent manually (outside Xero)</span>
+                  {(job as any).invoice_sent_at && (
+                    <span className="ml-auto text-xs font-normal text-muted-foreground">
+                      {format(new Date((job as any).invoice_sent_at), 'd MMM')}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {job.invoice_status === 'failed' && (
+                <p className="text-xs text-destructive px-1">
+                  Last attempt failed — tap "Create Xero invoice" to retry.
+                </p>
+              )}
             </div>
           )}
 

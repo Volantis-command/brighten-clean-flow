@@ -254,14 +254,18 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   })();
 
                   // Status-based colour coding
-                  // yellow=needs cleaner, green=confirmed, blue=in progress, grey=done/not invoiced, purple=done+invoiced
+                  // yellow=needs cleaner, green=confirmed, blue=in progress
+                  // grey=done/no invoice, orange=draft in Xero, purple=invoice sent, emerald=paid
                   const isComplete = job.status === 'completed';
                   const isInProgress = job.status === 'in_progress';
                   const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
                   const isPending = job.status === 'pending_cleaner' || job.status === 'awaiting_cleaner_acceptance' || job.status === 'awaiting_quote';
-                  const isInvoiced = isComplete && !!job.invoice_status && !['none', 'failed', 'skipped'].includes(job.invoice_status);
-                  const statusBg = isPending ? 'hsl(45 93% 58%)' : isInvoiced ? 'hsl(270 55% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
-                  const statusBorder = isPending ? 'hsl(45 93% 45%)' : isInvoiced ? 'hsl(270 55% 42%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
+                  const invoiceSt = job.invoice_status;
+                  const isPaid = isComplete && invoiceSt === 'paid';
+                  const isSent = isComplete && (invoiceSt === 'sent' || invoiceSt === 'authorised');
+                  const isDraft = isComplete && invoiceSt === 'draft';
+                  const statusBg = isPending ? 'hsl(45 93% 58%)' : isPaid ? 'hsl(142 60% 38%)' : isSent ? 'hsl(270 55% 58%)' : isDraft ? 'hsl(28 85% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
+                  const statusBorder = isPending ? 'hsl(45 93% 45%)' : isPaid ? 'hsl(142 60% 28%)' : isSent ? 'hsl(270 55% 42%)' : isDraft ? 'hsl(28 85% 45%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
                   const statusText = isPending ? '#422006' : '#fff';
 
                   return (
