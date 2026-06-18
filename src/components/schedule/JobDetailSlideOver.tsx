@@ -170,7 +170,13 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
       const { data, error } = await supabase.functions.invoke('xero-auto-invoice-job', {
         body: { job_id: job.id },
       });
-      if (error) throw error;
+      if (error) {
+        // Supabase wraps 5xx into a generic FunctionsHttpError — extract the
+        // actual message from the JSON body the function wrote.
+        let msg = error.message;
+        try { const body = await (error as any).context?.json?.(); if (body?.error) msg = body.error; } catch {}
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
       toast.success(`Xero draft created — ${data?.invoice_number || 'check Xero'}`);
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
