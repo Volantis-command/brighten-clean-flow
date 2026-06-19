@@ -319,13 +319,20 @@ function PropertiesTab({
           <button
             key={prop.id}
             onClick={() => navigate(`/client/${token}/property/${prop.id}`)}
-            className="w-full text-left rounded-2xl p-4 transition-colors"
+            className="w-full text-left rounded-2xl overflow-hidden transition-colors"
             style={{
               background: CARD,
               border: `1px solid ${needsAttn ? 'rgba(245,158,11,0.35)' : BORDER}`,
             }}
           >
-            <div className="flex items-start gap-3">
+            {prop.hero_image_url && (
+              <img
+                src={prop.hero_image_url}
+                alt={prop.property_name}
+                className="w-full h-36 object-cover"
+              />
+            )}
+            <div className="flex items-start gap-3 p-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-extrabold text-sm" style={{ color: WHITE }}>
