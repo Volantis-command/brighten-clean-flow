@@ -551,7 +551,7 @@ export default function MagicLinkPortalPage() {
             <img
               src={logoUrl}
               alt="Client logo"
-              className="h-12 w-auto object-contain shrink-0 mt-1"
+              className="h-24 w-auto object-contain shrink-0"
             />
           )}
         </div>
