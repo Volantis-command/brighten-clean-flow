@@ -513,19 +513,19 @@ export default function MagicLinkPortalPage() {
 
       {/* Sticky header */}
       <header
-        className="sticky top-0 z-40 px-5 py-3.5 flex items-center justify-between"
+        className="sticky top-0 z-40 px-5 flex items-center justify-between"
         style={{
           background: 'rgba(11,15,23,0.92)',
           backdropFilter: 'blur(12px)',
-          borderBottom: `1px solid ${BORDER}`,
+          borderBottom: `2px solid ${GREEN}`,
         }}
       >
-        <span className="text-xl font-extrabold" style={{ color: WHITE }}>
+        <span className="text-xl font-extrabold py-3.5" style={{ color: WHITE }}>
           Brightly<span style={{ color: YELLOW }}>.</span>
         </span>
         <span
           className="text-xs font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: 'rgba(255,255,255,0.07)', color: MUTED }}
+          style={{ background: `${GREEN}18`, color: GREEN, border: `1px solid ${GREEN}30` }}
         >
           Client Portal
         </span>
@@ -588,7 +588,7 @@ export default function MagicLinkPortalPage() {
         {/* Tab bar */}
         <div
           className="flex gap-1 p-1 rounded-xl"
-          style={{ background: CARD }}
+          style={{ background: CARD, border: `1.5px solid ${GREEN}40` }}
         >
           {(['calendar', 'properties'] as const).map(t => (
             <button
@@ -597,7 +597,7 @@ export default function MagicLinkPortalPage() {
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold transition-all"
               style={
                 tab === t
-                  ? { background: CARD2, color: WHITE, boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }
+                  ? { background: GREEN, color: '#000' }
                   : { color: MUTED }
               }
             >
