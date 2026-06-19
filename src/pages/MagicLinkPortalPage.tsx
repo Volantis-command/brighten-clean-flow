@@ -307,7 +307,7 @@ function PropertiesTab({
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-2 gap-3">
       {properties.map((prop: any) => {
         const propJobs  = jobs.filter((j: any) => j.property_id === prop.id);
         const upcoming  = propJobs.find((j: any) => j.scheduled_date >= todayStr && ACTIVE.includes(j.status));
@@ -329,50 +329,42 @@ function PropertiesTab({
               <img
                 src={prop.hero_image_url}
                 alt={prop.property_name}
-                className="w-full h-36 object-cover"
+                className="w-full h-28 object-cover"
               />
             )}
-            <div className="flex items-start gap-3 p-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-extrabold text-sm" style={{ color: WHITE }}>
-                    {prop.property_name}
+            <div className="p-3">
+              <div className="flex items-start justify-between gap-1 mb-1">
+                <p className="font-extrabold text-sm leading-tight" style={{ color: WHITE }}>
+                  {prop.property_name}
+                </p>
+                <ArrowRight className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: MUTED }} />
+              </div>
+              <p className="text-[11px] truncate" style={{ color: MUTED }}>
+                {prop.suburb || prop.address || ''}
+              </p>
+              <p className="text-[11px]" style={{ color: MUTED }}>
+                {prop.bedrooms || 0}bd · {prop.bathrooms || 0}ba
+              </p>
+              {needsAttn && (
+                <span className="inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}>
+                  Needs Cleaner
+                </span>
+              )}
+              <div className="flex gap-3 mt-2">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>Next</p>
+                  <p className="text-[11px] font-bold" style={{ color: upcoming ? GREEN : WHITE }}>
+                    {upcoming ? format(parseISO(upcoming.scheduled_date), 'd MMM') : '—'}
                   </p>
-                  {needsAttn && (
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                      style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-                    >
-                      Needs Cleaner
-                    </span>
-                  )}
                 </div>
-                <p className="text-xs mt-0.5 truncate" style={{ color: MUTED }}>
-                  {[prop.address, prop.suburb].filter(Boolean).join(', ') || 'Address not set'}
-                </p>
-                <p className="text-xs" style={{ color: MUTED }}>
-                  {prop.bedrooms || 0} bed · {prop.bathrooms || 0} bath
-                </p>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-                      Next Clean
-                    </p>
-                    <p className="text-xs font-bold mt-0.5" style={{ color: upcoming ? GREEN : WHITE }}>
-                      {upcoming ? format(parseISO(upcoming.scheduled_date), 'd MMM') : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
-                      Last Clean
-                    </p>
-                    <p className="text-xs font-bold mt-0.5" style={{ color: WHITE }}>
-                      {lastDone ? format(parseISO(lastDone.scheduled_date), 'd MMM yyyy') : '—'}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: MUTED }}>Last</p>
+                  <p className="text-[11px] font-bold" style={{ color: WHITE }}>
+                    {lastDone ? format(parseISO(lastDone.scheduled_date), 'd MMM') : '—'}
+                  </p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 shrink-0 mt-1" style={{ color: MUTED }} />
             </div>
           </button>
         );
