@@ -15,6 +15,7 @@ interface Props {
   initialName: string;
   initialEmail: string;
   initialPhone: string;
+  initialLogoUrl?: string;
   onSaved: () => void;
   clientType?: 'profile' | 'property' | 'qr';
   propertyIds?: string[];
@@ -36,6 +37,7 @@ export default function EditClientDialog({
   initialName,
   initialEmail,
   initialPhone,
+  initialLogoUrl = '',
   onSaved,
   clientType = 'profile',
   propertyIds = [],
@@ -45,6 +47,7 @@ export default function EditClientDialog({
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -54,6 +57,7 @@ export default function EditClientDialog({
       setName(initialName);
       setEmail(initialEmail);
       setPhone(initialPhone);
+      setLogoUrl(initialLogoUrl);
       setConfirmDelete(false);
     }
     onOpenChange(o);
@@ -75,7 +79,7 @@ export default function EditClientDialog({
           throw new Error('This record is linked to a staff account and cannot be edited as a client. Create a separate client account instead.');
         }
 
-        const { error } = await supabase.from('profiles').update({ full_name: name, email, phone }).eq('id', clientId);
+        const { error } = await supabase.from('profiles').update({ full_name: name, email, phone, logo_url: logoUrl || null } as any).eq('id', clientId);
         if (error) throw error;
       } else if (clientType === 'property') {
         const targetIds = propertyIds.length ? propertyIds : [clientId];
@@ -134,6 +138,13 @@ export default function EditClientDialog({
           <div><Label>Full Name</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
           <div><Label>Email</Label><Input value={email} onChange={e => setEmail(e.target.value)} type="email" /></div>
           <div><Label>Phone</Label><Input value={phone} onChange={e => setPhone(e.target.value)} /></div>
+          {clientType === 'profile' && (
+            <div>
+              <Label>Logo URL</Label>
+              <Input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..." />
+              {logoUrl && <img src={logoUrl} alt="Logo preview" className="mt-2 h-8 object-contain" />}
+            </div>
+          )}
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           {allowDelete && (

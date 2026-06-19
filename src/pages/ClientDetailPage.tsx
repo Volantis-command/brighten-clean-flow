@@ -689,6 +689,7 @@ export default function ClientDetailPage() {
         initialName={profile?.full_name || ''}
         initialEmail={profile?.email || ''}
         initialPhone={profile?.phone || ''}
+        initialLogoUrl={(profile as any)?.logo_url || ''}
         onSaved={refreshAll}
         clientType={parsed.type}
         propertyIds={propertyIds}
