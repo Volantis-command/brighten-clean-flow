@@ -22,11 +22,6 @@ const YELLOW = '#FEDB00';
 const WHITE  = '#FFFFFF';
 const MUTED  = 'rgba(255,255,255,0.45)';
 
-/* ── One colour per property (up to 8) ─────────────────────────── */
-const PROP_COLORS = [
-  '#4ADE80', '#60A5FA', '#C084FC', '#F97316',
-  '#FB7185', '#34D399', '#FACC15', '#818CF8',
-];
 
 const ACTIVE     = ['confirmed', 'scheduled', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'in_progress'];
 const NEEDS_ATTN = ['pending_cleaner', 'awaiting_cleaner_acceptance'];
@@ -55,11 +50,6 @@ function PortalMonthCalendar({
   const calEnd   = endOfWeek(endOfMonth(viewDate),   { weekStartsOn: 1 });
   const days     = eachDayOfInterval({ start: calStart, end: calEnd });
 
-  const propColorMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    properties.forEach((p, i) => { m[p.id] = PROP_COLORS[i % PROP_COLORS.length]; });
-    return m;
-  }, [properties]);
 
   const jobsByDate = useMemo(() => {
     const m: Record<string, any[]> = {};
@@ -153,18 +143,18 @@ function PortalMonthCalendar({
               </span>
               <div className="space-y-0.5">
                 {visible.slice(0, 2).map((j: any) => {
-                  const color  = propColorMap[j.property_id] || GREEN;
                   const isDone = DONE.includes(j.status);
                   const isAttn = NEEDS_ATTN.includes(j.status);
-                  const prop   = properties.find((p: any) => p.id === j.property_id);
-                  const label  = (prop?.property_name || '·').replace(/Alloggio /, 'A');
+                  const dotColor = isDone ? 'rgba(255,255,255,0.28)' : isAttn ? '#F59E0B' : GREEN;
+                  const prop = properties.find((p: any) => p.id === j.property_id);
+                  const label = prop?.property_name || '·';
                   return (
                     <div
                       key={j.id}
                       className="text-[8px] font-bold px-1 py-0.5 rounded truncate leading-tight"
                       style={{
-                        background: isDone ? 'rgba(255,255,255,0.05)' : `${color}1A`,
-                        color: isDone ? 'rgba(255,255,255,0.28)' : isAttn ? '#F59E0B' : color,
+                        background: isDone ? 'rgba(255,255,255,0.05)' : `${dotColor}1A`,
+                        color: dotColor,
                       }}
                     >
                       {label}
@@ -195,17 +185,6 @@ function PortalMonthCalendar({
         ))}
       </div>
 
-      {/* Property colour key */}
-      {properties.length > 1 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-          {properties.map((p: any, i: number) => (
-            <div key={p.id} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded" style={{ background: PROP_COLORS[i % PROP_COLORS.length] }} />
-              <span className="text-[10px] font-semibold" style={{ color: MUTED }}>{p.property_name}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Selected day panel */}
       <div
@@ -227,7 +206,6 @@ function PortalMonthCalendar({
             {selectedJobs.map((j: any) => {
               const prop      = properties.find((p: any) => p.id === j.property_id);
               const si        = jobStatus(j.status);
-              const pColor    = propColorMap[j.property_id] || GREEN;
               const canChange = ACTIVE.includes(j.status);
 
               return (
@@ -236,7 +214,7 @@ function PortalMonthCalendar({
                     <div className="flex items-start gap-2.5">
                       <div
                         className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
-                        style={{ background: pColor }}
+                        style={{ background: si.color === 'rgba(255,255,255,0.28)' ? 'rgba(255,255,255,0.28)' : GREEN }}
                       />
                       <div>
                         <p className="text-sm font-bold" style={{ color: WHITE }}>
@@ -330,13 +308,12 @@ function PropertiesTab({
 
   return (
     <div className="space-y-3">
-      {properties.map((prop: any, i: number) => {
+      {properties.map((prop: any) => {
         const propJobs  = jobs.filter((j: any) => j.property_id === prop.id);
         const upcoming  = propJobs.find((j: any) => j.scheduled_date >= todayStr && ACTIVE.includes(j.status));
         const lastDone  = propJobs.filter((j: any) => DONE.includes(j.status))
           .sort((a: any, b: any) => b.scheduled_date.localeCompare(a.scheduled_date))[0];
         const needsAttn = upcoming && NEEDS_ATTN.includes(upcoming.status);
-        const color     = PROP_COLORS[i % PROP_COLORS.length];
 
         return (
           <button
@@ -349,10 +326,6 @@ function PropertiesTab({
             }}
           >
             <div className="flex items-start gap-3">
-              <div
-                className="w-1 self-stretch rounded-full shrink-0"
-                style={{ background: color, minHeight: '3.5rem' }}
-              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-extrabold text-sm" style={{ color: WHITE }}>

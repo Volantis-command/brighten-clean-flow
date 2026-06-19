@@ -267,7 +267,7 @@ export default function MagicLinkPropertyPage() {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border/50 sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-3">
-          <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>Brightly<span className="text-accent">.</span></h1>
+          <span className="text-xl font-extrabold text-foreground">Brightly<span style={{ color: '#FEDB00' }}>.</span></span>
         </div>
       </header>
 
@@ -301,7 +301,7 @@ export default function MagicLinkPropertyPage() {
           </div>
         </div>
 
-        <h1 className="text-2xl font-extrabold text-primary">{property.property_name}</h1>
+        <h1 className="text-2xl font-extrabold text-foreground">{property.property_name}</h1>
         <p className="text-sm text-muted-foreground -mt-4">{[property.address, property.suburb].filter(Boolean).join(', ')}</p>
 
         <TurnaroundPanel property={property} />
