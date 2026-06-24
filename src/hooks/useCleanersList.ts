@@ -9,7 +9,7 @@ export function useCleanersList() {
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('role', ['cleaner', 'head_cleaner']);
+        .in('role', ['cleaner', 'head_cleaner', 'admin']);
 
       if (roleError) throw roleError;
       if (!roleData || roleData.length === 0) return [];

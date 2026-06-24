@@ -52,7 +52,7 @@ function useCleanersList() {
   return useQuery({
     queryKey: ['cleaners-for-assign'],
     queryFn: async () => {
-      const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('role', ['cleaner', 'head_cleaner']);
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('role', ['cleaner', 'head_cleaner', 'admin']);
       if (!roles?.length) return [];
       const ids = roles.map(r => r.user_id);
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
