@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -56,6 +56,36 @@ export type Database = {
           key?: string
           updated_at?: string | null
           value?: string
+        }
+        Relationships: []
+      }
+      auth_otp_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
         }
         Relationships: []
       }
@@ -208,6 +238,8 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          notes: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -215,6 +247,8 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          notes?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -222,6 +256,8 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          notes?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -282,6 +318,8 @@ export type Database = {
           date_of_birth: string | null
           digital_signature: string | null
           director_approved: boolean | null
+          director_approved_at: string | null
+          director_approved_by: string | null
           drivers_licence_expiry: string | null
           drivers_licence_url: string | null
           email: string | null
@@ -309,6 +347,7 @@ export type Database = {
           sops_resign_due: string | null
           suburb: string | null
           uniform_received: boolean | null
+          updated_at: string
           user_id: string
           vehicle_rego: string | null
           vevo_check_url: string | null
@@ -328,6 +367,8 @@ export type Database = {
           date_of_birth?: string | null
           digital_signature?: string | null
           director_approved?: boolean | null
+          director_approved_at?: string | null
+          director_approved_by?: string | null
           drivers_licence_expiry?: string | null
           drivers_licence_url?: string | null
           email?: string | null
@@ -355,6 +396,7 @@ export type Database = {
           sops_resign_due?: string | null
           suburb?: string | null
           uniform_received?: boolean | null
+          updated_at?: string
           user_id: string
           vehicle_rego?: string | null
           vevo_check_url?: string | null
@@ -374,6 +416,8 @@ export type Database = {
           date_of_birth?: string | null
           digital_signature?: string | null
           director_approved?: boolean | null
+          director_approved_at?: string | null
+          director_approved_by?: string | null
           drivers_licence_expiry?: string | null
           drivers_licence_url?: string | null
           email?: string | null
@@ -401,6 +445,7 @@ export type Database = {
           sops_resign_due?: string | null
           suburb?: string | null
           uniform_received?: boolean | null
+          updated_at?: string
           user_id?: string
           vehicle_rego?: string | null
           vevo_check_url?: string | null
@@ -408,6 +453,114 @@ export type Database = {
           vevo_verified_at?: string | null
         }
         Relationships: []
+      }
+      cleaner_tips: {
+        Row: {
+          amount_cents: number
+          cleaner_id: string | null
+          client_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          job_id: string | null
+          paid_at: string | null
+          property_id: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          cleaner_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          job_id?: string | null
+          paid_at?: string | null
+          property_id?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          cleaner_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          job_id?: string | null
+          paid_at?: string | null
+          property_id?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_tips_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaner_tips_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_change_requests: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string
+          job_id: string | null
+          message: string
+          portal_token: string
+          property_id: string | null
+          status: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          job_id?: string | null
+          message: string
+          portal_token: string
+          property_id?: string | null
+          status?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          job_id?: string | null
+          message?: string
+          portal_token?: string
+          property_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_change_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_change_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_comms: {
         Row: {
@@ -491,46 +644,76 @@ export type Database = {
       }
       client_properties: {
         Row: {
+          access_code: string | null
+          access_method: string | null
+          alarm_code: string | null
           client_id: string
           created_at: string | null
+          garage_code: string | null
           guest_ready_sms: boolean | null
           id: string
           onboard_token: string | null
           onboard_used: boolean | null
           onboarding_sent_at: string | null
+          parking_notes: string | null
+          pet_notes: string | null
           portal_active: boolean | null
           portal_link_sent_at: string | null
           portal_token: string | null
+          preferences_notes: string | null
+          product_restrictions: string | null
           property_id: string
+          room_notes: Json | null
           show_invoices: boolean | null
+          special_instructions: string | null
         }
         Insert: {
+          access_code?: string | null
+          access_method?: string | null
+          alarm_code?: string | null
           client_id: string
           created_at?: string | null
+          garage_code?: string | null
           guest_ready_sms?: boolean | null
           id?: string
           onboard_token?: string | null
           onboard_used?: boolean | null
           onboarding_sent_at?: string | null
+          parking_notes?: string | null
+          pet_notes?: string | null
           portal_active?: boolean | null
           portal_link_sent_at?: string | null
           portal_token?: string | null
+          preferences_notes?: string | null
+          product_restrictions?: string | null
           property_id: string
+          room_notes?: Json | null
           show_invoices?: boolean | null
+          special_instructions?: string | null
         }
         Update: {
+          access_code?: string | null
+          access_method?: string | null
+          alarm_code?: string | null
           client_id?: string
           created_at?: string | null
+          garage_code?: string | null
           guest_ready_sms?: boolean | null
           id?: string
           onboard_token?: string | null
           onboard_used?: boolean | null
           onboarding_sent_at?: string | null
+          parking_notes?: string | null
+          pet_notes?: string | null
           portal_active?: boolean | null
           portal_link_sent_at?: string | null
           portal_token?: string | null
+          preferences_notes?: string | null
+          product_restrictions?: string | null
           property_id?: string
+          room_notes?: Json | null
           show_invoices?: boolean | null
+          special_instructions?: string | null
         }
         Relationships: [
           {
@@ -705,6 +888,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      hostaway_tokens: {
+        Row: {
+          access_token: string
+          client_id: string
+          created_at: string
+          expires_at: string | null
+          hostaway_account_id: string
+          hostaway_client_id: string | null
+          id: string
+          last_synced_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          client_id: string
+          created_at?: string
+          expires_at?: string | null
+          hostaway_account_id: string
+          hostaway_client_id?: string | null
+          id?: string
+          last_synced_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          client_id?: string
+          created_at?: string
+          expires_at?: string | null
+          hostaway_account_id?: string
+          hostaway_client_id?: string | null
+          id?: string
+          last_synced_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostaway_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_acceptances: {
         Row: {
@@ -971,6 +1198,53 @@ export type Database = {
           },
         ]
       }
+      job_room_completions: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          job_id: string
+          notes: string | null
+          photo_url: string | null
+          room_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          notes?: string | null
+          photo_url?: string | null
+          room_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          notes?: string | null
+          photo_url?: string | null
+          room_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_room_completions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_series: {
         Row: {
           clean_type: string | null
@@ -1086,8 +1360,10 @@ export type Database = {
           guest_checkin_time: string | null
           guest_checkout_time: string | null
           guesty_reservation_id: string | null
+          hostaway_reservation_id: string | null
           id: string
           invoice_amount: number | null
+          invoice_error: string | null
           invoice_notes: string | null
           invoice_paid_at: string | null
           invoice_raised_at: string | null
@@ -1099,6 +1375,7 @@ export type Database = {
           linked_quote_id: string | null
           no_show_alert_sent: boolean | null
           notes: string | null
+          on_route_at: string | null
           paused_at: string | null
           pre_clean_assessment_completed_at: string | null
           pre_clean_notes: Json | null
@@ -1182,8 +1459,10 @@ export type Database = {
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
           guesty_reservation_id?: string | null
+          hostaway_reservation_id?: string | null
           id?: string
           invoice_amount?: number | null
+          invoice_error?: string | null
           invoice_notes?: string | null
           invoice_paid_at?: string | null
           invoice_raised_at?: string | null
@@ -1195,6 +1474,7 @@ export type Database = {
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
+          on_route_at?: string | null
           paused_at?: string | null
           pre_clean_assessment_completed_at?: string | null
           pre_clean_notes?: Json | null
@@ -1278,8 +1558,10 @@ export type Database = {
           guest_checkin_time?: string | null
           guest_checkout_time?: string | null
           guesty_reservation_id?: string | null
+          hostaway_reservation_id?: string | null
           id?: string
           invoice_amount?: number | null
+          invoice_error?: string | null
           invoice_notes?: string | null
           invoice_paid_at?: string | null
           invoice_raised_at?: string | null
@@ -1291,6 +1573,7 @@ export type Database = {
           linked_quote_id?: string | null
           no_show_alert_sent?: boolean | null
           notes?: string | null
+          on_route_at?: string | null
           paused_at?: string | null
           pre_clean_assessment_completed_at?: string | null
           pre_clean_notes?: Json | null
@@ -1425,6 +1708,90 @@ export type Database = {
           service_type?: string
           status?: string
           suburb?: string
+        }
+        Relationships: []
+      }
+      linen_deliveries: {
+        Row: {
+          created_at: string
+          deliver_by: string | null
+          delivered_at: string | null
+          id: string
+          job_id: string
+          linen_requirements: string | null
+          notes: string | null
+          property_id: string | null
+          sms_sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deliver_by?: string | null
+          delivered_at?: string | null
+          id?: string
+          job_id: string
+          linen_requirements?: string | null
+          notes?: string | null
+          property_id?: string | null
+          sms_sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deliver_by?: string | null
+          delivered_at?: string | null
+          id?: string
+          job_id?: string
+          linen_requirements?: string | null
+          notes?: string | null
+          property_id?: string | null
+          sms_sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linen_deliveries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "linen_deliveries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      linen_settings: {
+        Row: {
+          company_name: string
+          created_at: string
+          id: string
+          notes: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          phone?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1588,10 +1955,14 @@ export type Database = {
           full_name: string | null
           hourly_rate: number | null
           id: string
+          logo_url: string | null
+          paperwork_status: Json | null
           pay_cycle: string | null
           phone: string | null
+          role: string | null
           super_rate: number | null
           weekly_availability: Json | null
+          weekly_invoice: boolean
         }
         Insert: {
           audit_scores?: number[]
@@ -1602,10 +1973,14 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id: string
+          logo_url?: string | null
+          paperwork_status?: Json | null
           pay_cycle?: string | null
           phone?: string | null
+          role?: string | null
           super_rate?: number | null
           weekly_availability?: Json | null
+          weekly_invoice?: boolean
         }
         Update: {
           audit_scores?: number[]
@@ -1616,10 +1991,14 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id?: string
+          logo_url?: string | null
+          paperwork_status?: Json | null
           pay_cycle?: string | null
           phone?: string | null
+          role?: string | null
           super_rate?: number | null
           weekly_availability?: Json | null
+          weekly_invoice?: boolean
         }
         Relationships: []
       }
@@ -1639,11 +2018,15 @@ export type Database = {
           amenities_restock: boolean | null
           approx_size: string | null
           assigned_cleaner_ids: Json | null
+          auto_confirm_max_per_day: number | null
+          auto_confirm_min_hours: number
+          auto_confirm_turnovers: boolean
           avg_nightly_rate: number | null
           backup_cleaner_id: string | null
           balconies: number | null
           bathrooms: number | null
           bed_config: string | null
+          bed_types: Json | null
           bedrooms: number | null
           billing_email: string | null
           bin_details: string | null
@@ -1682,7 +2065,9 @@ export type Database = {
           has_oven: boolean | null
           has_pool: boolean | null
           has_security_alarm: boolean | null
+          hero_image_url: string | null
           host_preferences: string | null
+          hostaway_listing_id: string | null
           ical_last_sync: string | null
           ical_source: string | null
           ical_url: string | null
@@ -1696,6 +2081,7 @@ export type Database = {
           linen_fold_style: string | null
           linen_provided: boolean | null
           linen_required: boolean | null
+          linen_requirements: string | null
           linen_sets: number | null
           linen_storage: string | null
           linen_supply: string | null
@@ -1762,11 +2148,15 @@ export type Database = {
           amenities_restock?: boolean | null
           approx_size?: string | null
           assigned_cleaner_ids?: Json | null
+          auto_confirm_max_per_day?: number | null
+          auto_confirm_min_hours?: number
+          auto_confirm_turnovers?: boolean
           avg_nightly_rate?: number | null
           backup_cleaner_id?: string | null
           balconies?: number | null
           bathrooms?: number | null
           bed_config?: string | null
+          bed_types?: Json | null
           bedrooms?: number | null
           billing_email?: string | null
           bin_details?: string | null
@@ -1805,7 +2195,9 @@ export type Database = {
           has_oven?: boolean | null
           has_pool?: boolean | null
           has_security_alarm?: boolean | null
+          hero_image_url?: string | null
           host_preferences?: string | null
+          hostaway_listing_id?: string | null
           ical_last_sync?: string | null
           ical_source?: string | null
           ical_url?: string | null
@@ -1819,6 +2211,7 @@ export type Database = {
           linen_fold_style?: string | null
           linen_provided?: boolean | null
           linen_required?: boolean | null
+          linen_requirements?: string | null
           linen_sets?: number | null
           linen_storage?: string | null
           linen_supply?: string | null
@@ -1885,11 +2278,15 @@ export type Database = {
           amenities_restock?: boolean | null
           approx_size?: string | null
           assigned_cleaner_ids?: Json | null
+          auto_confirm_max_per_day?: number | null
+          auto_confirm_min_hours?: number
+          auto_confirm_turnovers?: boolean
           avg_nightly_rate?: number | null
           backup_cleaner_id?: string | null
           balconies?: number | null
           bathrooms?: number | null
           bed_config?: string | null
+          bed_types?: Json | null
           bedrooms?: number | null
           billing_email?: string | null
           bin_details?: string | null
@@ -1928,7 +2325,9 @@ export type Database = {
           has_oven?: boolean | null
           has_pool?: boolean | null
           has_security_alarm?: boolean | null
+          hero_image_url?: string | null
           host_preferences?: string | null
+          hostaway_listing_id?: string | null
           ical_last_sync?: string | null
           ical_source?: string | null
           ical_url?: string | null
@@ -1942,6 +2341,7 @@ export type Database = {
           linen_fold_style?: string | null
           linen_provided?: boolean | null
           linen_required?: boolean | null
+          linen_requirements?: string | null
           linen_sets?: number | null
           linen_storage?: string | null
           linen_supply?: string | null
@@ -1994,6 +2394,56 @@ export type Database = {
           wifi_password?: string | null
         }
         Relationships: []
+      }
+      property_change_requests: {
+        Row: {
+          client_id: string
+          created_at: string
+          current_value: string | null
+          decided_at: string | null
+          decided_by: string | null
+          field_name: string
+          id: string
+          new_value: string
+          property_id: string
+          rejection_reason: string | null
+          status: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          current_value?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          field_name: string
+          id?: string
+          new_value: string
+          property_id: string
+          rejection_reason?: string | null
+          status?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          current_value?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          field_name?: string
+          id?: string
+          new_value?: string
+          property_id?: string
+          rejection_reason?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_change_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       property_issues: {
         Row: {
@@ -2131,7 +2581,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
-          rating: string | null
+          rating: string
           room_name: string
         }
         Insert: {
@@ -2139,7 +2589,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          rating?: string | null
+          rating: string
           room_name: string
         }
         Update: {
@@ -2147,7 +2597,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          rating?: string | null
+          rating?: string
           room_name?: string
         }
         Relationships: [
@@ -2612,6 +3062,53 @@ export type Database = {
           },
         ]
       }
+      scheduled_sms: {
+        Row: {
+          created_at: string | null
+          error: string | null
+          id: string
+          job_id: string | null
+          message: string
+          recipient_phone: string | null
+          recipient_type: string
+          send_at: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          job_id?: string | null
+          message: string
+          recipient_phone?: string | null
+          recipient_type: string
+          send_at: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          job_id?: string | null
+          message?: string
+          recipient_phone?: string | null
+          recipient_type?: string
+          send_at?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_sms_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_templates: {
         Row: {
           body: string
@@ -2633,6 +3130,36 @@ export type Database = {
           key?: string
           updated_at?: string | null
           variables?: Json | null
+        }
+        Relationships: []
+      }
+      sop_documents: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          sop_code: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          sop_code?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          sop_code?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3292,3 +3819,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.108.0 (currently installed v2.90.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
