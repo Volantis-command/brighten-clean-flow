@@ -364,8 +364,8 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                 </Button>
               )}
 
-              {/* Manual "invoice sent" tick — for jobs invoiced outside Xero */}
-              {!job.xero_invoice_id && (
+              {/* Manual "invoice sent" tick — shown whenever Xero hasn't confirmed paid/sent/authorised */}
+              {!['paid', 'sent', 'authorised'].includes(job.invoice_status as string) && (
                 <button
                   onClick={handleToggleInvoiceSent}
                   disabled={togglingInvoiceSent}
@@ -380,7 +380,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                     ? <CheckSquare className="h-5 w-5 shrink-0" />
                     : <Square className="h-5 w-5 shrink-0" />
                   }
-                  <span>Sent manually (outside Xero)</span>
+                  <span>{job.xero_invoice_id ? 'Mark as invoiced' : 'Sent manually (outside Xero)'}</span>
                   {(job as any).invoice_sent_at && (
                     <span className="ml-auto text-xs font-normal text-muted-foreground">
                       {format(new Date((job as any).invoice_sent_at), 'd MMM')}
