@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     const { data: job, error: jobErr } = await supabase
       .from('jobs')
       .select(
-        'id, scheduled_date, price_ex_gst, price_inc_gst, linked_quote_id, xero_invoice_id, properties(id, property_name, address, suburb, client_name, billing_email, client_type)'
+        'id, scheduled_date, price_ex_gst, price_inc_gst, linked_quote_id, xero_invoice_id, properties(id, property_name, address, suburb, client_name, billing_email, client_type, price_turnover, default_price, price_includes_gst)'
       )
       .eq('id', job_id)
       .maybeSingle();
@@ -154,15 +154,18 @@ Deno.serve(async (req) => {
 
     // Skip if client uses weekly batch invoicing — their jobs are handled
     // by xero-weekly-batch-invoice every Monday.
+    // Also grab the client's profile name (company name) for use on the invoice.
     const property: any = job.properties || {};
+    let clientProfileName: string | null = null;
     if (property.id) {
       const { data: cpLink } = await supabase
         .from('client_properties')
-        .select('profiles:client_id(weekly_invoice)')
+        .select('profiles:client_id(full_name, weekly_invoice)')
         .eq('property_id', property.id)
         .limit(1)
         .maybeSingle();
       const weeklyInvoice = (cpLink as any)?.profiles?.weekly_invoice === true;
+      clientProfileName = (cpLink as any)?.profiles?.full_name || null;
       if (weeklyInvoice) {
         console.log('Client uses weekly invoicing — skipping per-job auto-invoice for job', job_id);
         return new Response(
@@ -197,9 +200,23 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (quote) totalEx = Number(quote.sell_price_ex_gst) || 0;
     }
+    // Third fallback: property default price. Hostaway-synced jobs often
+    // have no price on the job row itself — the price lives on the property.
+    // price_turnover is always ex-GST. default_price may be inc-GST
+    // depending on the price_includes_gst flag.
+    if (!(totalEx > 0)) {
+      if (Number(property.price_turnover) > 0) {
+        totalEx = Number(property.price_turnover);
+        console.log('Using property.price_turnover fallback:', totalEx);
+      } else if (Number(property.default_price) > 0) {
+        const dp = Number(property.default_price);
+        totalEx = property.price_includes_gst ? Math.round((dp / 1.1) * 100) / 100 : dp;
+        console.log('Using property.default_price fallback:', totalEx, 'inc_gst:', property.price_includes_gst);
+      }
+    }
 
     if (!(totalEx > 0)) {
-      throw new Error('No price set on job — cannot create invoice');
+      throw new Error('No price set on job or property — cannot create invoice');
     }
 
     const lineItems = [
@@ -217,8 +234,9 @@ Deno.serve(async (req) => {
     // Get Xero token
     const { access_token, tenant_id } = await getValidToken(supabase);
 
-    // Find or create contact
-    const contactName = property.client_name || property.property_name || 'Client';
+    // Find or create contact — prefer the profile full_name (company name) over
+    // the property's client_name which may be an individual owner's name.
+    const contactName = clientProfileName || property.client_name || property.property_name || 'Client';
     const contactEmail = property.client_email || null;
     const contactId = await findOrCreateContact(
       access_token,
@@ -227,10 +245,19 @@ Deno.serve(async (req) => {
       contactEmail
     );
 
-    // Generate invoice number
-    const prefix = 'BCL-';
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const invoiceNumber = `${prefix}${new Date().getFullYear()}-${timestamp}`;
+    // Generate sequential invoice number starting at INV-1000
+    const { data: lastInvoice } = await supabase
+      .from('jobs')
+      .select('xero_invoice_number')
+      .like('xero_invoice_number', 'INV-%')
+      .order('xero_invoice_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastNum = lastInvoice?.xero_invoice_number
+      ? parseInt(lastInvoice.xero_invoice_number.replace('INV-', ''), 10)
+      : 999;
+    const nextNum = isNaN(lastNum) ? 1000 : lastNum + 1;
+    const invoiceNumber = `INV-${nextNum}`;
 
     const today = new Date();
     const dueDate = new Date(today);
