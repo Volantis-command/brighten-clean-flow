@@ -57,7 +57,9 @@ async function findOrCreateContact(
       },
     }
   );
-  const searchData = await searchRes.json();
+  if (searchRes.status === 401) throw new Error('Xero token expired — reconnect Xero in Settings');
+  const searchText = await searchRes.text();
+  const searchData = searchText ? JSON.parse(searchText) : {};
   if (searchData?.Contacts?.length > 0) {
     const existing = searchData.Contacts[0];
     // If we have an email and the existing contact doesn't, update it
@@ -89,7 +91,9 @@ async function findOrCreateContact(
       Contacts: [{ Name: name, ...(email ? { EmailAddress: email } : {}) }],
     }),
   });
-  const createData = await createRes.json();
+  if (createRes.status === 401) throw new Error('Xero token expired — reconnect Xero in Settings');
+  const createText = await createRes.text();
+  const createData = createText ? JSON.parse(createText) : {};
   return createData?.Contacts?.[0]?.ContactID || null;
 }
 
