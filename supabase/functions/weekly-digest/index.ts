@@ -42,16 +42,23 @@ Deno.serve(async (req) => {
     const thisMonISO = new Date(thisMon.getTime() - aestOffset).toISOString()
     const thisSunISO = new Date(thisSun.getTime() - aestOffset).toISOString()
 
-    // Completed last week
+    // Completed last week — filter by scheduled_date (clock_off_at is often null)
+    const lastMonDateStr = lastMon.toISOString().slice(0, 10)
+    const lastSunDateStr = lastSun.toISOString().slice(0, 10)
     const { data: completedJobs } = await supabase
       .from('jobs')
-      .select('id, price_ex_gst')
+      .select('id, price_ex_gst, price_inc_gst')
       .eq('status', 'completed')
-      .gte('clock_off_at', lastMonISO)
-      .lte('clock_off_at', lastSunISO)
+      .gte('scheduled_date', lastMonDateStr)
+      .lte('scheduled_date', lastSunDateStr)
 
     const completedCount = completedJobs?.length || 0
-    const revenue = (completedJobs || []).reduce((sum: number, j: any) => sum + (j.price_ex_gst || 0), 0)
+    const revenue = (completedJobs || []).reduce((sum: number, j: any) => {
+      // Prefer ex-GST price; fall back to inc-GST ÷ 1.1
+      const ex = Number(j.price_ex_gst) || 0
+      const inc = Number(j.price_inc_gst) || 0
+      return sum + (ex > 0 ? ex : inc / 1.1)
+    }, 0)
 
     // In progress now
     const { count: inProgressCount } = await supabase
@@ -59,12 +66,12 @@ Deno.serve(async (req) => {
       .select('id', { count: 'exact', head: true })
       .eq('status', 'in_progress')
 
-    // Outstanding invoices
+    // Outstanding invoices — 'none' is the current default; 'not_raised' is legacy; null catches very old rows
     const { count: uninvoicedCount } = await supabase
       .from('jobs')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'completed')
-      .or('invoice_status.eq.not_raised,invoice_status.is.null')
+      .or('invoice_status.is.null,invoice_status.eq.none,invoice_status.eq.not_raised,invoice_status.eq.failed')
 
     // Upcoming this week
     const todayStr = aestNow.toISOString().slice(0, 10)
