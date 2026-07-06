@@ -31,6 +31,15 @@ const navItems: NavItem[] = [
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
+// Admin mobile bottom nav — explicit 5-item list (Map excluded; Airbnb Quote included)
+const adminMobileItems: NavItem[] = [
+  { label: 'Alerts',       path: '/actions',       icon: Inbox,          roles: ['admin'] },
+  { label: 'Dashboard',    path: '/dashboard',     icon: LayoutDashboard, roles: ['admin'] },
+  { label: 'My Jobs',      path: '/my-jobs',       icon: ClipboardList,  roles: ['admin'] },
+  { label: 'Schedule',     path: '/schedule',      icon: Calendar,       roles: ['admin'] },
+  { label: 'Airbnb Quote', path: '/airbnb-quote',  icon: Sparkles,       roles: ['admin'] },
+];
+
 // Cleaners get a simplified bottom nav
 const cleanerMobileItems: NavItem[] = [
   { label: 'Today', path: '/dashboard', icon: LayoutDashboard, roles: ['cleaner'] },
@@ -83,10 +92,11 @@ export function MobileNav() {
     );
   }
 
-  const filtered = navItems.filter((item) => role && item.roles.includes(role));
-  const filteredWithBadge = filtered.map(item =>
-    item.path === '/actions' ? { ...item, badge: totalCount } : item
-  );
+  const mobileItems = role === 'admin'
+    ? adminMobileItems.map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item)
+    : navItems.filter((item) => role && item.roles.includes(role))
+        .map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item)
+        .slice(0, 5);
 
   return (
     <nav
@@ -94,7 +104,7 @@ export function MobileNav() {
       style={{ background: NAV_BG, borderTop: `1px solid ${NAV_BORDER}` }}
     >
       <div className="flex justify-around items-center py-2 px-1">
-        {filteredWithBadge.slice(0, 5).map((item) => (
+        {mobileItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
