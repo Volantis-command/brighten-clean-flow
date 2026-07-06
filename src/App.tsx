@@ -23,6 +23,7 @@ import PropertyProfilePage from "./pages/PropertyProfilePage";
 import PropertyFormPage from "./pages/PropertyFormPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import QuotingPage from "./pages/QuotingPage";
+import AirbnbQuotePage from "./pages/AirbnbQuotePage";
 import StaffPage from "./pages/StaffPage";
 import SettingsPage from "./pages/SettingsPage";
 import ClientsPage from "./pages/ClientsPage";
@@ -251,6 +252,7 @@ function AppRoutes() {
         <Route path="/jobs/:jobId/checklist" element={<JobChecklistPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
         <Route path="/quoting" element={<ProtectedRoute allowedRoles={['admin']}><QuotingPage /></ProtectedRoute>} />
+        <Route path="/airbnb-quote" element={<ProtectedRoute allowedRoles={['admin']}><AirbnbQuotePage /></ProtectedRoute>} />
         <Route path="/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffPage /></ProtectedRoute>} />
         <Route path="/clients" element={<ProtectedRoute allowedRoles={['admin']}><ClientsPage /></ProtectedRoute>} />
         <Route path="/clients/:id" element={<ProtectedRoute allowedRoles={['admin']}><ClientDetailPage /></ProtectedRoute>} />

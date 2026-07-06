@@ -1,0 +1,460 @@
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { Settings, X, ChevronDown, Bed, RotateCcw, Info } from "lucide-react";
+
+// ============================================================
+// BRIGHTLY — AIRBNB QUOTE BUILDER
+// All linen figures from real invoice (ex GST, 06/07/26).
+// GP formula: sell = cost / (1 - GP%)  [margin, not markup]
+// ============================================================
+
+const BG    = '#0B0F17';
+const CARD  = '#131920';
+const GREEN = '#4ADE80';
+const YELLOW = '#FEDB00';
+const TEXT  = '#F8FAFC';
+const MUTED = '#94A3B8';
+const BORDER = 'rgba(74,222,128,0.18)';
+
+type Rates = {
+  labourRate: number;
+  consumables: number;
+  gpDefault: number;
+  kingSheet: number;
+  queenSheet: number;
+  singleSheet: number;
+  pillow: number;
+  bathTowel: number;
+  bathMat: number;
+  handTowel: number;
+  faceWasher: number;
+  teaTowel: number;
+  laundryBag: number;
+  [key: string]: number;
+};
+
+const DEFAULT_RATES: Rates = {
+  labourRate:  45,
+  consumables: 5,
+  gpDefault:   0.35,
+  kingSheet:   3.52,
+  queenSheet:  3.19,
+  singleSheet: 2.97,
+  pillow:      1.595,
+  bathTowel:   2.09,
+  bathMat:     1.65,
+  handTowel:   1.375,
+  faceWasher:  1.32,
+  teaTowel:    1.10,
+  laundryBag:  0.99,
+};
+
+type Packs = { bedQ: number; bedK: number; bedS: number; bath: number; kitchen: number };
+
+function packs(r: Rates): Packs {
+  return {
+    bedQ: 3 * r.queenSheet + 4 * r.pillow + 2 * r.bathTowel + 2 * r.faceWasher,
+    bedK: 3 * r.kingSheet  + 4 * r.pillow + 2 * r.bathTowel + 2 * r.faceWasher,
+    bedS: 3 * r.singleSheet + 2 * r.pillow + 1 * r.bathTowel + 1 * r.faceWasher,
+    bath: r.bathMat + r.handTowel,
+    kitchen: r.teaTowel + r.laundryBag,
+  };
+}
+
+const BED_CONFIGS = [
+  { name: "1 Queen",         q: 1, k: 0, s: 0 },
+  { name: "1 King",          q: 0, k: 1, s: 0 },
+  { name: "1 Single",        q: 0, k: 0, s: 1 },
+  { name: "2 Singles",       q: 0, k: 0, s: 2 },
+  { name: "3 Singles",       q: 0, k: 0, s: 3 },
+  { name: "Queen + Single",  q: 1, k: 0, s: 1 },
+  { name: "King + Single",   q: 0, k: 1, s: 1 },
+  { name: "2 Queens",        q: 2, k: 0, s: 0 },
+  { name: "2 Kings",         q: 0, k: 2, s: 0 },
+  { name: "Queen + 2 Singles", q: 1, k: 0, s: 2 },
+  { name: "King + 2 Singles",  q: 0, k: 1, s: 2 },
+];
+
+function configLinen(cfgName: string, p: Packs): number {
+  const c = BED_CONFIGS.find((x) => x.name === cfgName) ?? BED_CONFIGS[0];
+  return c.q * p.bedQ + c.k * p.bedK + c.s * p.bedS;
+}
+
+const TYPES = [
+  { name: "1 bed 1 bath", beds: 1, baths: 1, labour: 1.5 },
+  { name: "2 bed 1 bath", beds: 2, baths: 1, labour: 1.5 },
+  { name: "2 bed 2 bath", beds: 2, baths: 2, labour: 2.0 },
+  { name: "3 bed 1 bath", beds: 3, baths: 1, labour: 2.0 },
+  { name: "3 bed 2 bath", beds: 3, baths: 2, labour: 2.5 },
+  { name: "3 bed 3 bath", beds: 3, baths: 3, labour: 3.0 },
+  { name: "4 bed 2 bath", beds: 4, baths: 2, labour: 3.0 },
+  { name: "4 bed 3 bath", beds: 4, baths: 3, labour: 3.5 },
+  { name: "4 bed 4 bath", beds: 4, baths: 4, labour: 4.0 },
+];
+
+const fmt = (n: number) =>
+  "$" + (isFinite(n) ? n : 0).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function useCountUp(target: number, ms = 380) {
+  const [val, setVal] = useState(target);
+  const from = useRef(target);
+  const start = useRef(0);
+  useEffect(() => {
+    from.current = val;
+    start.current = performance.now();
+    let raf: number;
+    const tick = (t: number) => {
+      const p = Math.min((t - start.current) / ms, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(from.current + (target - from.current) * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+  return val;
+}
+
+export default function AirbnbQuotePage() {
+  const [rates, setRates] = useState<Rates>(DEFAULT_RATES);
+  const [typeIdx, setTypeIdx] = useState(2);
+  const [rooms, setRooms] = useState<string[]>(Array(4).fill("1 Queen"));
+  const [labourOverride, setLabourOverride] = useState("");
+  const [gp, setGp] = useState(0.35);
+  const [incGst, setIncGst] = useState(false);
+  const [showRates, setShowRates] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(true);
+
+  const p = useMemo(() => packs(rates), [rates]);
+  const type = TYPES[typeIdx];
+
+  useEffect(() => {
+    setRooms((prev) => {
+      const next = [...prev];
+      while (next.length < type.beds) next.push("1 Queen");
+      return next.slice(0, type.beds);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeIdx]);
+
+  const labourHrs    = labourOverride === "" ? type.labour : Number(labourOverride) || 0;
+  const bedroomLinen = rooms.slice(0, type.beds).reduce((sum, cfg) => sum + configLinen(cfg, p), 0);
+  const bathLinen    = type.baths * p.bath;
+  const kitchenLinen = p.kitchen;
+  const linenTotal   = bedroomLinen + bathLinen + kitchenLinen;
+  const labourCost   = labourHrs * rates.labourRate;
+  const cost         = labourCost + linenTotal + rates.consumables;
+  const sell         = cost / (1 - gp);
+  const gpDollars    = sell - cost;
+  const markup       = cost > 0 ? (sell - cost) / cost : 0;
+  const display      = incGst ? sell * 1.1 : sell;
+  const animated     = useCountUp(display);
+
+  const setRoom = (i: number, val: string) =>
+    setRooms((prev) => prev.map((r, idx) => (idx === i ? val : r)));
+
+  const resetAll = () => {
+    setRates(DEFAULT_RATES);
+    setTypeIdx(2);
+    setRooms(Array(4).fill("1 Queen"));
+    setLabourOverride("");
+    setGp(0.35);
+    setIncGst(false);
+  };
+
+  const gpOptions = [0.3, 0.35, 0.4];
+
+  return (
+    <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: 48 }}>
+
+        {/* ---- STICKY HERO ---- */}
+        <div style={{ position: "sticky", top: 0, zIndex: 30, background: BG, borderBottomLeftRadius: 22, borderBottomRightRadius: 22, borderBottom: `1px solid ${BORDER}` }}>
+          <div style={{ padding: "16px 20px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${GREEN}, ${YELLOW})` }} />
+                <span style={{ color: TEXT, fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em" }}>Airbnb Quote</span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={resetAll} aria-label="Reset" style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 8, cursor: "pointer" }}>
+                  <RotateCcw size={16} color={MUTED} />
+                </button>
+                <button onClick={() => setShowRates(true)} aria-label="Edit rates" style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 8, cursor: "pointer" }}>
+                  <Settings size={16} color={GREEN} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ color: MUTED, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Quote · {type.name}
+                </div>
+                <div style={{ color: TEXT, fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+                  {fmt(animated)}
+                </div>
+                <div style={{ height: 3, width: 92, marginTop: 6, borderRadius: 3, background: `linear-gradient(90deg, ${GREEN}, ${YELLOW})` }} />
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <button onClick={() => setIncGst((v) => !v)}
+                  style={{ background: incGst ? GREEN : CARD, color: incGst ? '#000' : MUTED, border: `1px solid ${incGst ? GREEN : BORDER}`, borderRadius: 20, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  {incGst ? "inc GST" : "ex GST"}
+                </button>
+                <div style={{ color: YELLOW, fontSize: 12, fontWeight: 600, marginTop: 8, fontVariantNumeric: "tabular-nums" }}>
+                  GP {fmt(gpDollars)}
+                </div>
+                <div style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
+                  {(gp * 100).toFixed(0)}% margin
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: "18px 16px 0" }}>
+
+          {/* ---- 1. PROPERTY SIZE ---- */}
+          <Section n="1" label="Property size">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {TYPES.map((t, i) => {
+                const active = i === typeIdx;
+                return (
+                  <button key={t.name} onClick={() => setTypeIdx(i)}
+                    style={{
+                      border: active ? `1.5px solid ${GREEN}` : `1.5px solid ${BORDER}`,
+                      background: active ? GREEN : CARD,
+                      color: active ? '#000' : TEXT,
+                      borderRadius: 12, padding: "9px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      transition: "all .15s",
+                    }}>
+                    {t.beds}<span style={{ opacity: 0.6 }}>bd</span> · {t.baths}<span style={{ opacity: 0.6 }}>ba</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+
+          {/* ---- 2. BED CONFIG ---- */}
+          <Section n="2" label="Bed config per room">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {rooms.slice(0, type.beds).map((cfg, i) => (
+                <div key={i} style={{ background: CARD, borderRadius: 14, padding: "12px 14px", border: `1px solid ${BORDER}`, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: `${GREEN}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Bed size={17} color={GREEN} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Bedroom {i + 1}</div>
+                    <div style={{ position: "relative", marginTop: 3 }}>
+                      <select value={cfg} onChange={(e) => setRoom(i, e.target.value)}
+                        style={{ width: "100%", border: "none", background: "transparent", fontSize: 15, fontWeight: 600, color: TEXT, paddingRight: 22, cursor: "pointer", fontFamily: "inherit", appearance: "none" as const }}>
+                        {BED_CONFIGS.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      </select>
+                      <ChevronDown size={15} color={MUTED} style={{ position: "absolute", right: 0, top: 3, pointerEvents: "none" }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: GREEN, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+                    {fmt(configLinen(cfg, p))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* ---- 3. LABOUR ---- */}
+          <Section n="3" label="Confirm labour">
+            <div style={{ background: CARD, borderRadius: 14, padding: "14px 16px", border: `1px solid ${BORDER}` }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Hours on site</div>
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>
+                    Suggested {type.labour}h · {fmt(labourCost)} at {fmt(rates.labourRate)}/h
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input inputMode="decimal" value={labourOverride} onChange={(e) => setLabourOverride(e.target.value.replace(/[^\d.]/g, ""))}
+                    placeholder={String(type.labour)}
+                    style={{ width: 62, textAlign: "center", border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: "8px 6px", fontSize: 15, fontWeight: 700, color: TEXT, fontFamily: "inherit", background: BG }} />
+                  <span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>hrs</span>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* ---- 4. GP MARGIN ---- */}
+          <Section n="4" label="GP margin">
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {gpOptions.map((g) => {
+                const active = Math.abs(gp - g) < 0.001;
+                return (
+                  <button key={g} onClick={() => setGp(g)}
+                    style={{ flex: 1, border: active ? `1.5px solid ${GREEN}` : `1.5px solid ${BORDER}`, background: active ? GREEN : CARD, color: active ? '#000' : TEXT, borderRadius: 12, padding: "11px 0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                    {(g * 100).toFixed(0)}%
+                  </button>
+                );
+              })}
+              <div style={{ display: "flex", alignItems: "center", gap: 4, border: `1.5px solid ${BORDER}`, borderRadius: 12, padding: "0 10px", background: CARD }}>
+                <input inputMode="decimal" value={(gp * 100).toFixed(0)}
+                  onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")); if (!isNaN(v)) setGp(Math.min(Math.max(v, 0), 90) / 100); }}
+                  style={{ width: 34, textAlign: "center", border: "none", padding: "11px 0", fontSize: 15, fontWeight: 700, color: GREEN, fontFamily: "inherit", background: "transparent" }} />
+                <span style={{ fontSize: 13, color: MUTED, fontWeight: 700 }}>%</span>
+              </div>
+            </div>
+            {gp < 0.35 && (
+              <div style={{ marginTop: 8, fontSize: 11, color: MUTED, display: "flex", gap: 5, alignItems: "center" }}>
+                <Info size={12} /> Below 35% — portfolio/volume rate. Fine with a monthly clean minimum.
+              </div>
+            )}
+          </Section>
+
+          {/* ---- COST BREAKDOWN ---- */}
+          <div style={{ background: CARD, borderRadius: 16, border: `1px solid ${BORDER}`, overflow: "hidden", marginTop: 6 }}>
+            <button onClick={() => setShowBreakdown((v) => !v)}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: TEXT }}>Cost breakdown</span>
+              <ChevronDown size={17} color={MUTED} style={{ transform: showBreakdown ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+            </button>
+            {showBreakdown && (
+              <div style={{ padding: "0 16px 14px" }}>
+                <Line label="Labour"         sub={`${labourHrs}h × ${fmt(rates.labourRate)}`} val={labourCost} />
+                <Line label="Bedroom linen"  sub={`${type.beds} room${type.beds > 1 ? "s" : ""}`} val={bedroomLinen} />
+                <Line label="Bathroom linen" sub={`${type.baths} × ${fmt(p.bath)}`} val={bathLinen} />
+                <Line label="Kitchen linen"  sub="tea towel + bag" val={kitchenLinen} />
+                <Line label="Consumables"    val={rates.consumables} />
+                <div style={{ height: 1, background: BORDER, margin: "8px 0" }} />
+                <Line label="Total cost" val={cost} bold />
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "12px 14px", background: BG, borderRadius: 12, border: `1px solid ${BORDER}` }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sell price {incGst ? "(inc GST)" : "(ex GST)"}</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, color: GREEN, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>{fmt(display)}</div>
+                  </div>
+                  <div style={{ textAlign: "right", alignSelf: "flex-end" }}>
+                    <div style={{ fontSize: 12, color: YELLOW, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>GP {fmt(gpDollars)}</div>
+                    <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>markup {(markup * 100).toFixed(1)}%</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 16, textAlign: "center", fontSize: 10.5, color: MUTED, lineHeight: 1.6 }}>
+            Linen rates from real invoice (ex GST, 06/07/26).<br />
+            Confirm labour is fully-loaded (super + workcover + insurance).
+          </div>
+        </div>
+      </div>
+
+      {/* ---- RATES DRAWER ---- */}
+      {showRates && (
+        <div onClick={() => setShowRates(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: CARD, width: "100%", maxWidth: 520, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: "88vh", overflowY: "auto", padding: "18px 18px 36px", border: `1px solid ${BORDER}` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, position: "sticky", top: 0, background: CARD, paddingBottom: 6 }}>
+              <span style={{ fontSize: 19, fontWeight: 800, color: TEXT }}>Rates</span>
+              <button onClick={() => setShowRates(false)} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 8, cursor: "pointer" }}>
+                <X size={18} color={TEXT} />
+              </button>
+            </div>
+
+            <RateGroup title="Core">
+              <RateInput label="Labour $/hr" flag="confirm fully-loaded" value={rates.labourRate} onChange={(v) => setRates({ ...rates, labourRate: v })} />
+              <RateInput label="Consumables $/clean" value={rates.consumables} onChange={(v) => setRates({ ...rates, consumables: v })} />
+            </RateGroup>
+
+            <RateGroup title="Linen — per item (ex GST)">
+              {([
+                ["King flat sheet",       "kingSheet"],
+                ["Queen flat sheet",      "queenSheet"],
+                ["King single flat sheet","singleSheet"],
+                ["Pillowcase",            "pillow"],
+                ["Bath towel",            "bathTowel"],
+                ["Bath mat",              "bathMat"],
+                ["Hand towel",            "handTowel"],
+                ["Face washer",           "faceWasher"],
+                ["Tea towel",             "teaTowel"],
+                ["Laundry bag",           "laundryBag"],
+              ] as [string, string][]).map(([label, key]) => (
+                <RateInput key={key} label={label} value={rates[key]} step={0.005} onChange={(v) => setRates({ ...rates, [key]: v })} />
+              ))}
+            </RateGroup>
+
+            <RateGroup title="Derived pack costs (auto)">
+              <PackRow label="Queen bed pack" val={p.bedQ} />
+              <PackRow label="King bed pack"  val={p.bedK} />
+              <PackRow label="Single bed pack" val={p.bedS} />
+              <PackRow label="Bathroom pack"  val={p.bath} />
+              <PackRow label="Kitchen pack"   val={p.kitchen} />
+            </RateGroup>
+
+            <button onClick={() => setRates(DEFAULT_RATES)}
+              style={{ marginTop: 14, width: "100%", background: BG, border: `1.5px solid ${BORDER}`, borderRadius: 12, padding: "12px", fontSize: 14, fontWeight: 700, color: TEXT, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+              <RotateCcw size={15} /> Reset to invoice defaults
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Sub-components ----
+
+function Section({ n, label, children }: { n: string; label: string; children: ReactNode }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+        <span style={{ width: 22, height: 22, borderRadius: 7, background: GREEN, color: '#000', fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: MUTED }}>{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Line({ label, sub, val, bold }: { label: string; sub?: string; val: number; bold?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0" }}>
+      <div>
+        <span style={{ fontSize: 14, fontWeight: bold ? 700 : 500, color: TEXT }}>{label}</span>
+        {sub && <span style={{ fontSize: 11, color: MUTED, marginLeft: 7 }}>{sub}</span>}
+      </div>
+      <span style={{ fontSize: 14, fontWeight: bold ? 800 : 600, color: TEXT, fontVariantNumeric: "tabular-nums" }}>{fmt(val)}</span>
+    </div>
+  );
+}
+
+function RateGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: GREEN, marginBottom: 7 }}>{title}</div>
+      <div style={{ background: BG, borderRadius: 14, overflow: "hidden", border: `1px solid ${BORDER}` }}>{children}</div>
+    </div>
+  );
+}
+
+function RateInput({ label, value, onChange, step = 0.01, flag }: { label: string; value: number; onChange: (v: number) => void; step?: number; flag?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: `1px solid ${BORDER}` }}>
+      <div>
+        <div style={{ fontSize: 13.5, fontWeight: 500, color: TEXT }}>{label}</div>
+        {flag && <div style={{ fontSize: 10, color: YELLOW, fontWeight: 600 }}>{flag}</div>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+        <span style={{ fontSize: 14, color: MUTED, fontWeight: 600 }}>$</span>
+        <input inputMode="decimal" value={value} step={step}
+          onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")); onChange(isNaN(v) ? 0 : v); }}
+          style={{ width: 66, textAlign: "right", border: `1.5px solid ${BORDER}`, borderRadius: 9, padding: "7px 8px", fontSize: 14, fontWeight: 700, color: TEXT, fontFamily: "inherit", fontVariantNumeric: "tabular-nums", background: CARD }} />
+      </div>
+    </div>
+  );
+}
+
+function PackRow({ label, val }: { label: string; val: number }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "9px 14px", borderBottom: `1px solid ${BORDER}` }}>
+      <span style={{ fontSize: 13.5, color: TEXT }}>{label}</span>
+      <span style={{ fontSize: 13.5, fontWeight: 700, color: GREEN, fontVariantNumeric: "tabular-nums" }}>{fmt(val)}</span>
+    </div>
+  );
+}

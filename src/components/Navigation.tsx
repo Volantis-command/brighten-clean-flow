@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { label: 'Quality (QC)', path: '/qc', icon: ClipboardCheck, roles: ['admin', 'head_cleaner'] },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner'] },
   { label: 'Quoting', path: '/quoting', icon: Calculator, roles: ['admin'] },
+  { label: 'Airbnb Quote', path: '/airbnb-quote', icon: Sparkles, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
   { label: 'Staff', path: '/staff', icon: Users, roles: ['admin'] },
   { label: 'Timesheets', path: '/timesheets', icon: ClipboardList, roles: ['admin'] },
