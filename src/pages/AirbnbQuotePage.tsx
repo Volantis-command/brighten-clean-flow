@@ -119,7 +119,7 @@ export default function AirbnbQuotePage() {
   const [rates, setRates] = useState<Rates>(DEFAULT_RATES);
   const [typeIdx, setTypeIdx] = useState(2);
   const [rooms, setRooms] = useState<string[]>(Array(4).fill("1 Queen"));
-  const [labourOverride, setLabourOverride] = useState("");
+  const [labourOverride, setLabourOverride] = useState(String(TYPES[2].labour));
   const [gp, setGp] = useState(0.35);
   const [incGst, setIncGst] = useState(false);
   const [showRates, setShowRates] = useState(false);
@@ -134,6 +134,7 @@ export default function AirbnbQuotePage() {
       while (next.length < type.beds) next.push("1 Queen");
       return next.slice(0, type.beds);
     });
+    setLabourOverride(String(TYPES[typeIdx].labour));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeIdx]);
 
@@ -157,7 +158,7 @@ export default function AirbnbQuotePage() {
     setRates(DEFAULT_RATES);
     setTypeIdx(2);
     setRooms(Array(4).fill("1 Queen"));
-    setLabourOverride("");
+    setLabourOverride(String(TYPES[2].labour));
     setGp(0.35);
     setIncGst(false);
   };
