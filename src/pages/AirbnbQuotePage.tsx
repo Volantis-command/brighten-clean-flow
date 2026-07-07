@@ -33,7 +33,7 @@ type Rates = {
 };
 
 const DEFAULT_RATES: Rates = {
-  labourRate:  45,
+  labourRate:  50,
   consumables: 5,
   gpDefault:   0.35,
   kingSheet:   3.52,
