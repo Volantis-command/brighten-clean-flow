@@ -143,8 +143,9 @@ export default function AirbnbQuotePage() {
   const bathLinen    = type.baths * p.bath;
   const kitchenLinen = p.kitchen;
   const linenTotal   = bedroomLinen + bathLinen + kitchenLinen;
-  const labourCost   = labourHrs * rates.labourRate;
-  const cost         = labourCost + linenTotal + rates.consumables;
+  const labourCost      = labourHrs * rates.labourRate;
+  const consumablesTotal = rates.consumables * type.baths;
+  const cost            = labourCost + linenTotal + consumablesTotal;
   const sell         = cost / (1 - gp);
   const gpDollars    = sell - cost;
   const markup       = cost > 0 ? (sell - cost) / cost : 0;
@@ -321,7 +322,7 @@ export default function AirbnbQuotePage() {
                 <Line label="Bedroom linen"  sub={`${type.beds} room${type.beds > 1 ? "s" : ""}`} val={bedroomLinen} />
                 <Line label="Bathroom linen" sub={`${type.baths} × ${fmt(p.bath)}`} val={bathLinen} />
                 <Line label="Kitchen linen"  sub="tea towel + bag" val={kitchenLinen} />
-                <Line label="Consumables"    val={rates.consumables} />
+                <Line label="Consumables" sub={`${type.baths} bath${type.baths > 1 ? 's' : ''} × ${fmt(rates.consumables)}`} val={consumablesTotal} />
                 <div style={{ height: 1, background: BORDER, margin: "8px 0" }} />
                 <Line label="Total cost" val={cost} bold />
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "12px 14px", background: BG, borderRadius: 12, border: `1px solid ${BORDER}` }}>
@@ -360,7 +361,7 @@ export default function AirbnbQuotePage() {
 
             <RateGroup title="Core">
               <RateInput label="Labour $/hr" flag="confirm fully-loaded" value={rates.labourRate} onChange={(v) => setRates({ ...rates, labourRate: v })} />
-              <RateInput label="Consumables $/clean" value={rates.consumables} onChange={(v) => setRates({ ...rates, consumables: v })} />
+              <RateInput label="Consumables $/bathroom" value={rates.consumables} onChange={(v) => setRates({ ...rates, consumables: v })} />
             </RateGroup>
 
             <RateGroup title="Linen — per item (ex GST)">
