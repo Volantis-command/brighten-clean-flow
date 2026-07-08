@@ -33,7 +33,7 @@ type Rates = {
 };
 
 const DEFAULT_RATES: Rates = {
-  labourRate:  50,
+  labourRate:  45,
   consumables: 5,
   gpDefault:   0.35,
   kingSheet:   3.52,
@@ -265,19 +265,32 @@ export default function AirbnbQuotePage() {
 
           {/* ---- 3. LABOUR ---- */}
           <Section n="3" label="Confirm labour">
-            <div style={{ background: CARD, borderRadius: 14, padding: "14px 16px", border: `1px solid ${BORDER}` }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: "hidden" }}>
+              {/* Hours row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderBottom: `1px solid ${BORDER}` }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>Hours on site</div>
-                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>
-                    Suggested {type.labour}h · {fmt(labourCost)} at {fmt(rates.labourRate)}/h
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>Hours on site</div>
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>Suggested {type.labour}h</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input inputMode="decimal" value={labourOverride} onChange={(e) => setLabourOverride(e.target.value.replace(/[^\d.]/g, ""))}
-                    placeholder={String(type.labour)}
+                  <input inputMode="decimal" value={labourOverride}
+                    onChange={(e) => setLabourOverride(e.target.value.replace(/[^\d.]/g, ""))}
                     style={{ width: 62, textAlign: "center", border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: "8px 6px", fontSize: 15, fontWeight: 700, color: TEXT, fontFamily: "inherit", background: BG }} />
-                  <span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>hrs</span>
+                  <span style={{ fontSize: 13, color: MUTED, fontWeight: 600, minWidth: 24 }}>hrs</span>
+                </div>
+              </div>
+              {/* Rate row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>Labour rate</div>
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>Total {fmt(labourCost)}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>$</span>
+                  <input inputMode="decimal" value={rates.labourRate}
+                    onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")); setRates({ ...rates, labourRate: isNaN(v) ? 0 : v }); }}
+                    style={{ width: 62, textAlign: "center", border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: "8px 6px", fontSize: 15, fontWeight: 700, color: TEXT, fontFamily: "inherit", background: BG }} />
+                  <span style={{ fontSize: 13, color: MUTED, fontWeight: 600, minWidth: 24 }}>/hr</span>
                 </div>
               </div>
             </div>
