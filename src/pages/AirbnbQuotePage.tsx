@@ -80,15 +80,16 @@ function configLinen(cfgName: string, p: Packs): number {
 }
 
 const TYPES = [
-  { name: "1 bed 1 bath", beds: 1, baths: 1, labour: 1.5 },
-  { name: "2 bed 1 bath", beds: 2, baths: 1, labour: 1.5 },
-  { name: "2 bed 2 bath", beds: 2, baths: 2, labour: 2.0 },
-  { name: "3 bed 1 bath", beds: 3, baths: 1, labour: 2.0 },
-  { name: "3 bed 2 bath", beds: 3, baths: 2, labour: 2.5 },
-  { name: "3 bed 3 bath", beds: 3, baths: 3, labour: 3.0 },
-  { name: "4 bed 2 bath", beds: 4, baths: 2, labour: 3.0 },
-  { name: "4 bed 3 bath", beds: 4, baths: 3, labour: 3.5 },
-  { name: "4 bed 4 bath", beds: 4, baths: 4, labour: 4.0 },
+  { name: "1 bed 1 bath", beds: 1, baths: 1, labour: 1.5  },
+  { name: "2 bed 1 bath", beds: 2, baths: 1, labour: 1.75 },
+  { name: "2 bed 2 bath", beds: 2, baths: 2, labour: 2.25 },
+  { name: "3 bed 1 bath", beds: 3, baths: 1, labour: 2.15 },
+  { name: "3 bed 2 bath", beds: 3, baths: 2, labour: 2.75 },
+  { name: "3 bed 3 bath", beds: 3, baths: 3, labour: 3.0  },
+  { name: "4 bed 1 bath", beds: 4, baths: 1, labour: 2.75 },
+  { name: "4 bed 2 bath", beds: 4, baths: 2, labour: 3.25 },
+  { name: "4 bed 3 bath", beds: 4, baths: 3, labour: 3.5  },
+  { name: "4 bed 4 bath", beds: 4, baths: 4, labour: 4.0  },
 ];
 
 const fmt = (n: number) =>
