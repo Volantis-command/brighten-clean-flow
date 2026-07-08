@@ -55,8 +55,8 @@ function packs(r: Rates): Packs {
     bedQ: 3 * r.queenSheet + 4 * r.pillow + 2 * r.bathTowel + 2 * r.faceWasher,
     bedK: 3 * r.kingSheet  + 4 * r.pillow + 2 * r.bathTowel + 2 * r.faceWasher,
     bedS: 3 * r.singleSheet + 2 * r.pillow + 1 * r.bathTowel + 1 * r.faceWasher,
-    bath: r.bathMat + r.handTowel,
-    kitchen: r.teaTowel + r.laundryBag,
+    bath: 2 * r.bathMat + 2 * r.handTowel,
+    kitchen: 2 * r.teaTowel + r.laundryBag,
   };
 }
 
