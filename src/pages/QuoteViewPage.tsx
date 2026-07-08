@@ -124,7 +124,7 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
-      style={{ background: '#0A0F0E' }}>
+      style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-6 max-w-sm">
         {/* Animated green tick */}
         <div className="relative mx-auto w-24 h-24">
@@ -154,7 +154,7 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
 
         {!isAirbnb && formattedDate && (
           <div className="rounded-2xl p-4 animate-slide-up" style={{
-            background: 'rgba(255,255,255,0.05)',
+            background: '#131920',
             border: '1px solid rgba(255,255,255,0.1)',
             animationDelay: '0.15s',
           }}>
@@ -176,7 +176,7 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
         <div className="pt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
           <a href="tel:0418878707"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#FEDB00' }}>
+            style={{ background: '#1c2535', border: '1px solid rgba(255,255,255,0.1)', color: '#FEDB00' }}>
             <Phone className="w-4 h-4" />
             Questions? 0418 878 707
           </a>
@@ -193,10 +193,10 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
 function DeclinedScreen({ name }: { name: string }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
-      style={{ background: '#0A0F0E' }}>
+      style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          style={{ background: '#131920', border: '1px solid rgba(255,255,255,0.1)' }}>
           <XCircle className="w-8 h-8 text-white/40" />
         </div>
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
@@ -217,7 +217,7 @@ function DeclinedScreen({ name }: { name: string }) {
 function AlreadyAcceptedScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
-      style={{ background: '#0A0F0E' }}>
+      style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <CheckCircle2 className="w-16 h-16 mx-auto text-[#4ADE80]" />
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
@@ -236,7 +236,7 @@ function AlreadyAcceptedScreen() {
 function AlreadyDeclinedScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
-      style={{ background: '#0A0F0E' }}>
+      style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <XCircle className="w-16 h-16 mx-auto text-white/30" />
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
@@ -254,10 +254,10 @@ function AlreadyDeclinedScreen() {
 function NotFoundScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
-      style={{ background: '#0A0F0E' }}>
+      style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(255,255,255,0.05)' }}>
+          style={{ background: '#131920' }}>
           <span className="text-2xl">🔗</span>
         </div>
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
@@ -275,7 +275,7 @@ function NotFoundScreen() {
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center"
-      style={{ background: '#0A0F0E' }}>
+      style={{ background: '#0B0F17' }}>
       <h1 className="text-3xl font-extrabold tracking-tight mb-4"
         style={{ fontFamily: 'Nunito, sans-serif', color: '#FEDB00' }}>
         Brightly<span className="text-white/40">.</span>
@@ -628,8 +628,7 @@ export default function QuoteViewPage() {
 
   return (
     <div className="min-h-screen" style={{
-      background: '#0A0F0E',
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(254, 219, 0, 0.04) 0%, transparent 50%)',
+      background: '#0B0F17',
     }}>
       {/* ─── Header ─── */}
       <header className="pt-8 pb-2 px-6 text-center fade-in">
@@ -646,24 +645,15 @@ export default function QuoteViewPage() {
       </header>
 
       <div className="max-w-md mx-auto px-5 pb-12 space-y-6 mt-6">
-        {/* ═══ GLASS PRICE CARD ═══ */}
+        {/* ═══ PRICE CARD ═══ */}
         <div
           className="relative overflow-hidden rounded-3xl p-6 fade-in"
           style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.10)',
-            boxShadow: '0 0 40px rgba(254, 219, 0, 0.12), 0 8px 32px rgba(0, 0, 0, 0.4)',
+            background: '#131920',
+            border: '1px solid rgba(255,255,255,0.08)',
             animationDelay: '0.15s',
           }}
         >
-          {/* Shimmer overlay */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 6s ease-in-out infinite',
-          }} />
 
           {/* Service badge */}
           <div className="flex items-center gap-2 mb-4">
@@ -712,7 +702,7 @@ export default function QuoteViewPage() {
             <span style={{ color: '#FEDB00' }}>✨</span> What's Included
           </h2>
           <div className="rounded-2xl p-5 space-y-3" style={{
-            background: 'rgba(255, 255, 255, 0.03)',
+            background: '#131920',
             border: '1px solid rgba(255,255,255,0.06)',
           }}>
             {inclusions.map((item, i) => (
@@ -728,7 +718,7 @@ export default function QuoteViewPage() {
               <span style={{ color: '#4ADE80' }}>⚙</span> Adjust Your Quote
             </h2>
             <div className="rounded-2xl p-4 space-y-3" style={{
-              background: 'rgba(255,255,255,0.03)',
+              background: '#131920',
               border: '1px solid rgba(255,255,255,0.06)',
             }}>
               <p className="text-white/40 text-xs">Toggle items on or off — price updates live.</p>
@@ -792,7 +782,7 @@ export default function QuoteViewPage() {
         {/* ═══ SPECIAL NOTES ═══ */}
         {quote.notes && (
           <div className="rounded-2xl p-5 fade-in" style={{
-            background: 'rgba(255, 255, 255, 0.03)',
+            background: '#131920',
             border: '1px solid rgba(255,255,255,0.06)',
             animationDelay: '0.4s',
           }}>
@@ -823,7 +813,7 @@ export default function QuoteViewPage() {
         {/* ═══ TERMS & CONDITIONS ═══ */}
         {!showScheduling && (
           <div className="rounded-2xl p-5 fade-in" style={{
-            background: 'rgba(255, 255, 255, 0.04)',
+            background: '#131920',
             border: '1px solid rgba(255,255,255,0.08)',
             animationDelay: '0.6s',
           }}>
@@ -854,7 +844,7 @@ export default function QuoteViewPage() {
           {/* SCHEDULING SECTION (shown after clicking Accept) */}
           {showScheduling ? (
             <div className="rounded-2xl p-5 space-y-4 slide-down" style={{
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: '#131920',
               border: '1px solid rgba(255,255,255,0.08)',
             }}>
               <h3 className="text-white font-bold text-base flex items-center gap-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
@@ -872,7 +862,7 @@ export default function QuoteViewPage() {
                     onChange={(e) => setPreferredDate(e.target.value)}
                     className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2"
                     style={{
-                      background: 'rgba(255,255,255,0.06)',
+                      background: '#1c2535',
                       border: '1px solid rgba(255,255,255,0.1)',
                       colorScheme: 'dark',
                     }}
@@ -963,7 +953,7 @@ export default function QuoteViewPage() {
           {/* AI Chat Panel */}
           {showMessagePanel && (
             <div className="rounded-2xl slide-down overflow-hidden" style={{
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: '#131920',
               border: '1px solid rgba(255,255,255,0.08)',
             }}>
               {/* Chat header */}
@@ -990,7 +980,7 @@ export default function QuoteViewPage() {
                         color: '#F8FAFC',
                         borderBottomRightRadius: '4px',
                       } : {
-                        background: 'rgba(255,255,255,0.07)',
+                        background: '#1c2535',
                         color: '#F8FAFC',
                         borderBottomLeftRadius: '4px',
                       }}
@@ -1001,7 +991,7 @@ export default function QuoteViewPage() {
                 ))}
                 {chatLoading && (
                   <div className="flex justify-start">
-                    <div className="rounded-2xl px-4 py-2.5 text-sm" style={{ background: 'rgba(255,255,255,0.07)', borderBottomLeftRadius: '4px' }}>
+                    <div className="rounded-2xl px-4 py-2.5 text-sm" style={{ background: '#1c2535', borderBottomLeftRadius: '4px' }}>
                       <span className="inline-flex gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
                         <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -1021,7 +1011,7 @@ export default function QuoteViewPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat(); } }}
                   placeholder="Ask a question..."
                   className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{ background: '#1c2535', border: '1px solid rgba(255,255,255,0.1)' }}
                 />
                 <button
                   onClick={handleChat}
@@ -1062,7 +1052,7 @@ export default function QuoteViewPage() {
                   onClick={() => setShowDeclineConfirm(false)}
                   className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
                   style={{
-                    background: 'rgba(255,255,255,0.06)',
+                    background: '#1c2535',
                     color: 'rgba(255,255,255,0.6)',
                     border: '1px solid rgba(255,255,255,0.1)',
                   }}
