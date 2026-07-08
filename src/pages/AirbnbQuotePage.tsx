@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
-import { Settings, X, ChevronDown, Bed, RotateCcw, Info } from "lucide-react";
+import { Settings, X, ChevronDown, Bed, RotateCcw, Info, Send, Copy, Check, MessageSquare } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // ============================================================
 // BRIGHTLY — AIRBNB QUOTE BUILDER
@@ -126,6 +127,17 @@ export default function AirbnbQuotePage() {
   const [showRates, setShowRates] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
 
+  // Send to client
+  const [showSend, setShowSend] = useState(false);
+  const [sendName, setSendName] = useState('');
+  const [sendPhone, setSendPhone] = useState('');
+  const [sendEmail, setSendEmail] = useState('');
+  const [sendPropName, setSendPropName] = useState('');
+  const [sendNotes, setSendNotes] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sentUrl, setSentUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const p = useMemo(() => packs(rates), [rates]);
   const type = TYPES[typeIdx];
 
@@ -163,6 +175,47 @@ export default function AirbnbQuotePage() {
     setLabourOverride(String(TYPES[2].labour));
     setGp(0.35);
     setIncGst(false);
+  };
+
+  const handleSendQuote = async () => {
+    if (!sendName.trim() || !sendPhone.trim()) return;
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-airbnb-quote-and-send', {
+        body: {
+          client_name: sendName.trim(),
+          client_phone: sendPhone.trim(),
+          client_email: sendEmail.trim() || null,
+          property_name: sendPropName.trim() || null,
+          bedrooms: type.beds,
+          bathrooms: type.baths,
+          bed_types: rooms.slice(0, type.beds),
+          labour_cost: labourCost,
+          linen_cost: linenTotal,
+          consumables_cost: consumablesTotal,
+          total_cost: cost,
+          gp_percent: gp,
+          sell_price_ex_gst: sell,
+          sell_price_inc_gst: sell * 1.1,
+          hours: labourHrs,
+          linen_required: linenTotal > 0,
+          notes: sendNotes.trim() || null,
+        },
+      });
+      if (error) throw error;
+      setSentUrl(data.quote_url);
+    } catch (e) {
+      alert('Failed to send quote. Check connection and try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!sentUrl) return;
+    await navigator.clipboard.writeText(sentUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const gpOptions = [0.3, 0.35, 0.4];
@@ -357,8 +410,123 @@ export default function AirbnbQuotePage() {
             Linen rates from real invoice (ex GST, 06/07/26).<br />
             Confirm labour is fully-loaded (super + workcover + insurance).
           </div>
+
+          {/* ---- SEND TO CLIENT ---- */}
+          <div style={{ marginTop: 20 }}>
+            <button
+              onClick={() => { setShowSend(true); setSentUrl(null); }}
+              style={{
+                width: "100%", padding: "14px", borderRadius: 14,
+                background: `linear-gradient(135deg, ${GREEN}, #22c55e)`,
+                color: '#000', fontWeight: 800, fontSize: 15,
+                border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                boxShadow: `0 0 24px ${GREEN}55`,
+              }}
+            >
+              <Send size={17} />
+              Send Quote to Client
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* ---- SEND DRAWER ---- */}
+      {showSend && (
+        <div
+          onClick={() => !sending && setShowSend(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: CARD, width: "100%", maxWidth: 520,
+              borderTopLeftRadius: 22, borderTopRightRadius: 22,
+              maxHeight: "92vh", overflowY: "auto",
+              padding: "20px 18px 40px", border: `1px solid ${BORDER}`,
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, position: "sticky", top: 0, background: CARD, paddingBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: TEXT }}>Send Quote</div>
+                <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                  {type.name} · {fmt(sell)} ex GST
+                </div>
+              </div>
+              <button onClick={() => setShowSend(false)} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 8, cursor: "pointer" }}>
+                <X size={18} color={TEXT} />
+              </button>
+            </div>
+
+            {sentUrl ? (
+              /* ── Success state ── */
+              <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: `${GREEN}22`, border: `2px solid ${GREEN}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                  <Check size={26} color={GREEN} />
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: TEXT, marginBottom: 6 }}>Quote Sent!</div>
+                <div style={{ fontSize: 13, color: MUTED, marginBottom: 18 }}>
+                  SMS sent to {sendPhone}. They'll receive the link shortly.
+                </div>
+                {/* Quote URL */}
+                <div style={{ background: BG, borderRadius: 12, padding: "10px 14px", border: `1px solid ${BORDER}`, marginBottom: 12, textAlign: "left" }}>
+                  <div style={{ fontSize: 10, color: MUTED, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Quote link</div>
+                  <div style={{ fontSize: 11, color: MUTED, wordBreak: "break-all" }}>{sentUrl}</div>
+                </div>
+                <button
+                  onClick={handleCopyLink}
+                  style={{
+                    width: "100%", padding: "12px", borderRadius: 12,
+                    background: copied ? GREEN : CARD,
+                    color: copied ? '#000' : TEXT,
+                    border: `1.5px solid ${copied ? GREEN : BORDER}`,
+                    fontWeight: 700, fontSize: 14, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  }}
+                >
+                  {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Link</>}
+                </button>
+                <button
+                  onClick={() => { setSentUrl(null); setSendName(''); setSendPhone(''); setSendEmail(''); setSendPropName(''); setSendNotes(''); }}
+                  style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 12, background: "transparent", border: `1px solid ${BORDER}`, color: MUTED, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Send another quote
+                </button>
+              </div>
+            ) : (
+              /* ── Form ── */
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <SendField label="Client name *" value={sendName} onChange={setSendName} placeholder="e.g. Andrew Smith" />
+                <SendField label="Mobile number *" value={sendPhone} onChange={setSendPhone} placeholder="04xx xxx xxx" type="tel" />
+                <SendField label="Email (optional)" value={sendEmail} onChange={setSendEmail} placeholder="client@example.com" type="email" />
+                <SendField label="Property name / address" value={sendPropName} onChange={setSendPropName} placeholder="e.g. Broadwater Lux, 12 Marine Pde" />
+                <SendField label="Notes for client (optional)" value={sendNotes} onChange={setSendNotes} placeholder="e.g. Includes linen changeover for all bedrooms" multiline />
+
+                <button
+                  onClick={handleSendQuote}
+                  disabled={sending || !sendName.trim() || !sendPhone.trim()}
+                  style={{
+                    marginTop: 4, width: "100%", padding: "14px", borderRadius: 14,
+                    background: (!sendName.trim() || !sendPhone.trim()) ? BORDER : GREEN,
+                    color: '#000', fontWeight: 800, fontSize: 15, border: "none",
+                    cursor: (!sendName.trim() || !sendPhone.trim()) ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    opacity: sending ? 0.7 : 1,
+                  }}
+                >
+                  <Send size={16} />
+                  {sending ? "Sending…" : "Send via SMS"}
+                </button>
+
+                <div style={{ textAlign: "center", fontSize: 11, color: MUTED }}>
+                  Client receives an SMS with a link to view, adjust & accept the quote.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ---- RATES DRAWER ---- */}
       {showRates && (
@@ -471,6 +639,28 @@ function PackRow({ label, val }: { label: string; val: number }) {
     <div style={{ display: "flex", justifyContent: "space-between", padding: "9px 14px", borderBottom: `1px solid ${BORDER}` }}>
       <span style={{ fontSize: 13.5, color: TEXT }}>{label}</span>
       <span style={{ fontSize: 13.5, fontWeight: 700, color: GREEN, fontVariantNumeric: "tabular-nums" }}>{fmt(val)}</span>
+    </div>
+  );
+}
+
+function SendField({ label, value, onChange, placeholder, type = "text", multiline = false }: {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: string; multiline?: boolean;
+}) {
+  const base: React.CSSProperties = {
+    width: "100%", border: `1.5px solid ${BORDER}`, borderRadius: 10,
+    padding: "10px 12px", fontSize: 14, fontWeight: 500, color: TEXT,
+    fontFamily: "inherit", background: BG, marginTop: 4,
+  };
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: MUTED }}>{label}</div>
+      {multiline
+        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={2}
+            style={{ ...base, resize: "vertical" as const }} />
+        : <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+            style={base} />
+      }
     </div>
   );
 }

@@ -306,6 +306,15 @@ export default function QuoteViewPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageSent, setMessageSent] = useState(false);
 
+  // Interactive pricing
+  const [linenOn, setLinenOn] = useState(true);
+  const [consumablesOn, setConsumablesOn] = useState(true);
+
+  // AI chat
+  const [chatHistory, setChatHistory] = useState<{role: string; content: string}[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
   // T&C + scheduling states
   const [tcsAccepted, setTcsAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
@@ -571,10 +580,51 @@ export default function QuoteViewPage() {
   if (quote?.quote_declined_at || quote?.status === 'declined') return <AlreadyDeclinedScreen />;
 
   const firstName = (quote.client_name || '').split(' ')[0];
-  const price = Number(quote.sell_price_inc_gst || quote.price || 0);
   const hours = quote.estimated_hours || quote.hours || null;
   const cleanType = quote.clean_type || quote.service_type || 'Clean';
   const inclusions = getInclusions(quote);
+
+  // Interactive pricing — only active when cost components are stored on the quote
+  const labourCostStored = Number(quote.labour_cost || 0);
+  const linenCostStored  = Number(quote.linen_cost || 0);
+  const consumablesCostStored = Number(quote.consumables_cost || 0);
+  const gpPct = Number(quote.gp_percent || 0);
+  const hasInteractive = (linenCostStored > 0 || consumablesCostStored > 0) && gpPct > 0;
+
+  const adjustedCost = labourCostStored
+    + (linenOn ? linenCostStored : 0)
+    + (consumablesOn ? consumablesCostStored : 0);
+  const adjustedSellExGst = hasInteractive && labourCostStored > 0
+    ? adjustedCost / (1 - gpPct)
+    : Number(quote.sell_price_ex_gst || 0);
+  const adjustedSellIncGst = hasInteractive && labourCostStored > 0
+    ? adjustedSellExGst * 1.1
+    : Number(quote.sell_price_inc_gst || quote.price || 0);
+  const price = adjustedSellIncGst;
+
+  // AI chat
+  const handleChat = useCallback(async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    const userMsg = { role: 'user', content: msg };
+    setChatHistory(prev => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('quote-ai-chat', {
+        body: {
+          quote_token: token,
+          message: msg,
+          history: chatHistory.slice(-6),
+        },
+      });
+      if (error) throw error;
+      setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
+    } catch {
+      setChatHistory(prev => [...prev, { role: 'assistant', content: "Sorry, something went wrong. Call us on 0418 878 707." }]);
+    }
+    setChatLoading(false);
+  }, [chatInput, chatLoading, chatHistory, token]);
 
   return (
     <div className="min-h-screen" style={{
@@ -670,6 +720,74 @@ export default function QuoteViewPage() {
             ))}
           </div>
         </div>
+
+        {/* ═══ ADJUST YOUR QUOTE ═══ */}
+        {hasInteractive && (
+          <div className="space-y-3 fade-in" style={{ animationDelay: '0.35s' }}>
+            <h2 className="text-sm font-bold text-white/40 uppercase tracking-widest flex items-center gap-2 px-1">
+              <span style={{ color: '#4ADE80' }}>⚙</span> Adjust Your Quote
+            </h2>
+            <div className="rounded-2xl p-4 space-y-3" style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <p className="text-white/40 text-xs">Toggle items on or off — price updates live.</p>
+
+              {linenCostStored > 0 && (
+                <label className="flex items-center justify-between cursor-pointer py-1">
+                  <div>
+                    <div className="text-sm font-semibold text-white">Linen service</div>
+                    <div className="text-xs text-white/40">Fresh sheets, towels & bath mats</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
+                      +${linenCostStored.toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => setLinenOn(v => !v)}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                      style={{ background: linenOn ? '#4ADE80' : 'rgba(255,255,255,0.1)' }}
+                    >
+                      <span className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: linenOn ? 'translateX(22px)' : 'translateX(2px)' }} />
+                    </button>
+                  </div>
+                </label>
+              )}
+
+              {consumablesCostStored > 0 && (
+                <label className="flex items-center justify-between cursor-pointer py-1">
+                  <div>
+                    <div className="text-sm font-semibold text-white">Consumables restock</div>
+                    <div className="text-xs text-white/40">Soap, shampoo, toilet paper, coffee & tea</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
+                      +${consumablesCostStored.toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => setConsumablesOn(v => !v)}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                      style={{ background: consumablesOn ? '#4ADE80' : 'rgba(255,255,255,0.1)' }}
+                    >
+                      <span className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: consumablesOn ? 'translateX(22px)' : 'translateX(2px)' }} />
+                    </button>
+                  </div>
+                </label>
+              )}
+
+              <div className="pt-2 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/60">Updated total</span>
+                  <span className="text-xl font-extrabold" style={{ color: '#4ADE80', fontFamily: 'Nunito, sans-serif' }}>
+                    ${price.toFixed(2)} <span className="text-xs font-normal text-white/30">inc GST</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ═══ SPECIAL NOTES ═══ */}
         {quote.notes && (
@@ -842,53 +960,78 @@ export default function QuoteViewPage() {
             💬 I Have a Question
           </button>
 
-          {/* Message Panel (inline expand) */}
+          {/* AI Chat Panel */}
           {showMessagePanel && (
-            <div className="rounded-2xl p-5 space-y-3 slide-down" style={{
+            <div className="rounded-2xl slide-down overflow-hidden" style={{
               background: 'rgba(255, 255, 255, 0.04)',
               border: '1px solid rgba(255,255,255,0.08)',
             }}>
-              {messageSent ? (
-                <div className="text-center py-4 space-y-2">
-                  <CheckCircle2 className="w-10 h-10 mx-auto text-[#4ADE80]" />
-                  <p className="text-white font-bold">Thanks! We'll get back to you shortly.</p>
-                  <p className="text-white/40 text-sm">Usually within a few hours.</p>
+              {/* Chat header */}
+              <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{ background: 'rgba(74,222,128,0.15)', color: '#4ADE80' }}>B</div>
+                <div>
+                  <div className="text-sm font-bold text-white">Brightly Assistant</div>
+                  <div className="text-xs text-white/40">Usually replies instantly</div>
                 </div>
-              ) : (
-                <>
-                  <p className="text-white/60 text-sm">What would you like to know?</p>
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type your question here..."
-                    rows={3}
-                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      outline: 'none',
-                    }}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={sendingMessage || !message.trim()}
-                    className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-                    style={{
-                      background: '#FEDB00',
-                      color: '#0C463D',
-                    }}
-                  >
-                    {sendingMessage ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Send Message
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
+              </div>
+
+              {/* Chat bubbles */}
+              <div className="px-4 py-3 space-y-3 min-h-[80px] max-h-64 overflow-y-auto" id="chat-scroll">
+                {chatHistory.length === 0 && (
+                  <p className="text-white/40 text-sm text-center py-2">Ask anything about this quote or our service.</p>
+                )}
+                {chatHistory.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className="rounded-2xl px-4 py-2.5 text-sm max-w-[85%] leading-relaxed"
+                      style={msg.role === 'user' ? {
+                        background: 'rgba(74,222,128,0.15)',
+                        color: '#F8FAFC',
+                        borderBottomRightRadius: '4px',
+                      } : {
+                        background: 'rgba(255,255,255,0.07)',
+                        color: '#F8FAFC',
+                        borderBottomLeftRadius: '4px',
+                      }}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl px-4 py-2.5 text-sm" style={{ background: 'rgba(255,255,255,0.07)', borderBottomLeftRadius: '4px' }}>
+                      <span className="inline-flex gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Input row */}
+              <div className="flex gap-2 px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat(); } }}
+                  placeholder="Ask a question..."
+                  className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                />
+                <button
+                  onClick={handleChat}
+                  disabled={chatLoading || !chatInput.trim()}
+                  className="rounded-xl px-3 py-2.5 flex items-center justify-center transition-all disabled:opacity-40"
+                  style={{ background: '#4ADE80', color: '#0B0F17', minWidth: '42px' }}
+                >
+                  {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           )}
 
