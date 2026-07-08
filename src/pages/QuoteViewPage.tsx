@@ -653,7 +653,7 @@ export default function QuoteViewPage() {
       <div className="max-w-md mx-auto px-5 pb-12 space-y-6 mt-6">
         {/* ═══ PRICE CARD ═══ */}
         <div
-          className="relative overflow-hidden rounded-3xl p-6 fade-in"
+          className="shimmer relative overflow-hidden rounded-3xl p-6 fade-in"
           style={{
             background: 'rgba(19,25,32,0.85)',
             backdropFilter: 'blur(24px)',
@@ -663,10 +663,6 @@ export default function QuoteViewPage() {
             animationDelay: '0.15s',
           }}
         >
-          {/* Metallic sheen */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%, rgba(74,222,128,0.02) 100%)',
-          }} />
 
           {/* Service badge */}
           <div className="flex items-center gap-2 mb-4">
