@@ -571,6 +571,30 @@ export default function QuoteViewPage() {
     setSendingMessage(false);
   }, [quote, message, token]);
 
+  // AI chat — must be before early returns (Rules of Hooks)
+  const handleChat = useCallback(async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    const userMsg = { role: 'user', content: msg };
+    setChatHistory(prev => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('quote-ai-chat', {
+        body: {
+          quote_token: token,
+          message: msg,
+          history: chatHistory.slice(-6),
+        },
+      });
+      if (error) throw error;
+      setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
+    } catch {
+      setChatHistory(prev => [...prev, { role: 'assistant', content: "Sorry, something went wrong. Call us on 0418 878 707." }]);
+    }
+    setChatLoading(false);
+  }, [chatInput, chatLoading, chatHistory, token]);
+
   // ─── State screens ───
   if (loading) return <LoadingScreen />;
   if (notFound) return <NotFoundScreen />;
@@ -601,30 +625,6 @@ export default function QuoteViewPage() {
     ? adjustedSellExGst * 1.1
     : Number(quote.sell_price_inc_gst || quote.price || 0);
   const price = adjustedSellIncGst;
-
-  // AI chat
-  const handleChat = useCallback(async () => {
-    const msg = chatInput.trim();
-    if (!msg || chatLoading) return;
-    const userMsg = { role: 'user', content: msg };
-    setChatHistory(prev => [...prev, userMsg]);
-    setChatInput('');
-    setChatLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('quote-ai-chat', {
-        body: {
-          quote_token: token,
-          message: msg,
-          history: chatHistory.slice(-6),
-        },
-      });
-      if (error) throw error;
-      setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
-    } catch {
-      setChatHistory(prev => [...prev, { role: 'assistant', content: "Sorry, something went wrong. Call us on 0418 878 707." }]);
-    }
-    setChatLoading(false);
-  }, [chatInput, chatLoading, chatHistory, token]);
 
   return (
     <div className="min-h-screen" style={{
