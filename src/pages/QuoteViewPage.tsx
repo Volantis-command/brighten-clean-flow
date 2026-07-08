@@ -96,10 +96,10 @@ function CheckItem({ text, delay }: { text: string; delay: number }) {
     >
       <div className="mt-0.5 shrink-0">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <circle cx="10" cy="10" r="9" stroke="#3A7560" strokeWidth="1.5" opacity="0.3" />
+          <circle cx="10" cy="10" r="9" stroke="#4ADE80" strokeWidth="1.5" opacity="0.4" />
           <path
             d="M6 10.5L9 13.5L14 7.5"
-            stroke="#3A7560"
+            stroke="#4ADE80"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -131,35 +131,35 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
           <svg viewBox="0 0 96 96" className="w-24 h-24">
             <circle
               cx="48" cy="48" r="44"
-              fill="none" stroke="#3A7560" strokeWidth="3"
+              fill="none" stroke="#4ADE80" strokeWidth="3"
               strokeDasharray="276"
               strokeDashoffset="276"
               style={{ animation: 'drawCircle 0.8s ease forwards' }}
             />
             <path
               d="M28 50L42 64L68 34"
-              fill="none" stroke="#3A7560" strokeWidth="4"
+              fill="none" stroke="#4ADE80" strokeWidth="4"
               strokeLinecap="round" strokeLinejoin="round"
               className="animate-draw-tick"
             />
           </svg>
           <div className="absolute inset-0 rounded-full"
-            style={{ boxShadow: '0 0 40px rgba(46, 93, 78, 0.3)' }} />
+            style={{ boxShadow: '0 0 40px rgba(74,222,128,0.2)' }} />
         </div>
 
         <h1 className="text-3xl font-extrabold text-white animate-slide-up"
-          style={{ fontFamily: 'Nunito, sans-serif' }}>
+          style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           {isAirbnb ? 'Quote Accepted!' : 'Booking Confirmed!'}
         </h1>
 
         {!isAirbnb && formattedDate && (
           <div className="rounded-2xl p-4 animate-slide-up" style={{
             background: '#131920',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(74,222,128,0.18)',
             animationDelay: '0.15s',
           }}>
             <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Your clean is scheduled for</p>
-            <p className="text-white text-lg font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            <p className="text-white text-lg font-bold" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
               📅 {formattedDate}
             </p>
             {time && (
@@ -176,12 +176,12 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
         <div className="pt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
           <a href="tel:0418878707"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold"
-            style={{ background: '#1c2535', border: '1px solid rgba(255,255,255,0.1)', color: '#FEDB00' }}>
+            style={{ background: '#1a2232', border: '1px solid rgba(74,222,128,0.18)', color: '#FEDB00' }}>
             <Phone className="w-4 h-4" />
             Questions? 0418 878 707
           </a>
         </div>
-        <p className="text-white/30 text-sm pt-4" style={{ fontFamily: 'Nunito, sans-serif' }}>
+        <p className="text-white/30 text-sm pt-4" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           — Brightly Cleaning 🌿
         </p>
       </div>
@@ -196,10 +196,10 @@ function DeclinedScreen({ name }: { name: string }) {
       style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-          style={{ background: '#131920', border: '1px solid rgba(255,255,255,0.1)' }}>
+          style={{ background: '#131920', border: '1px solid rgba(74,222,128,0.18)' }}>
           <XCircle className="w-8 h-8 text-white/40" />
         </div>
-        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           No worries at all{name ? `, ${name}` : ''}.
         </h1>
         <p className="text-white/50 text-sm">
@@ -220,7 +220,7 @@ function AlreadyAcceptedScreen() {
       style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <CheckCircle2 className="w-16 h-16 mx-auto text-[#4ADE80]" />
-        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           This quote has already been accepted.
         </h1>
         <p className="text-white/50">We'll see you soon!</p>
@@ -239,7 +239,7 @@ function AlreadyDeclinedScreen() {
       style={{ background: '#0B0F17' }}>
       <div className="text-center space-y-5 max-w-sm">
         <XCircle className="w-16 h-16 mx-auto text-white/30" />
-        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           This quote is no longer active.
         </h1>
         <p className="text-white/50 text-sm">
@@ -260,7 +260,7 @@ function NotFoundScreen() {
           style={{ background: '#131920' }}>
           <span className="text-2xl">🔗</span>
         </div>
-        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
+        <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           Quote link expired or invalid
         </h1>
         <p className="text-white/50 text-sm">
@@ -277,7 +277,7 @@ function LoadingScreen() {
     <div className="min-h-screen flex flex-col items-center justify-center"
       style={{ background: '#0B0F17' }}>
       <h1 className="text-3xl font-extrabold tracking-tight mb-4"
-        style={{ fontFamily: 'Nunito, sans-serif', color: '#FEDB00' }}>
+        style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif", color: '#FEDB00' }}>
         Brightly<span className="text-white/40">.</span>
       </h1>
       <Loader2 className="w-6 h-6 animate-spin text-white/30" />
@@ -629,16 +629,18 @@ export default function QuoteViewPage() {
   return (
     <div className="min-h-screen" style={{
       background: '#0B0F17',
+      color: '#F8FAFC',
+      fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
     }}>
       {/* ─── Header ─── */}
       <header className="pt-8 pb-2 px-6 text-center fade-in">
         <h1 className="text-2xl font-extrabold tracking-tight"
-          style={{ fontFamily: 'Nunito, sans-serif', color: '#FEDB00' }}>
+          style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif", color: '#FEDB00' }}>
           Brightly<span className="text-white/30">.</span>
         </h1>
         <div className="mt-6 space-y-1">
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Your Quote is Ready</p>
-          <p className="text-white text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          <p className="text-white text-xl font-extrabold" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
             Hi {firstName || 'there'} 👋
           </p>
         </div>
@@ -650,7 +652,7 @@ export default function QuoteViewPage() {
           className="relative overflow-hidden rounded-3xl p-6 fade-in"
           style={{
             background: '#131920',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(74,222,128,0.15)',
             animationDelay: '0.15s',
           }}
         >
@@ -673,7 +675,7 @@ export default function QuoteViewPage() {
           {/* THE PRICE */}
           <div className="text-center py-4">
             <p className="text-5xl font-extrabold text-white tracking-tight count-up"
-              style={{ fontFamily: 'Nunito, sans-serif' }}>
+              style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
               ${price.toFixed(2)}
             </p>
             <p className="text-white/40 text-sm mt-1">inc GST</p>
@@ -681,7 +683,7 @@ export default function QuoteViewPage() {
 
           {/* Meta row */}
           <div className="flex items-center justify-center gap-6 mt-4 pt-4"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            style={{ borderTop: '1px solid rgba(74,222,128,0.15)' }}>
             {hours && (
               <div className="flex items-center gap-1.5 text-white/50 text-sm">
                 <Clock className="w-4 h-4" />
@@ -703,7 +705,7 @@ export default function QuoteViewPage() {
           </h2>
           <div className="rounded-2xl p-5 space-y-3" style={{
             background: '#131920',
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid rgba(74,222,128,0.1)',
           }}>
             {inclusions.map((item, i) => (
               <CheckItem key={i} text={item} delay={400 + i * 120} />
@@ -719,7 +721,7 @@ export default function QuoteViewPage() {
             </h2>
             <div className="rounded-2xl p-4 space-y-3" style={{
               background: '#131920',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid rgba(74,222,128,0.1)',
             }}>
               <p className="text-white/40 text-xs">Toggle items on or off — price updates live.</p>
 
@@ -736,7 +738,7 @@ export default function QuoteViewPage() {
                     <button
                       onClick={() => setLinenOn(v => !v)}
                       className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                      style={{ background: linenOn ? '#4ADE80' : 'rgba(255,255,255,0.1)' }}
+                      style={{ background: linenOn ? '#4ADE80' : 'rgba(74,222,128,0.12)' }}
                     >
                       <span className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
                         style={{ transform: linenOn ? 'translateX(22px)' : 'translateX(2px)' }} />
@@ -758,7 +760,7 @@ export default function QuoteViewPage() {
                     <button
                       onClick={() => setConsumablesOn(v => !v)}
                       className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                      style={{ background: consumablesOn ? '#4ADE80' : 'rgba(255,255,255,0.1)' }}
+                      style={{ background: consumablesOn ? '#4ADE80' : 'rgba(74,222,128,0.12)' }}
                     >
                       <span className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
                         style={{ transform: consumablesOn ? 'translateX(22px)' : 'translateX(2px)' }} />
@@ -767,10 +769,10 @@ export default function QuoteViewPage() {
                 </label>
               )}
 
-              <div className="pt-2 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="pt-2 mt-1" style={{ borderTop: '1px solid rgba(74,222,128,0.1)' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/60">Updated total</span>
-                  <span className="text-xl font-extrabold" style={{ color: '#4ADE80', fontFamily: 'Nunito, sans-serif' }}>
+                  <span className="text-xl font-extrabold" style={{ color: '#4ADE80', fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
                     ${price.toFixed(2)} <span className="text-xs font-normal text-white/30">inc GST</span>
                   </span>
                 </div>
@@ -783,7 +785,7 @@ export default function QuoteViewPage() {
         {quote.notes && (
           <div className="rounded-2xl p-5 fade-in" style={{
             background: '#131920',
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid rgba(74,222,128,0.1)',
             animationDelay: '0.4s',
           }}>
             <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
@@ -814,7 +816,7 @@ export default function QuoteViewPage() {
         {!showScheduling && (
           <div className="rounded-2xl p-5 fade-in" style={{
             background: '#131920',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(74,222,128,0.15)',
             animationDelay: '0.6s',
           }}>
             <div className="flex items-start gap-3">
@@ -845,9 +847,9 @@ export default function QuoteViewPage() {
           {showScheduling ? (
             <div className="rounded-2xl p-5 space-y-4 slide-down" style={{
               background: '#131920',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: '1px solid rgba(74,222,128,0.15)',
             }}>
-              <h3 className="text-white font-bold text-base flex items-center gap-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              <h3 className="text-white font-bold text-base flex items-center gap-2" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
                 <CalendarDays className="w-5 h-5" style={{ color: '#FEDB00' }} />
                 Choose Your Preferred Date & Time
               </h3>
@@ -862,8 +864,8 @@ export default function QuoteViewPage() {
                     onChange={(e) => setPreferredDate(e.target.value)}
                     className="w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2"
                     style={{
-                      background: '#1c2535',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: '#1a2232',
+                      border: '1px solid rgba(74,222,128,0.18)',
                       colorScheme: 'dark',
                     }}
                   />
@@ -889,7 +891,7 @@ export default function QuoteViewPage() {
                   background: confirming ? '#26503F' : '#3A7560',
                   color: '#fff',
                   boxShadow: '0 0 24px rgba(46, 93, 78, 0.3)',
-                  fontFamily: 'Nunito, sans-serif',
+                  fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
                 }}
               >
                 {confirming ? (
@@ -923,7 +925,7 @@ export default function QuoteViewPage() {
                 background: !tcsAccepted ? '#26503F' : '#3A7560',
                 color: '#fff',
                 boxShadow: tcsAccepted ? '0 0 24px rgba(46, 93, 78, 0.3)' : 'none',
-                fontFamily: 'Nunito, sans-serif',
+                fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
               }}
               onMouseEnter={(e) => {
                 if (tcsAccepted) e.currentTarget.style.boxShadow = '0 0 40px rgba(46, 93, 78, 0.5)';
@@ -954,10 +956,10 @@ export default function QuoteViewPage() {
           {showMessagePanel && (
             <div className="rounded-2xl slide-down overflow-hidden" style={{
               background: '#131920',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: '1px solid rgba(74,222,128,0.15)',
             }}>
               {/* Chat header */}
-              <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(74,222,128,0.1)' }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                   style={{ background: 'rgba(74,222,128,0.15)', color: '#4ADE80' }}>B</div>
                 <div>
@@ -980,7 +982,7 @@ export default function QuoteViewPage() {
                         color: '#F8FAFC',
                         borderBottomRightRadius: '4px',
                       } : {
-                        background: '#1c2535',
+                        background: '#1a2232',
                         color: '#F8FAFC',
                         borderBottomLeftRadius: '4px',
                       }}
@@ -991,7 +993,7 @@ export default function QuoteViewPage() {
                 ))}
                 {chatLoading && (
                   <div className="flex justify-start">
-                    <div className="rounded-2xl px-4 py-2.5 text-sm" style={{ background: '#1c2535', borderBottomLeftRadius: '4px' }}>
+                    <div className="rounded-2xl px-4 py-2.5 text-sm" style={{ background: '#1a2232', borderBottomLeftRadius: '4px' }}>
                       <span className="inline-flex gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
                         <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -1003,7 +1005,7 @@ export default function QuoteViewPage() {
               </div>
 
               {/* Input row */}
-              <div className="flex gap-2 px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex gap-2 px-4 py-3" style={{ borderTop: '1px solid rgba(74,222,128,0.1)' }}>
                 <input
                   type="text"
                   value={chatInput}
@@ -1011,7 +1013,7 @@ export default function QuoteViewPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat(); } }}
                   placeholder="Ask a question..."
                   className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none"
-                  style={{ background: '#1c2535', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{ background: '#1a2232', border: '1px solid rgba(74,222,128,0.18)' }}
                 />
                 <button
                   onClick={handleChat}
@@ -1033,7 +1035,7 @@ export default function QuoteViewPage() {
               style={{
                 background: 'transparent',
                 color: 'rgba(255,255,255,0.3)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid rgba(74,222,128,0.15)',
               }}
             >
               <XCircle className="w-4 h-4" />
@@ -1052,9 +1054,9 @@ export default function QuoteViewPage() {
                   onClick={() => setShowDeclineConfirm(false)}
                   className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
                   style={{
-                    background: '#1c2535',
+                    background: '#1a2232',
                     color: 'rgba(255,255,255,0.6)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(74,222,128,0.18)',
                   }}
                 >
                   Go Back
@@ -1084,7 +1086,7 @@ export default function QuoteViewPage() {
             <Phone className="w-4 h-4" />
             Questions? 0418 878 707
           </a>
-          <p className="text-white/20 text-xs" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          <p className="text-white/20 text-xs" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
             Brightly Cleaning — Premium Cleaning Services
           </p>
         </div>
