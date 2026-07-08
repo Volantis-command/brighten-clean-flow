@@ -154,8 +154,11 @@ function SuccessScreen({ name, date, time, isAirbnb }: { name: string; date?: st
 
         {!isAirbnb && formattedDate && (
           <div className="rounded-2xl p-4 animate-slide-up" style={{
-            background: '#131920',
-            border: '1px solid rgba(74,222,128,0.18)',
+            background: 'rgba(19,25,32,0.8)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(74,222,128,0.2)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(74,222,128,0.04)',
             animationDelay: '0.15s',
           }}>
             <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Your clean is scheduled for</p>
@@ -629,6 +632,7 @@ export default function QuoteViewPage() {
   return (
     <div className="min-h-screen" style={{
       background: '#0B0F17',
+      backgroundImage: 'radial-gradient(ellipse 80% 40% at 50% -10%, rgba(74,222,128,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 30% at 80% 80%, rgba(254,219,0,0.04) 0%, transparent 60%)',
       color: '#F8FAFC',
       fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
     }}>
@@ -651,11 +655,18 @@ export default function QuoteViewPage() {
         <div
           className="relative overflow-hidden rounded-3xl p-6 fade-in"
           style={{
-            background: '#131920',
-            border: '1px solid rgba(74,222,128,0.15)',
+            background: 'rgba(19,25,32,0.85)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid rgba(74,222,128,0.25)',
+            boxShadow: '0 0 0 1px rgba(74,222,128,0.05), 0 0 40px rgba(74,222,128,0.08), 0 20px 60px rgba(0,0,0,0.5)',
             animationDelay: '0.15s',
           }}
         >
+          {/* Metallic sheen */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%, rgba(74,222,128,0.02) 100%)',
+          }} />
 
           {/* Service badge */}
           <div className="flex items-center gap-2 mb-4">
@@ -704,8 +715,11 @@ export default function QuoteViewPage() {
             <span style={{ color: '#FEDB00' }}>✨</span> What's Included
           </h2>
           <div className="rounded-2xl p-5 space-y-3" style={{
-            background: '#131920',
-            border: '1px solid rgba(74,222,128,0.1)',
+            background: 'rgba(19,25,32,0.8)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(74,222,128,0.15)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
           }}>
             {inclusions.map((item, i) => (
               <CheckItem key={i} text={item} delay={400 + i * 120} />
@@ -720,8 +734,11 @@ export default function QuoteViewPage() {
               <span style={{ color: '#4ADE80' }}>⚙</span> Adjust Your Quote
             </h2>
             <div className="rounded-2xl p-4 space-y-3" style={{
-              background: '#131920',
-              border: '1px solid rgba(74,222,128,0.1)',
+              background: 'rgba(19,25,32,0.8)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(74,222,128,0.15)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
             }}>
               <p className="text-white/40 text-xs">Toggle items on or off — price updates live.</p>
 
@@ -784,8 +801,11 @@ export default function QuoteViewPage() {
         {/* ═══ SPECIAL NOTES ═══ */}
         {quote.notes && (
           <div className="rounded-2xl p-5 fade-in" style={{
-            background: '#131920',
-            border: '1px solid rgba(74,222,128,0.1)',
+            background: 'rgba(19,25,32,0.8)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(74,222,128,0.15)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
             animationDelay: '0.4s',
           }}>
             <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
@@ -815,8 +835,11 @@ export default function QuoteViewPage() {
         {/* ═══ TERMS & CONDITIONS ═══ */}
         {!showScheduling && (
           <div className="rounded-2xl p-5 fade-in" style={{
-            background: '#131920',
-            border: '1px solid rgba(74,222,128,0.15)',
+            background: 'rgba(19,25,32,0.8)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(74,222,128,0.2)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
             animationDelay: '0.6s',
           }}>
             <div className="flex items-start gap-3">
@@ -846,8 +869,11 @@ export default function QuoteViewPage() {
           {/* SCHEDULING SECTION (shown after clicking Accept) */}
           {showScheduling ? (
             <div className="rounded-2xl p-5 space-y-4 slide-down" style={{
-              background: '#131920',
-              border: '1px solid rgba(74,222,128,0.15)',
+              background: 'rgba(19,25,32,0.8)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(74,222,128,0.2)',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
             }}>
               <h3 className="text-white font-bold text-base flex items-center gap-2" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
                 <CalendarDays className="w-5 h-5" style={{ color: '#FEDB00' }} />
@@ -922,16 +948,16 @@ export default function QuoteViewPage() {
               disabled={!tcsAccepted}
               className="w-full py-4 rounded-2xl text-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-40"
               style={{
-                background: !tcsAccepted ? '#26503F' : '#3A7560',
+                background: !tcsAccepted ? '#1f3d30' : 'linear-gradient(135deg, #3A7560, #2d6050)',
                 color: '#fff',
-                boxShadow: tcsAccepted ? '0 0 24px rgba(46, 93, 78, 0.3)' : 'none',
+                boxShadow: tcsAccepted ? '0 0 32px rgba(74,222,128,0.25), 0 8px 24px rgba(0,0,0,0.4)' : 'none',
                 fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
               }}
               onMouseEnter={(e) => {
-                if (tcsAccepted) e.currentTarget.style.boxShadow = '0 0 40px rgba(46, 93, 78, 0.5)';
+                if (tcsAccepted) e.currentTarget.style.boxShadow = '0 0 48px rgba(74,222,128,0.35), 0 8px 32px rgba(0,0,0,0.5)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = tcsAccepted ? '0 0 24px rgba(46, 93, 78, 0.3)' : 'none';
+                e.currentTarget.style.boxShadow = tcsAccepted ? '0 0 32px rgba(74,222,128,0.25), 0 8px 24px rgba(0,0,0,0.4)' : 'none';
               }}
             >
               <CheckCircle2 className="w-5 h-5" />
@@ -955,8 +981,11 @@ export default function QuoteViewPage() {
           {/* AI Chat Panel */}
           {showMessagePanel && (
             <div className="rounded-2xl slide-down overflow-hidden" style={{
-              background: '#131920',
-              border: '1px solid rgba(74,222,128,0.15)',
+              background: 'rgba(19,25,32,0.8)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(74,222,128,0.2)',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
             }}>
               {/* Chat header */}
               <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(74,222,128,0.1)' }}>
