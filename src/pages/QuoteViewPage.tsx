@@ -702,7 +702,7 @@ export default function QuoteViewPage() {
             {hours && (
               <div className="flex items-center gap-1.5 text-white/80 text-sm">
                 <Clock className="w-4 h-4" />
-                <span>~{hours} hrs</span>
+                <span>~{(() => { const h = Math.floor(Number(hours)); const m = Math.round((Number(hours) - h) * 60); return m > 0 ? `${h}h ${m}m` : `${h}h`; })()}</span>
               </div>
             )}
             {(quote.bedrooms > 0 || quote.bathrooms > 0) && (
