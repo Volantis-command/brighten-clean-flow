@@ -111,7 +111,7 @@ function CheckItem({ text, delay }: { text: string; delay: number }) {
           />
         </svg>
       </div>
-      <span className="text-sm text-white/80">{text}</span>
+      <span className="text-sm text-white">{text}</span>
     </div>
   );
 }
@@ -205,10 +205,10 @@ function DeclinedScreen({ name }: { name: string }) {
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           No worries at all{name ? `, ${name}` : ''}.
         </h1>
-        <p className="text-white/50 text-sm">
+        <p className="text-white/80 text-sm">
           If you change your mind, just call us on <strong className="text-white/70">0418 878 707</strong>.
         </p>
-        <p className="text-white/50 text-sm">
+        <p className="text-white/80 text-sm">
           We hope to work with you in the future. 🌿
         </p>
       </div>
@@ -245,7 +245,7 @@ function AlreadyDeclinedScreen() {
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           This quote is no longer active.
         </h1>
-        <p className="text-white/50 text-sm">
+        <p className="text-white/80 text-sm">
           Call <strong className="text-white/70">0418 878 707</strong> if you'd like a new quote.
         </p>
       </div>
@@ -266,7 +266,7 @@ function NotFoundScreen() {
         <h1 className="text-2xl font-extrabold text-white" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
           Quote link expired or invalid
         </h1>
-        <p className="text-white/50 text-sm">
+        <p className="text-white/80 text-sm">
           Call <strong className="text-white/70">0418 878 707</strong> for assistance.
         </p>
       </div>
@@ -682,7 +682,7 @@ export default function QuoteViewPage() {
 
           {/* Address */}
           {(quote.property_address || quote.property_name) && (
-            <p className="text-white/60 text-sm mb-5">
+            <p className="text-white text-sm mb-5">
               📍 {quote.property_address || quote.property_name}
             </p>
           )}
@@ -693,20 +693,20 @@ export default function QuoteViewPage() {
               style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
               ${price.toFixed(2)}
             </p>
-            <p className="text-white/40 text-sm mt-1">inc GST</p>
+            <p className="text-white/50 text-sm mt-1">inc GST</p>
           </div>
 
           {/* Meta row */}
           <div className="flex items-center justify-center gap-6 mt-4 pt-4"
             style={{ borderTop: '1px solid rgba(74,222,128,0.15)' }}>
             {hours && (
-              <div className="flex items-center gap-1.5 text-white/50 text-sm">
+              <div className="flex items-center gap-1.5 text-white/80 text-sm">
                 <Clock className="w-4 h-4" />
                 <span>~{hours} hrs</span>
               </div>
             )}
             {(quote.bedrooms > 0 || quote.bathrooms > 0) && (
-              <div className="text-white/50 text-sm">
+              <div className="text-white/80 text-sm">
                 {quote.bedrooms || 0}BR / {quote.bathrooms || 0}BA
               </div>
             )}
@@ -715,7 +715,7 @@ export default function QuoteViewPage() {
 
         {/* ═══ WHAT'S INCLUDED ═══ */}
         <div className="space-y-3 fade-in" style={{ animationDelay: '0.3s' }}>
-          <h2 className="text-sm font-bold text-white/40 uppercase tracking-widest flex items-center gap-2 px-1">
+          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2 px-1">
             <span style={{ color: '#FEDB00' }}>✨</span> What's Included
           </h2>
           <div className="rounded-2xl p-5 space-y-3" style={{
@@ -734,7 +734,7 @@ export default function QuoteViewPage() {
         {/* ═══ ADJUST YOUR QUOTE ═══ */}
         {hasInteractive && (
           <div className="space-y-3 fade-in" style={{ animationDelay: '0.35s' }}>
-            <h2 className="text-sm font-bold text-white/40 uppercase tracking-widest flex items-center gap-2 px-1">
+            <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2 px-1">
               <span style={{ color: '#4ADE80' }}>⚙</span> Adjust Your Quote
             </h2>
             <div className="rounded-2xl p-4 space-y-3" style={{
@@ -750,7 +750,7 @@ export default function QuoteViewPage() {
                 <label className="flex items-center justify-between cursor-pointer py-1">
                   <div>
                     <div className="text-sm font-semibold text-white">Linen service</div>
-                    <div className="text-xs text-white/40">Fresh sheets, towels & bath mats</div>
+                    <div className="text-xs text-white/60">Fresh sheets, towels & bath mats</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
@@ -772,7 +772,7 @@ export default function QuoteViewPage() {
                 <label className="flex items-center justify-between cursor-pointer py-1">
                   <div>
                     <div className="text-sm font-semibold text-white">Consumables restock</div>
-                    <div className="text-xs text-white/40">Soap, shampoo, toilet paper, coffee & tea</div>
+                    <div className="text-xs text-white/60">Soap, shampoo, toilet paper, coffee & tea</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
@@ -792,7 +792,7 @@ export default function QuoteViewPage() {
 
               <div className="pt-2 mt-1" style={{ borderTop: '1px solid rgba(74,222,128,0.1)' }}>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/60">Updated total</span>
+                  <span className="text-sm text-white">Updated total</span>
                   <span className="text-xl font-extrabold" style={{ color: '#4ADE80', fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
                     ${price.toFixed(2)} <span className="text-xs font-normal text-white/30">inc GST</span>
                   </span>
@@ -812,10 +812,10 @@ export default function QuoteViewPage() {
             boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
             animationDelay: '0.4s',
           }}>
-            <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
+            <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">
               Special notes from your request
             </p>
-            <p className="text-sm text-white/70 whitespace-pre-wrap">{quote.notes}</p>
+            <p className="text-sm text-white whitespace-pre-wrap">{quote.notes}</p>
           </div>
         )}
 
@@ -849,7 +849,7 @@ export default function QuoteViewPage() {
                 onCheckedChange={(v) => setTcsAccepted(v === true)}
                 className="mt-0.5 border-white/30 data-[state=checked]:bg-[#3A7560] data-[state=checked]:border-[#3A7560]"
               />
-              <label htmlFor="tcs-quote" className="text-sm text-white/70 cursor-pointer">
+              <label htmlFor="tcs-quote" className="text-sm text-white cursor-pointer">
                 I have read and agree to the{' '}
                 <button
                   type="button"
@@ -882,7 +882,7 @@ export default function QuoteViewPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Date</label>
+                  <label className="text-white/70 text-xs font-bold uppercase tracking-wider block mb-1.5">Date</label>
                   <input
                     type="date"
                     min={minDate}
@@ -898,7 +898,7 @@ export default function QuoteViewPage() {
                 </div>
 
                 <div>
-                  <label className="text-white/50 text-xs font-bold uppercase tracking-wider block mb-1.5">Start Time</label>
+                  <label className="text-white/70 text-xs font-bold uppercase tracking-wider block mb-1.5">Start Time</label>
                   <TimeSelect
                     value={preferredTime}
                     onChange={setPreferredTime}
@@ -993,14 +993,14 @@ export default function QuoteViewPage() {
                   style={{ background: 'rgba(74,222,128,0.15)', color: '#4ADE80' }}>B</div>
                 <div>
                   <div className="text-sm font-bold text-white">Brightly Assistant</div>
-                  <div className="text-xs text-white/40">Usually replies instantly</div>
+                  <div className="text-xs text-white/60">Usually replies instantly</div>
                 </div>
               </div>
 
               {/* Chat bubbles */}
               <div className="px-4 py-3 space-y-3 min-h-[80px] max-h-64 overflow-y-auto" id="chat-scroll">
                 {chatHistory.length === 0 && (
-                  <p className="text-white/40 text-sm text-center py-2">Ask anything about this quote or our service.</p>
+                  <p className="text-white/60 text-sm text-center py-2">Ask anything about this quote or our service.</p>
                 )}
                 {chatHistory.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
