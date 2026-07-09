@@ -618,6 +618,14 @@ export default function QuoteViewPage() {
   const gpPct = Number(quote.gp_percent || 0);
   const hasInteractive = (linenCostStored > 0 || consumablesCostStored > 0) && gpPct > 0;
 
+  // Sell-price contribution inc GST — what toggling actually changes the price by
+  const linenSellContrib = hasInteractive && gpPct > 0
+    ? (linenCostStored / (1 - gpPct)) * 1.1
+    : linenCostStored;
+  const consumablesSellContrib = hasInteractive && gpPct > 0
+    ? (consumablesCostStored / (1 - gpPct)) * 1.1
+    : consumablesCostStored;
+
   const adjustedCost = labourCostStored
     + (linenOn ? linenCostStored : 0)
     + (consumablesOn ? consumablesCostStored : 0);
@@ -746,7 +754,7 @@ export default function QuoteViewPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
-                      +${linenCostStored.toFixed(2)}
+                      +${linenSellContrib.toFixed(2)}
                     </span>
                     <button
                       onClick={() => setLinenOn(v => !v)}
@@ -768,7 +776,7 @@ export default function QuoteViewPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
-                      +${consumablesCostStored.toFixed(2)}
+                      +${consumablesSellContrib.toFixed(2)}
                     </span>
                     <button
                       onClick={() => setConsumablesOn(v => !v)}
@@ -818,11 +826,7 @@ export default function QuoteViewPage() {
             <Shield className="w-4 h-4" />
             <span>Fully Insured</span>
           </div>
-          <div className="flex items-center gap-1.5 text-white/40 text-xs">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Police Checked</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-white/40 text-xs">
+<div className="flex items-center gap-1.5 text-white/40 text-xs">
             <Star className="w-4 h-4" />
             <span>5-Star Quality</span>
           </div>
