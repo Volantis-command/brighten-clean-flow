@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
   // "expired link" message (no session).
   if (hasSession === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#3A7560] px-4">
         <p className="text-primary-foreground/70 text-sm">Loading…</p>
       </div>
     );
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
 
   if (!hasSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#3A7560] px-4">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-10">
             <h1
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#3A7560] px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
           <h1

@@ -79,7 +79,7 @@ export default function PhoneLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#3A7560] px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
           <h1
