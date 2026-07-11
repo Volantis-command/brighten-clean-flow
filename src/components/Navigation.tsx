@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
 
@@ -31,13 +32,14 @@ const navItems: NavItem[] = [
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
-// Admin mobile bottom nav — explicit 5-item list (Map excluded; Airbnb Quote included)
-const adminMobileItems: NavItem[] = [
-  { label: 'Alerts',       path: '/actions',       icon: Inbox,          roles: ['admin'] },
+// Admin mobile bottom nav — 4 primary tabs + a "More" button that opens the
+// full section list, so every admin area is reachable from a phone (previously
+// 11 of 16 sections were unreachable on mobile).
+const adminPrimaryItems: NavItem[] = [
+  { label: 'Alerts',       path: '/actions',       icon: Inbox,           roles: ['admin'] },
   { label: 'Dashboard',    path: '/dashboard',     icon: LayoutDashboard, roles: ['admin'] },
-  { label: 'My Jobs',      path: '/my-jobs',       icon: ClipboardList,  roles: ['admin'] },
-  { label: 'Schedule',     path: '/schedule',      icon: Calendar,       roles: ['admin'] },
-  { label: 'Airbnb Quote', path: '/airbnb-quote',  icon: Sparkles,       roles: ['admin'] },
+  { label: 'Schedule',     path: '/schedule',      icon: Calendar,        roles: ['admin'] },
+  { label: 'Airbnb Quote', path: '/airbnb-quote',  icon: Sparkles,        roles: ['admin'] },
 ];
 
 // Cleaners get a simplified bottom nav
@@ -54,6 +56,7 @@ const NAV_BORDER = 'rgba(255,255,255,0.06)';
 export function MobileNav() {
   const { role } = useAuth();
   const { totalCount } = useAlertsData();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Cleaners get a simplified 4-item nav with bigger tap targets
   if (role === 'cleaner') {
@@ -92,11 +95,124 @@ export function MobileNav() {
     );
   }
 
-  const mobileItems = role === 'admin'
-    ? adminMobileItems.map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item)
-    : navItems.filter((item) => role && item.roles.includes(role))
-        .map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item)
-        .slice(0, 5);
+  // Admin gets 4 primary tabs + a "More" sheet listing every section.
+  if (role === 'admin') {
+    const primary = adminPrimaryItems.map(item =>
+      item.path === '/actions' ? { ...item, badge: totalCount } : item
+    );
+    const allAdmin = navItems
+      .filter(item => item.roles.includes('admin'))
+      .map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item);
+
+    return (
+      <>
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+          style={{ background: NAV_BG, borderTop: `1px solid ${NAV_BORDER}` }}
+        >
+          <div className="flex justify-around items-center py-2 px-1">
+            {primary.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
+                    isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <div className="relative">
+                      <item.icon className="h-5 w-5" />
+                      {item.badge && item.badge > 0 && (
+                        <span
+                          className="absolute -top-1.5 -right-2.5 text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 tabular-nums"
+                          style={{ background: '#EF4444', color: '#FFFFFF' }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-semibold truncate">{item.label}</span>
+                    {isActive && (
+                      <div
+                        className="w-5 h-0.5 rounded-full"
+                        style={{ background: '#FEDB00', boxShadow: '0 0 6px rgba(254,219,0,0.6)' }}
+                      />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+
+            <button
+              onClick={() => setMoreOpen(true)}
+              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl min-w-0 text-[#86EFAC]"
+            >
+              <LayoutGrid className="h-5 w-5" />
+              <span className="text-[10px] font-semibold">More</span>
+            </button>
+          </div>
+        </nav>
+
+        {moreOpen && (
+          <div className="fixed inset-0 z-[60] md:hidden" onClick={() => setMoreOpen(false)}>
+            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} />
+            <div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl p-5 pb-9 safe-area-bottom"
+              style={{ background: NAV_BG, borderTop: `1px solid ${NAV_BORDER}` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-extrabold text-lg" style={{ color: '#F0FDF4' }}>All sections</h3>
+                <button onClick={() => setMoreOpen(false)} className="p-1 text-[#86EFAC]" aria-label="Close">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {allAdmin.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMoreOpen(false)}
+                    className={({ isActive }) =>
+                      `flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors relative ${
+                        isActive ? 'text-[#FEDB00]' : 'text-[#F0FDF4]'
+                      }`
+                    }
+                    style={({ isActive }) => ({
+                      background: isActive ? 'rgba(254,219,0,0.10)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${isActive ? 'rgba(254,219,0,0.3)' : NAV_BORDER}`,
+                    })}
+                  >
+                    <div className="relative">
+                      <item.icon className="h-6 w-6" />
+                      {item.badge && item.badge > 0 && (
+                        <span
+                          className="absolute -top-2 -right-3 text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 tabular-nums"
+                          style={{ background: '#EF4444', color: '#FFFFFF' }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-semibold text-center leading-tight">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Head cleaner (and any other non-cleaner role) — first 5 permitted items.
+  const mobileItems = navItems
+    .filter((item) => role && item.roles.includes(role))
+    .map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item)
+    .slice(0, 5);
 
   return (
     <nav
