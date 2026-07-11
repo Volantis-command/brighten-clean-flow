@@ -82,6 +82,12 @@ export default function StaffPage() {
   const queryClient = useQueryClient();
   const { data: staff = [], isLoading } = useStaffList();
   const staffIds = staff.map(s => s.id);
+  const [staffSearch, setStaffSearch] = useState('');
+  const filteredStaff = staff.filter((m: any) => {
+    const q = staffSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [m.full_name, m.email, m.phone].filter(Boolean).some((v: any) => String(v).toLowerCase().includes(q));
+  });
   const { data: perfBadges = {} } = useStaffPerformanceBadges(staffIds);
   const { data: onboardingStatuses = {} } = useStaffOnboardingStatuses(staffIds);
   const [createOpen, setCreateOpen] = useState(false);
@@ -420,13 +426,25 @@ export default function StaffPage() {
       ) : staff.length === 0 ? (
         <div className="bg-card rounded-2xl shadow-md p-6 text-center text-muted-foreground">No staff members yet. Invite your first team member!</div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {staff.map((m) => (
-            <StaffCard key={m.id} member={m} perfBadges={perfBadges} onboardingStatuses={onboardingStatuses}
-              isAdmin={isAdmin} onSelect={() => setSelectedStaff(m)} onEdit={(e) => { e.stopPropagation(); openEdit(m); }}
-              onRemove={(e) => { e.stopPropagation(); setRemoveMember(m); }}
-              onSendMagicLink={(e) => { e.stopPropagation(); setMagicLinkConfirm(m); }} />
-          ))}
+        <div className="space-y-3">
+          <Input
+            value={staffSearch}
+            onChange={(e) => setStaffSearch(e.target.value)}
+            placeholder="Search staff by name, email or phone…"
+            className="max-w-sm bg-card"
+          />
+          {filteredStaff.length === 0 ? (
+            <div className="bg-card rounded-2xl shadow-md p-6 text-center text-muted-foreground">No staff match your search.</div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredStaff.map((m) => (
+                <StaffCard key={m.id} member={m} perfBadges={perfBadges} onboardingStatuses={onboardingStatuses}
+                  isAdmin={isAdmin} onSelect={() => setSelectedStaff(m)} onEdit={(e) => { e.stopPropagation(); openEdit(m); }}
+                  onRemove={(e) => { e.stopPropagation(); setRemoveMember(m); }}
+                  onSendMagicLink={(e) => { e.stopPropagation(); setMagicLinkConfirm(m); }} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
