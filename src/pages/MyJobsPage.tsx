@@ -20,12 +20,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { acceptJob, declineJob } from '@/lib/jobAssignment';
 import { jobLabel } from '@/lib/jobLabel';
 
+// Dark-theme status chips (matches src/components/ui/status-badge.tsx tones) —
+// translucent tint + bright text, no more pastel light stickers on dark cards.
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  scheduled: { label: 'Upcoming', className: 'bg-muted text-muted-foreground border-0' },
-  confirmed: { label: 'Upcoming', className: 'bg-muted text-muted-foreground border-0' },
-  in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800 border-0' },
-  completed: { label: 'Completed', className: 'bg-brightly/10 text-brightly border-0' },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-destructive border-0' },
+  scheduled: { label: 'Upcoming', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA] border-0' },
+  confirmed: { label: 'Upcoming', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA] border-0' },
+  in_progress: { label: 'In Progress', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D] border-0' },
+  completed: { label: 'Completed', className: 'bg-[rgba(74,222,128,0.15)] text-[#4ADE80] border-0' },
+  cancelled: { label: 'Cancelled', className: 'bg-[rgba(248,113,113,0.15)] text-[#F87171] border-0' },
 };
 
 type View = 'today' | 'tomorrow' | 'week';
@@ -314,7 +316,7 @@ export default function MyJobsPage() {
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className="bg-yellow-100 text-yellow-800 border-0 text-[10px] font-bold">
+                    <Badge className="bg-[rgba(96,165,250,0.15)] text-[#60A5FA] border-0 text-[10px] font-bold">
                       NEW OFFER
                     </Badge>
                     {job.first_clean && (
