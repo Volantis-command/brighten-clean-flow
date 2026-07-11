@@ -125,14 +125,34 @@ Deno.serve(async (req: Request) => {
         (prop as any)?.checkout_time ||
         "10:00";
 
-      // Mirror admin handleApprove (BookingSuggestionsPage:54). Client-
+      const cleanDate = (suggestion as any).suggested_clean_date;
+
+      // Guard 1 — don't double-book: refuse if a live job already exists for
+      // this property on this date (Hostaway pipeline, prior approval, etc.).
+      const { data: dupe } = await admin
+        .from("jobs")
+        .select("id")
+        .eq("property_id", property_id)
+        .eq("scheduled_date", cleanDate)
+        .neq("status", "cancelled")
+        .limit(1);
+      if (dupe && dupe.length > 0) {
+        // Mark the suggestion converted-to-existing so it stops nagging, but
+        // don't create a second job.
+        await admin.from("booking_suggestions")
+          .update({ status: "converted", created_job_id: dupe[0].id, decided_at: new Date().toISOString() })
+          .eq("id", suggestion_id).eq("status", "pending");
+        return json({ ok: true, job_id: dupe[0].id, deduped: true });
+      }
+
+      // Mirror admin handleApprove (BookingSuggestionsPage). Client-
       // approved jobs land at awaiting_cleaner so an admin still picks
       // who goes — the client just confirms the date should be cleaned.
       const { data: job, error: jobErr } = await admin
         .from("jobs")
         .insert({
           property_id,
-          scheduled_date: (suggestion as any).suggested_clean_date,
+          scheduled_date: cleanDate,
           scheduled_time: finalTime,
           cleaner_1_id: finalCleanerId,
           status: finalCleanerId ? "confirmed" : "awaiting_cleaner",
@@ -144,7 +164,9 @@ Deno.serve(async (req: Request) => {
         .single();
       if (jobErr) return json({ error: `job insert failed: ${jobErr.message}` }, 500);
 
-      await admin
+      // Guard 2 — atomic claim: only convert if STILL pending. If another
+      // approval already converted it, roll back the job we just made.
+      const { data: claimed, error: claimErr } = await admin
         .from("booking_suggestions")
         .update({
           status: "converted",
@@ -152,7 +174,14 @@ Deno.serve(async (req: Request) => {
           decided_at: new Date().toISOString(),
           // decided_by stays null on portal-approve (no staff user).
         })
-        .eq("id", suggestion_id);
+        .eq("id", suggestion_id)
+        .eq("status", "pending")
+        .select("id");
+      if (claimErr) return json({ error: `claim failed: ${claimErr.message}` }, 500);
+      if (!claimed || claimed.length === 0) {
+        await admin.from("jobs").delete().eq("id", job.id);
+        return json({ error: "suggestion already decided" }, 409);
+      }
 
       // Notify admin so they can assign a cleaner.
       const { data: admins } = await admin

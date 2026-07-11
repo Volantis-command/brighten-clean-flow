@@ -131,6 +131,27 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── Idempotency guard ──
+    // If this quote already has a (non-cancelled) parent job, it's already been
+    // booked. Return that job instead of creating a second one + a whole second
+    // recurring series. This kills the double-tap / retry duplicate-booking bug
+    // where the quote page marks 'accepted' before this function runs.
+    if (linkedQuoteId) {
+      const { data: alreadyBooked } = await adminClient
+        .from("jobs")
+        .select("id, status")
+        .eq("linked_quote_id", linkedQuoteId)
+        .is("recurring_parent_id", null)
+        .neq("status", "cancelled")
+        .limit(1);
+      if (alreadyBooked && alreadyBooked.length > 0) {
+        return new Response(
+          JSON.stringify({ job_id: alreadyBooked[0].id, status: alreadyBooked[0].status, already_booked: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // ── Validate scheduled_time (must be HH:MM or null) ──
     const timeRegex = /^\d{2}:\d{2}$/;
     const scheduledTime = preferred_time && timeRegex.test(preferred_time) ? preferred_time : null;

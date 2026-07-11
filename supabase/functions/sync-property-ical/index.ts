@@ -48,28 +48,43 @@ Deno.serve(async (req) => {
         const events = parseICalEvents(text);
 
         const now = new Date();
-        const cutoff = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000); // 60 days
+        const todayStr = now.toISOString().slice(0, 10);
+        const cutoffStr = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)
+          .toISOString().slice(0, 10); // 60-day horizon
+
+        const source = prop.ical_source ? `${prop.ical_source}_ical` : "manual_ical";
+        const feedUids = new Set<string>();
 
         for (const ev of events) {
           if (!ev.dtend) continue;
+
+          // Skip Airbnb/host "blocked" or "not available" calendar entries —
+          // those are owner holds, not guest stays, and must NOT create cleans
+          // (this was a source of phantom cleans on days with no checkout).
+          const summary = (ev.summary || "").toLowerCase();
+          if (/not available|unavailable|blocked/.test(summary)) continue;
+
           const checkoutDate = icalDateToISO(ev.dtend);
-          const checkoutDt = new Date(checkoutDate + "T00:00:00Z");
-          if (checkoutDt < now || checkoutDt > cutoff) continue;
+          // Compare by DATE STRING, not timestamp. The old `checkoutDt < now`
+          // compared midnight-UTC against the current time, which silently
+          // dropped every same-day checkout. Include today → 60-day horizon.
+          if (checkoutDate < todayStr || checkoutDate > cutoffStr) continue;
 
           const checkinDate = ev.dtstart ? icalDateToISO(ev.dtstart) : null;
+          feedUids.add(ev.uid);
 
-          // Upsert by property_id + external_ref
-          const { data: existing } = await supabase
+          const { data: existingRows } = await supabase
             .from("booking_suggestions")
-            .select("id")
+            .select("id, status, checkout_date, checkin_date, suggested_clean_date")
             .eq("property_id", prop.id)
             .eq("external_ref", ev.uid)
-            .maybeSingle();
+            .limit(1);
+          const existing = (existingRows as any[])?.[0];
 
           if (!existing) {
             await supabase.from("booking_suggestions").insert({
               property_id: prop.id,
-              source: prop.ical_source ? `${prop.ical_source}_ical` : "manual_ical",
+              source,
               external_ref: ev.uid,
               guest_name: ev.summary || null,
               checkin_date: checkinDate,
@@ -79,6 +94,38 @@ Deno.serve(async (req) => {
               status: "pending",
             });
             results.push(`${prop.id}: new suggestion ${ev.uid}`);
+          } else if (
+            existing.status === "pending" &&
+            (existing.checkout_date !== checkoutDate || existing.checkin_date !== checkinDate)
+          ) {
+            // Guest moved their dates — keep the still-pending suggestion in
+            // sync. Only shift the suggested clean date if the admin hasn't
+            // manually overridden it (still equals the old checkout).
+            const patch: Record<string, any> = { checkout_date: checkoutDate, checkin_date: checkinDate };
+            if (existing.suggested_clean_date === existing.checkout_date) {
+              patch.suggested_clean_date = checkoutDate;
+            }
+            await supabase.from("booking_suggestions").update(patch).eq("id", existing.id);
+            results.push(`${prop.id}: updated suggestion ${ev.uid} -> ${checkoutDate}`);
+          }
+        }
+
+        // Cancellation cleanup: any still-pending iCal suggestion in the synced
+        // window whose event vanished from the feed = guest cancelled / host
+        // removed it. Expire it so the clean doesn't linger. Never touch
+        // already-approved (converted) suggestions or non-iCal sources.
+        const { data: pendingRows } = await supabase
+          .from("booking_suggestions")
+          .select("id, external_ref")
+          .eq("property_id", prop.id)
+          .eq("status", "pending")
+          .ilike("source", "%ical")
+          .gte("checkout_date", todayStr)
+          .lte("checkout_date", cutoffStr);
+        for (const s of (pendingRows || []) as any[]) {
+          if (s.external_ref && !feedUids.has(s.external_ref)) {
+            await supabase.from("booking_suggestions").update({ status: "expired" }).eq("id", s.id);
+            results.push(`${prop.id}: expired vanished suggestion ${s.external_ref}`);
           }
         }
 

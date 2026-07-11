@@ -51,6 +51,23 @@ export default function BookingSuggestionsPage() {
     try {
       const prop = approveModal.properties as any;
       const finalCleanerId = cleanerId || prop?.default_cleaner_id || null;
+
+      // Guard 1 — don't double-book: if a live job already exists for this
+      // property on this date (e.g. created by the Hostaway pipeline, or a
+      // previous approval), refuse instead of stacking a second clean.
+      const { data: dupe } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('property_id', approveModal.property_id)
+        .eq('scheduled_date', approveModal.suggested_clean_date)
+        .neq('status', 'cancelled')
+        .limit(1);
+      if (dupe && dupe.length > 0) {
+        toast.error('A clean already exists for this property on that date.');
+        setSubmitting(false);
+        return;
+      }
+
       const { data: job, error: jobErr } = await supabase.from('jobs').insert({
         property_id: approveModal.property_id,
         scheduled_date: approveModal.suggested_clean_date,
@@ -63,9 +80,21 @@ export default function BookingSuggestionsPage() {
       } as any).select('id').single();
       if (jobErr) throw jobErr;
 
-      await (supabase.from('booking_suggestions' as any) as any)
+      // Guard 2 — atomic claim: only convert if still pending. If another tab
+      // or admin already converted this suggestion, we lost the race — roll
+      // back the job we just created so we don't leave a duplicate behind.
+      const { data: claimed, error: claimErr } = await (supabase.from('booking_suggestions' as any) as any)
         .update({ status: 'converted', created_job_id: job.id, decided_at: new Date().toISOString(), decided_by: user.id })
-        .eq('id', approveModal.id);
+        .eq('id', approveModal.id)
+        .eq('status', 'pending')
+        .select('id');
+      if (claimErr) throw claimErr;
+      if (!claimed || claimed.length === 0) {
+        await supabase.from('jobs').delete().eq('id', job.id);
+        toast.error('This booking was already approved elsewhere.');
+        setSubmitting(false);
+        return;
+      }
 
       // Sync acceptance + notify cleaner
       if (job?.id && finalCleanerId) {

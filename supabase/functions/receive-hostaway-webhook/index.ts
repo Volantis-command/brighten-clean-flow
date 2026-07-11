@@ -88,6 +88,17 @@ const CANCELLED_STATUSES = new Set([
   'cancelled', 'canceled', 'denied', 'declined', 'expired',
 ]);
 
+// Only these statuses represent a confirmed guest stay that needs a turnover
+// clean. Inquiries, pending/awaiting-payment holds and owner blocks must NOT
+// create cleans (that was the "phantom cleans on days with no checkout" bug).
+// An empty/missing status on a reservation event is treated as confirmed —
+// Hostaway sends a status on real bookings, so absence means fall back to
+// creating rather than silently dropping a genuine clean.
+const CONFIRMED_STATUSES = new Set(['new', 'modified', 'confirmed']);
+function isConfirmedStay(status: string): boolean {
+  return status === '' || CONFIRMED_STATUSES.has(status);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -181,19 +192,34 @@ Deno.serve(async (req) => {
     });
   }
 
-  // 6. Look up existing job by reservation id (idempotency)
-  const { data: existingJob, error: existErr } = await sb
+  // 6. Look up existing job by reservation id (idempotency).
+  // Use limit(1)+array, NOT maybeSingle(): if duplicate jobs already exist for
+  // this reservation, maybeSingle() throws PGRST116, which the old code
+  // swallowed and then fell through to CREATE ANOTHER duplicate — the
+  // compounding bug where every webhook/sync made the pile grow. Taking the
+  // earliest existing row means we update it and never add more.
+  const { data: existingRows, error: existErr } = await sb
     .from('jobs')
     .select('id, status, scheduled_date, scheduled_time, property_id')
     .eq('hostaway_reservation_id', reservationId)
-    .maybeSingle();
+    .order('created_at', { ascending: true })
+    .limit(1);
 
-  if (existErr && existErr.code !== 'PGRST116') {
+  if (existErr) {
     return json({ error: 'Job lookup failed', detail: existErr.message }, 500);
   }
+  const existingJob = existingRows?.[0] ?? null;
 
   const reservationStatus = (data.status ?? '').toLowerCase();
   const isCancellation = CANCELLED_STATUSES.has(reservationStatus);
+
+  // Ignore inquiries / pending / owner blocks etc. — but only when there's no
+  // existing job to maintain. If a job already exists and the reservation is
+  // now non-confirmed (but not an outright cancellation), fall through so the
+  // update/cancel logic below can react to it.
+  if (!isCancellation && !isConfirmedStay(reservationStatus) && !existingJob) {
+    return json({ ok: true, action: 'ignored_unconfirmed', status: reservationStatus, reservation_id: reservationId });
+  }
 
   // 7. Cancellation path — soft-cancel the job if it exists
   if (isCancellation) {

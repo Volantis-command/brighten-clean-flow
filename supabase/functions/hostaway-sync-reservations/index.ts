@@ -60,6 +60,7 @@ interface ReservationResult {
     | 'no_property'
     | 'skipped_out_of_range'
     | 'skipped_no_departure'
+    | 'skipped_unconfirmed'
     | 'error';
   job_id: string | null;
   error?: string;
@@ -68,6 +69,15 @@ interface ReservationResult {
 const CANCELLED_STATUSES = new Set([
   'cancelled', 'canceled', 'denied', 'declined', 'expired',
 ]);
+
+// Only confirmed guest stays generate turnover cleans. Inquiries / pending /
+// awaiting-payment holds must NOT create jobs. Empty status → treat as
+// confirmed (Hostaway sends a status on real bookings; absence = fall back to
+// creating rather than dropping a genuine clean).
+const CONFIRMED_STATUSES = new Set(['new', 'modified', 'confirmed']);
+function isConfirmedStay(status: string): boolean {
+  return status === '' || CONFIRMED_STATUSES.has(status);
+}
 
 function todayPlusDays(days: number): string {
   const d = new Date();
@@ -208,14 +218,19 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Look up existing job by reservation id (idempotency)
-    const { data: existingJob, error: existErr } = await sb
+    // Look up existing job by reservation id (idempotency).
+    // limit(1)+array, NOT maybeSingle(): if duplicates already exist,
+    // maybeSingle() throws PGRST116 which the old code swallowed and then
+    // created yet another duplicate. Taking the earliest row updates it
+    // instead of compounding the pile.
+    const { data: existingRows, error: existErr } = await sb
       .from('jobs')
       .select('id, status, scheduled_date, scheduled_time')
       .eq('hostaway_reservation_id', reservationId)
-      .maybeSingle();
+      .order('created_at', { ascending: true })
+      .limit(1);
 
-    if (existErr && existErr.code !== 'PGRST116') {
+    if (existErr) {
       results.push({
         reservation_id: reservationId,
         listing_id: listingId,
@@ -224,6 +239,21 @@ Deno.serve(async (req) => {
         status: 'error',
         job_id: null,
         error: `Job lookup failed: ${existErr.message}`,
+      });
+      continue;
+    }
+    const existingJob = existingRows?.[0] ?? null;
+
+    // Skip inquiries / pending / holds that aren't confirmed stays (and don't
+    // already have a job to maintain).
+    if (!isCancellation && !isConfirmedStay(reservationStatus) && !existingJob) {
+      results.push({
+        reservation_id: reservationId,
+        listing_id: listingId,
+        departure_date: departureDate,
+        guest_name: guestName,
+        status: 'skipped_unconfirmed',
+        job_id: null,
       });
       continue;
     }

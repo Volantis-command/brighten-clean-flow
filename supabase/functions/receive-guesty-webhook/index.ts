@@ -96,6 +96,24 @@ Deno.serve(async (req) => {
     const scheduledDate = checkoutDt.toISOString().split("T")[0];
     const scheduledTime = property.checkout_time || "10:00";
 
+    // Dedup: Guesty retries the same webhook delivery. Don't create a second
+    // suggestion for a reservation we already have (any status) — this was a
+    // duplicate-cleans source once suggestions got approved separately.
+    if (reservationId) {
+      const { data: existingSug } = await supabase
+        .from("booking_suggestions")
+        .select("id")
+        .eq("property_id", property.id)
+        .eq("external_ref", reservationId)
+        .limit(1);
+      if (existingSug && existingSug.length > 0) {
+        return new Response(
+          JSON.stringify({ ok: true, deduped: true, suggestion_id: existingSug[0].id }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const { data: suggestion, error: sugErr } = await supabase
       .from("booking_suggestions")
       .insert({
