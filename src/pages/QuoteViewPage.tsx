@@ -78,6 +78,60 @@ function getInclusions(quote: any): string[] {
   return base;
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Single source of truth for the interactive quote price. The client can
+ * toggle linen / consumables on the quote page; this derives the resulting
+ * cost, ex-GST and inc-GST sell prices from the quote's stored cost breakdown.
+ * Used by BOTH the live display and the accept handlers so the price the
+ * client sees is exactly the price that gets saved, invoiced and charged.
+ */
+function computeAdjustedQuote(quote: any, linenOn: boolean, consumablesOn: boolean) {
+  const labourCostStored = Number(quote?.labour_cost || 0);
+  const linenCostStored = Number(quote?.linen_cost || 0);
+  const consumablesCostStored = Number(quote?.consumables_cost || 0);
+  const gpPct = Number(quote?.gp_percent || 0);
+  const hasInteractive = (linenCostStored > 0 || consumablesCostStored > 0) && gpPct > 0;
+
+  const cost = labourCostStored
+    + (linenOn ? linenCostStored : 0)
+    + (consumablesOn ? consumablesCostStored : 0);
+  const sellExGst = hasInteractive && labourCostStored > 0
+    ? cost / (1 - gpPct)
+    : Number(quote?.sell_price_ex_gst || 0);
+  const sellIncGst = hasInteractive && labourCostStored > 0
+    ? sellExGst * 1.1
+    : Number(quote?.sell_price_inc_gst || quote?.price || 0);
+  const linenSellContrib = hasInteractive && gpPct > 0
+    ? (linenCostStored / (1 - gpPct)) * 1.1
+    : linenCostStored;
+  const consumablesSellContrib = hasInteractive && gpPct > 0
+    ? (consumablesCostStored / (1 - gpPct)) * 1.1
+    : consumablesCostStored;
+
+  return {
+    labourCostStored, linenCostStored, consumablesCostStored, gpPct,
+    hasInteractive, cost, sellExGst, sellIncGst,
+    linenSellContrib, consumablesSellContrib,
+  };
+}
+
+/** The quote-row patch that persists a client's toggle choices at accept time. */
+function pricingPatchForAccept(quote: any, linenOn: boolean, consumablesOn: boolean) {
+  const a = computeAdjustedQuote(quote, linenOn, consumablesOn);
+  if (!a.hasInteractive) return {};
+  return {
+    sell_price_ex_gst: round2(a.sellExGst),
+    sell_price_inc_gst: round2(a.sellIncGst),
+    gst: round2(a.sellExGst * 0.1),
+    total_cost: round2(a.cost),
+    linen_required: linenOn,
+    linen_cost: linenOn ? round2(a.linenCostStored) : 0,
+    consumables_cost: consumablesOn ? round2(a.consumablesCostStored) : 0,
+  };
+}
+
 /* ─── Animated checkmark item ─── */
 function CheckItem({ text, delay }: { text: string; delay: number }) {
   const [visible, setVisible] = useState(false);
@@ -402,6 +456,9 @@ export default function QuoteViewPage() {
     if (!quote) return;
     setConfirming(true);
     try {
+      // Persist the client's linen/consumables toggle choices + adjusted price
+      // so the accepted quote matches exactly what they saw on screen.
+      const adj = computeAdjustedQuote(quote, linenOn, consumablesOn);
       await (supabase as any).from('quotes').update({
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
@@ -409,6 +466,7 @@ export default function QuoteViewPage() {
         tcs_accepted: true,
         tcs_accepted_at: new Date().toISOString(),
         tcs_version: '2026-03',
+        ...pricingPatchForAccept(quote, linenOn, consumablesOn),
       }).eq('quote_token', token);
 
       if (quote.lead_id) {
@@ -431,7 +489,7 @@ export default function QuoteViewPage() {
           client_name: quote.client_name,
           clean_type: quote.clean_type,
           address: quote.property_address,
-          total_inc_gst: quote.sell_price_inc_gst,
+          total_inc_gst: round2(adj.sellIncGst),
           airbnb_onboarding: true,
         },
       }).catch(() => {});
@@ -441,14 +499,19 @@ export default function QuoteViewPage() {
       toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  }, [tcsAccepted, isAirbnbQuote, quote, token]);
+  }, [tcsAccepted, isAirbnbQuote, quote, token, linenOn, consumablesOn]);
 
   // ─── Step 2: Confirm booking with date/time ───
   const handleConfirmBooking = useCallback(async () => {
     if (!quote || !preferredDate) return;
     setConfirming(true);
     try {
-      // 1. Update quote status
+      // 1. Update quote status — and persist the client's linen/consumables
+      // toggle choices + adjusted price BEFORE create-booking-from-quote runs,
+      // because that function reads the price back off the quote row (not the
+      // request body). This is what makes the job + Xero invoice bill exactly
+      // what the client saw and accepted.
+      const adj = computeAdjustedQuote(quote, linenOn, consumablesOn);
       await (supabase as any).from('quotes').update({
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
@@ -456,6 +519,7 @@ export default function QuoteViewPage() {
         tcs_accepted: true,
         tcs_accepted_at: new Date().toISOString(),
         tcs_version: '2026-03',
+        ...pricingPatchForAccept(quote, linenOn, consumablesOn),
       }).eq('quote_token', token);
 
       // 2. Update quote_requests if linked
@@ -496,7 +560,7 @@ export default function QuoteViewPage() {
           client_name: quote.client_name,
           clean_type: quote.clean_type,
           address: quote.property_address,
-          total_inc_gst: quote.sell_price_inc_gst,
+          total_inc_gst: round2(adj.sellIncGst),
           job_id: jobId,
         },
       }).catch(() => {});
@@ -506,7 +570,7 @@ export default function QuoteViewPage() {
       toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  }, [quote, token, preferredDate, preferredTime]);
+  }, [quote, token, preferredDate, preferredTime, linenOn, consumablesOn]);
 
   // ─── Decline flow ───
   const handleDecline = useCallback(async () => {
@@ -611,31 +675,11 @@ export default function QuoteViewPage() {
   const cleanType = quote.clean_type || quote.service_type || 'Clean';
   const inclusions = getInclusions(quote);
 
-  // Interactive pricing — only active when cost components are stored on the quote
-  const labourCostStored = Number(quote.labour_cost || 0);
-  const linenCostStored  = Number(quote.linen_cost || 0);
-  const consumablesCostStored = Number(quote.consumables_cost || 0);
-  const gpPct = Number(quote.gp_percent || 0);
-  const hasInteractive = (linenCostStored > 0 || consumablesCostStored > 0) && gpPct > 0;
-
-  // Sell-price contribution inc GST — what toggling actually changes the price by
-  const linenSellContrib = hasInteractive && gpPct > 0
-    ? (linenCostStored / (1 - gpPct)) * 1.1
-    : linenCostStored;
-  const consumablesSellContrib = hasInteractive && gpPct > 0
-    ? (consumablesCostStored / (1 - gpPct)) * 1.1
-    : consumablesCostStored;
-
-  const adjustedCost = labourCostStored
-    + (linenOn ? linenCostStored : 0)
-    + (consumablesOn ? consumablesCostStored : 0);
-  const adjustedSellExGst = hasInteractive && labourCostStored > 0
-    ? adjustedCost / (1 - gpPct)
-    : Number(quote.sell_price_ex_gst || 0);
-  const adjustedSellIncGst = hasInteractive && labourCostStored > 0
-    ? adjustedSellExGst * 1.1
-    : Number(quote.sell_price_inc_gst || quote.price || 0);
-  const price = adjustedSellIncGst;
+  // Interactive pricing — derived from the SAME helper the accept handlers use,
+  // so what the client sees is exactly what gets saved and invoiced.
+  const adjusted = computeAdjustedQuote(quote, linenOn, consumablesOn);
+  const { hasInteractive, linenCostStored, consumablesCostStored, linenSellContrib, consumablesSellContrib } = adjusted;
+  const price = adjusted.sellIncGst;
 
   return (
     <div className="min-h-screen" style={{

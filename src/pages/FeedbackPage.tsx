@@ -94,36 +94,36 @@ export default function FeedbackPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#FDFDFC]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#0B0F17]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   if (!feedback) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F17] px-4">
         <p className="text-4xl mb-3">🔗</p>
         <p className="font-bold text-lg">Invalid feedback link</p>
-        <p className="text-sm text-muted-foreground">This link may have expired or already been used.</p>
+        <p className="text-sm text-white/60">This link may have expired or already been used.</p>
       </div>
     );
   }
 
   if (feedback.submitted_at && feedback.score !== null && !submitted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F17] px-4">
         <CheckCircle2 className="w-16 h-16 text-primary mb-4" />
         <p className="font-bold text-lg">Feedback already submitted</p>
-        <p className="text-sm text-muted-foreground">Thank you for your response!</p>
+        <p className="text-sm text-white/60">Thank you for your response!</p>
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFC] px-4 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F17] px-4 text-center">
         <CheckCircle2 className="w-16 h-16 text-primary mb-4" />
         <h2 className="text-2xl font-extrabold text-primary mb-2">
           {score && score >= 8 ? 'Thank you! We\'re glad you\'re happy 😊' : 'Thank you for your feedback'}
         </h2>
-        <p className="text-muted-foreground max-w-sm">
+        <p className="text-white/60 max-w-sm">
           {score && score >= 8 ? 'We\'ll keep delivering the same standard.' : 'Our manager will review this and follow up with you shortly.'}
         </p>
       </div>
@@ -133,8 +133,8 @@ export default function FeedbackPage() {
   const propName = job?.properties?.property_name || 'your property';
 
   return (
-    <div className="min-h-screen bg-[#FDFDFC]">
-      <header className="bg-white border-b border-border/50 sticky top-0 z-40">
+    <div className="min-h-screen bg-[#0B0F17]">
+      <header className="bg-[#131920] border-b border-border/50 sticky top-0 z-40">
         <div className="max-w-lg mx-auto px-4 py-3">
           <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>Brightly<span className="text-accent">.</span></h1>
         </div>
@@ -149,8 +149,8 @@ export default function FeedbackPage() {
 
         {step === 1 && (
           <div className="space-y-6 text-center">
-            <h2 className="text-xl font-extrabold text-foreground">How would you rate your clean today?</h2>
-            <p className="text-sm text-muted-foreground">{propName}</p>
+            <h2 className="text-xl font-extrabold text-white">How would you rate your clean today?</h2>
+            <p className="text-sm text-white/60">{propName}</p>
             <div className="flex justify-center gap-1 flex-wrap">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                 <button
@@ -171,7 +171,7 @@ export default function FeedbackPage() {
         {step === 2 && score !== null && score < 8 && (
           <div className="space-y-4">
             <h2 className="text-xl font-extrabold">We're sorry to hear that.</h2>
-            <p className="text-sm text-muted-foreground">What didn't meet your expectations?</p>
+            <p className="text-sm text-white/60">What didn't meet your expectations?</p>
             <div className="space-y-2">
               {REASONS.map(r => (
                 <button key={r} onClick={() => toggleReason(r)} className={`w-full text-left p-3 rounded-xl border text-sm ${reasons.includes(r) ? 'border-primary bg-primary/5 font-semibold' : 'border-border'}`}>
@@ -228,7 +228,7 @@ export default function FeedbackPage() {
                     </button>
                   ))}
                 </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1 px-1">
+                <div className="flex justify-between text-xs text-white/60 mt-1 px-1">
                   <span>Not likely</span><span>Very likely</span>
                 </div>
               </div>

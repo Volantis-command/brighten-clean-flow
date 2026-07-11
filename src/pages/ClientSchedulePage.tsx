@@ -131,7 +131,7 @@ export default function ClientSchedulePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFDFC] flex justify-center items-center">
+      <div className="min-h-screen bg-[#0B0F17] flex justify-center items-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -139,18 +139,18 @@ export default function ClientSchedulePage() {
 
   if (!clientProp) {
     return (
-      <div className="min-h-screen bg-[#FDFDFC] flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0B0F17] flex flex-col items-center justify-center px-4">
         <p className="text-4xl mb-3">🔒</p>
-        <p className="text-lg font-bold text-foreground">Invalid or inactive link</p>
-        <p className="text-sm text-muted-foreground mt-1">Contact Brightly for a new link.</p>
+        <p className="text-lg font-bold text-white">Invalid or inactive link</p>
+        <p className="text-sm text-white/60 mt-1">Contact Brightly for a new link.</p>
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#FDFDFC]">
-        <header className="bg-white border-b border-border/50 sticky top-0 z-40">
+      <div className="min-h-screen bg-[#0B0F17]">
+        <header className="bg-[#131920] border-b border-border/50 sticky top-0 z-40">
           <div className="max-w-lg mx-auto px-4 py-3">
             <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
               Brightly<span className="text-accent">.</span>
@@ -159,11 +159,11 @@ export default function ClientSchedulePage() {
         </header>
         <main className="max-w-lg mx-auto px-4 py-12 text-center space-y-4">
           <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-          <h2 className="text-2xl font-extrabold text-foreground">You're all set!</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-extrabold text-white">You're all set!</h2>
+          <p className="text-white/60">
             We've received your preferred date and time. Our team will confirm your booking shortly and assign your cleaner.
           </p>
-          <p className="text-sm text-muted-foreground mt-6">You'll receive an SMS once confirmed. ✨</p>
+          <p className="text-sm text-white/60 mt-6">You'll receive an SMS once confirmed. ✨</p>
         </main>
       </div>
     );
@@ -172,22 +172,22 @@ export default function ClientSchedulePage() {
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
 
   return (
-    <div className="min-h-screen bg-[#FDFDFC]">
-      <header className="bg-white border-b border-border/50 sticky top-0 z-40">
+    <div className="min-h-screen bg-[#0B0F17]">
+      <header className="bg-[#131920] border-b border-border/50 sticky top-0 z-40">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
             Brightly<span className="text-accent">.</span>
           </h1>
-          <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Book</span>
+          <span className="text-xs font-semibold text-white/60 bg-muted px-2 py-0.5 rounded-full">Book</span>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
         <div>
-          <h2 className="text-2xl font-extrabold text-foreground">Hi {firstName} 👋</h2>
-          <p className="text-muted-foreground mt-1">Select your preferred date and time for your clean.</p>
+          <h2 className="text-2xl font-extrabold text-white">Hi {firstName} 👋</h2>
+          <p className="text-white/60 mt-1">Select your preferred date and time for your clean.</p>
           {property && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-white/60 mt-1">
               📍 {[property.property_name, property.address, property.suburb].filter(Boolean).join(', ')}
             </p>
           )}
@@ -195,14 +195,14 @@ export default function ClientSchedulePage() {
 
         {/* Date picker */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">Preferred Date</label>
+          <label className="text-sm font-bold text-white">Preferred Date</label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
                   'w-full justify-start text-left font-normal',
-                  !selectedDate && 'text-muted-foreground'
+                  !selectedDate && 'text-white/60'
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -224,7 +224,7 @@ export default function ClientSchedulePage() {
 
         {/* Time preference */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">Time Preference</label>
+          <label className="text-sm font-bold text-white">Time Preference</label>
           <div className="grid grid-cols-3 gap-2">
             {TIME_PREFERENCES.map((tp) => (
               <button
@@ -234,11 +234,11 @@ export default function ClientSchedulePage() {
                   'rounded-xl border-2 p-3 text-center transition-all',
                   timePreference === tp.value
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-white text-foreground hover:border-primary/50'
+                    : 'border-border bg-[#131920] text-white hover:border-primary/50'
                 )}
               >
                 <p className="font-bold text-sm">{tp.label}</p>
-                <p className="text-xs text-muted-foreground">{tp.desc}</p>
+                <p className="text-xs text-white/60">{tp.desc}</p>
               </button>
             ))}
           </div>
@@ -246,7 +246,7 @@ export default function ClientSchedulePage() {
 
         {/* Frequency */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">How often?</label>
+          <label className="text-sm font-bold text-white">How often?</label>
           <div className="grid grid-cols-2 gap-2">
             {FREQUENCY_OPTIONS.map((fo) => (
               <button
@@ -256,7 +256,7 @@ export default function ClientSchedulePage() {
                   'rounded-xl border-2 p-3 text-center transition-all',
                   frequency === fo.value
                     ? 'border-primary bg-primary/10 text-primary font-bold'
-                    : 'border-border bg-white text-foreground hover:border-primary/50'
+                    : 'border-border bg-[#131920] text-white hover:border-primary/50'
                 )}
               >
                 {fo.label}
@@ -273,7 +273,7 @@ export default function ClientSchedulePage() {
           {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Request'}
         </Button>
 
-        <p className="text-center text-muted-foreground text-xs">
+        <p className="text-center text-white/60 text-xs">
           Your booking will be confirmed once our team reviews your request.
         </p>
       </main>
