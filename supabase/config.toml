@@ -1,5 +1,8 @@
 project_id = "ueomxjsqvmbjfufjauhe"
 
+[functions.process-scheduled-sms]
+verify_jwt = false
+
 [functions.google-drive-sync]
 verify_jwt = false
 

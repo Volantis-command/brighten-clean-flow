@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { syncToDrive } from '@/lib/driveSync';
+import { triggerJobAutoInvoice } from '@/lib/jobInvoice';
 import { JobCompletionModal } from '@/components/JobCompletionModal';
 import { ReportIssueModal } from '@/components/checklist/ReportIssueModal';
 import { getCurrentPosition } from '@/lib/geo';
@@ -474,51 +475,12 @@ export default function JobChecklistPage() {
     } catch (completionErr) {
       console.error('Completion SMS error:', completionErr);
     }
-    // Auto-create Xero invoice if enabled
-    try {
-      const { data: autoCreateSetting } = await supabase
-        .from('xero_settings')
-        .select('value')
-        .eq('key', 'auto_create_invoice')
-        .single();
-
-      const { data: xeroTokens } = await supabase
-        .from('xero_tokens')
-        .select('id')
-        .limit(1);
-
-      if (autoCreateSetting?.value === 'true' && xeroTokens?.length) {
-        const { data: xeroSettings } = await supabase
-          .from('xero_settings')
-          .select('key, value');
-
-        const settings = Object.fromEntries((xeroSettings || []).map(s => [s.key, s.value]));
-        const cleanType = 'turnover'; // default
-        const accountCode = settings[`account_code_${cleanType}`] || settings['account_code_default'] || '200';
-        const invoicePrefix = settings['invoice_prefix'] || 'BCL-';
-        const dueDays = settings['due_days'] || '7';
-        const contactName = property?.client_name || property?.property_name || 'Unknown';
-        const desc = `Turnover Clean — ${property?.property_name} — ${property?.suburb || ''} — ${job?.scheduled_date}`;
-
-        console.log('Auto-creating Xero invoice for job:', jobId);
-        supabase.functions.invoke('xero-create-invoice', {
-          body: {
-            job_id: jobId,
-            contact_name: contactName,
-            description: desc,
-            amount: job?.price_ex_gst || 0,
-            account_code: accountCode,
-            invoice_prefix: invoicePrefix,
-            due_days: dueDays,
-          },
-        }).then(({ error }) => {
-          if (error) console.error('Auto Xero invoice failed:', error);
-          else console.log('Xero invoice created automatically');
-        });
-      }
-    } catch (xeroErr) {
-      console.error('Xero auto-invoice check failed:', xeroErr);
-    }
+    // Auto-create Xero DRAFT invoice via the shared, idempotent helper. The old
+    // inline block hardcoded cleanType='turnover' (wrong account code for every
+    // non-turnover clean) and duplicated xero-auto-invoice-job's logic. The
+    // shared function reads the job's real clean type + price and skips jobs
+    // that already have an invoice, so it's safe to call unconditionally.
+    if (jobId) triggerJobAutoInvoice(jobId);
 
     // Fetch remaining jobs for today to show next job in modal
     const today = format(new Date(), 'yyyy-MM-dd');

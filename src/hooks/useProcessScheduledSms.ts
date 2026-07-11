@@ -27,6 +27,18 @@ export function useProcessScheduledSms() {
         if (error || !pending?.length) return;
 
         for (const sms of pending as any[]) {
+          // Atomic claim so two open tabs (or the server-side worker) can never
+          // send the same reminder twice. If 'sending' isn't an allowed status
+          // yet (constraint migration not applied), the update errors — skip
+          // this cycle rather than risk a double-send.
+          const { data: claimedRows, error: claimErr } = await supabase
+            .from('scheduled_sms' as any)
+            .update({ status: 'sending' } as any)
+            .eq('id', sms.id)
+            .eq('status', 'pending')
+            .select('id');
+          if (claimErr || !claimedRows || (claimedRows as any[]).length === 0) continue;
+
           if (!sms.recipient_phone || !sms.message) {
             await supabase
               .from('scheduled_sms' as any)
