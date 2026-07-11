@@ -8,9 +8,9 @@ interface QuoteHistoryListProps {
 
 function quoteStatusBadge(status: string) {
   if (status === 'draft') return { label: 'Draft', cls: 'bg-muted text-muted-foreground' };
-  if (status === 'quote_sent') return { label: 'Pending', cls: 'bg-blue-100 text-blue-800' };
+  if (status === 'quote_sent') return { label: 'Pending', cls: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' };
   if (status === 'client_accepted') return { label: 'Accepted', cls: 'bg-brightly/10 text-brightly' };
-  if (['quote_declined', 'declined'].includes(status)) return { label: 'Declined', cls: 'bg-red-100 text-red-800' };
+  if (['quote_declined', 'declined'].includes(status)) return { label: 'Declined', cls: 'bg-[rgba(248,113,113,0.15)] text-[#F87171]' };
   if (status === 'expired') return { label: 'Expired', cls: 'bg-muted text-muted-foreground' };
   return { label: status, cls: 'bg-muted text-muted-foreground' };
 }

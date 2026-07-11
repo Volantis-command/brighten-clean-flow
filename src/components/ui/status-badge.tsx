@@ -1,8 +1,8 @@
 /**
  * StatusBadge — one dark-theme status chip for the whole app.
  *
- * Replaces the scattered pastel light-mode chips (bg-amber-100 text-amber-800,
- * bg-yellow-100, bg-gray-100, …) that render as white stickers on the dark UI.
+ * Replaces the scattered pastel light-mode chips (amber-100/amber-800,
+ * yellow-100, gray-100, …) that render as white stickers on the dark UI.
  * Recipe lifted from FinancialsPage's InvoiceBadge: a translucent tint of the
  * tone colour + the bright tone colour as text — legible on dark surfaces.
  */

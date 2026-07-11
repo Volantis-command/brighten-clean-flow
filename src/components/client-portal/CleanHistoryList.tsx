@@ -17,11 +17,11 @@ function statusBadge(status: string) {
   if (status === 'complete' || status === 'completed')
     return { label: 'Completed', cls: 'bg-brightly/10 text-brightly' };
   if (['scheduled', 'confirmed'].includes(status))
-    return { label: 'Scheduled', cls: 'bg-blue-100 text-blue-800' };
+    return { label: 'Scheduled', cls: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' };
   if (status === 'in_progress')
-    return { label: 'In Progress', cls: 'bg-yellow-100 text-yellow-800' };
+    return { label: 'In Progress', cls: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' };
   if (status === 'cancelled')
-    return { label: 'Cancelled', cls: 'bg-red-100 text-red-800' };
+    return { label: 'Cancelled', cls: 'bg-[rgba(248,113,113,0.15)] text-[#F87171]' };
   return { label: status, cls: 'bg-muted text-muted-foreground' };
 }
 

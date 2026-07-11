@@ -174,6 +174,14 @@ export default function ClientsPage() {
   const [deleteClient, setDeleteClient] = useState<ClientMember | null>(null);
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
   const [quoteLinkOpen, setQuoteLinkOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const filteredClients = clients.filter((c: any) => {
+    const q = clientSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [c.full_name, c.client_name, c.name, c.email, c.phone]
+      .filter(Boolean)
+      .some((v: any) => String(v).toLowerCase().includes(q));
+  });
 
   // Create form state
   const [createEmail, setCreateEmail] = useState('');
@@ -433,6 +441,15 @@ export default function ClientsPage() {
       ) : clients.length === 0 ? (
         <div className="bg-card rounded-2xl shadow-md p-8 text-center text-muted-foreground">No client accounts yet. Add your first client to get started.</div>
       ) : (
+        <>
+        <div className="mb-3">
+          <Input
+            value={clientSearch}
+            onChange={(e) => setClientSearch(e.target.value)}
+            placeholder="Search by name, email or phone…"
+            className="max-w-sm bg-card"
+          />
+        </div>
         <div className="bg-card rounded-2xl shadow-md border border-border overflow-hidden">
           <Table>
             <TableHeader>
@@ -446,7 +463,9 @@ export default function ClientsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clients.map(c => (
+              {filteredClients.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No clients match your search.</TableCell></TableRow>
+              ) : filteredClients.map(c => (
                 <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
                   <TableCell className="font-semibold text-primary">{getClientDisplayName(c)}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || '—'}</TableCell>
@@ -499,6 +518,7 @@ export default function ClientsPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
         </TabsContent>
 

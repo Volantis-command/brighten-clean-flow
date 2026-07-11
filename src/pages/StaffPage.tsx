@@ -638,7 +638,7 @@ function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelec
           <h3 className="font-bold text-lg text-foreground">{m.full_name || 'No name'}</h3>
           <Badge className={`mt-1 ${roleBadgeStyles[m.role]}`}>{roleLabels[m.role]}</Badge>
           {isCleanerRole && activeStatus && (
-            <Badge className={`mt-1 text-[10px] ${activeStatus.active ? 'bg-brightly/10 text-brightly' : 'bg-red-100 text-red-800'}`}>
+            <Badge className={`mt-1 text-[10px] ${activeStatus.active ? 'bg-brightly/10 text-brightly' : 'bg-[rgba(248,113,113,0.15)] text-[#F87171]'}`}>
               {activeStatus.active ? '● Active' : '● Inactive'}
             </Badge>
           )}
@@ -646,13 +646,13 @@ function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelec
             <Badge className={`mt-1 text-[10px] ${perfBadges[m.id].badgeColor}`}>{perfBadges[m.id].badge}</Badge>
           )}
           {onboardingStatuses[m.id]?.submitted && !onboardingStatuses[m.id]?.reviewed && (
-            <Badge className="mt-1 text-[10px] bg-amber-100 text-amber-800">⚠ Action Needed</Badge>
+            <Badge className="mt-1 text-[10px] bg-[rgba(251,191,36,0.15)] text-[#FCD34D]">⚠ Action Needed</Badge>
           )}
           {!onboardingStatuses[m.id] && (
             <Badge className="mt-1 text-[10px] bg-muted text-muted-foreground">No onboarding</Badge>
           )}
           {onboardingStatuses[m.id]?.status === 'pending' && (
-            <Badge className="mt-1 text-[10px] bg-blue-100 text-blue-800">Pending form</Badge>
+            <Badge className="mt-1 text-[10px] bg-[rgba(96,165,250,0.15)] text-[#60A5FA]">Pending form</Badge>
           )}
         </div>
         <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-lg">
@@ -987,7 +987,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
                         )}
                         <Badge className={`text-[10px] ${
                           job.status === 'complete' || job.status === 'completed' ? 'bg-brightly/10 text-brightly' :
-                          job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          job.status === 'scheduled' ? 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' :
                           'bg-muted text-muted-foreground'
                         }`}>
                           {job.status}

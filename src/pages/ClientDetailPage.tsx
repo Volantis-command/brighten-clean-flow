@@ -286,15 +286,15 @@ export default function ClientDetailPage() {
 
   const statusColor = (s: string) => {
     if (s === 'complete' || s === 'completed') return 'bg-brightly/10 text-brightly';
-    if (s === 'in_progress') return 'bg-yellow-100 text-yellow-800';
-    if (s === 'scheduled') return 'bg-blue-100 text-blue-800';
+    if (s === 'in_progress') return 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]';
+    if (s === 'scheduled') return 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]';
     return 'bg-muted text-muted-foreground';
   };
 
   const invoiceColor = (s: string | null) => {
     if (s === 'paid') return 'bg-brightly/10 text-brightly';
-    if (s === 'sent') return 'bg-blue-100 text-blue-800';
-    if (s === 'draft') return 'bg-yellow-100 text-yellow-800';
+    if (s === 'sent') return 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]';
+    if (s === 'draft') return 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]';
     return 'bg-muted text-muted-foreground';
   };
 
@@ -624,7 +624,7 @@ export default function ClientDetailPage() {
                       <TableCell>{r.requested_date ? format(new Date(r.requested_date), 'dd MMM yyyy') : '—'}</TableCell>
                       <TableCell>{r.clean_type || '—'}</TableCell>
                       <TableCell>
-                        <Badge className={r.status === 'approved' ? 'bg-brightly/10 text-brightly' : r.status === 'declined' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}>
+                        <Badge className={r.status === 'approved' ? 'bg-brightly/10 text-brightly' : r.status === 'declined' ? 'bg-[rgba(248,113,113,0.15)] text-[#F87171]' : 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]'}>
                           {r.status}
                         </Badge>
                       </TableCell>

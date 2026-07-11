@@ -11,9 +11,9 @@ function invoiceStatusBadge(status: string | null) {
   // Source of truth for jobs.invoice_status values — see xero-sync-invoice-status
   // status map: draft, sent (incl. authorised/submitted), paid, voided, none.
   if (status === 'paid') return { label: 'Paid', cls: 'bg-brightly/10 text-brightly' };
-  if (status === 'sent') return { label: 'Sent', cls: 'bg-blue-100 text-blue-800' };
-  if (status === 'authorised') return { label: 'Sent', cls: 'bg-blue-100 text-blue-800' };
-  if (status === 'draft' || status === 'raised') return { label: 'Draft', cls: 'bg-yellow-100 text-yellow-800' };
+  if (status === 'sent') return { label: 'Sent', cls: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' };
+  if (status === 'authorised') return { label: 'Sent', cls: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' };
+  if (status === 'draft' || status === 'raised') return { label: 'Draft', cls: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' };
   if (status === 'voided') return { label: 'Voided', cls: 'bg-muted text-muted-foreground line-through' };
   return { label: 'Not Raised', cls: 'bg-muted text-muted-foreground' };
 }

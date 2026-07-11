@@ -208,7 +208,7 @@ export function StaffOnboardingSection({ staffId, staffName }: Props) {
           {expiryAlerts.map(a => (
             <div key={a.label} className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
               a.daysLeft <= 0 ? 'bg-destructive/10 text-destructive border border-destructive/30' :
-              a.daysLeft <= 7 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+              a.daysLeft <= 7 ? 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D] border border-orange-300' :
               'bg-amber-50 text-amber-800 border border-amber-200'
             }`}>
               <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -231,7 +231,7 @@ export function StaffOnboardingSection({ staffId, staffName }: Props) {
             {reviewed ? (
               <Badge className="bg-brightly/10 text-brightly">Reviewed ✓</Badge>
             ) : submitted ? (
-              <Badge className="bg-amber-100 text-amber-800">Action Needed</Badge>
+              <Badge className="bg-[rgba(251,191,36,0.15)] text-[#FCD34D]">Action Needed</Badge>
             ) : null}
           </div>
         </div>

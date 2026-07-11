@@ -214,8 +214,8 @@ export default function CleanerPortalPage() {
   }
 
   const statusConfig: Record<string, { label: string; color: string }> = {
-    scheduled: { label: "Scheduled", color: "bg-blue-100 text-blue-800" },
-    in_progress: { label: "In Progress", color: "bg-amber-100 text-amber-800" },
+    scheduled: { label: "Scheduled", color: "bg-[rgba(96,165,250,0.15)] text-[#60A5FA]" },
+    in_progress: { label: "In Progress", color: "bg-[rgba(251,191,36,0.15)] text-[#FCD34D]" },
     completed: { label: "Completed", color: "bg-brightly/10 text-brightly" },
   };
   const st = statusConfig[job.status] ?? { label: job.status, color: "bg-muted text-muted-foreground" };

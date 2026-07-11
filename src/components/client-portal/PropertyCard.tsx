@@ -86,7 +86,7 @@ function getPropertyStatus(jobs: any[]) {
   const nextScheduled = jobs.find(
     (j: any) => UPCOMING_STATUSES.includes(j.status) && j.scheduled_date >= todayStr
   );
-  if (nextScheduled) return { label: 'Scheduled', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' };
+  if (nextScheduled) return { label: 'Scheduled', color: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]', dot: 'bg-blue-500' };
 
   return { label: 'Awaiting Clean', color: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' };
 }

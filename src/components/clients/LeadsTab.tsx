@@ -13,16 +13,16 @@ import { useNavigate } from 'react-router-dom';
 import { getAppBaseUrl } from '@/lib/appUrl';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  pending_form: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
-  form_submitted: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
-  awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-amber-100 text-amber-800' },
-  quote_sent: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
-  awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-blue-100 text-blue-800' },
+  pending_form: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  form_submitted: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  quote_sent: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
+  awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
   accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
   client_accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
   awaiting_schedule_approval: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
   scheduled: { label: '📅 Scheduled', className: 'bg-primary/10 text-primary' },
-  in_progress: { label: '🔄 In Progress', className: 'bg-sky-100 text-sky-800' },
+  in_progress: { label: '🔄 In Progress', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
   completed: { label: '✅ Completed', className: 'bg-primary/20 text-primary' },
   quote_declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
   declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },

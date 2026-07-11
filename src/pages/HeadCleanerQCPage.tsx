@@ -165,7 +165,7 @@ export default function HeadCleanerQCPage() {
                       {j.cleaner_names?.join(' & ') || 'Unassigned'}
                     </p>
                   </div>
-                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-400 px-2 py-0.5 rounded-full shrink-0">
+                  <span className="text-[10px] font-bold bg-[rgba(74,222,128,0.15)] text-[#4ADE80] px-2 py-0.5 rounded-full shrink-0">
                     AUDITED
                   </span>
                 </div>

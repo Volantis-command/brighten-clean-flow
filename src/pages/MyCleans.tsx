@@ -17,8 +17,8 @@ interface CleanJob {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  scheduled: { label: 'Scheduled', className: 'bg-blue-100 text-blue-800 border-0' },
-  in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-800 border-0' },
+  scheduled: { label: 'Scheduled', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA] border-0' },
+  in_progress: { label: 'In Progress', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D] border-0' },
   completed: { label: 'Completed', className: 'bg-brightly/10 text-brightly border-0' },
 };
 

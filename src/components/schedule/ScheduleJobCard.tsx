@@ -40,17 +40,17 @@ interface ScheduleJobCardProps {
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  pending_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
-  awaiting_schedule_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
-  awaiting_quote: { label: 'Needs Quote', className: 'bg-yellow-100 text-yellow-800' },
-  awaiting_approval: { label: 'Awaiting Approval', className: 'bg-yellow-100 text-yellow-800' },
+  pending_approval: { label: 'Pending Approval', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  awaiting_schedule_approval: { label: 'Pending Approval', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  awaiting_quote: { label: 'Needs Quote', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  awaiting_approval: { label: 'Awaiting Approval', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
   scheduled: { label: 'Scheduled', className: 'bg-emerald-100 text-[#4ADE80]' },
   confirmed: { label: 'Confirmed', className: 'bg-emerald-100 text-[#4ADE80]' },
-  in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-800' },
-  completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
-  complete: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
-  cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700 line-through' },
-  flagged: { label: 'Flagged', className: 'bg-red-100 text-red-700' },
+  in_progress: { label: 'In Progress', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
+  completed: { label: 'Completed', className: 'bg-[rgba(255,255,255,0.08)] text-[#94A3B8]' },
+  complete: { label: 'Completed', className: 'bg-[rgba(255,255,255,0.08)] text-[#94A3B8]' },
+  cancelled: { label: 'Cancelled', className: 'bg-[rgba(248,113,113,0.15)] text-[#F87171] line-through' },
+  flagged: { label: 'Flagged', className: 'bg-[rgba(248,113,113,0.15)] text-[#F87171]' },
 };
 
 export function ScheduleJobCard({

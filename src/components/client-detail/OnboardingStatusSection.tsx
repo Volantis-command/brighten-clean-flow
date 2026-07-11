@@ -62,8 +62,8 @@ export default function OnboardingStatusSection({
         <h3 className="font-bold text-foreground">Onboarding Form Status</h3>
         <Badge className={
           status === 'submitted' ? 'bg-brightly/10 text-brightly' :
-          status === 'sent' ? 'bg-blue-100 text-blue-800' :
-          'bg-yellow-100 text-yellow-800'
+          status === 'sent' ? 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' :
+          'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]'
         }>
           {status === 'submitted' ? '✓ Submitted' : status === 'sent' ? '📨 Sent' : '⏳ Pending'}
         </Badge>

@@ -13,8 +13,8 @@ import { sendJobSms } from '@/lib/sendJobSms';
 const AREA_OPTIONS = ['Bedrooms', 'Bathrooms', 'Kitchen', 'Living Areas', 'Laundry', 'Outdoor', 'General'];
 const OUTCOMES = [
   { value: 'passed', label: 'Audit Passed — satisfied with standard', color: 'bg-brightly/10 text-brightly border-green-300' },
-  { value: 'minor_fixes', label: 'Minor Fixes Completed on the Spot', color: 'bg-amber-100 text-amber-800 border-amber-300' },
-  { value: 'return_required', label: 'Return Required — property needs re-clean', color: 'bg-red-100 text-red-800 border-red-300' },
+  { value: 'minor_fixes', label: 'Minor Fixes Completed on the Spot', color: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D] border-amber-300' },
+  { value: 'return_required', label: 'Return Required — property needs re-clean', color: 'bg-[rgba(248,113,113,0.15)] text-[#F87171] border-red-300' },
 ];
 
 export default function JobAuditPage() {

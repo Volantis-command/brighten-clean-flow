@@ -57,7 +57,7 @@ export default function CleanerProfilePage() {
                 Cleaner
               </span>
               {avgRating && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs font-bold bg-[rgba(251,191,36,0.15)] text-[#FCD34D] px-3 py-1 rounded-full">
                   <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
                   {avgRating} avg
                 </span>

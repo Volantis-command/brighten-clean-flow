@@ -375,18 +375,23 @@ export default function JobDetailPage() {
     );
   }
 
+  // Dark-theme chips (matches src/components/ui/status-badge.tsx tones).
+  const AMBER = 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]';
+  const BLUE = 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]';
+  const GREEN = 'bg-[rgba(74,222,128,0.15)] text-[#4ADE80]';
+  const RED = 'bg-[rgba(248,113,113,0.15)] text-[#F87171]';
   const statusConfig: Record<string, { label: string; className: string }> = {
-    pending_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
-    awaiting_schedule_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800' },
-    awaiting_quote: { label: 'Needs Quote', className: 'bg-yellow-100 text-yellow-800' },
-    awaiting_approval: { label: 'Accepted — Confirm', className: 'bg-yellow-100 text-yellow-800' },
-    scheduled: { label: 'Scheduled', className: 'bg-emerald-100 text-[#4ADE80]' },
-    confirmed: { label: 'Confirmed', className: 'bg-emerald-100 text-[#4ADE80]' },
-    in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-800' },
-    completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
-    complete: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
-    cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700' },
-    flagged: { label: 'Flagged', className: 'bg-red-100 text-red-700' },
+    pending_approval: { label: 'Pending Approval', className: AMBER },
+    awaiting_schedule_approval: { label: 'Pending Approval', className: AMBER },
+    awaiting_quote: { label: 'Needs Quote', className: AMBER },
+    awaiting_approval: { label: 'Accepted — Confirm', className: AMBER },
+    scheduled: { label: 'Scheduled', className: BLUE },
+    confirmed: { label: 'Confirmed', className: GREEN },
+    in_progress: { label: 'In Progress', className: AMBER },
+    completed: { label: 'Completed', className: GREEN },
+    complete: { label: 'Completed', className: GREEN },
+    cancelled: { label: 'Cancelled', className: RED },
+    flagged: { label: 'Flagged', className: RED },
   };
 
   const statusInfo = statusConfig[job.status] || statusConfig.scheduled;
@@ -696,15 +701,18 @@ export default function JobDetailPage() {
                   size="sm"
                   className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
                   onClick={async () => {
-                    if (!confirm('Cancel all future scheduled jobs in this series?')) return;
+                    if (!confirm('Cancel all future cleans in this series? They will be marked cancelled (not deleted) and can be restored.')) return;
+                    // Soft-cancel (never hard-delete — data safety). Broadened
+                    // from status='scheduled' to all live future statuses so it
+                    // actually catches pending_cleaner/awaiting_cleaner/confirmed.
                     const { error } = await supabase.from('jobs')
-                      .delete()
+                      .update({ status: 'cancelled' } as any)
                       .eq('series_id', (job as any).series_id)
                       .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
-                      .eq('status', 'scheduled')
+                      .in('status', ['scheduled', 'confirmed', 'pending_cleaner', 'awaiting_cleaner'])
                       .neq('id', jobId!);
                     if (error) { toast.error(error.message); return; }
-                    toast.success('Future jobs in series cancelled');
+                    toast.success('Future cleans in series cancelled');
                     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
                   }}
                 >
@@ -718,11 +726,11 @@ export default function JobDetailPage() {
 
       {/* Pending Approval Banner */}
       {role === 'admin' && (job.status === 'pending_approval' || job.status === 'awaiting_schedule_approval') && (
-        <Card className="border-yellow-400/50 bg-yellow-50">
+        <Card className="border-[rgba(251,191,36,0.3)] bg-[rgba(251,191,36,0.08)]">
           <CardContent className="py-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <p className="text-sm font-bold text-yellow-800">⏳ Pending Approval — Assign a cleaner and approve this booking</p>
+              <Clock className="h-5 w-5 text-[#FCD34D]" />
+              <p className="text-sm font-bold text-[#FCD34D]">⏳ Pending Approval — Assign a cleaner and approve this booking</p>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>

@@ -138,7 +138,7 @@ export default function ClientsSection() {
                     {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
                   </div>
                 </div>
-                <Badge className="bg-blue-100 text-blue-800">Client</Badge>
+                <Badge className="bg-[rgba(96,165,250,0.15)] text-[#60A5FA]">Client</Badge>
               </div>
               {c.linked_properties.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">

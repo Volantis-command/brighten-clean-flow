@@ -138,8 +138,8 @@ export default function BookingRequestsPage() {
 
   const statusColor = (s: string) => {
     if (s === 'approved') return 'bg-brightly/10 text-brightly';
-    if (s === 'declined') return 'bg-red-100 text-red-800';
-    return 'bg-yellow-100 text-yellow-800';
+    if (s === 'declined') return 'bg-[rgba(248,113,113,0.15)] text-[#F87171]';
+    return 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]';
   };
 
   const pendingCount = requests.filter(r => r.status === 'pending').length;
