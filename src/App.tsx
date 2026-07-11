@@ -9,7 +9,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import PhoneLoginPage from "./pages/PhoneLoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-import ClientLoginPage from "./pages/ClientLoginPage";
 import AppLayout from "./components/AppLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
 import DashboardPage from "./pages/DashboardPage";
@@ -59,7 +58,6 @@ import CleanReportPage from "./pages/CleanReportPage";
 // EnquiryPage deleted — enquiries go through the pipeline
 import BookingPage from "./pages/BookingPage";
 import QuoteIntakePage from "./pages/QuoteIntakePage";
-import MyCleans from "./pages/MyCleans";
 import MyJobsPage from "./pages/MyJobsPage";
 import CleanWorkflowPage from "./pages/CleanWorkflowPage";
 import CompletionFormPage from "./pages/CompletionFormPage";
@@ -76,8 +74,6 @@ import GuestReadyReportPage from "./pages/GuestReadyReportPage";
 import PropertyPassportPage from "./pages/PropertyPassportPage";
 import NotFound from "./pages/NotFound";
 import SmokeTestPage from "./pages/SmokeTestPage";
-import StaffMagicAuthPage from "./pages/auth/StaffMagicAuthPage";
-// ClientPortalLoginPage deleted — /client-portal now uses ClientLoginPage
 import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
 import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
 import ClientPortalPropertyPage from "./pages/ClientPortalPropertyPage";
@@ -267,7 +263,7 @@ function AppRoutes() {
         <Route path="/financials" element={<ProtectedRoute allowedRoles={['admin']}><FinancialsPage /></ProtectedRoute>} />
         <Route path="/timesheets/pending-edits" element={<ProtectedRoute allowedRoles={['admin']}><PendingTimeEditsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />
-        <Route path="/my-cleans" element={<MyCleans />} />
+        <Route path="/my-cleans" element={<Navigate to="/my-jobs" replace />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
         <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
