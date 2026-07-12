@@ -1,0 +1,31 @@
+# Local dependencies and build output
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Local tooling, repository metadata, and audit material
+.git/
+.gitnexus/
+.agents/
+.codex/
+.claude/
+.vercel/
+AGENTS.md
+CLAUDE.md
+AUDIT_*.md
+Brightly App - Claude Code/
+tribe-token-play/
+
+# Local data, secrets, and generated Supabase state
+.env*
+*.local
+migration-work/
+supabase/.temp/
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.log

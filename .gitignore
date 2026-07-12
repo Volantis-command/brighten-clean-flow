@@ -33,3 +33,5 @@ Brightly App - Claude Code/
 .gitnexus/
 .claude/
 AGENTS.md
+.vercel
+.env*
