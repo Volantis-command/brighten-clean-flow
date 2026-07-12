@@ -292,32 +292,18 @@ export default function PhotoReportingWizard({ job, property, sections, cleanerP
         comments: comments || null,
       };
 
+      // Finish the clean — but DON'T clock off. The cleaner stays clocked on so
+      // she can finish her mop-out and then tap "Clock Out" when she actually
+      // leaves. (Jess's feedback: photos are taken BEFORE mopping, so finishing
+      // the report ≠ leaving the property.) Clock-off is now a separate step,
+      // handled by the persistent ActiveClockBanner, which closes the time entry
+      // and stamps jobs.clock_off when she taps it on her way out.
       await supabase.from('jobs').update({
         completion_form_completed_at: now.toISOString(),
         completion_form_data: completionFormData as any,
         completion_signatures: signatures,
         status: 'completed',
-        clock_off: now.toISOString(),
-        clock_off_at: now.toISOString(),
-        check_out_time: now.toISOString(),
       } as any).eq('id', job.id);
-
-      // Close any open time entries
-      const { data: openEntries } = await supabase.from('time_entries')
-        .select('id')
-        .eq('job_id', job.id)
-        .is('clock_out_time', null);
-      for (const entry of (openEntries || [])) {
-        await supabase.from('time_entries').update({
-          clock_out_time: now.toISOString(),
-        }).eq('id', entry.id);
-      }
-
-      await supabase.from('clock_events').insert({
-        user_id: userId,
-        job_id: job.id,
-        event_type: 'clock_out',
-      } as any);
 
       // SMS notifications (non-blocking)
       try {
@@ -337,7 +323,7 @@ export default function PhotoReportingWizard({ job, property, sections, cleanerP
       const { triggerJobAutoInvoice } = await import('@/lib/jobInvoice');
       await triggerJobAutoInvoice(job.id);
 
-      toast.success('Job complete! Great work 🎉');
+      toast.success('Clean finished ✓ Mop your way out, then tap Clock Out when you leave.');
       onComplete();
     } catch (e: any) {
       toast.error(e.message || 'Failed to submit');
@@ -589,7 +575,7 @@ export default function PhotoReportingWizard({ job, property, sections, cleanerP
               style={{ background: '#FEDB00', color: '#0A0F0E' }}
             >
               {submitting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
-              Submit & Clock Off
+              Finish Clean
             </Button>
           )}
         </div>

@@ -78,6 +78,23 @@ export function ActiveClockBanner({ forceShow = false }: ActiveClockBannerProps)
       if (error) {
         toast.error(error.message);
       } else {
+        // Clock-off used to be fused into the completion form; it's now a
+        // separate step here, so also stamp the job's denormalized clock-off
+        // fields + write the audit event (keeps timesheets/reports consistent).
+        if (activeEntry.job_id) {
+          await supabase.from('jobs').update({
+            clock_off: clockOutTime.toISOString(),
+            clock_off_at: clockOutTime.toISOString(),
+            check_out_time: clockOutTime.toISOString(),
+          } as any).eq('id', activeEntry.job_id);
+          try {
+            await supabase.from('clock_events').insert({
+              user_id: user.id,
+              job_id: activeEntry.job_id,
+              event_type: 'clock_out',
+            } as any);
+          } catch { /* non-blocking */ }
+        }
         toast.success('Clocked out!');
         queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
         queryClient.invalidateQueries({ queryKey: ['time-entry'] });
