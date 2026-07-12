@@ -51,6 +51,7 @@ export default function BookingSuggestionsPage() {
     try {
       const prop = approveModal.properties as any;
       const finalCleanerId = cleanerId || prop?.default_cleaner_id || null;
+      const sourceReference = approveModal.external_ref || approveModal.id;
 
       // Guard 1 — don't double-book: if a live job already exists for this
       // property on this date (e.g. created by the Hostaway pipeline, or a
@@ -76,6 +77,9 @@ export default function BookingSuggestionsPage() {
         status: initialJobStatusForAssignment(finalCleanerId, null),
         price_ex_gst: prop?.price_turnover || null,
         source: approveModal.source,
+        source_turnover_key: `ical:${approveModal.property_id}:${sourceReference}`,
+        source_external_refs: [sourceReference],
+        source_synced_at: new Date().toISOString(),
         notes: approveModal.guest_name ? `Guest: ${approveModal.guest_name}` : null,
       } as any).select('id').single();
       if (jobErr) throw jobErr;

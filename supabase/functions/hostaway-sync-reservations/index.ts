@@ -8,19 +8,22 @@
 //     turnovers immediately, without waiting for guests to check out
 //
 // Runs the same per-reservation logic as receive-hostaway-webhook so the
-// outcome is identical: jobs are deduped on hostaway_reservation_id,
+// outcome is identical: jobs are reconciled to a canonical property/date turnover,
 // created in 'pending_cleaner', cancelled if Hostaway says cancelled.
 //
-// Defaults to today-30 → today+60 days (covers recent-past missed
-// turnovers + the typical Hostaway booking window). Caller can override
+// Defaults to today → today+60 days. Historical source records may maintain
+// an existing job but never create new actionable work. Caller can override
 // via body params.
 //
-// Hostaway pagination: this v1 fetches a single page with limit=500. The
-// 19-property target client at ~5 turnovers/week × 90 days = ~245
-// reservations, well within one page. Add cursor pagination (afterId)
-// when first 500+ client onboards.
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  dateInTimeZone,
+  hostawayTurnoverKey,
+  isCancelledStay,
+  isConfirmedStay,
+  mergeExternalRefs,
+  normaliseReservationStatus,
+} from '../_shared/turnover-integrity.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +33,7 @@ const corsHeaders = {
 
 interface Body {
   client_id: string;        // Brightly client_id (profiles.id)
-  from_date?: string;       // YYYY-MM-DD, default today - 30
+  from_date?: string;       // YYYY-MM-DD, default today in Brisbane
   to_date?: string;         // YYYY-MM-DD, default today + 60
 }
 
@@ -61,28 +64,37 @@ interface ReservationResult {
     | 'skipped_out_of_range'
     | 'skipped_no_departure'
     | 'skipped_unconfirmed'
+    | 'skipped_past'
+    | 'merged_duplicate'
     | 'error';
   job_id: string | null;
   error?: string;
 }
 
-const CANCELLED_STATUSES = new Set([
-  'cancelled', 'canceled', 'denied', 'declined', 'expired',
-]);
-
-// Only confirmed guest stays generate turnover cleans. Inquiries / pending /
-// awaiting-payment holds must NOT create jobs. Empty status → treat as
-// confirmed (Hostaway sends a status on real bookings; absence = fall back to
-// creating rather than dropping a genuine clean).
-const CONFIRMED_STATUSES = new Set(['new', 'modified', 'confirmed']);
-function isConfirmedStay(status: string): boolean {
-  return status === '' || CONFIRMED_STATUSES.has(status);
+function todayPlusDays(days: number): string {
+  return dateInTimeZone('Australia/Brisbane', days);
 }
 
-function todayPlusDays(days: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+async function fetchAllReservations(accessToken: string): Promise<HostawayReservation[]> {
+  const reservations: HostawayReservation[] = [];
+  let afterId: string | null = null;
+  for (let page = 0; page < 100; page += 1) {
+    const url = new URL('https://api.hostaway.com/v1/reservations');
+    url.searchParams.set('limit', '500');
+    if (afterId) url.searchParams.set('afterId', afterId);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}`, 'Cache-Control': 'no-cache' },
+    });
+    if (!response.ok) throw new Error(`Hostaway /reservations failed (${response.status}): ${await response.text()}`);
+    const body = await response.json() as { result?: HostawayReservation[] };
+    const pageRows = Array.isArray(body.result) ? body.result : [];
+    reservations.push(...pageRows);
+    if (pageRows.length < 500) break;
+    const lastId = pageRows.at(-1)?.id;
+    if (lastId == null || String(lastId) === afterId) throw new Error('Hostaway pagination cursor did not advance');
+    afterId = String(lastId);
+  }
+  return reservations;
 }
 
 Deno.serve(async (req) => {
@@ -101,7 +113,7 @@ Deno.serve(async (req) => {
 
   const fromDate = body.from_date && /^\d{4}-\d{2}-\d{2}$/.test(body.from_date)
     ? body.from_date
-    : todayPlusDays(-30);
+    : todayPlusDays(0);
   const toDate = body.to_date && /^\d{4}-\d{2}-\d{2}$/.test(body.to_date)
     ? body.to_date
     : todayPlusDays(60);
@@ -133,29 +145,11 @@ Deno.serve(async (req) => {
     return json({ error: 'Client is not connected to Hostaway' }, 400);
   }
 
-  // 2. Pull reservations from Hostaway
-  const reservationsResp = await fetch('https://api.hostaway.com/v1/reservations?limit=500', {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${tokenRow.access_token}`,
-      'Cache-Control': 'no-cache',
-    },
-  });
-
-  if (!reservationsResp.ok) {
-    const errText = await reservationsResp.text();
-    return json({
-      error: 'Hostaway /reservations request failed',
-      status: reservationsResp.status,
-      detail: errText,
-    }, 502);
-  }
-
-  const reservationsBody = await reservationsResp.json() as { status?: string; result?: HostawayReservation[]; count?: number };
-  const allReservations = reservationsBody.result ?? [];
-
-  if (!Array.isArray(allReservations)) {
-    return json({ error: 'Unexpected Hostaway response shape', detail: reservationsBody }, 502);
+  let allReservations: HostawayReservation[];
+  try {
+    allReservations = await fetchAllReservations(tokenRow.access_token);
+  } catch (error) {
+    return json({ error: 'Hostaway reservation sync failed', detail: (error as Error).message }, 502);
   }
 
   // 3. Process each reservation that falls in [fromDate, toDate] by departureDate
@@ -174,8 +168,8 @@ Deno.serve(async (req) => {
     // Skip if no departure date AND not a cancellation. Cancellations
     // with no departure date can still affect existing jobs (look up by
     // reservation_id only).
-    const reservationStatus = (reservation.status ?? '').toLowerCase();
-    const isCancellation = CANCELLED_STATUSES.has(reservationStatus);
+    const reservationStatus = normaliseReservationStatus(reservation.status);
+    const isCancellation = isCancelledStay(reservationStatus);
 
     if (!departureDate && !isCancellation) {
       results.push({
@@ -225,7 +219,7 @@ Deno.serve(async (req) => {
     // instead of compounding the pile.
     const { data: existingRows, error: existErr } = await sb
       .from('jobs')
-      .select('id, status, scheduled_date, scheduled_time')
+      .select('id, status, scheduled_date, scheduled_time, property_id, source_external_refs, source_turnover_key')
       .eq('hostaway_reservation_id', reservationId)
       .order('created_at', { ascending: true })
       .limit(1);
@@ -242,7 +236,20 @@ Deno.serve(async (req) => {
       });
       continue;
     }
-    const existingJob = existingRows?.[0] ?? null;
+    let existingJob = existingRows?.[0] ?? null;
+    if (!existingJob) {
+      const { data: refRows, error: refErr } = await sb
+        .from('jobs')
+        .select('id, status, scheduled_date, scheduled_time, property_id, source_external_refs, source_turnover_key')
+        .contains('source_external_refs', [reservationId])
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (refErr) {
+        results.push({ reservation_id: reservationId, listing_id: listingId, departure_date: departureDate, guest_name: guestName, status: 'error', job_id: null, error: `External reference lookup failed: ${refErr.message}` });
+        continue;
+      }
+      existingJob = refRows?.[0] ?? null;
+    }
 
     // Skip inquiries / pending / holds that aren't confirmed stays (and don't
     // already have a job to maintain).
@@ -287,9 +294,20 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const remainingRefs = (existingJob.source_external_refs || []).filter((ref: string) => ref !== reservationId);
+      if (remainingRefs.length > 0) {
+        const { error: detachErr } = await sb.from('jobs').update({ source_external_refs: remainingRefs, source_synced_at: new Date().toISOString() }).eq('id', existingJob.id);
+        if (detachErr) {
+          results.push({ reservation_id: reservationId, listing_id: listingId, departure_date: departureDate, guest_name: guestName, status: 'error', job_id: existingJob.id, error: `Reference detach failed: ${detachErr.message}` });
+        } else {
+          results.push({ reservation_id: reservationId, listing_id: listingId, departure_date: departureDate, guest_name: guestName, status: 'no_op_unchanged', job_id: existingJob.id });
+        }
+        continue;
+      }
+
       const { error: cancelErr } = await sb
         .from('jobs')
-        .update({ status: 'cancelled' })
+        .update({ status: 'cancelled', source_synced_at: new Date().toISOString() })
         .eq('id', existingJob.id);
 
       if (cancelErr) {
@@ -359,6 +377,25 @@ Deno.serve(async (req) => {
       : '10:00';
     const channel = reservation.channelName ?? reservation.source ?? 'Hostaway';
     const notes = `Hostaway turnover — ${guestName}\n${channel}${reservation.arrivalDate ? ` · next check-in ${reservation.arrivalDate}` : ''}`;
+    const turnoverKey = hostawayTurnoverKey(property.id, scheduledDate);
+
+    if (!existingJob) {
+      const { data: turnoverRows, error: turnoverErr } = await sb
+        .from('jobs')
+        .select('id, status, scheduled_date, scheduled_time, property_id, source_external_refs, source_turnover_key')
+        .eq('source_turnover_key', turnoverKey)
+        .limit(1);
+      if (turnoverErr) {
+        results.push({ reservation_id: reservationId, listing_id: listingId, departure_date: scheduledDate, guest_name: guestName, status: 'error', job_id: null, error: `Turnover lookup failed: ${turnoverErr.message}` });
+        continue;
+      }
+      existingJob = turnoverRows?.[0] ?? null;
+    }
+
+    if (!existingJob && scheduledDate < todayPlusDays(0)) {
+      results.push({ reservation_id: reservationId, listing_id: listingId, departure_date: scheduledDate, guest_name: guestName, status: 'skipped_past', job_id: null });
+      continue;
+    }
 
     if (existingJob) {
       if (existingJob.status === 'completed') {
@@ -375,8 +412,10 @@ Deno.serve(async (req) => {
 
       const dateChanged = existingJob.scheduled_date !== scheduledDate;
       const timeChanged = existingJob.scheduled_time !== scheduledTime;
+      const refs = mergeExternalRefs(existingJob.source_external_refs, reservationId);
+      const shouldRevive = existingJob.status === 'cancelled';
 
-      if (!dateChanged && !timeChanged) {
+      if (!dateChanged && !timeChanged && !shouldRevive && refs.length === (existingJob.source_external_refs || []).length) {
         results.push({
           reservation_id: reservationId,
           listing_id: listingId,
@@ -394,6 +433,11 @@ Deno.serve(async (req) => {
           scheduled_date: scheduledDate,
           scheduled_time: scheduledTime,
           notes,
+          status: shouldRevive ? 'pending_cleaner' : existingJob.status,
+          source_turnover_key: turnoverKey,
+          source_external_refs: refs,
+          source_synced_at: new Date().toISOString(),
+          sync_conflict_reason: null,
         })
         .eq('id', existingJob.id);
 
@@ -415,7 +459,7 @@ Deno.serve(async (req) => {
         listing_id: listingId,
         departure_date: scheduledDate,
         guest_name: guestName,
-        status: 'updated',
+        status: refs.length > 1 && !dateChanged && !timeChanged ? 'merged_duplicate' : 'updated',
         job_id: existingJob.id,
       });
       continue;
@@ -444,6 +488,9 @@ Deno.serve(async (req) => {
         frequency: 'one-off',
         source: 'hostaway',
         hostaway_reservation_id: reservationId,
+        source_turnover_key: turnoverKey,
+        source_external_refs: [reservationId],
+        source_synced_at: new Date().toISOString(),
         client_name: property.client_name,
         notes,
         price_ex_gst: priceExGst,
@@ -491,10 +538,12 @@ Deno.serve(async (req) => {
     in_range: results.filter((r) => r.status !== 'skipped_out_of_range' && r.status !== 'skipped_no_departure').length,
     created: results.filter((r) => r.status === 'created').length,
     updated: results.filter((r) => r.status === 'updated').length,
+    merged_duplicates: results.filter((r) => r.status === 'merged_duplicate').length,
     cancelled: results.filter((r) => r.status === 'cancelled').length,
     no_op: results.filter((r) => r.status === 'no_op_unchanged' || r.status === 'no_op_completed').length,
     no_property: results.filter((r) => r.status === 'no_property').length,
     errors: results.filter((r) => r.status === 'error').length,
+    skipped_past: results.filter((r) => r.status === 'skipped_past').length,
     range: { from_date: fromDate, to_date: toDate },
   };
 

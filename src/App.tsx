@@ -1,4 +1,4 @@
-import { Component, useEffect } from "react";
+import { Component, lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { BrowserRouter, Route, Routes, Navigate, useNavigate } from "react-router-dom";
@@ -6,77 +6,72 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import LoginPage from "./pages/LoginPage";
-import PhoneLoginPage from "./pages/PhoneLoginPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import AppLayout from "./components/AppLayout";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
-import DashboardPage from "./pages/DashboardPage";
-import ActionsPage from "./pages/ActionsPage";
-import SchedulePage from "./pages/SchedulePage";
-import AddJobPage from "./pages/AddJobPage";
-import JobChecklistPage from "./pages/JobChecklistPage";
-import JobDetailPage from "./pages/JobDetailPage";
-import EditJobPage from "./pages/EditJobPage";
-import PropertyProfilePage from "./pages/PropertyProfilePage";
-import PropertyFormPage from "./pages/PropertyFormPage";
-import AIAssistantPage from "./pages/AIAssistantPage";
-import QuotingPage from "./pages/QuotingPage";
-import AirbnbQuotePage from "./pages/AirbnbQuotePage";
-import StaffPage from "./pages/StaffPage";
-import SettingsPage from "./pages/SettingsPage";
-import ClientsPage from "./pages/ClientsPage";
-import QCAuditPage from "./pages/QCAuditPage";
-import FormDetailPage from "./pages/FormDetailPage";
-import ClientDetailPage from "./pages/ClientDetailPage";
-import MagicLinkPortalPage from "./pages/MagicLinkPortalPage";
-import MagicLinkPropertyPage from "./pages/MagicLinkPropertyPage";
-import FeedbackPage from "./pages/FeedbackPage";
 
-import LinenPortalLoginPage from "./pages/LinenPortalLoginPage";
-import LinenPortalDashboardPage from "./pages/LinenPortalDashboardPage";
-import LinenAdminPage from "./pages/LinenAdminPage";
-import BookingRequestsPage from "./pages/BookingRequestsPage";
-import BookingSuggestionsPage from "./pages/BookingSuggestionsPage";
-import QuoteFollowupsPage from "./pages/QuoteFollowupsPage";
-import CleanerProfilePage from "./pages/CleanerProfilePage";
-// QuoteRequestFormPage deleted — /quote/:token now uses QuoteIntakePage
-// QuoteAcceptPage removed — redirects to QuoteViewPage
-import QuoteViewPage from "./pages/QuoteViewPage";
-import TimesheetsPage from "./pages/TimesheetsPage";
-import StaffOnboardingPage from "./pages/StaffOnboardingPage";
-import CleanerOnboardingPage from "./pages/CleanerOnboardingPage";
-import CleanerAvailabilityPage from "./pages/CleanerAvailabilityPage";
-import MyBrightlyScorePage from "./pages/MyBrightlyScorePage";
-import MyPaySummaryPage from "./pages/MyPaySummaryPage";
-import HeadCleanerQCPage from "./pages/HeadCleanerQCPage";
-import HeadCleanerQCAuditPage from "./pages/HeadCleanerQCAuditPage";
-import ClientSchedulePage from "./pages/ClientSchedulePage";
-import ClientRebookPage from "./pages/ClientRebookPage";
-import CleanerPortalPage from "./pages/CleanerPortalPage";
-import CleanReportPage from "./pages/CleanReportPage";
-// EnquiryPage deleted — enquiries go through the pipeline
-import BookingPage from "./pages/BookingPage";
-import QuoteIntakePage from "./pages/QuoteIntakePage";
-import MyJobsPage from "./pages/MyJobsPage";
-import CleanWorkflowPage from "./pages/CleanWorkflowPage";
-import CompletionFormPage from "./pages/CompletionFormPage";
-import JobCompleteDonePage from "./pages/JobCompleteDonePage";
-import JobAuditPage from "./pages/JobAuditPage";
-
-import PendingInvoicesPage from "./pages/PendingInvoicesPage";
-import FinancialsPage from "./pages/FinancialsPage";
-import PendingTimeEditsPage from "./pages/PendingTimeEditsPage";
-
-import LiveTrackerPage from "./pages/LiveTrackerPage";
-import MapPage from "./pages/MapPage";
-import GuestReadyReportPage from "./pages/GuestReadyReportPage";
-import PropertyPassportPage from "./pages/PropertyPassportPage";
-import NotFound from "./pages/NotFound";
-import SmokeTestPage from "./pages/SmokeTestPage";
-import ClientPortalVerifyPage from "./pages/ClientPortalVerifyPage";
-import ClientPortalDashboardPage from "./pages/ClientPortalDashboardPage";
-import ClientPortalPropertyPage from "./pages/ClientPortalPropertyPage";
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const PhoneLoginPage = lazy(() => import('./pages/PhoneLoginPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AppLayout = lazy(() => import('./components/AppLayout'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ActionsPage = lazy(() => import('./pages/ActionsPage'));
+const SchedulePage = lazy(() => import('./pages/SchedulePage'));
+const AddJobPage = lazy(() => import('./pages/AddJobPage'));
+const JobChecklistPage = lazy(() => import('./pages/JobChecklistPage'));
+const JobDetailPage = lazy(() => import('./pages/JobDetailPage'));
+const EditJobPage = lazy(() => import('./pages/EditJobPage'));
+const PropertyProfilePage = lazy(() => import('./pages/PropertyProfilePage'));
+const PropertyFormPage = lazy(() => import('./pages/PropertyFormPage'));
+const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
+const QuotingPage = lazy(() => import('./pages/QuotingPage'));
+const AirbnbQuotePage = lazy(() => import('./pages/AirbnbQuotePage'));
+const StaffPage = lazy(() => import('./pages/StaffPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ClientsPage = lazy(() => import('./pages/ClientsPage'));
+const QCAuditPage = lazy(() => import('./pages/QCAuditPage'));
+const FormDetailPage = lazy(() => import('./pages/FormDetailPage'));
+const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'));
+const MagicLinkPortalPage = lazy(() => import('./pages/MagicLinkPortalPage'));
+const MagicLinkPropertyPage = lazy(() => import('./pages/MagicLinkPropertyPage'));
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage'));
+const LinenPortalLoginPage = lazy(() => import('./pages/LinenPortalLoginPage'));
+const LinenPortalDashboardPage = lazy(() => import('./pages/LinenPortalDashboardPage'));
+const LinenAdminPage = lazy(() => import('./pages/LinenAdminPage'));
+const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage'));
+const BookingSuggestionsPage = lazy(() => import('./pages/BookingSuggestionsPage'));
+const QuoteFollowupsPage = lazy(() => import('./pages/QuoteFollowupsPage'));
+const CleanerProfilePage = lazy(() => import('./pages/CleanerProfilePage'));
+const QuoteViewPage = lazy(() => import('./pages/QuoteViewPage'));
+const TimesheetsPage = lazy(() => import('./pages/TimesheetsPage'));
+const StaffOnboardingPage = lazy(() => import('./pages/StaffOnboardingPage'));
+const CleanerOnboardingPage = lazy(() => import('./pages/CleanerOnboardingPage'));
+const CleanerAvailabilityPage = lazy(() => import('./pages/CleanerAvailabilityPage'));
+const MyBrightlyScorePage = lazy(() => import('./pages/MyBrightlyScorePage'));
+const MyPaySummaryPage = lazy(() => import('./pages/MyPaySummaryPage'));
+const HeadCleanerQCPage = lazy(() => import('./pages/HeadCleanerQCPage'));
+const HeadCleanerQCAuditPage = lazy(() => import('./pages/HeadCleanerQCAuditPage'));
+const ClientSchedulePage = lazy(() => import('./pages/ClientSchedulePage'));
+const ClientRebookPage = lazy(() => import('./pages/ClientRebookPage'));
+const CleanerPortalPage = lazy(() => import('./pages/CleanerPortalPage'));
+const CleanReportPage = lazy(() => import('./pages/CleanReportPage'));
+const BookingPage = lazy(() => import('./pages/BookingPage'));
+const QuoteIntakePage = lazy(() => import('./pages/QuoteIntakePage'));
+const MyJobsPage = lazy(() => import('./pages/MyJobsPage'));
+const CleanWorkflowPage = lazy(() => import('./pages/CleanWorkflowPage'));
+const CompletionFormPage = lazy(() => import('./pages/CompletionFormPage'));
+const JobCompleteDonePage = lazy(() => import('./pages/JobCompleteDonePage'));
+const JobAuditPage = lazy(() => import('./pages/JobAuditPage'));
+const PendingInvoicesPage = lazy(() => import('./pages/PendingInvoicesPage'));
+const FinancialsPage = lazy(() => import('./pages/FinancialsPage'));
+const PendingTimeEditsPage = lazy(() => import('./pages/PendingTimeEditsPage'));
+const LiveTrackerPage = lazy(() => import('./pages/LiveTrackerPage'));
+const MapPage = lazy(() => import('./pages/MapPage'));
+const GuestReadyReportPage = lazy(() => import('./pages/GuestReadyReportPage'));
+const PropertyPassportPage = lazy(() => import('./pages/PropertyPassportPage'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const SmokeTestPage = lazy(() => import('./pages/SmokeTestPage'));
+const ClientPortalVerifyPage = lazy(() => import('./pages/ClientPortalVerifyPage'));
+const ClientPortalDashboardPage = lazy(() => import('./pages/ClientPortalDashboardPage'));
+const ClientPortalPropertyPage = lazy(() => import('./pages/ClientPortalPropertyPage'));
 
 const queryClient = new QueryClient();
 
@@ -293,7 +288,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <SpaRedirectHandler />
-          <AppRoutes />
+          <Suspense fallback={<BrandedLoading />}>
+            <AppRoutes />
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

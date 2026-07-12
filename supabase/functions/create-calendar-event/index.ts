@@ -116,8 +116,8 @@ Deno.serve(async (req) => {
       summary: `Brightly Clean – ${propertyName}`,
       location: address,
       description: `Cleaning job for ${job.properties?.client_name || 'client'}\nProperty: ${propertyName}\n${address}`,
-      start: { dateTime: startDt.toISOString(), timeZone: 'Australia/Sydney' },
-      end: { dateTime: endDt.toISOString(), timeZone: 'Australia/Sydney' },
+      start: { dateTime: startDt.toISOString(), timeZone: 'Australia/Brisbane' },
+      end: { dateTime: endDt.toISOString(), timeZone: 'Australia/Brisbane' },
       attendees: attendees.length > 0 ? attendees : undefined,
     };
 

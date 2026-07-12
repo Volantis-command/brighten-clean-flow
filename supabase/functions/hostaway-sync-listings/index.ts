@@ -2,8 +2,8 @@
 // account and either:
 //   - links it to an existing Brightly property (when properties.hostaway_listing_id
 //     already matches), or
-//   - creates a new Brightly property tagged with hostaway_listing_id and
-//     linked to the client via client_properties.
+//   - returns it for explicit admin selection. Unmapped listings are never
+//     silently skipped or created without confirmation.
 //
 // Per-client connection model: the function reads the access_token from
 // hostaway_tokens for the given Brightly client_id, calls Hostaway's
@@ -44,6 +44,7 @@ const corsHeaders = {
 
 interface Body {
   client_id: string; // Brightly client_id (profiles.id)
+  listing_ids?: string[]; // Explicitly selected listings to import
 }
 
 interface HostawayListing {
@@ -67,7 +68,7 @@ interface ListingResult {
   hostaway_listing_id: string;
   name: string;
   address: string | null;
-  status: 'matched' | 'created' | 'error';
+  status: 'matched' | 'needs_mapping' | 'created' | 'error';
   property_id: string | null;
   error?: string;
 }
@@ -136,21 +137,9 @@ Deno.serve(async (req) => {
     return json({ error: 'Unexpected Hostaway response shape', detail: listingsBody }, 502);
   }
 
-  // 3. For each listing, match-or-create
-  //
-  // ALLOWLIST: only sync listings that are explicitly approved for this
-  // Brightly account. Any listing not in this set is silently skipped —
-  // this prevents a client's full Hostaway portfolio from flooding
-  // Brightly when we only manage a subset of their properties.
-  //
-  // To add a new property: append its Hostaway listing ID (as a string)
-  // to ALLOWED_LISTING_IDS and redeploy.
-  const ALLOWED_LISTING_IDS = new Set([
-    '512068', // Broadwater Lux Apartment
-    '512146', // Meriton Suites 4205
-    '503911', // Villa 112
-    '235155', // VILLA 64
-  ]);
+  // 3. Match existing properties and return every unmatched listing for
+  // explicit selection. This replaces the hard-coded four-listing allowlist.
+  const approvedListingIds = new Set((body.listing_ids || []).map(String));
 
   const results: ListingResult[] = [];
 
@@ -166,11 +155,6 @@ Deno.serve(async (req) => {
         property_id: null,
         error: 'Listing has no id',
       });
-      continue;
-    }
-
-    // Skip any listing not on the allowlist
-    if (!ALLOWED_LISTING_IDS.has(listingId)) {
       continue;
     }
 
@@ -205,6 +189,17 @@ Deno.serve(async (req) => {
         address,
         status: 'matched',
         property_id: existing.id,
+      });
+      continue;
+    }
+
+    if (!approvedListingIds.has(listingId)) {
+      results.push({
+        hostaway_listing_id: listingId,
+        name: displayName,
+        address,
+        status: 'needs_mapping',
+        property_id: null,
       });
       continue;
     }
@@ -290,6 +285,7 @@ Deno.serve(async (req) => {
 
   // 5. Return summary
   const matched = results.filter((r) => r.status === 'matched').length;
+  const needsMapping = results.filter((r) => r.status === 'needs_mapping').length;
   const created = results.filter((r) => r.status === 'created').length;
   const errors = results.filter((r) => r.status === 'error').length;
 
@@ -298,6 +294,7 @@ Deno.serve(async (req) => {
     summary: {
       total: results.length,
       matched,
+      needs_mapping: needsMapping,
       created,
       errors,
     },

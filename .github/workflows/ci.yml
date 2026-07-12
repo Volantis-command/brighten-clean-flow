@@ -1,9 +1,5 @@
-# Gates every PR + every push to main on a TypeScript type-check and a
-# successful Vite build. The single highest-leverage protection against the
-# schema-drift bugs that historically reached production silently.
-#
-# If you want to add tests later (vitest or playwright are already present
-# as dev deps), add a job here.
+# Gates every PR + push to main on types, deterministic integration tests,
+# production build and responsive browser smoke tests.
 
 name: CI
 
@@ -32,5 +28,14 @@ jobs:
       - name: TypeScript type-check
         run: npm run typecheck
 
+      - name: Unit and integration tests
+        run: npm test
+
       - name: Vite build
         run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Responsive browser smoke tests
+        run: npm run test:e2e -- --project=mobile-chrome

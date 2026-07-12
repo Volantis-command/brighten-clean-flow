@@ -36,10 +36,18 @@ const navItems: NavItem[] = [
 // full section list, so every admin area is reachable from a phone (previously
 // 11 of 16 sections were unreachable on mobile).
 const adminPrimaryItems: NavItem[] = [
-  { label: 'Alerts',       path: '/actions',       icon: Inbox,           roles: ['admin'] },
-  { label: 'Dashboard',    path: '/dashboard',     icon: LayoutDashboard, roles: ['admin'] },
-  { label: 'Schedule',     path: '/schedule',      icon: Calendar,        roles: ['admin'] },
-  { label: 'Airbnb Quote', path: '/airbnb-quote',  icon: Sparkles,        roles: ['admin'] },
+  { label: 'Command',   path: '/dashboard', icon: LayoutDashboard, roles: ['admin'] },
+  { label: 'Schedule',  path: '/schedule',  icon: Calendar,        roles: ['admin'] },
+  { label: 'Work',      path: '/my-jobs',   icon: ClipboardList,   roles: ['admin'] },
+  { label: 'Customers', path: '/clients',   icon: UserCircle,      roles: ['admin'] },
+];
+
+const headCleanerPrimaryItems: NavItem[] = [
+  { label: 'Command',  path: '/dashboard', icon: LayoutDashboard, roles: ['head_cleaner'] },
+  { label: 'Schedule', path: '/schedule',  icon: Calendar,        roles: ['head_cleaner'] },
+  { label: 'QC',       path: '/qc',        icon: ClipboardCheck,  roles: ['head_cleaner'] },
+  { label: 'Work',     path: '/my-jobs',   icon: ClipboardList,   roles: ['head_cleaner'] },
+  { label: 'Alerts',   path: '/actions',   icon: Inbox,           roles: ['head_cleaner'] },
 ];
 
 // Cleaners get a simplified bottom nav
@@ -208,9 +216,10 @@ export function MobileNav() {
     );
   }
 
-  // Head cleaner (and any other non-cleaner role) — first 5 permitted items.
-  const mobileItems = navItems
-    .filter((item) => role && item.roles.includes(role))
+  // Head cleaner priorities are explicit so QC can never disappear due to
+  // array ordering or slicing.
+  const mobileItems = (role === 'head_cleaner' ? headCleanerPrimaryItems : navItems
+    .filter((item) => role && item.roles.includes(role)))
     .map(item => item.path === '/actions' ? { ...item, badge: totalCount } : item)
     .slice(0, 5);
 
@@ -225,7 +234,7 @@ export function MobileNav() {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
+              `flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
                 isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
               }`
             }
@@ -287,7 +296,7 @@ export function DesktopSidebar() {
         </h2>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 space-y-1">
         {filteredWithBadge.map((item) => (
           <NavLink
             key={item.path}

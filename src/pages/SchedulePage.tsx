@@ -10,6 +10,7 @@ import { CalendarViewToggle, type CalendarView } from '@/components/schedule/Cal
 import { CalendarDayView } from '@/components/schedule/CalendarDayView';
 import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
 import { CalendarMonthView } from '@/components/schedule/CalendarMonthView';
+import { CalendarAgendaView } from '@/components/schedule/CalendarAgendaView';
 import { CalendarLegend } from '@/components/schedule/CalendarLegend';
 import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
@@ -34,6 +35,8 @@ export default function SchedulePage() {
 
   const [view, setView] = useState<CalendarView>(() => {
     const saved = localStorage.getItem('schedule-view');
+    const isPhone = window.matchMedia('(max-width: 639px)').matches;
+    if (isPhone && (!saved || saved === 'week' || saved === 'month')) return 'agenda';
     return (saved as CalendarView) || 'week';
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -64,6 +67,7 @@ export default function SchedulePage() {
   const navigateDate = (dir: 'prev' | 'next') => {
     setSelectedDate(d => {
       switch (view) {
+        case 'agenda': return dir === 'next' ? addDays(d, 14) : subDays(d, 14);
         case 'day': return dir === 'next' ? addDays(d, 1) : subDays(d, 1);
         case 'week': return dir === 'next' ? addWeeks(d, 1) : subWeeks(d, 1);
         case 'month': return dir === 'next' ? addMonths(d, 1) : subMonths(d, 1);
@@ -73,6 +77,7 @@ export default function SchedulePage() {
 
   const getHeaderLabel = () => {
     switch (view) {
+      case 'agenda': return `${format(selectedDate, 'd MMM')} – ${format(addDays(selectedDate, 13), 'd MMM yyyy')}`;
       case 'day': return format(selectedDate, 'EEEE, d MMMM yyyy');
       case 'week': return format(selectedDate, 'MMMM yyyy');
       case 'month': return format(selectedDate, 'MMMM yyyy');
@@ -196,7 +201,7 @@ export default function SchedulePage() {
   // Admin calendar view
   if (isAdmin) {
     return (
-      <div className="space-y-3">
+      <div className="min-w-0 w-full max-w-full space-y-3">
         {/* Pre-schedule strip */}
         {preScheduleJobs.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
@@ -234,34 +239,36 @@ export default function SchedulePage() {
             <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
             <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex w-full items-center gap-3 flex-wrap lg:w-auto">
             <CalendarViewToggle view={view} onChange={setView} />
-            <Button variant="accent" onClick={() => handleAddJob(selectedDate)} className="gap-2">
+            <Button variant="accent" onClick={() => handleAddJob(selectedDate)} className="min-h-11 flex-1 gap-2 sm:flex-none">
               <Plus className="h-5 w-5" /> Schedule Job
             </Button>
           </div>
         </div>
 
         {/* Row 2: Filters + date navigation */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="grid w-full grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-1 sm:flex sm:w-auto sm:gap-2">
             <button
               onClick={() => navigateDate('prev')}
-              className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              className="h-11 w-11 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              aria-label="Previous date range"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <h2 className="text-base font-bold text-foreground min-w-[180px] text-center">
+            <h2 className="min-w-0 truncate text-center text-sm font-bold text-foreground sm:min-w-[180px] sm:text-base">
               {getHeaderLabel()}
             </h2>
             <button
               onClick={() => navigateDate('next')}
-              className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              className="h-11 w-11 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              aria-label="Next date range"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
             {!isToday(selectedDate) && (
-              <Button variant="outline" size="sm" className="gap-1.5 ml-1 text-xs h-8" onClick={() => setSelectedDate(new Date())}>
+              <Button variant="outline" size="sm" className="col-span-3 mt-1 min-h-10 gap-1.5 text-xs sm:ml-1 sm:mt-0" onClick={() => setSelectedDate(new Date())}>
                 <CalendarDays className="h-3.5 w-3.5" /> Today
               </Button>
             )}
@@ -279,6 +286,15 @@ export default function SchedulePage() {
           </div>
         ) : (
           <>
+            {view === 'agenda' && (
+              <CalendarAgendaView
+                date={selectedDate}
+                jobs={filteredJobs}
+                nameMap={nameMap}
+                onJobClick={handleJobClick}
+                onAddJob={(date) => handleAddJob(date)}
+              />
+            )}
             {view === 'day' && (
               <CalendarDayView
                 date={selectedDate}

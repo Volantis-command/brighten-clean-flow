@@ -411,18 +411,18 @@ export default function ClientsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 w-full max-w-full space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-primary">Clients</h1>
           <p className="text-sm text-muted-foreground">{clients.length} client account{clients.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <BackfillOrphansButton onDone={() => queryClient.invalidateQueries({ queryKey: ['clients-list'] })} />
-          <Button onClick={() => setQuoteLinkOpen(true)} variant="outline" className="font-bold rounded-xl gap-2">
+          <Button onClick={() => setQuoteLinkOpen(true)} variant="outline" className="min-h-11 font-bold rounded-xl gap-2">
             <Send className="w-5 h-5" /> Send Quote Request
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
+          <Button onClick={() => setCreateOpen(true)} className="min-h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl gap-2">
             <UserPlus className="w-5 h-5" /> Add Client
           </Button>
         </div>
@@ -450,7 +450,31 @@ export default function ClientsPage() {
             className="max-w-sm bg-card"
           />
         </div>
-        <div className="bg-card rounded-2xl shadow-md border border-border overflow-hidden">
+        <div className="space-y-3 md:hidden">
+          {filteredClients.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No clients match your search.</div>
+          ) : filteredClients.map((client) => (
+            <article key={client.id} className="min-w-0 rounded-2xl border border-border bg-card p-4">
+              <button type="button" onClick={() => navigate(`/clients/${client.id}`)} className="w-full min-w-0 text-left">
+                <p className="truncate text-base font-extrabold text-primary">{getClientDisplayName(client)}</p>
+                <p className="mt-1 truncate text-sm text-muted-foreground">{client.email || 'No email'}</p>
+                <p className="truncate text-sm text-muted-foreground">{client.phone || 'No phone'}</p>
+                <p className="mt-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">{client.linked_properties.length} propert{client.linked_properties.length === 1 ? 'y' : 'ies'}</p>
+                <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+                  {client.linked_properties.slice(0, 3).map((property) => <Badge key={property.property_id} variant="secondary" className="max-w-full truncate text-xs">{property.property_name}</Badge>)}
+                  {client.linked_properties.length > 3 && <Badge variant="outline">+{client.linked_properties.length - 3}</Badge>}
+                </div>
+              </button>
+              <div className="mt-4 grid grid-cols-4 gap-2 border-t border-border pt-3">
+                <Button variant="outline" size="icon" className="h-11 w-full" aria-label={`View ${getClientDisplayName(client)} portal`} onClick={async () => { const link = await ensurePortalToken(client); if (link) window.open(link, '_blank'); else toast.error('Could not generate portal link'); }}><Eye className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-11 w-full" aria-label={`Copy ${getClientDisplayName(client)} portal link`} onClick={() => copyPortalLink(client)}><Copy className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-11 w-full" aria-label={`Send onboarding to ${getClientDisplayName(client)}`} onClick={() => openOnboardModal(client)}><Send className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-11 w-full text-destructive" aria-label={`Delete ${getClientDisplayName(client)}`} onClick={() => setDeleteClient(client)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden bg-card rounded-2xl shadow-md border border-border overflow-x-auto md:block">
           <Table>
             <TableHeader>
               <TableRow>

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-export type CalendarView = 'day' | 'week' | 'month';
+export type CalendarView = 'agenda' | 'day' | 'week' | 'month';
 
 interface CalendarViewToggleProps {
   view: CalendarView;
@@ -8,6 +8,7 @@ interface CalendarViewToggleProps {
 }
 
 const VIEWS: { value: CalendarView; label: string }[] = [
+  { value: 'agenda', label: 'Agenda' },
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },
@@ -15,13 +16,13 @@ const VIEWS: { value: CalendarView; label: string }[] = [
 
 export function CalendarViewToggle({ view, onChange }: CalendarViewToggleProps) {
   return (
-    <div className="inline-flex bg-muted rounded-xl p-1 gap-0.5">
+    <div className="grid w-full grid-cols-4 bg-muted rounded-xl p-1 gap-0.5 sm:inline-flex sm:w-auto" role="group" aria-label="Calendar view">
       {VIEWS.map(v => (
         <button
           key={v.value}
           onClick={() => onChange(v.value)}
           className={cn(
-            'px-4 py-2 rounded-lg text-sm font-bold transition-all',
+            'min-h-11 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all',
             view === v.value
               ? 'bg-primary text-primary-foreground shadow-md'
               : 'text-muted-foreground hover:text-foreground hover:bg-background'

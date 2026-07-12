@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
+
+type JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
 /**
  * Invoices Needing Attention — Brendan's home base for chasing money.
@@ -138,7 +141,7 @@ export default function PendingInvoicesPage() {
 
   const setJobInvoiceStatus = async (
     jobId: string,
-    patch: Record<string, any>,
+    patch: JobUpdate,
     successMsg: string
   ) => {
     const { error } = await supabase.from('jobs').update(patch).eq('id', jobId);

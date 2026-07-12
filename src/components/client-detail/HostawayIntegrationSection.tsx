@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Plug, CheckCircle2, AlertCircle, RefreshCw, CalendarRange } from 'lucide-react';
+import { Loader2, Plug, CheckCircle2, AlertCircle, RefreshCw, CalendarRange, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -23,7 +23,7 @@ interface SyncListingResult {
   hostaway_listing_id: string;
   name: string;
   address: string | null;
-  status: 'matched' | 'created' | 'error';
+  status: 'matched' | 'needs_mapping' | 'created' | 'error';
   property_id: string | null;
   error?: string;
 }
@@ -31,6 +31,7 @@ interface SyncListingResult {
 interface SyncSummary {
   total: number;
   matched: number;
+  needs_mapping: number;
   created: number;
   errors: number;
 }
@@ -84,6 +85,7 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
   const [showReconnect, setShowReconnect] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ summary: SyncSummary; results: SyncListingResult[] } | null>(null);
+  const [importingListings, setImportingListings] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<{ summary: ReservationSummary; results: ReservationResult[] } | null>(null);
 
@@ -184,6 +186,28 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
     }
   };
 
+  const handleImportListings = async (listingIds: string[]) => {
+    if (listingIds.length === 0) return;
+    setImportingListings(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('hostaway-sync-listings', {
+        body: { client_id: clientId, listing_ids: listingIds },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const summary = (data as any)?.summary as SyncSummary;
+      const results = (data as any)?.results as SyncListingResult[];
+      setSyncResult({ summary, results });
+      toast.success(`${summary.created} Hostaway propert${summary.created === 1 ? 'y' : 'ies'} imported`);
+      queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+    } catch (error: any) {
+      toast.error(error.message || 'Could not import selected listings');
+    } finally {
+      setImportingListings(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     if (!token) return;
     if (!confirm('Disconnect Hostaway for this client? They\u2019ll need to re-enter credentials to reconnect.')) return;
@@ -220,6 +244,8 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
             onSync={handleSyncListings}
             syncing={syncing}
             syncResult={syncResult}
+            onImportListings={handleImportListings}
+            importingListings={importingListings}
             onBackfill={handleBackfillReservations}
             backfilling={backfilling}
             backfillResult={backfillResult}
@@ -248,6 +274,8 @@ function ConnectedView({
   onSync,
   syncing,
   syncResult,
+  onImportListings,
+  importingListings,
   onBackfill,
   backfilling,
   backfillResult,
@@ -258,6 +286,8 @@ function ConnectedView({
   onSync: () => void;
   syncing: boolean;
   syncResult: { summary: SyncSummary; results: SyncListingResult[] } | null;
+  onImportListings: (listingIds: string[]) => void;
+  importingListings: boolean;
   onBackfill: () => void;
   backfilling: boolean;
   backfillResult: { summary: ReservationSummary; results: ReservationResult[] } | null;
@@ -300,17 +330,19 @@ function ConnectedView({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        <span className="font-semibold">Sync listings</span> imports properties from Hostaway. <span className="font-semibold">Backfill reservations</span> creates turnover jobs for the last 30 / next 60 days — useful for first-time setup or after webhook downtime.
+        <span className="font-semibold">Sync listings</span> finds every Hostaway property and lets you choose which ones Brightly manages. <span className="font-semibold">Sync reservations</span> reconciles today through the next 60 days and will not create historical cleans.
       </p>
 
-      {syncResult && <SyncResultPanel result={syncResult} />}
+      {syncResult && <SyncResultPanel result={syncResult} onImport={onImportListings} importing={importingListings} />}
       {backfillResult && <BackfillResultPanel result={backfillResult} />}
     </div>
   );
 }
 
-function SyncResultPanel({ result }: { result: { summary: SyncSummary; results: SyncListingResult[] } }) {
+function SyncResultPanel({ result, onImport, importing }: { result: { summary: SyncSummary; results: SyncListingResult[] }; onImport: (listingIds: string[]) => void; importing: boolean }) {
   const { summary, results } = result;
+  const [selected, setSelected] = useState<string[]>([]);
+  const candidates = results.filter((item) => item.status === 'needs_mapping');
   return (
     <div className="rounded-md border bg-muted/30 p-3 space-y-2">
       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -323,6 +355,9 @@ function SyncResultPanel({ result }: { result: { summary: SyncSummary; results: 
         )}
         {summary.matched > 0 && (
           <span className="text-muted-foreground"><span className="font-semibold">{summary.matched}</span> already linked</span>
+        )}
+        {summary.needs_mapping > 0 && (
+          <span className="text-amber-600"><span className="font-semibold">{summary.needs_mapping}</span> need selection</span>
         )}
         {summary.errors > 0 && (
           <span className="text-destructive"><span className="font-semibold">{summary.errors}</span> failed</span>
@@ -337,6 +372,15 @@ function SyncResultPanel({ result }: { result: { summary: SyncSummary; results: 
           <ul className="mt-2 space-y-1 max-h-64 overflow-y-auto">
             {results.map((r) => (
               <li key={r.hostaway_listing_id || r.name} className="flex items-start justify-between gap-2 py-1 border-b last:border-0">
+                {r.status === 'needs_mapping' && (
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                    checked={selected.includes(r.hostaway_listing_id)}
+                    onChange={(event) => setSelected((current) => event.target.checked ? [...current, r.hostaway_listing_id] : current.filter((id) => id !== r.hostaway_listing_id))}
+                    aria-label={`Select ${r.name} for import`}
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{r.name}</div>
                   {r.address && <div className="text-xs text-muted-foreground truncate">{r.address}</div>}
@@ -345,6 +389,7 @@ function SyncResultPanel({ result }: { result: { summary: SyncSummary; results: 
                 <span className={`text-xs whitespace-nowrap ${
                   r.status === 'created' ? 'text-green-700' :
                   r.status === 'matched' ? 'text-muted-foreground' :
+                  r.status === 'needs_mapping' ? 'text-amber-600' :
                   'text-destructive'
                 }`}>
                   {r.status}
@@ -353,6 +398,12 @@ function SyncResultPanel({ result }: { result: { summary: SyncSummary; results: 
             ))}
           </ul>
         </details>
+      )}
+      {candidates.length > 0 && (
+        <Button type="button" size="sm" disabled={selected.length === 0 || importing} onClick={() => onImport(selected)} className="w-full gap-2">
+          {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          Import {selected.length || ''} selected propert{selected.length === 1 ? 'y' : 'ies'}
+        </Button>
       )}
     </div>
   );

@@ -16,13 +16,13 @@ interface StatusFilterProps {
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
   return (
-    <div className="inline-flex bg-muted rounded-xl p-1 gap-0.5">
+    <div className="flex w-full flex-wrap bg-muted rounded-xl p-1 gap-1 sm:w-auto" role="group" aria-label="Filter jobs by status">
       {FILTERS.map((f) => (
         <button
           key={f.value}
           onClick={() => onChange(f.value)}
           className={cn(
-            'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all',
+            'min-h-10 flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold transition-all sm:flex-none',
             value === f.value
               ? 'bg-card text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'

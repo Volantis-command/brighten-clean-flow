@@ -4,12 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Phone, Users, Building2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 import { GOOGLE_MAPS_API_KEY } from '@/lib/config';
 
 const MAPS_KEY = GOOGLE_MAPS_API_KEY;
 
 export default function MapPage() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<'cleaners' | 'properties' | 'all'>('all');
   const [selectedCleaner, setSelectedCleaner] = useState<any>(null);
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
@@ -136,10 +138,18 @@ export default function MapPage() {
   const center = properties.length > 0
     ? `${properties[0].lat},${properties[0].lng}`
     : '-28.0027,153.4310'; // Broadbeach default
+  const focusedCoordinates = selectedProperty
+    ? `${selectedProperty.lat},${selectedProperty.lng}`
+    : selectedCleaner?.clock_in_lat && selectedCleaner?.clock_in_lng
+      ? `${selectedCleaner.clock_in_lat},${selectedCleaner.clock_in_lng}`
+      : null;
+  const mapSrc = focusedCoordinates
+    ? `https://www.google.com/maps/embed/v1/place?key=${MAPS_KEY}&q=${encodeURIComponent(focusedCoordinates)}&zoom=16&maptype=roadmap`
+    : `https://www.google.com/maps/embed/v1/view?key=${MAPS_KEY}&center=${center}&zoom=12&maptype=roadmap`;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">Map</h1>
         <FilterToggles filter={filter} setFilter={setFilter} />
       </div>
@@ -149,13 +159,14 @@ export default function MapPage() {
           className="w-full h-full absolute inset-0"
           style={{ minHeight: 'calc(100vh - 200px)', border: 0 }}
           loading="lazy"
-          src={`https://www.google.com/maps/embed/v1/view?key=${MAPS_KEY}&center=${center}&zoom=12&maptype=roadmap`}
+          title="Brightly live operations map"
+          src={mapSrc}
         />
 
         {/* Overlay cards */}
         <div className="absolute top-4 left-4 z-10 space-y-2 max-h-[60vh] overflow-y-auto">
           {showCleaners && activeClock.map((c: any) => (
-            <div key={c.id} className="bg-card/95 backdrop-blur rounded-xl p-3 border border-border shadow-lg max-w-xs">
+            <div role="button" tabIndex={0} onClick={() => { setSelectedCleaner(c); setSelectedProperty(null); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedCleaner(c); setSelectedProperty(null); } }} key={c.id} className="block w-full bg-card/95 backdrop-blur rounded-xl p-3 border border-border shadow-lg max-w-xs text-left hover:border-primary/50">
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full bg-primary animate-pulse shrink-0" />
                 <p className="text-sm font-bold text-foreground truncate">{c.profile?.full_name || 'Cleaner'}</p>
@@ -164,7 +175,7 @@ export default function MapPage() {
                 {c.job?.properties?.property_name || 'Unknown'} · Since {format(new Date(c.clock_in_time), 'h:mm a')}
               </p>
               {c.profile?.phone && (
-                <a href={`tel:${c.profile.phone}`}>
+                <a href={`tel:${c.profile.phone}`} onClick={(event) => event.stopPropagation()}>
                   <Button variant="outline" size="sm" className="mt-2 h-7 text-xs gap-1">
                     <Phone className="w-3 h-3" /> Call
                   </Button>
@@ -172,7 +183,20 @@ export default function MapPage() {
               )}
             </div>
           ))}
+          {showProperties && properties.map((property: any) => (
+            <button type="button" onClick={() => { setSelectedProperty(property); setSelectedCleaner(null); }} key={property.id} className="block w-full max-w-xs rounded-xl border border-border bg-card/95 p-3 text-left shadow-lg backdrop-blur hover:border-primary/50">
+              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm font-bold text-foreground">{property.property_name}</p><p className="truncate text-xs text-muted-foreground">{property.address}</p></div></div>
+            </button>
+          ))}
         </div>
+
+        {selectedProperty && (
+          <div className="absolute right-4 top-4 z-10 max-w-[calc(100%-2rem)] rounded-2xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur sm:max-w-sm">
+            <p className="font-extrabold text-foreground">{selectedProperty.property_name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{selectedProperty.address}</p>
+            <div className="mt-3 flex gap-2"><Button size="sm" onClick={() => navigate(`/properties/${selectedProperty.id}`)}>Open property</Button><Button size="sm" variant="outline" asChild><a href={`https://www.google.com/maps/dir/?api=1&destination=${selectedProperty.lat},${selectedProperty.lng}`} target="_blank" rel="noreferrer">Directions</a></Button></div>
+          </div>
+        )}
 
         {/* Summary strip */}
         <div className="absolute bottom-4 left-4 right-4 z-10 flex gap-3 justify-center">
@@ -192,10 +216,10 @@ export default function MapPage() {
 
 function FilterToggles({ filter, setFilter }: { filter: string; setFilter: (f: any) => void }) {
   return (
-    <div className="flex gap-1 bg-secondary rounded-xl p-1">
+    <div className="grid grid-cols-3 gap-1 bg-secondary rounded-xl p-1">
       <button
         onClick={() => setFilter('all')}
-        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+        className={`min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
           filter === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
@@ -203,7 +227,7 @@ function FilterToggles({ filter, setFilter }: { filter: string; setFilter: (f: a
       </button>
       <button
         onClick={() => setFilter('cleaners')}
-        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+        className={`min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
           filter === 'cleaners' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
@@ -211,7 +235,7 @@ function FilterToggles({ filter, setFilter }: { filter: string; setFilter: (f: a
       </button>
       <button
         onClick={() => setFilter('properties')}
-        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+        className={`min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
           filter === 'properties' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >

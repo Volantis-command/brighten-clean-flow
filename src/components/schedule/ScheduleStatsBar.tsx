@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay, isWithinInterval } from 'date-fns';
+import { addDays, startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay, isWithinInterval } from 'date-fns';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import type { CalendarView } from './CalendarViewToggle';
 
@@ -13,6 +13,9 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
   const periodJobs = useMemo(() => {
     return jobs.filter(j => {
       const d = new Date(j.scheduled_date + 'T00:00:00');
+      if (view === 'agenda') {
+        return isWithinInterval(d, { start: startOfDay(date), end: addDays(startOfDay(date), 13) });
+      }
       if (view === 'day') return isSameDay(d, date);
       if (view === 'week') {
         const ws = startOfWeek(date, { weekStartsOn: 1 });
@@ -33,7 +36,7 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
   const inProgress = periodJobs.filter(j => j.status === 'in_progress').length;
 
   return (
-    <p className="text-sm text-muted-foreground font-medium">
+    <p className="flex flex-wrap gap-x-1 text-xs sm:text-sm text-muted-foreground font-medium">
       <span>{totalJobs} job{totalJobs !== 1 ? 's' : ''}</span>
       <span className="mx-1.5 opacity-40">·</span>
       <span>${revenue.toLocaleString()} revenue</span>
