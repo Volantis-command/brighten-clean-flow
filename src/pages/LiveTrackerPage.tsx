@@ -1,218 +1,231 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Phone, Star, CheckCircle2, Camera, CalendarDays, Car, Sparkles } from 'lucide-react';
 
-interface TrackerData {
-  job: any;
-  property: any;
-  cleanerName: string;
-  cleanerScore: number | null;
-  cleanerJobCount: number;
-  checklistItems: any[];
-  completions: any[];
+/* ─── Brightly brand (Quote-Dark) ─── */
+const BG = '#0B0F17';
+const CARD = 'rgba(19,25,32,0.85)';
+const GREEN = '#4ADE80';
+const YELLOW = '#FEDB00';
+const BORDER = 'rgba(74,222,128,0.18)';
+const FONT = "'Inter', ui-sans-serif, system-ui, sans-serif";
+
+interface Tracker {
+  property: { name: string; suburb: string };
+  isAirbnb: boolean;
+  status: string;
+  stage: 'scheduled' | 'enroute' | 'in_progress' | 'guest_ready';
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  cleaner: { firstName: string; rating: number | null; completedJobs: number } | null;
+  timeline: { arrived_at: string | null; started_at: string | null; completed_at: string | null };
+  progress: { roomsTotal: number; roomsDone: number; itemsTotal: number; itemsDone: number };
+  photoCount: number;
+  guestReady: boolean;
+  reportUrl: string | null;
 }
 
-const STATUS_CONFIGS: Record<string, { bg: string; icon: string; label: string }> = {
-  scheduled: { bg: 'bg-blue-500', icon: '🚗', label: 'Cleaner on the way' },
-  confirmed: { bg: 'bg-blue-500', icon: '🚗', label: 'Cleaner on the way' },
-  in_progress: { bg: 'bg-accent', icon: '🧹', label: 'Clean in progress' },
-  completed: { bg: 'bg-brightly', icon: '✅', label: 'Property is Guest Ready' },
+const STAGES = ['scheduled', 'enroute', 'in_progress', 'guest_ready'] as const;
+
+const STEP_META: Record<string, { icon: any; label: string; sub: (t: Tracker) => string }> = {
+  scheduled: {
+    icon: CalendarDays,
+    label: 'Scheduled',
+    sub: (t) => {
+      if (!t.scheduled_date) return 'Booked in';
+      const d = new Date(t.scheduled_date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+      const time = t.scheduled_time ? ` · ${t.scheduled_time.slice(0, 5)}` : '';
+      return `${d}${time}`;
+    },
+  },
+  enroute: {
+    icon: Car,
+    label: 'Cleaner on the way',
+    sub: (t) => (t.cleaner ? `${t.cleaner.firstName} is heading over` : 'Cleaner assigned'),
+  },
+  in_progress: {
+    icon: Sparkles,
+    label: 'Clean in progress',
+    sub: (t) => (t.progress.roomsTotal > 0 ? `${t.progress.roomsDone} of ${t.progress.roomsTotal} rooms done` : 'Working through the property'),
+  },
+  guest_ready: {
+    icon: CheckCircle2,
+    label: 'Guest Ready',
+    sub: (t) => (t.photoCount > 0 ? `${t.photoCount} photos · tap to view proof` : 'Spotless and ready for your guest'),
+  },
 };
 
 export default function LiveTrackerPage() {
   const { jobId } = useParams<{ jobId: string }>();
-  const [data, setData] = useState<TrackerData | null>(null);
+  const [data, setData] = useState<Tracker | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!jobId) { setNotFound(true); setLoading(false); return; }
-
-    const { data: job } = await supabase
-      .from('jobs')
-      .select('*, properties(property_name, address, suburb, client_type)')
-      .eq('id', jobId)
-      .maybeSingle();
-
-    if (!job) { setNotFound(true); setLoading(false); return; }
-
-    const property = (job as any).properties;
-    const cleanerId = job.cleaner_1_id;
-    let cleanerName = 'Your cleaner';
-    let cleanerScore: number | null = null;
-    let cleanerJobCount = 0;
-
-    if (cleanerId) {
-      const { data: profile } = await supabase.from('profiles').select('full_name, audit_scores').eq('id', cleanerId).maybeSingle();
-      if (profile) {
-        cleanerName = profile.full_name || 'Your cleaner';
-        const scores = profile.audit_scores || [];
-        if (scores.length > 0) {
-          cleanerScore = parseFloat((scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(1));
-        }
-      }
-      const { count } = await supabase.from('jobs').select('id', { count: 'exact', head: true })
-        .eq('cleaner_1_id', cleanerId).eq('status', 'completed');
-      cleanerJobCount = count || 0;
+    try {
+      const { data: res, error } = await supabase.functions.invoke('turnover-tracker-data', {
+        body: { job_id: jobId },
+      });
+      if (error || !res?.ok) { setNotFound(true); }
+      else { setData(res as Tracker); setNotFound(false); }
+    } catch {
+      setNotFound(true);
     }
-
-    const { data: checklistItems } = await supabase
-      .from('property_sop_items')
-      .select('*')
-      .eq('property_id', job.property_id!)
-      .eq('active', true)
-      .order('room').order('sort_order');
-
-    const { data: completions } = await supabase
-      .from('job_checklist_completions')
-      .select('*')
-      .eq('job_id', job.id);
-
-    setData({
-      job, property,
-      cleanerName, cleanerScore, cleanerJobCount,
-      checklistItems: checklistItems || [],
-      completions: completions || [],
-    });
     setLoading(false);
-  };
-
-  useEffect(() => { fetchData(); }, [jobId]);
-
-  // Realtime subscription for live updates
-  useEffect(() => {
-    if (!jobId) return;
-    const channel = supabase
-      .channel(`tracker-${jobId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_checklist_completions', filter: `job_id=eq.${jobId}` }, () => fetchData())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs', filter: `id=eq.${jobId}` }, () => fetchData())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
   }, [jobId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Live polling — refresh every 20s while the page is open, and whenever the
+  // host refocuses the tab, so the status feels live without a websocket.
+  useEffect(() => {
+    const id = setInterval(fetchData, 20000);
+    const onFocus = () => fetchData();
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(id); window.removeEventListener('focus', onFocus); };
+  }, [fetchData]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: GREEN }} />
       </div>
     );
   }
 
   if (notFound || !data) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 text-center">
-        <h1 className="text-2xl font-bold text-foreground">Tracker not found</h1>
-        <p className="text-muted-foreground mt-2">This link may be invalid or the job doesn't exist.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: BG, fontFamily: FONT }}>
+        <p className="text-2xl font-extrabold" style={{ color: YELLOW }}>Brightly<span className="text-white/30">.</span></p>
+        <h1 className="text-xl font-bold text-white mt-6">Tracker not available</h1>
+        <p className="text-white/50 mt-2 text-sm">This link may be invalid or the clean isn't scheduled yet.</p>
+        <a href="tel:0418878707" className="inline-flex items-center gap-2 mt-6 text-sm font-bold" style={{ color: YELLOW }}>
+          <Phone className="w-4 h-4" /> 0418 878 707
+        </a>
       </div>
     );
   }
 
-  const { job, property, cleanerName, cleanerScore, cleanerJobCount, checklistItems, completions } = data;
-  const completionSet = new Set(completions.filter((c: any) => c.completed).map((c: any) => c.sop_item_id));
-  const completedCount = checklistItems.filter((i: any) => completionSet.has(i.id)).length;
-  const totalItems = checklistItems.length;
-
-  const statusKey = job.status === 'completed' ? 'completed' : job.status === 'in_progress' ? 'in_progress' : 'scheduled';
-  const statusConfig = STATUS_CONFIGS[statusKey] || STATUS_CONFIGS.scheduled;
-
-  // Group items by room
-  const roomGroups: Record<string, any[]> = {};
-  checklistItems.forEach((item: any) => {
-    const room = item.room || 'General';
-    if (!roomGroups[room]) roomGroups[room] = [];
-    roomGroups[room].push(item);
-  });
-
-  // ETA calculation
-  const avgMinPerRoom = 8;
-  const roomsRemaining = Object.keys(roomGroups).length - Object.keys(roomGroups).filter(room =>
-    roomGroups[room].every((i: any) => completionSet.has(i.id))
-  ).length;
-
-  const startedAt = job.clock_on ? new Date(job.clock_on) : job.check_in_time ? new Date(job.check_in_time) : null;
-  const etaMinutes = roomsRemaining * avgMinPerRoom;
+  const currentIdx = STAGES.indexOf(data.stage);
+  const t = data;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-primary px-5 pt-6 pb-5">
-        <h1 className="text-xl font-extrabold text-primary-foreground tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Brightly<span className="text-accent">.</span>
-        </h1>
-        <div className="mt-3">
-          <h2 className="text-lg font-bold text-primary-foreground">{property?.property_name || property?.address || 'Property'}</h2>
-          <p className="text-primary-foreground/70 text-sm">{[property?.address, property?.suburb].filter(Boolean).join(', ')}</p>
-          <p className="text-primary-foreground/70 text-sm mt-1">{job.scheduled_date ? format(new Date(job.scheduled_date + 'T00:00:00'), 'EEEE, d MMMM yyyy') : ''}</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-primary-foreground text-sm font-semibold">{cleanerName}</span>
-            {cleanerScore && (
-              <span className="text-sm text-accent font-bold">★ {cleanerScore}</span>
-            )}
-            {cleanerJobCount > 0 && (
-              <span className="text-primary-foreground/50 text-xs">· {cleanerJobCount} cleans</span>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen" style={{ background: BG, color: '#F8FAFC', fontFamily: FONT }}>
+      <div className="max-w-md mx-auto px-5 pb-16">
+        {/* Header */}
+        <header className="pt-8 pb-2 text-center">
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: YELLOW }}>
+            Brightly<span className="text-white/30">.</span>
+          </h1>
+          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-5">Live Turnover Tracker</p>
+          <p className="text-white text-lg font-extrabold mt-1">{t.property.name}</p>
+          {t.property.suburb && <p className="text-white/50 text-sm">{t.property.suburb}</p>}
+        </header>
 
-      {/* Status banner */}
-      <div className={`${statusConfig.bg} px-5 py-4 text-white`}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{statusConfig.icon}</span>
-          <div>
-            <p className={`font-bold text-sm ${statusKey === 'in_progress' ? 'text-foreground' : 'text-white'}`}>{statusConfig.label}</p>
-            {statusKey === 'in_progress' && startedAt && (
-              <p className={`text-xs ${statusKey === 'in_progress' ? 'text-foreground/70' : 'text-white/80'}`}>
-                Started {format(startedAt, 'h:mmaaa')}
-                {etaMinutes > 0 ? ` · Est. complete in ~${etaMinutes} min` : ''}
-              </p>
-            )}
-            {statusKey === 'completed' && job.check_out_time && (
-              <p className="text-xs text-white/80">Completed {format(new Date(job.check_out_time), 'h:mmaaa')}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Room checklist */}
-      <div className="px-4 py-5 space-y-3 max-w-lg mx-auto">
-        {totalItems > 0 ? (
-          Object.entries(roomGroups).map(([room, items]) => {
-            const roomDone = items.every((i: any) => completionSet.has(i.id));
-            const lastCompletion = completions
-              .filter((c: any) => c.completed && items.some((i: any) => i.id === c.sop_item_id))
-              .sort((a: any, b: any) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())[0];
-
+        {/* Hero — current stage */}
+        <div className="rounded-3xl p-6 mt-6 text-center relative overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}`, backdropFilter: 'blur(16px)' }}>
+          {(() => {
+            const meta = STEP_META[t.stage];
+            const Icon = meta.icon;
+            const done = t.stage === 'guest_ready';
             return (
-              <div key={room} className={`rounded-xl border-2 p-4 transition-all ${roomDone ? 'border-brightly-light bg-brightly/10' : 'border-border bg-card'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{roomDone ? '✅' : '⏳'}</span>
-                    <span className="font-bold text-foreground text-sm">{room}</span>
+              <>
+                <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                  style={{ background: done ? 'rgba(74,222,128,0.15)' : 'rgba(254,219,0,0.12)', border: `1px solid ${done ? BORDER : 'rgba(254,219,0,0.3)'}` }}>
+                  <Icon className="w-9 h-9" style={{ color: done ? GREEN : YELLOW }} />
+                </div>
+                <h2 className="text-2xl font-extrabold text-white">{meta.label}</h2>
+                <p className="text-white/60 text-sm mt-1">{meta.sub(t)}</p>
+
+                {/* In-progress bar */}
+                {t.stage === 'in_progress' && t.progress.roomsTotal > 0 && (
+                  <div className="mt-4">
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${Math.round((t.progress.roomsDone / t.progress.roomsTotal) * 100)}%`, background: GREEN }} />
+                    </div>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {roomDone && lastCompletion?.completed_at
-                      ? `Done at ${format(new Date(lastCompletion.completed_at), 'h:mmaaa')}`
-                      : 'Pending'}
-                  </span>
+                )}
+
+                {/* Guest-ready CTA */}
+                {t.guestReady && t.reportUrl && (
+                  <a href={t.reportUrl}
+                    className="inline-flex items-center justify-center gap-2 mt-5 w-full py-3.5 rounded-2xl font-extrabold"
+                    style={{ background: GREEN, color: '#0B0F17' }}>
+                    <Camera className="w-5 h-5" /> View Photo Report
+                  </a>
+                )}
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Stepper */}
+        <div className="mt-6 space-y-1">
+          {STAGES.map((s, i) => {
+            const meta = STEP_META[s];
+            const Icon = meta.icon;
+            const isDone = i < currentIdx;
+            const isCurrent = i === currentIdx;
+            const color = isDone ? GREEN : isCurrent ? YELLOW : 'rgba(255,255,255,0.25)';
+            return (
+              <div key={s} className="flex items-start gap-4">
+                {/* Rail */}
+                <div className="flex flex-col items-center">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                    style={{
+                      background: isDone ? 'rgba(74,222,128,0.15)' : isCurrent ? 'rgba(254,219,0,0.12)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${isDone ? BORDER : isCurrent ? 'rgba(254,219,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                    }}>
+                    {isDone ? <CheckCircle2 className="w-5 h-5" style={{ color: GREEN }} /> : <Icon className="w-4 h-4" style={{ color }} />}
+                  </div>
+                  {i < STAGES.length - 1 && (
+                    <div className="w-0.5 flex-1 min-h-[28px]" style={{ background: isDone ? BORDER : 'rgba(255,255,255,0.08)' }} />
+                  )}
+                </div>
+                {/* Label */}
+                <div className={`pb-4 pt-1 ${isCurrent ? '' : 'opacity-80'}`}>
+                  <p className="font-bold text-sm" style={{ color: isCurrent ? '#FFFFFF' : isDone ? '#FFFFFF' : 'rgba(255,255,255,0.4)' }}>
+                    {meta.label}
+                  </p>
+                  {(isCurrent || isDone) && <p className="text-white/45 text-xs mt-0.5">{meta.sub(t)}</p>}
                 </div>
               </div>
             );
-          })
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">No checklist items configured for this property.</p>
+          })}
+        </div>
+
+        {/* Cleaner card */}
+        {t.cleaner && (
+          <div className="rounded-2xl p-4 mt-4 flex items-center gap-3" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center font-extrabold text-lg flex-shrink-0"
+              style={{ background: 'rgba(74,222,128,0.15)', color: GREEN }}>
+              {t.cleaner.firstName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold">{t.cleaner.firstName}</p>
+              <div className="flex items-center gap-3 text-xs text-white/50 mt-0.5">
+                {t.cleaner.rating != null && (
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5" style={{ color: YELLOW, fill: YELLOW }} /> {t.cleaner.rating.toFixed(1)}
+                  </span>
+                )}
+                {t.cleaner.completedJobs > 0 && <span>{t.cleaner.completedJobs} cleans completed</span>}
+              </div>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Footer */}
-      <footer className="text-center py-6 border-t border-border mt-4">
-        <p className="text-xs text-muted-foreground">Powered by Brightly. · Gold Coast's trusted cleaning network</p>
-        <a href="tel:0418878707" className="text-xs text-primary font-semibold mt-1 inline-block">Need help? Contact us</a>
-      </footer>
+        {/* Footer */}
+        <div className="text-center pt-8 space-y-2">
+          <a href="tel:0418878707" className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: YELLOW }}>
+            <Phone className="w-4 h-4" /> Questions? 0418 878 707
+          </a>
+          <p className="text-white/20 text-xs">Brightly Cleaning — live turnover tracking</p>
+        </div>
+      </div>
     </div>
   );
 }
