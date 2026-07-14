@@ -20,10 +20,10 @@ SET guest_name = trim(substring(split_part(notes, E'\n', 1) from 'guest:\s*(.+)$
 WHERE guest_name IS NULL
   AND notes ~* 'guest:\s*.+';
 
--- 3. Schedule the weekly batch every Monday at 00:00 UTC (= 10:00 AEST Monday).
---    Running at a UTC time that is already "Monday" matters: the function's
---    lastWeekRange() reads the runtime clock (UTC) to pick the previous Mon–Sun,
---    so it must see Monday to bill the week that just ended.
+-- 3. Schedule the weekly batch every Monday at 06:00 Gold Coast time (AEST,
+--    UTC+10, no DST) = 20:00 UTC on Sunday. The function's lastWeekRange() is
+--    AEST-aware, so even though the cron fires while the UTC clock still reads
+--    Sunday, it correctly bills the Mon–Sun week that just ended.
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
@@ -36,7 +36,7 @@ END $$;
 
 SELECT cron.schedule(
   'weekly-batch-invoice-monday',
-  '0 0 * * 1',
+  '0 20 * * 0',
   $$
   SELECT net.http_post(
     url := 'https://ueomxjsqvmbjfufjauhe.supabase.co/functions/v1/xero-weekly-batch-invoice',

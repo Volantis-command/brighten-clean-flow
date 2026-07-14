@@ -137,20 +137,25 @@ async function resolveXeroContact(
   return createData?.Contacts?.[0]?.ContactID || null;
 }
 
-/** Previous Mon–Sun relative to `today` (YYYY-MM-DD strings). */
-function lastWeekRange(today = new Date()): { from: string; to: string } {
-  // Day of week: 0=Sun, 1=Mon … 6=Sat
-  const dow = today.getDay();
-  // Days since last Monday: if today is Mon (1) → 7 days back, Sun (0) → 6 days back, etc.
+/** Previous Mon–Sun in Gold Coast time (AEST, UTC+10, no DST), as YYYY-MM-DD.
+ *  The Monday cron fires at 20:00 UTC Sunday (= 06:00 Monday AEST), so the raw
+ *  UTC clock still reads "Sunday" when it runs. We shift into AEST wall-clock
+ *  first and use UTC accessors on that shifted value, so day-of-week and the
+ *  resulting date strings reflect the Gold Coast week — not UTC. */
+function lastWeekRange(now = new Date()): { from: string; to: string } {
+  const AEST_OFFSET_MS = 10 * 60 * 60 * 1000;
+  const aest = new Date(now.getTime() + AEST_OFFSET_MS);
+  // Day of week in AEST: 0=Sun, 1=Mon … 6=Sat
+  const dow = aest.getUTCDay();
   const daysSinceLastMon = dow === 0 ? 6 : dow - 1;
-  const thisMonday = new Date(today);
-  thisMonday.setDate(today.getDate() - daysSinceLastMon);
+  const thisMonday = new Date(aest);
+  thisMonday.setUTCDate(aest.getUTCDate() - daysSinceLastMon);
 
   const lastMonday = new Date(thisMonday);
-  lastMonday.setDate(thisMonday.getDate() - 7);
+  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
 
   const lastSunday = new Date(thisMonday);
-  lastSunday.setDate(thisMonday.getDate() - 1);
+  lastSunday.setUTCDate(thisMonday.getUTCDate() - 1);
 
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   return { from: fmt(lastMonday), to: fmt(lastSunday) };
