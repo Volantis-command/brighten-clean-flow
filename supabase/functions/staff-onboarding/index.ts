@@ -9,6 +9,7 @@ const corsHeaders = {
 const BUCKET = "staff-documents";
 const VERSION = "B-ABNB-HR-002-v1.0";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_DOCUMENTS = new Set([
   "profile_photo",
   "photo_id",
@@ -408,7 +409,7 @@ Deno.serve(async (req) => {
     }
 
     const token = String(body.token ?? "");
-    if (!token) return json({ error: "Invalid onboarding link" }, 400);
+    if (!UUID_PATTERN.test(token)) return json({ error: "Invalid onboarding link" }, 404);
     const { data: record, error } = await admin
       .from("staff_onboarding")
       .select("*")
@@ -607,6 +608,11 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (error) {
     console.error("staff-onboarding error", error);
-    return json({ error: error instanceof Error ? error.message : "Unexpected error" }, 500);
+    const message = error instanceof Error
+      ? error.message
+      : error && typeof error === "object" && "message" in error
+        ? String(error.message)
+        : "Unexpected error";
+    return json({ error: message }, 500);
   }
 });
