@@ -1,888 +1,470 @@
-import { useState, useEffect } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any -- Edge-function responses include the newly migrated JSON contract until Supabase types are regenerated. */
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Clock3,
+  FileCheck2,
+  Loader2,
+  LockKeyhole,
+  ShieldCheck,
+  Upload,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle2, AlertCircle, Upload, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { sendJobSms } from '@/lib/sendJobSms';
+import brightlyLogo from '@/assets/brightly-logo.png';
+import {
+  DAYS_OF_WEEK,
+  DOCUMENT_TYPES,
+  EMPTY_STAFF_ONBOARDING_DRAFT,
+  getKnowledgeScore,
+  isValidAbn,
+  normaliseDigits,
+  ONBOARDING_ACKNOWLEDGEMENTS,
+  ONBOARDING_KNOWLEDGE_QUESTIONS,
+  STAFF_ONBOARDING_STEPS,
+  type StaffOnboardingDraft,
+} from '@/lib/staffOnboarding';
 
-const STEPS = [
-  'Personal Details',
-  'Work Entitlements',
-  'Identity Verification',
-  'Your Availability',
-  'WhatsApp + Policy Acknowledgements',
-  'Set Your Password',
-];
+type DocumentManifest = Record<string, {
+  path?: string;
+  legacy_url?: string;
+  original_name?: string;
+  uploaded_at?: string;
+}>;
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const START_TIMES = ['7:00am', '8:00am', '9:00am', '10:00am'];
-const MAX_JOBS = ['1', '2', '3', 'No limit'];
-const DOB_MONTHS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-];
-const DOB_YEARS = Array.from({ length: 2005 - 1950 + 1 }, (_, index) => String(2005 - index));
-
-const POLICIES = [
-  'I have read and understand the Cleaner Onboarding & Training SOP (B-ABNB-HR-002) and agree to comply with all standards and expectations.',
-  'I understand I am engaged as an independent contractor. Work is offered as available — there are no guaranteed hours. I am responsible for my own tax obligations.',
-  'I understand that no-show on an accepted job is a serious breach and may result in roster removal. Cancelling with less than 4 hours notice will result in a written warning.',
-  'I will never share property access codes, entry details, or client information with any third party.',
-  'I understand that all jobs must be completed to Brightly\'s hotel-standard SOP, before/after photos submitted, and the job marked complete before leaving the property.',
-  'I understand that a minimum of two shadow cleans are required before solo deployment, and solo deployment is at the Director\'s discretion.',
-  'Chemical safety: I will never mix chemicals, will wear rubber gloves at all times during cleaning, and will report any WHS incident to Brendan Parker immediately on 0418 878 707.',
-  'I confirm all information provided in this form is accurate and complete.',
-];
-
-interface FormData {
-  full_name: string;
-  preferred_name: string;
-  phone: string;
-  email: string;
-  date_of_birth: Date | undefined;
-  address: string;
-  emergency_contact_name: string;
-  emergency_contact_phone: string;
-  emergency_contact_relationship: string;
-  abn_status: string;
-  abn: string;
-  bank_account_name: string;
-  bank_bsb: string;
-  bank_account_number: string;
-  id_confirmed: boolean;
-  available_days: string[];
-  preferred_start_time: string;
-  max_jobs_per_day: string;
-  availability_notes: string;
-  has_whatsapp: boolean;
-  policy_acks: boolean[];
-  password: string;
-  password_confirm: string;
-}
-
-const initialForm: FormData = {
-  full_name: '', preferred_name: '', phone: '', email: '',
-  date_of_birth: undefined, address: '',
-  emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relationship: '',
-  abn_status: '', abn: '',
-  bank_account_name: '', bank_bsb: '', bank_account_number: '',
-  id_confirmed: false,
-  available_days: [], preferred_start_time: '', max_jobs_per_day: '',
-  availability_notes: '', has_whatsapp: false,
-  policy_acks: POLICIES.map(() => false),
-  password: '', password_confirm: '',
+type ApiRecord = Partial<StaffOnboardingDraft> & {
+  email?: string;
+  current_step?: number;
+  submitted_at?: string | null;
+  last_saved_at?: string | null;
+  document_manifest?: DocumentManifest;
+  sop_acknowledgements?: Record<string, boolean | { acknowledged?: boolean }>;
+  knowledge_check?: {
+    answers?: Record<string, number>;
+    questions?: Record<string, { selected_index?: number }>;
+  };
+  cleaner_declaration?: { accurate?: boolean; compliance?: boolean };
 };
 
+const selectClass = 'flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-base ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
+
+function Field({ label, required, children, hint }: { label: string; required?: boolean; children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <Label className="text-sm font-semibold text-foreground">
+        {label}{required && <span className="ml-1 text-destructive">*</span>}
+      </Label>
+      {children}
+      {hint && <p className="text-xs leading-5 text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function ChoiceCard({ checked, onChange, title, description }: { checked: boolean; onChange: (checked: boolean) => void; title: string; description?: string }) {
+  return (
+    <label className={cn(
+      'flex min-h-14 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors',
+      checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40',
+    )}>
+      <Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} className="mt-0.5 h-5 w-5 shrink-0" />
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold leading-5 text-foreground">{title}</span>
+        {description && <span className="mt-1 block text-xs leading-5 text-muted-foreground">{description}</span>}
+      </span>
+    </label>
+  );
+}
+
 export default function StaffOnboardingPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token = '' } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [notFound, setNotFound] = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [form, setForm] = useState<FormData>(initialForm);
-  const [recordId, setRecordId] = useState('');
-  const [userId, setUserId] = useState('');
-  const [currentStep, setCurrentStep] = useState(1);
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [uploadingId, setUploadingId] = useState(false);
-  const [idFileUrl, setIdFileUrl] = useState('');
-  const [dobDay, setDobDay] = useState('');
-  const [dobMonth, setDobMonth] = useState('');
-  const [dobYear, setDobYear] = useState('');
+  const [step, setStep] = useState(0);
+  const [draft, setDraft] = useState<StaffOnboardingDraft>({ ...EMPTY_STAFF_ONBOARDING_DRAFT });
+  const [documents, setDocuments] = useState<DocumentManifest>({});
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+
+  const invoke = async (action: string, extra: Record<string, unknown> = {}) => {
+    const { data, error: invokeError } = await supabase.functions.invoke('staff-onboarding', {
+      body: { action, token, ...extra },
+    });
+    if (invokeError) throw new Error((data as any)?.error || invokeError.message);
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data as any;
+  };
 
   useEffect(() => {
-    if (!token) { setNotFound(true); setLoading(false); return; }
-    supabase
-      .from('staff_onboarding')
-      .select('*')
-      .eq('onboarding_token', token)
-      .maybeSingle()
-      .then(async ({ data, error }) => {
-        if (error || !data) { setNotFound(true); setLoading(false); return; }
-        if (data.submitted_at) { setAlreadySubmitted(true); setLoading(false); return; }
-        setRecordId(data.id);
-        setUserId(data.user_id);
-        const d = data as any;
-
-        // Also fetch phone from profiles table if not on staff_onboarding
-        let phone = d.phone || '';
-        if (!phone) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('phone')
-            .eq('id', data.user_id)
-            .maybeSingle();
-          if (profile?.phone) phone = profile.phone;
-        }
-
-        setForm(prev => ({
-          ...prev,
-          full_name: d.full_name || '',
-          preferred_name: d.preferred_name || '',
-          phone,
-          email: d.email || '',
-          date_of_birth: d.date_of_birth ? new Date(d.date_of_birth) : undefined,
-          address: d.address || '',
-        }));
-        if (d.date_of_birth) {
-          const existingDob = new Date(d.date_of_birth);
-          setDobDay(String(existingDob.getDate()));
-          setDobMonth(String(existingDob.getMonth() + 1));
-          setDobYear(String(existingDob.getFullYear()));
-        }
+    let cancelled = false;
+    (async () => {
+      if (!token) {
+        setError('This onboarding link is invalid. Ask Brightly for a new link.');
         setLoading(false);
-      });
+        return;
+      }
+      try {
+        const { record } = await invoke('load');
+        if (cancelled) return;
+        const saved = record as ApiRecord;
+        const acks = saved.sop_acknowledgements ?? {};
+        const acknowledgementValues = Object.fromEntries(ONBOARDING_ACKNOWLEDGEMENTS.map(({ key }) => {
+          const value = acks[key];
+          return [key, value && typeof value === 'object' ? Boolean((value as { acknowledged?: boolean }).acknowledged) : value === true];
+        }));
+        const savedQuestions = saved.knowledge_check?.questions;
+        const questionValues = saved.knowledge_check?.answers ?? Object.fromEntries(
+          Object.entries(savedQuestions ?? {}).map(([key, value]) => [key, value.selected_index]),
+        );
+        setDraft({
+          ...EMPTY_STAFF_ONBOARDING_DRAFT,
+          ...Object.fromEntries(Object.entries(saved).filter(([, value]) => value !== null)),
+          email: saved.email ?? '',
+          available_days: Array.isArray(saved.available_days) ? saved.available_days : [],
+          max_jobs_per_day: saved.max_jobs_per_day ? String(saved.max_jobs_per_day) : '',
+          sop_acknowledgements: acknowledgementValues,
+          knowledge_answers: questionValues as Record<string, number>,
+          declaration_accurate: Boolean(saved.cleaner_declaration?.accurate),
+          declaration_compliance: Boolean(saved.cleaner_declaration?.compliance),
+        });
+        setDocuments(saved.document_manifest ?? {});
+        setStep(Math.max(0, Math.min(7, Number(saved.current_step ?? 0))));
+        setLastSaved(saved.last_saved_at ?? null);
+        setSubmitted(Boolean(saved.submitted_at));
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'We could not open this onboarding link.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // The invitation token is the identity for this intentionally public route.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const update = <K extends keyof FormData>(key: K, value: FormData[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  const toggleDay = (day: string) => {
-    setForm(prev => ({
-      ...prev,
-      available_days: prev.available_days.includes(day)
-        ? prev.available_days.filter(d => d !== day)
-        : [...prev.available_days, day],
-    }));
+  const set = <K extends keyof StaffOnboardingDraft>(key: K, value: StaffOnboardingDraft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
   };
 
-  const togglePolicy = (idx: number) => {
-    setForm(prev => {
-      const newAcks = [...prev.policy_acks];
-      newAcks[idx] = !newAcks[idx];
-      return { ...prev, policy_acks: newAcks };
-    });
-  };
+  const payload = (currentStep = step) => ({ ...draft, current_step: currentStep });
 
-  const updateDateOfBirth = (part: 'day' | 'month' | 'year', value: string) => {
-    const nextDay = part === 'day' ? value : dobDay;
-    const nextMonth = part === 'month' ? value : dobMonth;
-    const nextYear = part === 'year' ? value : dobYear;
-    setDobDay(nextDay);
-    setDobMonth(nextMonth);
-    setDobYear(nextYear);
-    if (!nextDay || !nextMonth || !nextYear) { update('date_of_birth', undefined); return; }
-    const dayNumber = Number(nextDay);
-    const monthNumber = Number(nextMonth);
-    const yearNumber = Number(nextYear);
-    const maxDay = new Date(yearNumber, monthNumber, 0).getDate();
-    const safeDay = Math.min(dayNumber, maxDay);
-    if (safeDay !== dayNumber) setDobDay(String(safeDay));
-    update('date_of_birth', new Date(yearNumber, monthNumber - 1, safeDay));
-  };
-
-  const availableDobDays = (() => {
-    if (!dobMonth || !dobYear) return Array.from({ length: 31 }, (_, i) => i + 1);
-    const totalDays = new Date(Number(dobYear), Number(dobMonth), 0).getDate();
-    return Array.from({ length: totalDays }, (_, i) => i + 1);
-  })();
-
-  const uploadFile = async (file: File, folder: string): Promise<string> => {
-    const ext = file.name.split('.').pop();
-    const path = `${folder}/${recordId}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('staff-documents').upload(path, file);
-    if (error) throw error;
-    const { data: { publicUrl } } = supabase.storage.from('staff-documents').getPublicUrl(path);
-    return publicUrl;
-  };
-
-  const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIdFile(file);
-    setUploadingId(true);
+  const save = async (currentStep: number) => {
+    setSaving(true);
     try {
-      const url = await uploadFile(file, 'id-documents');
-      setIdFileUrl(url);
-      toast.success('ID uploaded successfully');
-    } catch (err: any) {
-      toast.error('Upload failed: ' + err.message);
-      setIdFile(null);
+      const result = await invoke('save', { payload: payload(currentStep) });
+      setLastSaved(result.saved_at ?? new Date().toISOString());
     } finally {
-      setUploadingId(false);
+      setSaving(false);
     }
   };
 
-  const totalSteps = STEPS.length;
+  const validate = (currentStep: number) => {
+    const required = (value: unknown) => Boolean(String(value ?? '').trim());
+    if (currentStep === 0) {
+      if (![draft.full_name, draft.phone, draft.email, draft.date_of_birth, draft.address, draft.residential_suburb, draft.postcode, draft.emergency_contact_name, draft.emergency_contact_phone, draft.emergency_contact_relationship].every(required)) return 'Complete every required personal and emergency-contact field.';
+    }
+    if (currentStep === 1) {
+      if (!draft.is_contractor) return 'You must acknowledge the independent-contractor arrangement.';
+      if (draft.abn_status !== 'yes') return 'An active ABN is required before onboarding can be completed.';
+      if (!isValidAbn(draft.abn)) return 'Enter a valid active ABN.';
+      if (!draft.bank_account_name || normaliseDigits(draft.bank_bsb).length !== 6 || normaliseDigits(draft.bank_account_number).length < 6) return 'Complete the account name, 6-digit BSB and account number.';
+    }
+    if (currentStep === 2) {
+      if (!draft.id_document_type || !draft.id_confirmed || !draft.police_check_date) return 'Complete the ID and police-check details.';
+      if (!draft.public_liability_status || !draft.work_rights_status) return 'Complete the public-liability and work-rights questions.';
+      if (draft.id_document_type === 'drivers_licence' && !draft.drivers_licence_expiry) return 'Enter your driver licence expiry date.';
+      for (const key of ['profile_photo', 'photo_id', 'police_check']) if (!documents[key]) return `Upload your ${key.split('_').join(' ')}.`;
+      if (draft.public_liability_status === 'yes' && (!documents.public_liability || !draft.public_liability_expiry)) return 'Upload your public-liability certificate and enter its expiry date.';
+      if (draft.work_rights_status === 'visa' && !documents.work_rights) return 'Upload your work-rights evidence.';
+    }
+    if (currentStep === 3) {
+      if (!draft.available_days.length || !draft.preferred_start_time || !draft.max_jobs_per_day) return 'Select your days, preferred start time and maximum jobs.';
+      if (!draft.transport_confirmed) return 'Reliable transport is required for this role.';
+    }
+    if (currentStep === 4 && (!draft.brightly_notifications_enabled || !draft.communication_acknowledged)) return 'Enable Brightly notifications and accept the communication requirements.';
+    if (currentStep === 5 && ONBOARDING_ACKNOWLEDGEMENTS.some(({ key }) => !draft.sop_acknowledgements[key])) return 'Read and accept every standard and SOP acknowledgement.';
+    if (currentStep === 6) {
+      if (Object.keys(draft.knowledge_answers).length !== ONBOARDING_KNOWLEDGE_QUESTIONS.length) return 'Answer every knowledge-check question.';
+      if (getKnowledgeScore(draft.knowledge_answers) !== ONBOARDING_KNOWLEDGE_QUESTIONS.length) return 'Review the highlighted answers. A perfect score is required before continuing.';
+    }
+    if (currentStep === 7) {
+      if (!draft.declaration_accurate || !draft.declaration_compliance) return 'Accept both final declarations.';
+      if (draft.digital_signature.trim().toLowerCase() !== draft.full_name.trim().toLowerCase()) return 'Your digital signature must match your full legal name.';
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) return 'Use a password of 8+ characters with at least one letter and number.';
+      if (password !== passwordConfirm) return 'The passwords do not match.';
+    }
+    return null;
+  };
 
-  const validateStep = (step: number): string | null => {
-    switch (step) {
-      case 1:
-        if (!form.full_name) return 'Full legal name is required';
-        if (!form.phone) return 'Mobile number is required';
-        if (!form.email) return 'Email address is required';
-        if (!form.date_of_birth) return 'Date of birth is required';
-        if (!form.address) return 'Residential address is required';
-        if (!form.emergency_contact_name) return 'Emergency contact name is required';
-        if (!form.emergency_contact_phone) return 'Emergency contact phone is required';
-        if (!form.emergency_contact_relationship) return 'Emergency contact relationship is required';
-        return null;
-      case 2:
-        if (!form.abn_status) return 'Please select your ABN status';
-        if (form.abn_status === 'yes' && !form.abn) return 'ABN number is required';
-        if (!form.bank_account_name) return 'Bank account name is required';
-        if (!form.bank_bsb) return 'BSB is required';
-        if (!form.bank_account_number) return 'Account number is required';
-        return null;
-      case 3:
-        if (!idFileUrl) return 'Please upload a photo of your ID';
-        if (!form.id_confirmed) return 'Please confirm your ID is current and belongs to you';
-        return null;
-      case 4:
-        if (form.available_days.length === 0) return 'Please select at least one available day';
-        if (!form.preferred_start_time) return 'Please select a preferred start time';
-        if (!form.max_jobs_per_day) return 'Please select maximum jobs per day';
-        return null;
-      case 5:
-        if (!form.policy_acks.every(Boolean)) return 'All policy acknowledgements must be checked';
-        return null;
-      case 6:
-        if (!form.password) return 'Please set a password';
-        if (form.password.length < 6) return 'Password must be at least 6 characters';
-        if (form.password !== form.password_confirm) return 'Passwords do not match';
-        return null;
-      default:
-        return null;
+  const next = async () => {
+    const validationError = validate(step);
+    if (validationError) { toast.error(validationError); return; }
+    const nextStep = Math.min(7, step + 1);
+    try {
+      await save(nextStep);
+      setStep(nextStep);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (saveError) {
+      toast.error(saveError instanceof Error ? saveError.message : 'Could not save your progress.');
     }
   };
 
-  const validateCurrentStep = () => validateStep(currentStep);
-
-  const goToStep = (step: number) => {
-    setCurrentStep(Math.max(1, Math.min(step, totalSteps)));
-    window.scrollTo(0, 0);
+  const back = () => {
+    setStep((current) => Math.max(0, current - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleNext = () => {
-    const err = validateCurrentStep();
-    if (err) { toast.error(err); return; }
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
-      window.scrollTo(0, 0);
+  const uploadDocument = async (documentType: string, file: File) => {
+    setUploading(documentType);
+    try {
+      const definition = DOCUMENT_TYPES.find((item) => item.key === documentType);
+      const upload = await invoke('create_upload_url', {
+        document_type: documentType,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type,
+      });
+      const { error: uploadError } = await supabase.storage
+        .from('staff-documents')
+        .uploadToSignedUrl(upload.path, upload.upload_token, file, { contentType: file.type });
+      if (uploadError) throw uploadError;
+      const recorded = await invoke('record_upload', {
+        document_type: documentType,
+        path: upload.path,
+        label: definition?.label ?? documentType,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type,
+      });
+      setDocuments((current) => ({ ...current, [documentType]: recorded.document }));
+      toast.success(`${definition?.label ?? 'Document'} uploaded`);
+    } catch (uploadError) {
+      toast.error(uploadError instanceof Error ? uploadError.message : 'Upload failed');
+    } finally {
+      setUploading(null);
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => Math.max(prev - 1, 1));
-      window.scrollTo(0, 0);
-    }
+  const handleFile = (documentType: string) => (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void uploadDocument(documentType, file);
+    event.target.value = '';
   };
 
-  const handleSubmit = async () => {
-    for (let step = 1; step <= totalSteps; step += 1) {
-      const err = validateStep(step);
-      if (err) { goToStep(step); toast.error(err); return; }
-    }
-
+  const submit = async () => {
+    const validationError = validate(7);
+    if (validationError) { toast.error(validationError); return; }
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('staff_onboarding')
-        .update({
-          full_name: form.full_name,
-          preferred_name: form.preferred_name || null,
-          phone: form.phone,
-          email: form.email,
-          date_of_birth: form.date_of_birth ? format(form.date_of_birth, 'yyyy-MM-dd') : null,
-          address: form.address,
-          emergency_contact_name: form.emergency_contact_name,
-          emergency_contact_phone: form.emergency_contact_phone,
-          emergency_contact_relationship: form.emergency_contact_relationship,
-          abn_status: form.abn_status,
-          abn: form.abn_status === 'yes' ? form.abn : null,
-          is_contractor: true,
-          bank_account_name: form.bank_account_name,
-          bank_bsb: form.bank_bsb,
-          bank_account_number: form.bank_account_number,
-          id_document_url: idFileUrl || null,
-          id_confirmed: form.id_confirmed,
-          available_days: form.available_days,
-          preferred_start_time: form.preferred_start_time,
-          max_jobs_per_day: form.max_jobs_per_day,
-          availability_notes: form.availability_notes || null,
-          has_whatsapp: form.has_whatsapp,
-          policy_acknowledgements: form.policy_acks,
-          submitted_at: new Date().toISOString(),
-          status: 'submitted',
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq('id', recordId);
-
-      if (error) throw error;
-
-      const dayMap: Record<string, string> = {
-        Monday: 'mon', Tuesday: 'tue', Wednesday: 'wed', Thursday: 'thu',
-        Friday: 'fri', Saturday: 'sat', Sunday: 'sun',
-      };
-      const weeklyAvailability = form.available_days.map(d => dayMap[d]).filter(Boolean);
-      await supabase.from('profiles').update({
-        full_name: form.full_name,
-        phone: form.phone,
-        email: form.email,
-        weekly_availability: weeklyAvailability,
-      } as any).eq('id', userId);
-
-      const { data: admins } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-
-      if (admins) {
-        await (await import('@/lib/alerts')).createAlert({
-          event_type: 'booking_confirmed',
-          title: 'New Staff Onboarding',
-          body: `${form.full_name} has completed their onboarding form. Review in the app.`,
-          link: '/staff',
-        });
-      }
-
-      // ── Set the password via edge function ──
-      let passwordSet = false;
-      let authEmail = form.email; // may be overridden by edge function response
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      try {
-        const pwRes = await fetch(`${supabaseUrl}/functions/v1/set-staff-password`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-          },
-          body: JSON.stringify({ onboarding_token: token, password: form.password }),
-        });
-        const pwData = await pwRes.json().catch(() => ({}));
-        if (pwRes.ok && pwData.success) {
-          passwordSet = true;
-          // IMPORTANT: use the email from the edge function (matches auth.users),
-          // not form.email (which may have been edited during onboarding).
-          if (pwData.email) authEmail = pwData.email;
-        } else {
-          const errMsg = pwData.error || `HTTP ${pwRes.status}`;
-          console.error('Password set failed:', errMsg, pwData);
-          toast.error('Password error: ' + errMsg);
-        }
-      } catch (e: any) {
-        console.error('Password set network error:', e);
-        toast.error('Could not reach password service: ' + (e.message || 'network error'));
-      }
-
-      // ── Admin notification SMS ──
-      try {
-        await sendJobSms({
-          to: '0418878707',
-          message: `New staff onboarding submitted — ${form.full_name}. Review in the app.`,
-        });
-      } catch { /* SMS is best-effort */ }
-
-      // ── Auto-sign in if password was set (with retry) ──
-      if (passwordSet) {
-        // Retry up to 3 times with short delays — Supabase auth sometimes needs
-        // a moment to propagate password changes.
-        let signInOk = false;
-        let lastError = '';
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          const { error: signInErr } = await supabase.auth.signInWithPassword({
-            email: authEmail,
-            password: form.password,
-          });
-          if (!signInErr) {
-            signInOk = true;
-            break;
-          }
-          lastError = signInErr.message;
-          if (attempt < 3) {
-            await new Promise(r => setTimeout(r, 600));
-          }
-        }
-        if (signInOk) {
-          toast.success('Welcome to Brightly! 🎉');
-          window.location.href = '/dashboard';
-          return;
-        } else {
-          console.error('Sign-in failed after 3 attempts:', lastError);
-          toast.error('Password set, but auto sign-in failed: ' + lastError + '. Use "Go to Login" below.');
-        }
-      }
-
+      const result = await invoke('submit', { payload: payload(7), password });
       setSubmitted(true);
-    } catch (err: any) {
-      toast.error('Failed to submit: ' + err.message);
+      if (result.email) await supabase.auth.signInWithPassword({ email: result.email, password });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (submitError) {
+      toast.error(submitError instanceof Error ? submitError.message : 'Submission failed');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const progress = (currentStep / totalSteps) * 100;
+  const score = useMemo(() => getKnowledgeScore(draft.knowledge_answers), [draft.knowledge_answers]);
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-    </div>
-  );
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-muted/30"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  if (notFound) return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary p-6">
-      <div className="bg-card rounded-2xl shadow-lg p-8 text-center max-w-md">
-        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2 text-foreground">Invalid or Expired Link</h1>
-        <p className="text-muted-foreground">This onboarding link is invalid or has expired. Contact your manager for a new link.</p>
+  if (error) return (
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-5">
+      <div className="w-full max-w-md rounded-3xl border bg-card p-7 text-center shadow-xl">
+        <img src={brightlyLogo} alt="Brightly Cleaning" className="mx-auto mb-6 h-12 w-auto" />
+        <ShieldCheck className="mx-auto mb-4 h-11 w-11 text-destructive" />
+        <h1 className="text-xl font-bold">We can’t open this link</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{error}</p>
       </div>
-    </div>
-  );
-
-  if (alreadySubmitted) return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary p-6">
-      <div className="bg-card rounded-2xl shadow-lg p-8 text-center max-w-md">
-        <CheckCircle2 className="w-12 h-12 text-primary mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2 text-foreground">Already Submitted</h1>
-        <p className="text-muted-foreground">Your onboarding form has already been submitted. Contact Brendan if you need to make changes.</p>
-      </div>
-    </div>
+    </main>
   );
 
   if (submitted) return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary p-6">
-      <div className="bg-card rounded-2xl shadow-lg p-8 text-center max-w-md space-y-4">
-        <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-        <h1 className="text-2xl font-extrabold text-foreground">You're All Done!</h1>
-        <p className="text-muted-foreground text-base">
-          Your onboarding form has been submitted. Brendan will be in touch shortly to schedule your induction and first shadow clean.
-        </p>
-        <div className="border-t pt-4 space-y-2">
-          <p className="text-sm font-bold text-foreground">Log in to the Brightly app:</p>
-          <p className="text-sm text-muted-foreground">Email: <strong>{form.email}</strong></p>
-          <p className="text-sm text-muted-foreground">Password: the one you just set</p>
-          <a
-            href="/login"
-            className="inline-block mt-2 px-6 py-3 bg-brightly hover:bg-brightly-hover text-white font-bold rounded-xl transition-colors"
-          >
-            Go to Login →
-          </a>
-        </div>
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-5">
+      <div className="w-full max-w-lg rounded-3xl border bg-card p-7 text-center shadow-xl sm:p-10">
+        <img src={brightlyLogo} alt="Brightly Cleaning" className="mx-auto mb-7 h-12 w-auto" />
+        <CheckCircle2 className="mx-auto h-14 w-14 text-primary" />
+        <h1 className="mt-5 text-2xl font-extrabold">You’re officially in the Brightly pipeline</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Your details, documents, acknowledgements and knowledge check are safely on file. The Brightly team will verify your documents and arrange your induction and two shadow cleans before solo work.</p>
+        <Button className="mt-7 h-12 w-full rounded-xl" onClick={() => { window.location.href = '/'; }}>Open Brightly</Button>
       </div>
-    </div>
+    </main>
   );
 
   return (
-    <div className="min-h-screen bg-secondary py-6 px-4">
-      <div className="max-w-lg mx-auto space-y-5">
-        {/* Header */}
-        <div className="text-center mb-2">
-          <h1 className="text-2xl font-extrabold text-primary">Brightly.</h1>
-          <h2 className="text-lg font-bold text-foreground mt-2">Welcome to Brightly — Let's Get You Set Up</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Complete each step before your first job. This should take about 5 minutes.
-          </p>
+    <main className="min-h-screen overflow-x-hidden bg-gradient-to-b from-primary/5 via-background to-muted/30 pb-28">
+      <header className="border-b bg-background/95 px-4 py-4 backdrop-blur sm:px-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+          <img src={brightlyLogo} alt="Brightly Cleaning" className="h-9 w-auto max-w-[140px]" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><LockKeyhole className="h-3.5 w-3.5" /> Private & secure</div>
         </div>
+      </header>
 
-        {/* Progress */}
-        <div className="bg-card rounded-xl p-4 shadow-sm">
-          <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-2">
-            <span>Section {currentStep} of {totalSteps}</span>
-            <span>{STEPS[currentStep - 1]}</span>
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-9">
+        <div className="mb-6">
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Cleaner onboarding</p>
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">{STAFF_ONBOARDING_STEPS[step]}</h1>
+            </div>
+            <span className="shrink-0 text-sm font-semibold text-muted-foreground">{step + 1} / {STAFF_ONBOARDING_STEPS.length}</span>
           </div>
-          <Progress value={progress} className="h-2" />
-          <div className="flex gap-1 mt-3">
-            {STEPS.map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'flex-1 h-1.5 rounded-full transition-colors',
-                  i + 1 <= currentStep ? 'bg-primary' : 'bg-border'
-                )}
-              />
-            ))}
+          <Progress value={((step + 1) / STAFF_ONBOARDING_STEPS.length) * 100} className="h-2" />
+          <div className="mt-2 flex min-h-5 items-center gap-1.5 text-xs text-muted-foreground">
+            {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</> : lastSaved ? <><Check className="h-3.5 w-3.5 text-primary" /> Progress saved</> : <><Clock3 className="h-3.5 w-3.5" /> Your progress saves as you continue</>}
           </div>
         </div>
 
-        {/* Section 1: Personal Details */}
-        {currentStep === 1 && (
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-            <h2 className="text-base font-bold text-primary">1. Personal Details</h2>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm">Full Legal Name *</Label>
-                <Input value={form.full_name} onChange={e => update('full_name', e.target.value)} placeholder="Jane Doe" />
+        <section className="rounded-3xl border bg-card p-5 shadow-lg shadow-primary/5 sm:p-8">
+          {step === 0 && (
+            <div className="space-y-5">
+              <p className="text-sm leading-6 text-muted-foreground">Use your legal details. These become your Brightly staff record and emergency contact file.</p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Full legal name" required><Input className="h-11 rounded-xl" autoComplete="name" value={draft.full_name} onChange={(e) => set('full_name', e.target.value)} /></Field>
+                <Field label="Preferred name"><Input className="h-11 rounded-xl" value={draft.preferred_name} onChange={(e) => set('preferred_name', e.target.value)} /></Field>
+                <Field label="Email" required><Input className="h-11 rounded-xl bg-muted" type="email" value={draft.email} readOnly /></Field>
+                <Field label="Mobile" required><Input className="h-11 rounded-xl" type="tel" autoComplete="tel" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+                <Field label="Date of birth" required><Input className="h-11 rounded-xl" type="date" value={draft.date_of_birth} onChange={(e) => set('date_of_birth', e.target.value)} /></Field>
+                <div className="hidden sm:block" />
+                <div className="sm:col-span-2"><Field label="Residential address" required><Input className="h-11 rounded-xl" autoComplete="street-address" value={draft.address} onChange={(e) => set('address', e.target.value)} /></Field></div>
+                <Field label="Suburb" required><Input className="h-11 rounded-xl" value={draft.residential_suburb} onChange={(e) => set('residential_suburb', e.target.value)} /></Field>
+                <Field label="Postcode" required><Input className="h-11 rounded-xl" inputMode="numeric" maxLength={4} value={draft.postcode} onChange={(e) => set('postcode', normaliseDigits(e.target.value).slice(0, 4))} /></Field>
               </div>
-              <div>
-                <Label className="text-sm">Preferred Name</Label>
-                <Input value={form.preferred_name} onChange={e => update('preferred_name', e.target.value)} placeholder="Jane" />
-              </div>
-              <div>
-                <Label className="text-sm">Mobile Number *</Label>
-                <Input value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="0412 345 678" />
-              </div>
-              <div>
-                <Label className="text-sm">Email Address *</Label>
-                <Input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="jane@email.com" />
-              </div>
-              <div>
-                <Label className="text-sm">Date of Birth *</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <Select value={dobDay} onValueChange={(value) => updateDateOfBirth('day', value)}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Day" /></SelectTrigger>
-                    <SelectContent>
-                      {availableDobDays.map((day) => (
-                        <SelectItem key={day} value={String(day)}>{day}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={dobMonth} onValueChange={(value) => updateDateOfBirth('month', value)}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Month" /></SelectTrigger>
-                    <SelectContent>
-                      {DOB_MONTHS.map((month) => (
-                        <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={dobYear} onValueChange={(value) => updateDateOfBirth('year', value)}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Year" /></SelectTrigger>
-                    <SelectContent>
-                      {DOB_YEARS.map((year) => (
-                        <SelectItem key={year} value={year}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm">Residential Address *</Label>
-                <Input value={form.address} onChange={e => update('address', e.target.value)} placeholder="123 Main St, Suburb VIC 3000" />
-              </div>
-              <div className="pt-2 border-t border-border">
-                <p className="text-sm font-semibold text-foreground mb-2">Emergency Contact</p>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-sm">Name *</Label>
-                    <Input value={form.emergency_contact_name} onChange={e => update('emergency_contact_name', e.target.value)} />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Phone *</Label>
-                    <Input value={form.emergency_contact_phone} onChange={e => update('emergency_contact_phone', e.target.value)} />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Relationship *</Label>
-                    <Input value={form.emergency_contact_relationship} onChange={e => update('emergency_contact_relationship', e.target.value)} placeholder="Partner, Parent, etc." />
-                  </div>
+              <div className="border-t pt-5">
+                <h2 className="font-bold">Emergency contact</h2>
+                <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                  <Field label="Contact name" required><Input className="h-11 rounded-xl" value={draft.emergency_contact_name} onChange={(e) => set('emergency_contact_name', e.target.value)} /></Field>
+                  <Field label="Relationship" required><Input className="h-11 rounded-xl" value={draft.emergency_contact_relationship} onChange={(e) => set('emergency_contact_relationship', e.target.value)} /></Field>
+                  <Field label="Contact phone" required><Input className="h-11 rounded-xl" type="tel" value={draft.emergency_contact_phone} onChange={(e) => set('emergency_contact_phone', e.target.value)} /></Field>
                 </div>
               </div>
             </div>
-            <Button onClick={handleNext} className="w-full bg-primary text-primary-foreground font-bold rounded-xl">
-              Next →
-            </Button>
-          </div>
-        )}
+          )}
 
-        {/* Section 2: Work Entitlements */}
-        {currentStep === 2 && (
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-            <h2 className="text-base font-bold text-primary">2. Work Entitlements</h2>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm">Do you have a valid ABN? *</Label>
-                <Select value={form.abn_status} onValueChange={v => update('abn_status', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">Yes</SelectItem>
-                    <SelectItem value="no">No</SelectItem>
-                    <SelectItem value="need_to_register">I need to register one</SelectItem>
-                  </SelectContent>
-                </Select>
+          {step === 1 && (
+            <div className="space-y-6">
+              <div className="rounded-2xl bg-primary/5 p-4 text-sm leading-6 text-foreground">Brightly cleaners are independent contractors. Work is offered as available, hours are not guaranteed, and you are responsible for your own tax and GST obligations.</div>
+              <ChoiceCard checked={draft.is_contractor} onChange={(value) => set('is_contractor', value)} title="I understand and accept the independent-contractor arrangement" />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="ABN status" required><select className={selectClass} value={draft.abn_status} onChange={(e) => set('abn_status', e.target.value)}><option value="">Select…</option><option value="yes">I have an active ABN</option><option value="applying">I am applying for an ABN</option></select></Field>
+                <Field label="ABN" required hint="11 digits"><Input className="h-11 rounded-xl" inputMode="numeric" value={draft.abn} onChange={(e) => set('abn', normaliseDigits(e.target.value).slice(0, 11))} /></Field>
               </div>
-              {form.abn_status === 'yes' && (
-                <div>
-                  <Label className="text-sm">ABN Number *</Label>
-                  <Input value={form.abn} onChange={e => update('abn', e.target.value)} placeholder="12 345 678 901" />
-                </div>
-              )}
-              {(form.abn_status === 'no' || form.abn_status === 'need_to_register') && (
-                <div className="bg-accent/20 border border-accent rounded-lg p-3 text-sm">
-                  <p className="font-semibold text-foreground">ABN Required</p>
-                  <p className="text-muted-foreground mt-1">
-                    You must have a valid ABN before your first job. Register free at{' '}
-                    <a href="https://www.abr.gov.au" target="_blank" rel="noopener noreferrer" className="text-primary underline font-semibold">
-                      abr.gov.au
-                    </a>
-                  </p>
-                </div>
-              )}
-              <div className="pt-2 border-t border-border">
-                <p className="text-sm font-semibold text-foreground mb-2">Bank Details</p>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-sm">Account Name *</Label>
-                    <Input value={form.bank_account_name} onChange={e => update('bank_account_name', e.target.value)} placeholder="Jane Doe" />
-                  </div>
-                  <div>
-                    <Label className="text-sm">BSB *</Label>
-                    <Input value={form.bank_bsb} onChange={e => update('bank_bsb', e.target.value)} placeholder="062-000" />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Account Number *</Label>
-                    <Input value={form.bank_account_number} onChange={e => update('bank_account_number', e.target.value)} placeholder="1234 5678" />
-                  </div>
+              <ChoiceCard checked={draft.gst_registered} onChange={(value) => set('gst_registered', value)} title="I am registered for GST" description="Leave unticked if you are not GST registered." />
+              <div className="border-t pt-5">
+                <div className="mb-4 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="font-bold">Payment details</h2></div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Account name" required><Input className="h-11 rounded-xl" autoComplete="name" value={draft.bank_account_name} onChange={(e) => set('bank_account_name', e.target.value)} /></Field>
+                  <Field label="BSB" required><Input className="h-11 rounded-xl" inputMode="numeric" placeholder="000000" value={draft.bank_bsb} onChange={(e) => set('bank_bsb', normaliseDigits(e.target.value).slice(0, 6))} /></Field>
+                  <Field label="Account number" required><Input className="h-11 rounded-xl" inputMode="numeric" value={draft.bank_account_number} onChange={(e) => set('bank_account_number', normaliseDigits(e.target.value).slice(0, 12))} /></Field>
                 </div>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={handleBack} className="flex-1 rounded-xl gap-1">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </Button>
-              <Button onClick={handleNext} className="flex-1 bg-primary text-primary-foreground font-bold rounded-xl">
-                Next →
-              </Button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Section 3: Identity Verification */}
-        {currentStep === 3 && (
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-            <h2 className="text-base font-bold text-primary">3. Identity Verification</h2>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm">Upload a photo of your ID (driver's licence or passport) *</Label>
-                <div className="mt-1">
-                  <label className={cn(
-                    "flex items-center gap-2 border-2 border-dashed rounded-xl p-4 cursor-pointer transition-colors",
-                    idFile ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                  )}>
-                    {uploadingId ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-5 h-5 text-muted-foreground" />}
-                    <span className="text-sm text-muted-foreground">
-                      {idFile ? idFile.name : 'Tap to upload image or PDF'}
-                    </span>
-                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleIdUpload} />
+          {step === 2 && (
+            <div className="space-y-6">
+              <p className="text-sm leading-6 text-muted-foreground">Upload clear, current documents. Files are private and only authorised Brightly admins can open them.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {DOCUMENT_TYPES.map((document) => (
+                  <label key={document.key} className={cn('relative flex min-h-32 cursor-pointer flex-col justify-between rounded-2xl border-2 border-dashed p-4 transition-colors', documents[document.key] ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50')}>
+                    <input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={handleFile(document.key)} disabled={uploading === document.key} />
+                    <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{document.label}{document.required && <span className="text-destructive"> *</span>}</p><p className="mt-1 break-all text-xs text-muted-foreground">{documents[document.key]?.original_name || 'JPG, PNG, WebP or PDF · max 10 MB'}</p></div>{documents[document.key] ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <Upload className="h-5 w-5 shrink-0 text-muted-foreground" />}</div>
+                    <span className="mt-4 text-xs font-semibold text-primary">{uploading === document.key ? 'Uploading…' : documents[document.key] ? 'Replace file' : 'Choose file'}</span>
                   </label>
-                </div>
+                ))}
               </div>
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  checked={form.id_confirmed}
-                  onCheckedChange={v => update('id_confirmed', !!v)}
-                  className="mt-0.5"
-                />
-                <Label className="text-sm leading-tight cursor-pointer" onClick={() => update('id_confirmed', !form.id_confirmed)}>
-                  I confirm the ID uploaded is current and belongs to me *
-                </Label>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Photo ID type" required><select className={selectClass} value={draft.id_document_type} onChange={(e) => set('id_document_type', e.target.value)}><option value="">Select…</option><option value="drivers_licence">Driver’s licence</option><option value="passport">Passport</option><option value="proof_of_age">Proof-of-age card</option></select></Field>
+                {draft.id_document_type === 'drivers_licence' && <Field label="Licence expiry"><Input className="h-11 rounded-xl" type="date" value={draft.drivers_licence_expiry} onChange={(e) => set('drivers_licence_expiry', e.target.value)} /></Field>}
+                <Field label="Police check issue date" required><Input className="h-11 rounded-xl" type="date" value={draft.police_check_date} onChange={(e) => set('police_check_date', e.target.value)} /></Field>
+                <Field label="Public liability"><select className={selectClass} value={draft.public_liability_status} onChange={(e) => set('public_liability_status', e.target.value)}><option value="">Select…</option><option value="yes">I hold a current policy</option><option value="no">I do not hold a policy</option><option value="in_progress">Application in progress</option></select></Field>
+                {draft.public_liability_status === 'yes' && <Field label="Policy expiry"><Input className="h-11 rounded-xl" type="date" value={draft.public_liability_expiry} onChange={(e) => set('public_liability_expiry', e.target.value)} /></Field>}
+                <Field label="Australian work rights" required><select className={selectClass} value={draft.work_rights_status} onChange={(e) => set('work_rights_status', e.target.value)}><option value="citizen_or_pr">Citizen or permanent resident</option><option value="visa">Visa holder</option><option value="other">Other / discuss with Brightly</option></select></Field>
               </div>
+              <ChoiceCard checked={draft.id_confirmed} onChange={(value) => set('id_confirmed', value)} title="I confirm the uploaded ID is current, valid and belongs to me" />
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={handleBack} className="flex-1 rounded-xl gap-1">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </Button>
-              <Button onClick={handleNext} className="flex-1 bg-primary text-primary-foreground font-bold rounded-xl">
-                Next →
-              </Button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Section 4: Availability */}
-        {currentStep === 4 && (
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-            <h2 className="text-base font-bold text-primary">4. Your Availability</h2>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm mb-2 block">Available Days *</Label>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS.map(day => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => toggleDay(day)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border",
-                        form.available_days.includes(day)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card text-muted-foreground border-border hover:border-primary/50"
-                      )}
-                    >
-                      {day.slice(0, 3)}
-                    </button>
-                  ))}
-                </div>
+          {step === 3 && (
+            <div className="space-y-6">
+              <div><h2 className="font-bold">Days you can usually work</h2><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{DAYS_OF_WEEK.map((day) => <button type="button" key={day} className={cn('min-h-11 rounded-xl border px-3 text-sm font-semibold', draft.available_days.includes(day) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')} onClick={() => set('available_days', draft.available_days.includes(day) ? draft.available_days.filter((value) => value !== day) : [...draft.available_days, day])}>{day}</button>)}</div></div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Preferred start time" required><Input className="h-11 rounded-xl" type="time" value={draft.preferred_start_time} onChange={(e) => set('preferred_start_time', e.target.value)} /></Field>
+                <Field label="Maximum jobs per day" required><select className={selectClass} value={draft.max_jobs_per_day} onChange={(e) => set('max_jobs_per_day', e.target.value)}><option value="">Select…</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></Field>
+                <Field label="Vehicle registration"><Input className="h-11 rounded-xl uppercase" value={draft.vehicle_rego} onChange={(e) => set('vehicle_rego', e.target.value.toUpperCase())} /></Field>
               </div>
-              <div>
-                <Label className="text-sm">Preferred Start Time *</Label>
-                <Select value={form.preferred_start_time} onValueChange={v => update('preferred_start_time', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {START_TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm">Maximum Jobs Per Day *</Label>
-                <Select value={form.max_jobs_per_day} onValueChange={v => update('max_jobs_per_day', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {MAX_JOBS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm">Any recurring unavailability or notes</Label>
-                <Textarea
-                  value={form.availability_notes}
-                  onChange={e => update('availability_notes', e.target.value)}
-                  placeholder="e.g. I pick up kids at 3pm on Wednesdays"
-                  rows={3}
-                />
-              </div>
+              <Field label="Availability notes"><Textarea className="min-h-24 rounded-xl" placeholder="School hours, recurring commitments or anything scheduling should know" value={draft.availability_notes} onChange={(e) => set('availability_notes', e.target.value)} /></Field>
+              <ChoiceCard checked={draft.transport_confirmed} onChange={(value) => set('transport_confirmed', value)} title="I have reliable transport to reach Brightly properties across the Brisbane service area" />
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={handleBack} className="flex-1 rounded-xl gap-1">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </Button>
-              <Button onClick={handleNext} className="flex-1 bg-primary text-primary-foreground font-bold rounded-xl">
-                Next →
-              </Button>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-5">
+              <div className="rounded-2xl bg-primary/5 p-5"><h2 className="font-bold">Brightly is your source of truth</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Assignments, addresses, access details, checklists, clock-on/off, room photos and completion all belong in Brightly. WhatsApp may be used for team conversation, but it does not replace the job record.</p></div>
+              <ChoiceCard checked={draft.brightly_notifications_enabled} onChange={(value) => set('brightly_notifications_enabled', value)} title="I will keep Brightly notifications enabled" description="Accept or decline new assignments within 2 hours and check the live job record before travel." />
+              <ChoiceCard checked={draft.communication_acknowledged} onChange={(value) => set('communication_acknowledged', value)} title="I accept the communication and scheduling rules" description="Call for changes within 24 hours; notify the head cleaner before start time if 15+ minutes late; call Brendan immediately for urgent access, damage, safety or guest-ready risks." />
+              <ChoiceCard checked={draft.has_whatsapp} onChange={(value) => set('has_whatsapp', value)} title="I have WhatsApp available on this phone" description="Optional, for secondary team communication." />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Section 5: WhatsApp + Policy Acknowledgements */}
-        {currentStep === 5 && (
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-            <h2 className="text-base font-bold text-primary">5. WhatsApp + Policy Acknowledgements</h2>
-
+          {step === 5 && (
             <div className="space-y-4">
-              <div>
-                <Label className="text-sm mb-2 block">Have you added the Brightly WhatsApp group?</Label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => update('has_whatsapp', true)}
-                    className={cn(
-                      "flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors",
-                      form.has_whatsapp ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-                    )}
-                  >Yes</button>
-                  <button
-                    type="button"
-                    onClick={() => update('has_whatsapp', false)}
-                    className={cn(
-                      "flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors",
-                      !form.has_whatsapp ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-                    )}
-                  >Not yet — I'll wait for the link</button>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-border space-y-3">
-              <h3 className="text-sm font-bold text-foreground">Policy Acknowledgements</h3>
-              <p className="text-xs text-muted-foreground">All must be checked before you can submit.</p>
-              {POLICIES.map((policy, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <Checkbox
-                    checked={form.policy_acks[i]}
-                    onCheckedChange={() => togglePolicy(i)}
-                    className="mt-0.5"
-                  />
-                  <p
-                    className="text-sm text-foreground leading-tight cursor-pointer"
-                    onClick={() => togglePolicy(i)}
-                  >
-                    {policy}
-                  </p>
-                </div>
+              <p className="text-sm leading-6 text-muted-foreground">Each item maps to the Brightly induction file. Open, read and acknowledge every standard.</p>
+              {ONBOARDING_ACKNOWLEDGEMENTS.map((item) => (
+                <label key={item.key} className={cn('block cursor-pointer rounded-2xl border p-4 sm:p-5', draft.sop_acknowledgements[item.key] ? 'border-primary bg-primary/5' : 'border-border')}>
+                  <div className="flex items-start gap-3"><Checkbox className="mt-0.5 h-5 w-5 shrink-0" checked={draft.sop_acknowledgements[item.key]} onCheckedChange={(value) => set('sop_acknowledgements', { ...draft.sop_acknowledgements, [item.key]: value === true })} /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-bold">{item.title}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{item.source}</span></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{item.summary}</p><p className="mt-3 text-sm font-semibold leading-6 text-foreground">{item.declaration}</p></div></div>
+                </label>
               ))}
             </div>
+          )}
 
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={handleBack} className="flex-1 rounded-xl gap-1">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={!form.policy_acks.every(Boolean)}
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-xl"
-              >
-                Next
-              </Button>
+          {step === 6 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between rounded-2xl bg-primary/5 p-4"><div><p className="font-bold">Knowledge check</p><p className="text-xs text-muted-foreground">10/10 is required</p></div><span className="text-xl font-extrabold text-primary">{score}/{ONBOARDING_KNOWLEDGE_QUESTIONS.length}</span></div>
+              {ONBOARDING_KNOWLEDGE_QUESTIONS.map((question, index) => {
+                const selected = draft.knowledge_answers[question.key];
+                const wrong = selected !== undefined && selected !== question.correctIndex;
+                return <fieldset key={question.key} className={cn('rounded-2xl border p-4 sm:p-5', wrong ? 'border-destructive/50 bg-destructive/5' : 'border-border')}><legend className="px-1 text-sm font-bold leading-6">{index + 1}. {question.prompt}</legend><div className="mt-3 space-y-2">{question.options.map((option, optionIndex) => <label key={option} className={cn('flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm', selected === optionIndex ? 'border-primary bg-primary/5 font-semibold' : 'border-border')}><input type="radio" className="h-4 w-4 accent-primary" name={question.key} checked={selected === optionIndex} onChange={() => set('knowledge_answers', { ...draft.knowledge_answers, [question.key]: optionIndex })} />{option}</label>)}</div>{wrong && <p className="mt-3 text-xs font-semibold text-destructive">Not quite — review the onboarding standard and try again.</p>}<p className="mt-3 text-[11px] text-muted-foreground">Source: {question.source}</p></fieldset>;
+              })}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Section 6: Set Your Password */}
-        {currentStep === 6 && (
-          <div className="space-y-6 bg-card rounded-2xl shadow-lg p-5">
-            <h2 className="text-base font-bold text-primary">6. Set Your Password</h2>
-            <p className="text-sm text-muted-foreground">
-              Create a password to log in to the Brightly app. You'll use your email (<strong>{form.email}</strong>) and this password from now on.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-semibold">Password *</Label>
-                <Input
-                  type="password"
-                  value={form.password}
-                  onChange={e => update('password', e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  className="mt-1 rounded-xl h-12"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-semibold">Confirm Password *</Label>
-                <Input
-                  type="password"
-                  value={form.password_confirm}
-                  onChange={e => update('password_confirm', e.target.value)}
-                  placeholder="Type it again"
-                  className="mt-1 rounded-xl h-12"
-                />
-                {form.password_confirm && form.password !== form.password_confirm && (
-                  <p className="text-xs text-destructive mt-1">Passwords do not match</p>
-                )}
-                {form.password && form.password.length > 0 && form.password.length < 6 && (
-                  <p className="text-xs text-destructive mt-1">Must be at least 6 characters</p>
-                )}
-              </div>
+          {step === 7 && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border bg-muted/30 p-5"><div className="flex items-center gap-2"><FileCheck2 className="h-5 w-5 text-primary" /><h2 className="font-bold">Final declaration</h2></div><p className="mt-3 text-sm leading-6 text-muted-foreground">Your typed name and timestamp create the record that you completed this version of Brightly onboarding. Solo deployment only happens after document verification, induction, app test, kit issue, two shadow cleans and Director approval.</p></div>
+              <ChoiceCard checked={draft.declaration_accurate} onChange={(value) => set('declaration_accurate', value)} title="I confirm every detail and document I provided is accurate, current and belongs to me" />
+              <ChoiceCard checked={draft.declaration_compliance} onChange={(value) => set('declaration_compliance', value)} title="I agree to follow the SOP, conduct, privacy, communication, WHS and ongoing-training requirements I acknowledged" />
+              <Field label="Digital signature — type your full legal name" required><Input className="h-12 rounded-xl text-lg" value={draft.digital_signature} onChange={(e) => set('digital_signature', e.target.value)} /></Field>
+              <div className="border-t pt-5"><h2 className="font-bold">Create your Brightly password</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">At least 8 characters with a letter and number.</p><div className="mt-4 grid gap-5 sm:grid-cols-2"><Field label="Password" required><Input className="h-11 rounded-xl" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field><Field label="Confirm password" required><Input className="h-11 rounded-xl" type="password" autoComplete="new-password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} /></Field></div></div>
             </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={handleBack} className="flex-1 rounded-xl gap-1">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting || !form.password || form.password.length < 6 || form.password !== form.password_confirm}
-                className="flex-1 bg-brightly hover:bg-brightly-hover text-white font-bold rounded-xl gap-2"
-              >
-                {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
-                Complete & Sign In
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <p className="text-center text-xs text-muted-foreground pb-6">
-          Your information is stored securely and only accessible by Brightly management.
-        </p>
+          )}
+        </section>
       </div>
-    </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl gap-3">
+          {step > 0 && <Button variant="outline" className="h-12 rounded-xl px-4" onClick={back} disabled={saving || submitting}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>}
+          {step < 7 ? <Button className="h-12 flex-1 rounded-xl text-base font-bold" onClick={next} disabled={saving}><span>Save & continue</span>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <ArrowRight className="ml-2 h-4 w-4" />}</Button> : <Button className="h-12 flex-1 rounded-xl text-base font-bold" onClick={submit} disabled={submitting}>{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</> : <><CheckCircle2 className="mr-2 h-4 w-4" />Submit onboarding</>}</Button>}
+        </div>
+      </div>
+    </main>
   );
 }

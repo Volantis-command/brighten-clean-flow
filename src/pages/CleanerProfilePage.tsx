@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Profile extensions and newly migrated onboarding fields are not yet in generated Supabase types. */
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,11 +17,11 @@ export default function CleanerProfilePage() {
     enabled: !!userId,
     queryFn: async () => {
       const { data } = await supabase
-        .from('cleaner_onboarding')
-        .select('onboarding_complete, director_approved')
+        .from('staff_onboarding' as any)
+        .select('submitted_at, director_approved, deployment_status')
         .eq('user_id', userId!)
         .maybeSingle();
-      return data;
+      return data as any;
     },
   });
 
@@ -100,7 +101,7 @@ export default function CleanerProfilePage() {
         ))}
       </div>
 
-      {onboarding?.onboarding_complete !== true && (
+      {!onboarding?.submitted_at && (
         <button
           onClick={() => navigate('/cleaner-onboarding')}
           className="w-full text-left bg-accent/15 border-2 border-accent rounded-2xl p-4 flex items-center gap-3 hover:bg-accent/25 transition-colors"
@@ -114,6 +115,16 @@ export default function CleanerProfilePage() {
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
+      )}
+
+      {onboarding?.submitted_at && !onboarding.director_approved && (
+        <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center gap-3">
+          <GraduationCap className="h-6 w-6 text-primary" />
+          <div>
+            <p className="font-bold text-foreground text-sm">Onboarding submitted</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Next: document review, induction and two supervised shadow cleans.</p>
+          </div>
+        </div>
       )}
 
       <div className="bg-card rounded-2xl shadow-md p-6 space-y-3">
