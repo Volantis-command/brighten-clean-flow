@@ -105,7 +105,19 @@ export default function StaffOnboardingPage() {
     const { data, error: invokeError } = await supabase.functions.invoke('staff-onboarding', {
       body: { action, token, ...extra },
     });
-    if (invokeError) throw new Error((data as any)?.error || invokeError.message);
+    if (invokeError) {
+      let message = (data as any)?.error || invokeError.message;
+      const context = (invokeError as { context?: Response }).context;
+      if (context) {
+        try {
+          const responseBody = await context.clone().json() as { error?: string };
+          if (responseBody.error) message = responseBody.error;
+        } catch {
+          // Keep the transport message when the function did not return JSON.
+        }
+      }
+      throw new Error(message);
+    }
     if ((data as any)?.error) throw new Error((data as any).error);
     return data as any;
   };
