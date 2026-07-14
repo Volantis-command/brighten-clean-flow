@@ -4,8 +4,10 @@ import { useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   FileCheck2,
   Loader2,
@@ -27,8 +29,12 @@ import {
   DAYS_OF_WEEK,
   DOCUMENT_TYPES,
   EMPTY_STAFF_ONBOARDING_DRAFT,
+  formatAustralianDateInput,
   getKnowledgeScore,
+  INDEPENDENT_CONTRACTOR_TERMS,
+  isAcknowledgementAccepted,
   isValidAbn,
+  isValidAustralianDate,
   normaliseDigits,
   ONBOARDING_ACKNOWLEDGEMENTS,
   ONBOARDING_KNOWLEDGE_QUESTIONS,
@@ -86,6 +92,29 @@ function ChoiceCard({ checked, onChange, title, description }: { checked: boolea
   );
 }
 
+function AustralianDateField({ label, value, onChange, required, autoComplete }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  autoComplete?: string;
+}) {
+  return (
+    <Field label={label} required={required} hint="DD/MM/YYYY">
+      <Input
+        className="h-11 rounded-xl"
+        type="text"
+        inputMode="numeric"
+        autoComplete={autoComplete}
+        placeholder="DD/MM/YYYY"
+        maxLength={10}
+        value={value}
+        onChange={(event) => onChange(formatAustralianDateInput(event.target.value))}
+      />
+    </Field>
+  );
+}
+
 export default function StaffOnboardingPage() {
   const { token = '' } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
@@ -100,6 +129,8 @@ export default function StaffOnboardingPage() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [contractorTermsOpen, setContractorTermsOpen] = useState(false);
+  const [openAcknowledgement, setOpenAcknowledgement] = useState<string | null>(null);
 
   const invoke = async (action: string, extra: Record<string, unknown> = {}) => {
     const { data, error: invokeError } = await supabase.functions.invoke('staff-onboarding', {
@@ -135,10 +166,10 @@ export default function StaffOnboardingPage() {
         if (cancelled) return;
         const saved = record as ApiRecord;
         const acks = saved.sop_acknowledgements ?? {};
-        const acknowledgementValues = Object.fromEntries(ONBOARDING_ACKNOWLEDGEMENTS.map(({ key }) => {
-          const value = acks[key];
-          return [key, value && typeof value === 'object' ? Boolean((value as { acknowledged?: boolean }).acknowledged) : value === true];
-        }));
+        const acknowledgementValues = Object.fromEntries(ONBOARDING_ACKNOWLEDGEMENTS.map((acknowledgement) => [
+          acknowledgement.key,
+          isAcknowledgementAccepted(acks, acknowledgement),
+        ]));
         const savedQuestions = saved.knowledge_check?.questions;
         const questionValues = saved.knowledge_check?.answers ?? Object.fromEntries(
           Object.entries(savedQuestions ?? {}).map(([key, value]) => [key, value.selected_index]),
@@ -147,8 +178,10 @@ export default function StaffOnboardingPage() {
           ...EMPTY_STAFF_ONBOARDING_DRAFT,
           ...Object.fromEntries(Object.entries(saved).filter(([, value]) => value !== null)),
           email: saved.email ?? '',
+          date_of_birth: formatAustralianDateInput(saved.date_of_birth ?? ''),
+          public_liability_expiry: formatAustralianDateInput(saved.public_liability_expiry ?? ''),
+          drivers_licence_expiry: formatAustralianDateInput(saved.drivers_licence_expiry ?? ''),
           available_days: Array.isArray(saved.available_days) ? saved.available_days : [],
-          max_jobs_per_day: saved.max_jobs_per_day ? String(saved.max_jobs_per_day) : '',
           sop_acknowledgements: acknowledgementValues,
           knowledge_answers: questionValues as Record<string, number>,
           declaration_accurate: Boolean(saved.cleaner_declaration?.accurate),
@@ -189,6 +222,7 @@ export default function StaffOnboardingPage() {
     const required = (value: unknown) => Boolean(String(value ?? '').trim());
     if (currentStep === 0) {
       if (![draft.full_name, draft.phone, draft.email, draft.date_of_birth, draft.address, draft.residential_suburb, draft.postcode, draft.emergency_contact_name, draft.emergency_contact_phone, draft.emergency_contact_relationship].every(required)) return 'Complete every required personal and emergency-contact field.';
+      if (!isValidAustralianDate(draft.date_of_birth)) return 'Enter your date of birth as DD/MM/YYYY.';
     }
     if (currentStep === 1) {
       if (!draft.is_contractor) return 'You must acknowledge the independent-contractor arrangement.';
@@ -197,19 +231,18 @@ export default function StaffOnboardingPage() {
       if (!draft.bank_account_name || normaliseDigits(draft.bank_bsb).length !== 6 || normaliseDigits(draft.bank_account_number).length < 6) return 'Complete the account name, 6-digit BSB and account number.';
     }
     if (currentStep === 2) {
-      if (!draft.id_document_type || !draft.id_confirmed || !draft.police_check_date) return 'Complete the ID and police-check details.';
-      if (!draft.public_liability_status || !draft.work_rights_status) return 'Complete the public-liability and work-rights questions.';
-      if (draft.id_document_type === 'drivers_licence' && !draft.drivers_licence_expiry) return 'Enter your driver licence expiry date.';
-      for (const key of ['profile_photo', 'photo_id', 'police_check']) if (!documents[key]) return `Upload your ${key.split('_').join(' ')}.`;
-      if (draft.public_liability_status === 'yes' && (!documents.public_liability || !draft.public_liability_expiry)) return 'Upload your public-liability certificate and enter its expiry date.';
-      if (draft.work_rights_status === 'visa' && !documents.work_rights) return 'Upload your work-rights evidence.';
+      if (!draft.id_document_type || !draft.id_confirmed) return 'Complete the photo ID details.';
+      if (!draft.public_liability_status) return 'Answer the public-liability question.';
+      if (draft.id_document_type === 'drivers_licence' && !isValidAustralianDate(draft.drivers_licence_expiry)) return 'Enter the licence expiry as DD/MM/YYYY.';
+      for (const key of ['profile_photo', 'photo_id']) if (!documents[key]) return `Upload your ${key.split('_').join(' ')}.`;
+      if (draft.public_liability_status === 'yes' && (!documents.public_liability || !isValidAustralianDate(draft.public_liability_expiry))) return 'Upload your public-liability certificate and enter its expiry as DD/MM/YYYY.';
     }
     if (currentStep === 3) {
-      if (!draft.available_days.length || !draft.preferred_start_time || !draft.max_jobs_per_day) return 'Select your days, preferred start time and maximum jobs.';
+      if (!draft.available_days.length) return 'Select at least one day you can usually work.';
       if (!draft.transport_confirmed) return 'Reliable transport is required for this role.';
     }
     if (currentStep === 4 && (!draft.brightly_notifications_enabled || !draft.communication_acknowledged)) return 'Enable Brightly notifications and accept the communication requirements.';
-    if (currentStep === 5 && ONBOARDING_ACKNOWLEDGEMENTS.some(({ key }) => !draft.sop_acknowledgements[key])) return 'Read and accept every standard and SOP acknowledgement.';
+    if (currentStep === 5 && ONBOARDING_ACKNOWLEDGEMENTS.some(({ key }) => !draft.sop_acknowledgements[key])) return 'Open, read and accept all three Brightly standards sections.';
     if (currentStep === 6) {
       if (Object.keys(draft.knowledge_answers).length !== ONBOARDING_KNOWLEDGE_QUESTIONS.length) return 'Answer every knowledge-check question.';
       if (getKnowledgeScore(draft.knowledge_answers) !== ONBOARDING_KNOWLEDGE_QUESTIONS.length) return 'Review the highlighted answers. A perfect score is required before continuing.';
@@ -354,7 +387,7 @@ export default function StaffOnboardingPage() {
                 <Field label="Preferred name"><Input className="h-11 rounded-xl" value={draft.preferred_name} onChange={(e) => set('preferred_name', e.target.value)} /></Field>
                 <Field label="Email" required><Input className="h-11 rounded-xl bg-muted" type="email" value={draft.email} readOnly /></Field>
                 <Field label="Mobile" required><Input className="h-11 rounded-xl" type="tel" autoComplete="tel" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
-                <Field label="Date of birth" required><Input className="h-11 rounded-xl" type="date" value={draft.date_of_birth} onChange={(e) => set('date_of_birth', e.target.value)} /></Field>
+                <AustralianDateField label="Date of birth" required autoComplete="bday" value={draft.date_of_birth} onChange={(value) => set('date_of_birth', value)} />
                 <div className="hidden sm:block" />
                 <div className="sm:col-span-2"><Field label="Residential address" required><Input className="h-11 rounded-xl" autoComplete="street-address" value={draft.address} onChange={(e) => set('address', e.target.value)} /></Field></div>
                 <Field label="Suburb" required><Input className="h-11 rounded-xl" value={draft.residential_suburb} onChange={(e) => set('residential_suburb', e.target.value)} /></Field>
@@ -373,8 +406,23 @@ export default function StaffOnboardingPage() {
 
           {step === 1 && (
             <div className="space-y-6">
-              <div className="rounded-2xl bg-primary/5 p-4 text-sm leading-6 text-foreground">Brightly cleaners are independent contractors. Work is offered as available, hours are not guaranteed, and you are responsible for your own tax and GST obligations.</div>
-              <ChoiceCard checked={draft.is_contractor} onChange={(value) => set('is_contractor', value)} title="I understand and accept the independent-contractor arrangement" />
+              <div className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/5">
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <h2 className="font-bold">Independent-contractor arrangement</h2>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">See exactly how work, payment, ABN obligations and Brightly standards apply before you accept.</p>
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" className="mt-4 h-11 w-full justify-between rounded-xl bg-background" onClick={() => setContractorTermsOpen((open) => !open)} aria-expanded={contractorTermsOpen}>
+                    <span>{contractorTermsOpen ? 'Close arrangement' : 'Read contractor arrangement'}</span>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', contractorTermsOpen && 'rotate-180')} />
+                  </Button>
+                </div>
+                {contractorTermsOpen && <div className="space-y-4 border-t bg-background p-4 sm:p-5">{INDEPENDENT_CONTRACTOR_TERMS.map((term) => <div key={term.title}><h3 className="text-sm font-bold">{term.title}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{term.body}</p></div>)}</div>}
+              </div>
+              <ChoiceCard checked={draft.is_contractor} onChange={(value) => set('is_contractor', value)} title="I have read and accept the independent-contractor arrangement" description="You can reopen the arrangement above at any time before submitting." />
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="ABN status" required><select className={selectClass} value={draft.abn_status} onChange={(e) => set('abn_status', e.target.value)}><option value="">Select…</option><option value="yes">I have an active ABN</option><option value="applying">I am applying for an ABN</option></select></Field>
                 <Field label="ABN" required hint="11 digits"><Input className="h-11 rounded-xl" inputMode="numeric" value={draft.abn} onChange={(e) => set('abn', normaliseDigits(e.target.value).slice(0, 11))} /></Field>
@@ -405,11 +453,9 @@ export default function StaffOnboardingPage() {
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="Photo ID type" required><select className={selectClass} value={draft.id_document_type} onChange={(e) => set('id_document_type', e.target.value)}><option value="">Select…</option><option value="drivers_licence">Driver’s licence</option><option value="passport">Passport</option><option value="proof_of_age">Proof-of-age card</option></select></Field>
-                {draft.id_document_type === 'drivers_licence' && <Field label="Licence expiry"><Input className="h-11 rounded-xl" type="date" value={draft.drivers_licence_expiry} onChange={(e) => set('drivers_licence_expiry', e.target.value)} /></Field>}
-                <Field label="Police check issue date" required><Input className="h-11 rounded-xl" type="date" value={draft.police_check_date} onChange={(e) => set('police_check_date', e.target.value)} /></Field>
+                {draft.id_document_type === 'drivers_licence' && <AustralianDateField label="Licence expiry" required value={draft.drivers_licence_expiry} onChange={(value) => set('drivers_licence_expiry', value)} />}
                 <Field label="Public liability"><select className={selectClass} value={draft.public_liability_status} onChange={(e) => set('public_liability_status', e.target.value)}><option value="">Select…</option><option value="yes">I hold a current policy</option><option value="no">I do not hold a policy</option><option value="in_progress">Application in progress</option></select></Field>
-                {draft.public_liability_status === 'yes' && <Field label="Policy expiry"><Input className="h-11 rounded-xl" type="date" value={draft.public_liability_expiry} onChange={(e) => set('public_liability_expiry', e.target.value)} /></Field>}
-                <Field label="Australian work rights" required><select className={selectClass} value={draft.work_rights_status} onChange={(e) => set('work_rights_status', e.target.value)}><option value="citizen_or_pr">Citizen or permanent resident</option><option value="visa">Visa holder</option><option value="other">Other / discuss with Brightly</option></select></Field>
+                {draft.public_liability_status === 'yes' && <AustralianDateField label="Policy expiry" required value={draft.public_liability_expiry} onChange={(value) => set('public_liability_expiry', value)} />}
               </div>
               <ChoiceCard checked={draft.id_confirmed} onChange={(value) => set('id_confirmed', value)} title="I confirm the uploaded ID is current, valid and belongs to me" />
             </div>
@@ -418,11 +464,7 @@ export default function StaffOnboardingPage() {
           {step === 3 && (
             <div className="space-y-6">
               <div><h2 className="font-bold">Days you can usually work</h2><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{DAYS_OF_WEEK.map((day) => <button type="button" key={day} className={cn('min-h-11 rounded-xl border px-3 text-sm font-semibold', draft.available_days.includes(day) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')} onClick={() => set('available_days', draft.available_days.includes(day) ? draft.available_days.filter((value) => value !== day) : [...draft.available_days, day])}>{day}</button>)}</div></div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Preferred start time" required><Input className="h-11 rounded-xl" type="time" value={draft.preferred_start_time} onChange={(e) => set('preferred_start_time', e.target.value)} /></Field>
-                <Field label="Maximum jobs per day" required><select className={selectClass} value={draft.max_jobs_per_day} onChange={(e) => set('max_jobs_per_day', e.target.value)}><option value="">Select…</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></Field>
-                <Field label="Vehicle registration"><Input className="h-11 rounded-xl uppercase" value={draft.vehicle_rego} onChange={(e) => set('vehicle_rego', e.target.value.toUpperCase())} /></Field>
-              </div>
+              <Field label="Vehicle registration"><Input className="h-11 rounded-xl uppercase" value={draft.vehicle_rego} onChange={(e) => set('vehicle_rego', e.target.value.toUpperCase())} /></Field>
               <Field label="Availability notes"><Textarea className="min-h-24 rounded-xl" placeholder="School hours, recurring commitments or anything scheduling should know" value={draft.availability_notes} onChange={(e) => set('availability_notes', e.target.value)} /></Field>
               <ChoiceCard checked={draft.transport_confirmed} onChange={(value) => set('transport_confirmed', value)} title="I have reliable transport to reach Brightly properties across the Brisbane service area" />
             </div>
@@ -439,11 +481,19 @@ export default function StaffOnboardingPage() {
 
           {step === 5 && (
             <div className="space-y-4">
-              <p className="text-sm leading-6 text-muted-foreground">Each item maps to the Brightly induction file. Open, read and acknowledge every standard.</p>
+              <div className="rounded-2xl bg-primary/5 p-4"><p className="font-bold">Three clear sections. Three acknowledgements.</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Open each section, read the requirements and accept it. These replace the previous 14 separate ticks.</p></div>
               {ONBOARDING_ACKNOWLEDGEMENTS.map((item) => (
-                <label key={item.key} className={cn('block cursor-pointer rounded-2xl border p-4 sm:p-5', draft.sop_acknowledgements[item.key] ? 'border-primary bg-primary/5' : 'border-border')}>
-                  <div className="flex items-start gap-3"><Checkbox className="mt-0.5 h-5 w-5 shrink-0" checked={draft.sop_acknowledgements[item.key]} onCheckedChange={(value) => set('sop_acknowledgements', { ...draft.sop_acknowledgements, [item.key]: value === true })} /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-bold">{item.title}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{item.source}</span></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{item.summary}</p><p className="mt-3 text-sm font-semibold leading-6 text-foreground">{item.declaration}</p></div></div>
-                </label>
+                <article key={item.key} className={cn('overflow-hidden rounded-2xl border', draft.sop_acknowledgements[item.key] ? 'border-primary bg-primary/5' : 'border-border bg-card')}>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="font-bold">{item.title}</h2><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{item.source}</span></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{item.summary}</p></div></div>
+                    <Button type="button" variant="outline" className="mt-4 h-11 w-full justify-between rounded-xl bg-background" onClick={() => setOpenAcknowledgement((open) => open === item.key ? null : item.key)} aria-expanded={openAcknowledgement === item.key}>
+                      <span className="flex items-center gap-2"><BookOpen className="h-4 w-4" />{openAcknowledgement === item.key ? 'Close section' : 'Open & read section'}</span>
+                      <ChevronDown className={cn('h-4 w-4 transition-transform', openAcknowledgement === item.key && 'rotate-180')} />
+                    </Button>
+                  </div>
+                  {openAcknowledgement === item.key && <div className="space-y-4 border-y bg-background p-4 sm:p-5">{item.details.map((detail) => <div key={detail.title}><h3 className="text-sm font-bold">{detail.title}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{detail.body}</p></div>)}</div>}
+                  <label className="flex cursor-pointer items-start gap-3 p-4 sm:p-5"><Checkbox className="mt-0.5 h-5 w-5 shrink-0" checked={draft.sop_acknowledgements[item.key]} onCheckedChange={(value) => set('sop_acknowledgements', { ...draft.sop_acknowledgements, [item.key]: value === true })} /><span className="text-sm font-semibold leading-6 text-foreground">{item.declaration}</span></label>
+                </article>
               ))}
             </div>
           )}

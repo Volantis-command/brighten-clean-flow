@@ -1,4 +1,4 @@
-export const STAFF_ONBOARDING_VERSION = 'B-ABNB-HR-002-v1.0';
+export const STAFF_ONBOARDING_VERSION = 'B-ABNB-HR-002-v1.1';
 
 export const STAFF_ONBOARDING_STEPS = [
   'Personal details',
@@ -27,106 +27,70 @@ export type OnboardingAcknowledgement = {
   source: string;
   summary: string;
   declaration: string;
+  details: { title: string; body: string }[];
+  legacyKeys: string[];
 };
+
+export const INDEPENDENT_CONTRACTOR_TERMS = [
+  {
+    title: 'Your working arrangement',
+    body: 'You provide cleaning services to Brightly as an independent contractor, not as an employee. Brightly may offer work when it is available, but there are no guaranteed hours or minimum number of jobs.',
+  },
+  {
+    title: 'Accepting work',
+    body: 'You can accept or decline offered jobs. Once you accept a job, you are responsible for attending on time, completing the Brightly checklist and promptly reporting anything that could affect safety or the incoming guest.',
+  },
+  {
+    title: 'Payment, ABN and tax',
+    body: 'Payment is made at the agreed per-job or hourly rate. You must maintain an active ABN and are responsible for your own tax, GST and other contractor obligations.',
+  },
+  {
+    title: 'Brightly standards',
+    body: 'Accepted work must be completed to Brightly’s current cleaning, presentation, safety, privacy and communication standards. Access codes, guest information and client information must remain confidential.',
+  },
+] as const;
 
 export const ONBOARDING_ACKNOWLEDGEMENTS: OnboardingAcknowledgement[] = [
   {
-    key: 'engagement',
-    title: 'Independent contractor engagement',
-    source: 'B-ABNB-HR-002 · Your Engagement',
-    summary: 'Work is offered as available with no guaranteed hours. Payment is per job or an agreed hourly rate. Contractors manage their own tax and GST obligations and must hold a valid ABN.',
-    declaration: 'I understand and accept Brightly’s independent contractor engagement terms.',
+    key: 'cleaning_guest_ready',
+    title: 'Cleaning & guest-ready standards',
+    source: 'SOP-004 · SOP-005 · SOP-006 · QC-001 · REF-001',
+    summary: 'The complete clean, linen, restocking, presentation, photo and final-inspection standard in one readable section.',
+    declaration: 'I have read and will follow Brightly’s cleaning and guest-ready standards.',
+    legacyKeys: ['master_housekeeping', 'linen_laundry', 'consumables', 'pre_guest_inspection', 'quick_reference', 'cleaning_standards'],
+    details: [
+      { title: 'Sequence of clean', body: 'Confirm the property is vacant, strip linen and empty bins, then complete the kitchen, bathrooms, bedrooms and living areas in the required order. Finish with a complete inspection, room photos, lock-up and job completion in Brightly.' },
+      { title: 'Linen and laundry', body: 'Bag used hire linen, tag and report damaged or stained items, never discard hire linen and never reuse unchecked linen. If fresh linen has not arrived, call the office before starting.' },
+      { title: 'Restocking and presentation', body: 'Restock every property to its documented level. Beds must be symmetrical and wrinkle-free; bathrooms sanitised and hair-free; kitchens clean and dry; products hidden; and windows and doors secured.' },
+      { title: 'Guest-ready evidence', body: 'Complete the final inspection, photograph every room and report missing items, damage or anything that may affect the incoming guest before marking the job complete.' },
+    ],
   },
   {
-    key: 'master_housekeeping',
-    title: 'Master Housekeeping SOP',
-    source: 'B-ABNB-SOP-004',
-    summary: 'Follow the full sequence: arrival and vacancy check, strip, kitchen, bathrooms, bedrooms, living areas, final inspection, room photos, lock-up and completion in Brightly.',
-    declaration: 'I have read and understood the Master Housekeeping SOP (B-ABNB-SOP-004).',
-  },
-  {
-    key: 'linen_laundry',
-    title: 'Linen & Laundry SOP',
-    source: 'B-ABNB-SOP-005',
-    summary: 'Use the rented-linen process. Bag used linen, tag and report damaged items, never discard hire linen, never reuse unchecked linen, and call the office before starting if fresh linen has not arrived.',
-    declaration: 'I have read and understood the Linen & Laundry SOP (B-ABNB-SOP-005).',
-  },
-  {
-    key: 'consumables',
-    title: 'Consumables & Amenity Restocking SOP',
-    source: 'B-ABNB-SOP-006',
-    summary: 'Restock every property to its documented standard and report missing or insufficient supplies before the property is guest-ready.',
-    declaration: 'I have read and understood the Consumables & Amenity Restocking SOP (B-ABNB-SOP-006).',
-  },
-  {
-    key: 'pre_guest_inspection',
-    title: 'Pre-Guest Arrival Inspection',
-    source: 'B-ABNB-QC-001',
-    summary: 'Complete the final guest-ready inspection, confirm every room and presentation standard, photograph every room and report anything that may affect the incoming guest.',
-    declaration: 'I have read and understood the Pre-Guest Arrival Inspection Checklist (B-ABNB-QC-001).',
-  },
-  {
-    key: 'quick_reference',
-    title: 'Cleaner Quick Reference',
-    source: 'B-ABNB-REF-001',
-    summary: 'Use the quick reference as an on-job reminder, while the full SOPs remain the controlling standard.',
-    declaration: 'I have received and reviewed the Cleaner Quick Reference (B-ABNB-REF-001).',
-  },
-  {
-    key: 'cleaning_standards',
-    title: 'Hotel-standard cleaning and presentation',
-    source: 'B-ABNB-HR-002 · Training — Cleaning Standards',
-    summary: 'Beds must be symmetrical and wrinkle-free; bathrooms sanitised and hair-free; kitchens clean and dry; consumables restocked; products hidden; windows and doors secured; every room photographed.',
-    declaration: 'I understand Brightly’s non-negotiable cleaning and presentation standards.',
-  },
-  {
-    key: 'chemical_safety',
-    title: 'Chemical safety and PPE',
+    key: 'safety_incidents',
+    title: 'Safety, chemicals & incident response',
     source: 'B-ABNB-HR-002 · WHS',
-    summary: 'Never mix chemicals. Keep products in labelled containers. Wear rubber gloves for chemicals, bathrooms and kitchens; use safety glasses for overhead or confined spraying; wear closed-toe slip-resistant footwear.',
-    declaration: 'I understand and will follow Brightly’s chemical safety and PPE requirements.',
+    summary: 'Chemical handling, required PPE and the exact response for injuries, exposure, spills and emergencies.',
+    declaration: 'I have read and will follow Brightly’s safety and incident-response requirements.',
+    legacyKeys: ['chemical_safety', 'incident_reporting'],
+    details: [
+      { title: 'Chemical safety and PPE', body: 'Never mix chemicals. Keep every product in its labelled container. Wear rubber gloves for chemicals, bathrooms and kitchens, safety glasses for overhead or confined spraying, and closed-toe slip-resistant footwear.' },
+      { title: 'Exposure and spills', body: 'For chemical contact with skin or eyes, rinse with running water for at least 15 minutes. Isolate and ventilate spills and contact Brightly immediately for instructions.' },
+      { title: 'Injury or emergency', body: 'Call 000 for a life-threatening event, notify Brendan immediately and complete the required incident report within 24 hours.' },
+    ],
   },
   {
-    key: 'incident_reporting',
-    title: 'Incident, injury and spill response',
-    source: 'B-ABNB-HR-002 · WHS',
-    summary: 'Call 000 for life-threatening events, notify Brendan immediately, complete an incident report within 24 hours, isolate and ventilate spills, and rinse chemical exposure with running water for at least 15 minutes.',
-    declaration: 'I understand the incident, injury, chemical exposure and spill-response process.',
-  },
-  {
-    key: 'communication_scheduling',
-    title: 'Communication and scheduling',
-    source: 'B-ABNB-HR-005',
-    summary: 'Brightly is the system of record for jobs, checklists, time and photos. Accept or decline assignments within 2 hours. Call for schedule changes within 24 hours and urgent damage, access or safety issues.',
-    declaration: 'I understand Brightly’s job acceptance, attendance and urgent communication requirements.',
-  },
-  {
-    key: 'privacy_confidentiality',
-    title: 'Privacy, access and confidentiality',
-    source: 'B-ABNB-HR-001 / B-ABNB-HR-002 / B-ABNB-HR-005',
-    summary: 'Never share access codes, entry details, guest information, client contacts or Brightly pricing. Do not contact a host unless specifically instructed.',
-    declaration: 'I will protect all guest, client, property and Brightly information.',
-  },
-  {
-    key: 'conduct_performance',
-    title: 'Conduct and performance',
-    source: 'B-ABNB-HR-002 · Performance Expectations',
-    summary: 'Arrive on time, complete every checklist item, submit required photos, behave professionally, do not smoke or eat at properties, avoid personal calls and respect all guest belongings.',
-    declaration: 'I understand the conduct and performance standards and the breaches that may result in removal from Brightly.',
-  },
-  {
-    key: 'shadow_cleans',
-    title: 'Shadow cleans and solo deployment',
-    source: 'B-ABNB-HR-002 · Shadow Clean Procedure',
-    summary: 'Complete at least two supervised shadow cleans. Shadow Clean 2 requires a QC score of 80% or higher. Additional training may be required and only the Director can approve solo deployment.',
-    declaration: 'I understand the shadow-clean, QC and Director approval requirements before solo work.',
-  },
-  {
-    key: 'ongoing_training',
-    title: 'Ongoing training triggers',
-    source: 'B-ABNB-HR-002 · Ongoing Training Triggers',
-    summary: 'Retraining may follow low QC scores, guest complaints, WHS events, process changes, new property types or 30+ days off roster. Current SOPs must be re-acknowledged annually.',
-    declaration: 'I understand that training and SOP acknowledgement continue after initial deployment.',
+    key: 'communication_conduct_training',
+    title: 'Communication, conduct & training',
+    source: 'HR-001 · HR-002 · HR-005',
+    summary: 'How jobs are communicated, confidentiality, professional conduct, shadow cleans and ongoing training.',
+    declaration: 'I have read and will follow Brightly’s communication, conduct, privacy and training requirements.',
+    legacyKeys: ['communication_scheduling', 'privacy_confidentiality', 'conduct_performance', 'shadow_cleans', 'ongoing_training'],
+    details: [
+      { title: 'Communication and attendance', body: 'Brightly is the source of truth for jobs, checklists, time and photos. Accept or decline assignments within 2 hours. Call about schedule changes within 24 hours, notify the head cleaner before start time if you will be more than 15 minutes late, and call immediately for urgent access, damage, safety or guest-ready risks.' },
+      { title: 'Privacy and confidentiality', body: 'Never share property access codes, entry details, guest information, client contacts or Brightly pricing. Do not contact a host unless Brightly specifically instructs you to.' },
+      { title: 'Professional conduct', body: 'Arrive on time, complete every checklist item, provide the required photos, respect guest belongings, and do not smoke, eat or make unnecessary personal calls inside a property.' },
+      { title: 'Training and solo work', body: 'Complete at least two supervised shadow cleans. Shadow Clean 2 requires a QC score of 80% or higher. Only the Director can approve solo deployment, and retraining or annual re-acknowledgement may be required.' },
+    ],
   },
 ];
 
@@ -217,7 +181,6 @@ export const PRESTART_REQUIREMENTS = [
   { key: 'emergency_contact_provided', label: 'Emergency contact provided', owner: 'cleaner' },
   { key: 'id_uploaded', label: 'Photo ID uploaded', owner: 'cleaner' },
   { key: 'id_verified', label: 'Photo ID verified by Brightly', owner: 'admin' },
-  { key: 'police_check_received', label: 'Police check received', owner: 'cleaner' },
   { key: 'master_sop_signed', label: 'Master Housekeeping SOP acknowledged', owner: 'cleaner' },
   { key: 'linen_sop_signed', label: 'Linen & Laundry SOP acknowledged', owner: 'cleaner' },
   { key: 'consumables_sop_signed', label: 'Consumables SOP acknowledged', owner: 'cleaner' },
@@ -235,9 +198,7 @@ export const PRESTART_REQUIREMENTS = [
 export const DOCUMENT_TYPES = [
   { key: 'profile_photo', label: 'Profile photo', required: true },
   { key: 'photo_id', label: 'Photo ID', required: true },
-  { key: 'police_check', label: 'Police check', required: true },
   { key: 'public_liability', label: 'Public liability certificate', required: false },
-  { key: 'work_rights', label: 'VEVO / work-rights evidence', required: false },
 ] as const;
 
 export type StaffOnboardingDraft = {
@@ -261,16 +222,12 @@ export type StaffOnboardingDraft = {
   bank_account_number: string;
   id_document_type: string;
   id_confirmed: boolean;
-  police_check_date: string;
   public_liability_status: string;
   public_liability_expiry: string;
-  work_rights_status: string;
   drivers_licence_expiry: string;
   transport_confirmed: boolean;
   vehicle_rego: string;
   available_days: string[];
-  preferred_start_time: string;
-  max_jobs_per_day: string;
   availability_notes: string;
   has_whatsapp: boolean;
   brightly_notifications_enabled: boolean;
@@ -303,16 +260,12 @@ export const EMPTY_STAFF_ONBOARDING_DRAFT: StaffOnboardingDraft = {
   bank_account_number: '',
   id_document_type: '',
   id_confirmed: false,
-  police_check_date: '',
   public_liability_status: '',
   public_liability_expiry: '',
-  work_rights_status: 'citizen_or_pr',
   drivers_licence_expiry: '',
   transport_confirmed: false,
   vehicle_rego: '',
   available_days: [],
-  preferred_start_time: '',
-  max_jobs_per_day: '',
   availability_notes: '',
   has_whatsapp: false,
   brightly_notifications_enabled: false,
@@ -326,6 +279,44 @@ export const EMPTY_STAFF_ONBOARDING_DRAFT: StaffOnboardingDraft = {
 
 export function normaliseDigits(value: string) {
   return value.replace(/\D/g, '');
+}
+
+export function formatAustralianDateInput(value: string) {
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const source = isoMatch ? `${isoMatch[3]}${isoMatch[2]}${isoMatch[1]}` : normaliseDigits(value);
+  const digits = source.slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+export function isValidAustralianDate(value: string) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (!match) return false;
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  if (year < 1900 || year > 2100) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+export function formatStoredDateAustralian(value: unknown) {
+  const text = String(value ?? '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? formatAustralianDateInput(text) : text || '—';
+}
+
+export function isAcknowledgementAccepted(
+  acknowledgements: Record<string, boolean | { acknowledged?: boolean }>,
+  acknowledgement: OnboardingAcknowledgement,
+) {
+  const accepted = (key: string) => {
+    const entry = acknowledgements[key];
+    return entry === true || (typeof entry === 'object' && entry?.acknowledged === true);
+  };
+  return accepted(acknowledgement.key)
+    || (acknowledgement.legacyKeys.length > 0 && acknowledgement.legacyKeys.every(accepted));
 }
 
 export function isValidAbn(value: string) {

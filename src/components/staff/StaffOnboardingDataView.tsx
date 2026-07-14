@@ -6,7 +6,13 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DOCUMENT_TYPES, ONBOARDING_ACKNOWLEDGEMENTS, ONBOARDING_KNOWLEDGE_QUESTIONS } from '@/lib/staffOnboarding';
+import {
+  DOCUMENT_TYPES,
+  formatStoredDateAustralian,
+  isAcknowledgementAccepted,
+  ONBOARDING_ACKNOWLEDGEMENTS,
+  ONBOARDING_KNOWLEDGE_QUESTIONS,
+} from '@/lib/staffOnboarding';
 
 interface Props { staffId: string }
 
@@ -67,7 +73,7 @@ export default function StaffOnboardingDataView({ staffId }: Props) {
 
       <Section icon={User} title="Personal & emergency details"><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Detail label="Legal name">{value(onb.full_name)}</Detail><Detail label="Preferred name">{value(onb.preferred_name)}</Detail><Detail label="Email">{value(onb.email)}</Detail>
-        <Detail label="Mobile">{value(onb.phone)}</Detail><Detail label="Date of birth">{value(onb.date_of_birth)}</Detail><Detail label="Address">{value(onb.address)}</Detail>
+        <Detail label="Mobile">{value(onb.phone)}</Detail><Detail label="Date of birth">{formatStoredDateAustralian(onb.date_of_birth)}</Detail><Detail label="Address">{value(onb.address)}</Detail>
         <Detail label="Suburb">{value(onb.residential_suburb)}</Detail><Detail label="Postcode">{value(onb.postcode)}</Detail><Detail label="Emergency contact">{value(onb.emergency_contact_name)}</Detail>
         <Detail label="Relationship">{value(onb.emergency_contact_relationship)}</Detail><Detail label="Emergency phone">{value(onb.emergency_contact_phone)}</Detail>
       </dl></Section>
@@ -80,9 +86,8 @@ export default function StaffOnboardingDataView({ staffId }: Props) {
 
       <Section icon={IdCard} title="Identity, compliance & documents">
         <dl className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Detail label="ID type">{value(onb.id_document_type)}</Detail><Detail label="ID ownership confirmed">{yesNo(onb.id_confirmed)}</Detail><Detail label="Police check date">{value(onb.police_check_date)}</Detail>
-          <Detail label="Public liability">{value(onb.public_liability_status)}</Detail><Detail label="Insurance expiry">{value(onb.public_liability_expiry)}</Detail><Detail label="Work rights">{value(onb.work_rights_status)}</Detail>
-          <Detail label="Licence expiry">{value(onb.drivers_licence_expiry)}</Detail><Detail label="Reliable transport">{yesNo(onb.transport_confirmed)}</Detail><Detail label="Vehicle rego">{value(onb.vehicle_rego)}</Detail>
+          <Detail label="ID type">{value(onb.id_document_type)}</Detail><Detail label="ID ownership confirmed">{yesNo(onb.id_confirmed)}</Detail><Detail label="Public liability">{value(onb.public_liability_status)}</Detail>
+          <Detail label="Insurance expiry">{formatStoredDateAustralian(onb.public_liability_expiry)}</Detail><Detail label="Licence expiry">{formatStoredDateAustralian(onb.drivers_licence_expiry)}</Detail><Detail label="Reliable transport">{yesNo(onb.transport_confirmed)}</Detail><Detail label="Vehicle rego">{value(onb.vehicle_rego)}</Detail>
         </dl>
         <div className="grid gap-3 sm:grid-cols-2">
           {DOCUMENT_TYPES.map((document) => {
@@ -93,14 +98,13 @@ export default function StaffOnboardingDataView({ staffId }: Props) {
       </Section>
 
       <Section icon={FileText} title="Availability & communication"><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Detail label="Available days">{availableDays}</Detail><Detail label="Preferred start">{value(onb.preferred_start_time)}</Detail><Detail label="Max jobs/day">{value(onb.max_jobs_per_day)}</Detail>
-        <Detail label="Availability notes">{value(onb.availability_notes)}</Detail><Detail label="Brightly notifications">{yesNo(onb.brightly_notifications_enabled)}</Detail><Detail label="WhatsApp">{yesNo(onb.has_whatsapp)}</Detail>
+        <Detail label="Available days">{availableDays}</Detail><Detail label="Availability notes">{value(onb.availability_notes)}</Detail><Detail label="Brightly notifications">{yesNo(onb.brightly_notifications_enabled)}</Detail><Detail label="WhatsApp">{yesNo(onb.has_whatsapp)}</Detail>
         <Detail label="Scheduling rules accepted">{yesNo(onb.communication_acknowledged)}</Detail>
       </dl></Section>
 
       <Section icon={ShieldCheck} title="SOP & policy acknowledgements"><div className="space-y-3">{ONBOARDING_ACKNOWLEDGEMENTS.map((item) => {
         const entry = acknowledgements[item.key];
-        const accepted = entry === true || entry?.acknowledged === true;
+        const accepted = isAcknowledgementAccepted(acknowledgements, item);
         return <div key={item.key} className="flex items-start gap-3 rounded-xl border p-3">{accepted ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />}<div><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{entry?.prompt || item.declaration}</p><p className="mt-1 text-[11px] text-muted-foreground">{entry?.acknowledged_at ? new Date(entry.acknowledged_at).toLocaleString('en-AU') : item.source}</p></div></div>;
       })}</div></Section>
 

@@ -7,15 +7,13 @@ const corsHeaders = {
 };
 
 const BUCKET = "staff-documents";
-const VERSION = "B-ABNB-HR-002-v1.0";
+const VERSION = "B-ABNB-HR-002-v1.1";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_DOCUMENTS = new Set([
   "profile_photo",
   "photo_id",
-  "police_check",
   "public_liability",
-  "work_rights",
 ]);
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -25,20 +23,9 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 const ACKNOWLEDGEMENTS = [
-  ["engagement", "I understand and accept Brightly’s independent contractor engagement terms."],
-  ["master_housekeeping", "I have read and understood the Master Housekeeping SOP (B-ABNB-SOP-004)."],
-  ["linen_laundry", "I have read and understood the Linen & Laundry SOP (B-ABNB-SOP-005)."],
-  ["consumables", "I have read and understood the Consumables & Amenity Restocking SOP (B-ABNB-SOP-006)."],
-  ["pre_guest_inspection", "I have read and understood the Pre-Guest Arrival Inspection Checklist (B-ABNB-QC-001)."],
-  ["quick_reference", "I have received and reviewed the Cleaner Quick Reference (B-ABNB-REF-001)."],
-  ["cleaning_standards", "I understand Brightly’s non-negotiable cleaning and presentation standards."],
-  ["chemical_safety", "I understand and will follow Brightly’s chemical safety and PPE requirements."],
-  ["incident_reporting", "I understand the incident, injury, chemical exposure and spill-response process."],
-  ["communication_scheduling", "I understand Brightly’s job acceptance, attendance and urgent communication requirements."],
-  ["privacy_confidentiality", "I will protect all guest, client, property and Brightly information."],
-  ["conduct_performance", "I understand the conduct and performance standards and the breaches that may result in removal from Brightly."],
-  ["shadow_cleans", "I understand the shadow-clean, QC and Director approval requirements before solo work."],
-  ["ongoing_training", "I understand that training and SOP acknowledgement continue after initial deployment."],
+  ["cleaning_guest_ready", "I have read and will follow Brightly’s cleaning and guest-ready standards."],
+  ["safety_incidents", "I have read and will follow Brightly’s safety and incident-response requirements."],
+  ["communication_conduct_training", "I have read and will follow Brightly’s communication, conduct, privacy and training requirements."],
 ] as const;
 
 const KNOWLEDGE_QUESTIONS = [
@@ -60,7 +47,6 @@ const PRESTART_KEYS = [
   "emergency_contact_provided",
   "id_uploaded",
   "id_verified",
-  "police_check_received",
   "master_sop_signed",
   "linen_sop_signed",
   "consumables_sop_signed",
@@ -95,16 +81,12 @@ const EDITABLE_FIELDS = [
   "bank_account_number",
   "id_document_type",
   "id_confirmed",
-  "police_check_date",
   "public_liability_status",
   "public_liability_expiry",
-  "work_rights_status",
   "drivers_licence_expiry",
   "transport_confirmed",
   "vehicle_rego",
   "available_days",
-  "preferred_start_time",
-  "max_jobs_per_day",
   "availability_notes",
   "has_whatsapp",
   "brightly_notifications_enabled",
@@ -152,7 +134,16 @@ function publicRecord(record: JsonRecord) {
 
 function normaliseDate(value: unknown) {
   const text = String(value ?? "").trim();
-  return text || null;
+  if (!text) return null;
+  const match = /^(?:(\d{4})-(\d{2})-(\d{2})|(\d{2})\/(\d{2})\/(\d{4}))$/.exec(text);
+  if (!match) return null;
+  const year = Number(match[1] ?? match[6]);
+  const month = Number(match[2] ?? match[5]);
+  const day = Number(match[3] ?? match[4]);
+  if (year < 1900 || year > 2100) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function cleanApplicantPayload(payload: JsonRecord) {
@@ -162,7 +153,6 @@ function cleanApplicantPayload(payload: JsonRecord) {
     update[field] = payload[field] === "" ? null : payload[field];
   }
   update.date_of_birth = normaliseDate(payload.date_of_birth);
-  update.police_check_date = normaliseDate(payload.police_check_date);
   update.public_liability_expiry = normaliseDate(payload.public_liability_expiry);
   update.drivers_licence_expiry = normaliseDate(payload.drivers_licence_expiry);
   update.available_days = Array.isArray(payload.available_days) ? payload.available_days : [];
@@ -195,15 +185,13 @@ function validateSubmission(payload: JsonRecord, manifest: JsonRecord) {
     ["bank_bsb", "BSB"],
     ["bank_account_number", "Bank account number"],
     ["id_document_type", "ID document type"],
-    ["police_check_date", "Police check date"],
-    ["preferred_start_time", "Preferred start time"],
-    ["max_jobs_per_day", "Maximum jobs per day"],
     ["digital_signature", "Digital signature"],
   ] as const;
   for (const [key, label] of requiredText) {
     if (!String(payload[key] ?? "").trim()) return `${label} is required`;
   }
   if (!payload.is_contractor) return "Independent contractor acknowledgement is required";
+  if (!normaliseDate(payload.date_of_birth)) return "Enter date of birth as DD/MM/YYYY";
   if (payload.abn_status !== "yes") return "An active ABN is required before onboarding can be submitted";
   if (!validAbn(payload.abn)) return "Enter a valid active ABN";
   if (digits(payload.postcode).length !== 4) return "Postcode must contain 4 digits";
@@ -215,29 +203,23 @@ function validateSubmission(payload: JsonRecord, manifest: JsonRecord) {
   if (!payload.transport_confirmed) return "Reliable transport confirmation is required";
   if (!payload.brightly_notifications_enabled) return "Brightly notifications must be enabled";
   if (!payload.communication_acknowledged) return "Communication requirements must be acknowledged";
-  if (!["citizen_or_pr", "visa", "other"].includes(String(payload.work_rights_status ?? ""))) {
-    return "Work-rights status is required";
-  }
   if (!["yes", "no", "in_progress"].includes(String(payload.public_liability_status ?? ""))) {
     return "Public-liability status is required";
   }
-  if (payload.id_document_type === "drivers_licence" && !payload.drivers_licence_expiry) {
-    return "Driver licence expiry is required";
+  if (payload.id_document_type === "drivers_licence" && !normaliseDate(payload.drivers_licence_expiry)) {
+    return "Enter driver licence expiry as DD/MM/YYYY";
   }
   if (!Array.isArray(payload.available_days) || payload.available_days.length === 0) {
     return "At least one available day is required";
   }
-  for (const key of ["profile_photo", "photo_id", "police_check"]) {
+  for (const key of ["profile_photo", "photo_id"]) {
     if (!manifest[key]?.path && !manifest[key]?.legacy_url) return `${key.replaceAll("_", " ")} upload is required`;
   }
   if (payload.public_liability_status === "yes" && !manifest.public_liability?.path && !manifest.public_liability?.legacy_url) {
     return "Public-liability evidence is required when you hold a policy";
   }
-  if (payload.public_liability_status === "yes" && !payload.public_liability_expiry) {
-    return "Public-liability policy expiry is required";
-  }
-  if (payload.work_rights_status === "visa" && !manifest.work_rights?.path && !manifest.work_rights?.legacy_url) {
-    return "Work-rights evidence is required for visa holders";
+  if (payload.public_liability_status === "yes" && !normaliseDate(payload.public_liability_expiry)) {
+    return "Enter public-liability policy expiry as DD/MM/YYYY";
   }
   const acks = payload.sop_acknowledgements ?? {};
   if (ACKNOWLEDGEMENTS.some(([key]) => acks[key] !== true)) {
@@ -529,7 +511,6 @@ Deno.serve(async (req) => {
         bank_details_provided: { completed: true, source: "applicant", completed_at: now },
         emergency_contact_provided: { completed: true, source: "applicant", completed_at: now },
         id_uploaded: { completed: true, source: "document", completed_at: now },
-        police_check_received: { completed: true, source: "document", completed_at: now },
         master_sop_signed: { completed: true, source: "acknowledgement", completed_at: now },
         linen_sop_signed: { completed: true, source: "acknowledgement", completed_at: now },
         consumables_sop_signed: { completed: true, source: "acknowledgement", completed_at: now },
