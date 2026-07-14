@@ -1,5 +1,8 @@
 project_id = "ueomxjsqvmbjfufjauhe"
 
+[functions.xero-weekly-batch-invoice]
+verify_jwt = false
+
 [functions.process-scheduled-sms]
 verify_jwt = false
 

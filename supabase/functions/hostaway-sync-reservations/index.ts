@@ -445,6 +445,7 @@ Deno.serve(async (req) => {
         source: 'hostaway',
         hostaway_reservation_id: reservationId,
         client_name: property.client_name,
+        guest_name: guestName,
         notes,
         price_ex_gst: priceExGst,
         price_inc_gst: priceIncGst,

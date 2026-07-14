@@ -27,6 +27,42 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Retry Xero calls on 429/503 (rate limit), honouring Retry-After / backoff.
+async function xeroFetch(url: string, init: RequestInit, maxRetries = 4): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 && res.status !== 503) return res;
+    if (attempt >= maxRetries) return res;
+    const retryAfter = Number(res.headers.get('Retry-After'));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : Math.min(1000 * 2 ** attempt, 8000);
+    await new Promise((r) => setTimeout(r, waitMs));
+    attempt++;
+  }
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "2026-07-14" → "14 Jul". */
+function fmtDate(iso: string): string {
+  const parts = String(iso).split('-');
+  if (parts.length !== 3) return String(iso);
+  return `${Number(parts[2])} ${MONTHS[Number(parts[1]) - 1] || ''}`.trim();
+}
+
+/** Pull the guest name out of a job's notes when there's no guest_name column value.
+ *  Handles "Hostaway turnover — NAME", "Guest: NAME", etc. */
+function guestFromNotes(notes: string | null): string {
+  if (!notes) return '';
+  const first = notes.split('\n')[0].trim();
+  let m = first.match(/(?:turnover|clean)\s+[—-]\s+(.+)$/i);
+  if (m) return m[1].trim();
+  m = first.match(/guest:\s*(.+)$/i);
+  if (m) return m[1].trim();
+  return '';
+}
+
 async function getValidToken(supabase: any) {
   const { data: tokens } = await supabase.from('xero_tokens').select('*').limit(1).single();
   if (!tokens) throw new Error('Xero not connected');
@@ -70,7 +106,7 @@ async function resolveXeroContact(
     'Accept': 'application/json',
   };
 
-  const searchRes = await fetch(
+  const searchRes = await xeroFetch(
     `https://api.xero.com/api.xro/2.0/Contacts?where=Name=="${encodeURIComponent(name)}"`,
     { headers },
   );
@@ -81,7 +117,7 @@ async function resolveXeroContact(
     const contactId = contact.ContactID;
     // Patch email if missing
     if (email && !contact.EmailAddress) {
-      await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
+      await xeroFetch('https://api.xero.com/api.xro/2.0/Contacts', {
         method: 'POST',
         headers,
         body: JSON.stringify({ Contacts: [{ ContactID: contactId, EmailAddress: email }] }),
@@ -92,7 +128,7 @@ async function resolveXeroContact(
 
   const newContact: any = { Name: name };
   if (email) newContact.EmailAddress = email;
-  const createRes = await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
+  const createRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Contacts', {
     method: 'POST',
     headers,
     body: JSON.stringify({ Contacts: [newContact] }),
@@ -171,7 +207,7 @@ Deno.serve(async (req) => {
         // 3. Find uninvoiced completed jobs in the date range
         const { data: jobs, error: jobsErr } = await supabase
           .from('jobs')
-          .select('id, scheduled_date, price_ex_gst, price_inc_gst, properties:property_id(property_name, billing_email)')
+          .select('id, scheduled_date, price_ex_gst, price_inc_gst, guest_name, notes, properties:property_id(property_name, billing_email)')
           .eq('status', 'completed')
           .is('xero_invoice_id', null)
           .in('property_id', propertyIds)
@@ -190,8 +226,13 @@ Deno.serve(async (req) => {
           const prop: any = job.properties || {};
           const ex = Number(job.price_ex_gst) || Number(job.price_inc_gst) / 1.1 || 0;
           totalEx += ex;
+          // BnB Hub's requested line format: Date — Property — Guest name.
+          const guest = (job.guest_name || guestFromNotes(job.notes) || '').trim();
+          const description = [fmtDate(job.scheduled_date), prop.property_name || 'Property', guest]
+            .filter(Boolean)
+            .join(' — ');
           return {
-            Description: `${prop.property_name || 'Property'} — ${job.scheduled_date}`,
+            Description: description,
             Quantity: 1,
             UnitAmount: ex.toFixed(2),
             AccountCode: '200',
@@ -234,7 +275,7 @@ Deno.serve(async (req) => {
         };
         if (contactId) invoiceBody.Contact = { ContactID: contactId };
 
-        const invRes = await fetch('https://api.xero.com/api.xro/2.0/Invoices', {
+        const invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${access_token}`,
