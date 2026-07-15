@@ -7,13 +7,84 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+type KnowledgeItem = {
+  code?: string | null;
+  sop_code?: string | null;
+  title?: string | null;
+  content?: string | null;
+};
+
+const FALLBACK_STOP_WORDS = new Set([
+  "about", "after", "before", "cleaner", "could", "from", "have", "property",
+  "should", "their", "there", "these", "they", "what", "when", "where", "which",
+  "with", "would",
+]);
+
+function sseResponse(text: string) {
+  const streamBody = [
+    `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}`,
+    "",
+    "data: [DONE]",
+    "",
+  ].join("\n");
+
+  return new Response(streamBody, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
+}
+
+function buildKnowledgeFallback(
+  messages: Array<{ role: string; content: string }>,
+  documents: KnowledgeItem[],
+) {
+  const question = messages.at(-1)?.content?.toLowerCase() || "";
+  const terms = [...new Set((question.match(/[a-z]{4,}/g) || [])
+    .filter((term) => !FALLBACK_STOP_WORDS.has(term)))]
+    .slice(0, 12);
+
+  const match = documents
+    .map((document) => {
+      const content = document.content || "";
+      const searchable = [document.code, document.sop_code, document.title, content]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const score = terms.reduce(
+        (total, term) => total + (searchable.includes(term) ? 1 : 0),
+        0,
+      );
+      const paragraphs = content
+        .split(/\n+/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean);
+      const excerpt = paragraphs.find((paragraph) =>
+        terms.some((term) => paragraph.toLowerCase().includes(term))
+      ) || paragraphs[0] || "";
+      return { document, score, excerpt };
+    })
+    .filter((candidate) => candidate.score > 0 && candidate.excerpt)
+    .sort((a, b) => b.score - a.score)[0];
+
+  if (!match) {
+    return "I couldn't find a reliable answer in the Brightly SOP library. Please contact your supervisor before proceeding so you do not guess.";
+  }
+
+  const code = match.document.sop_code || match.document.code || "Brightly SOP";
+  const title = match.document.title || "Official guidance";
+  const excerpt = match.excerpt.length > 900
+    ? `${match.excerpt.slice(0, 897)}…`
+    : match.excerpt;
+
+  return `Based on Brightly's official guidance:\n\n**${code} — ${title}**\n\n${excerpt}\n\nIf the situation is urgent or unclear, pause and contact your supervisor before proceeding.`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) throw new Error("AI provider is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Missing authorization header");
@@ -146,50 +217,46 @@ Be concise, practical and format responses with markdown when helpful.${kbContex
 
 The caller's first name is "${firstName}". Address them by name occasionally.`;
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-          ],
-          stream: true,
-        }),
-      }
-    );
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: messages.slice(-12),
+      }),
+    });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limited. Please try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please contact admin." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
+      console.error("Anthropic API error:", response.status, t);
+      return sseResponse(
+        buildKnowledgeFallback(
+          messages,
+          [...((sopRows || []) as KnowledgeItem[]), ...((kbRows || []) as KnowledgeItem[])],
+        ),
+      );
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    const result = await response.json();
+    const assistantText = (result.content || [])
+      .filter((part: { type?: string; text?: string }) => part.type === "text")
+      .map((part: { text?: string }) => part.text || "")
+      .join("")
+      .trim();
+
+    if (!assistantText) throw new Error("AI service returned an empty response");
+
+    return sseResponse(assistantText);
   } catch (e) {
     console.error("ai-chat error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: "Ask Brightly is temporarily unavailable. Please try again shortly." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
