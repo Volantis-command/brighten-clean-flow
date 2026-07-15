@@ -22,6 +22,7 @@ import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getInterv
 import { generateRecurringDates } from '@/lib/recurringJobs';
 import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -42,6 +43,7 @@ const SOFA_OPTIONS = [
 
 export default function AddJobPage() {
   const navigate = useNavigate();
+  const { role } = useAuth();
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
   const [saving, setSaving] = useState(false);
@@ -118,8 +120,10 @@ export default function AddJobPage() {
   const cleaner2Conflicts = cleaner2 ? (conflictMap[cleaner2] || []) : [];
   const cleaner2HasIssue = cleaner2 && (cleaner2Unavailable || cleaner2OnLeave || cleaner2Conflicts.length > 0);
 
-  // Hard block if either cleaner is unavailable (weekly availability)
-  const hasHardBlock = (cleaner1 && cleaner1Unavailable) || (cleaner2 && cleaner2Unavailable);
+  const hasUnavailableCleaner = Boolean((cleaner1 && cleaner1Unavailable) || (cleaner2 && cleaner2Unavailable));
+  const canOverrideAvailability = role === 'admin';
+  const availabilityOverride = hasUnavailableCleaner && canOverrideAvailability && conflictAcknowledged;
+  const hasHardBlock = hasUnavailableCleaner && !availabilityOverride;
 
   // Reset conflict acknowledged when cleaner or date changes
   const handleCleaner1Change = (v: string) => { setCleaner1(v); setConflictAcknowledged(false); };
@@ -137,7 +141,7 @@ export default function AddJobPage() {
     return `✅ ${name}`;
   };
 
-  const isCleanerDisabled = (id: string) => !!unavailableMap[id];
+  const isCleanerDisabled = (id: string) => !!unavailableMap[id] && !canOverrideAvailability;
 
   const handleSave = async () => {
     if (!propertyId) { toast.error('Please select a property.'); return; }
@@ -194,6 +198,8 @@ export default function AddJobPage() {
       price_ex_gst: priceExGst,
       price_inc_gst: priceIncGst,
       series_id: seriesId,
+      availability_override: availabilityOverride,
+      availability_override_reason: availabilityOverride ? 'Admin manually overrode cleaner availability during scheduling.' : null,
     } as any).select('id').single();
 
     if (error) {
@@ -218,13 +224,20 @@ export default function AddJobPage() {
           price_ex_gst: priceExGst,
           price_inc_gst: priceIncGst,
           series_id: seriesId,
+          availability_override: availabilityOverride,
+          availability_override_reason: availabilityOverride ? 'Admin manually overrode cleaner availability for this recurring schedule.' : null,
         }));
         const insertedChildIds: string[] = [];
         for (let i = 0; i < futureJobs.length; i += 50) {
-          const { data: chunkInserted } = await supabase
+          const { data: chunkInserted, error: chunkError } = await supabase
             .from('jobs')
             .insert(futureJobs.slice(i, i + 50) as any)
             .select('id');
+          if (chunkError) {
+            toast.error(`The first clean was saved, but the recurring dates could not all be created: ${chunkError.message}`);
+            setSaving(false);
+            return;
+          }
           (chunkInserted || []).forEach((r: any) => insertedChildIds.push(r.id));
         }
         // Sync acceptance rows + notifications for each recurring child job.
@@ -406,6 +419,7 @@ export default function AddJobPage() {
               isOnLeave={cleaner1OnLeave}
               isUnavailable={cleaner1Unavailable}
               dayName={dayName}
+              canOverrideAvailability={canOverrideAvailability}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner1('')}
             />
@@ -433,6 +447,7 @@ export default function AddJobPage() {
               isOnLeave={cleaner2OnLeave}
               isUnavailable={cleaner2Unavailable}
               dayName={dayName}
+              canOverrideAvailability={canOverrideAvailability}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner2('')}
             />

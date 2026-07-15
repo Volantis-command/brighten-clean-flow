@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
 import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
 import { syncJobAssignment } from '@/lib/jobAssignment';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DURATIONS = [
   { value: '60', label: '1 hr' },
@@ -33,6 +34,7 @@ const DURATIONS = [
 
 export default function EditJobPage() {
   const { jobId } = useParams<{ jobId: string }>();
+  const { role } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
@@ -87,7 +89,10 @@ export default function EditJobPage() {
   const c2Unavailable = cleaner2 ? !!unavailableMap[cleaner2] : false;
   const c2HasIssue = cleaner2 && (c2Unavailable || c2FilteredConflicts.length > 0 || c2Conflicts.isOnLeave);
 
-  const hasHardBlock = (cleaner1 && c1Unavailable) || (cleaner2 && c2Unavailable);
+  const hasUnavailableCleaner = Boolean((cleaner1 && c1Unavailable) || (cleaner2 && c2Unavailable));
+  const canOverrideAvailability = role === 'admin';
+  const availabilityOverride = hasUnavailableCleaner && canOverrideAvailability && conflictAcknowledged;
+  const hasHardBlock = hasUnavailableCleaner && !availabilityOverride;
   const hasAnyConflict = c1HasIssue || c2HasIssue;
 
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
@@ -108,6 +113,7 @@ export default function EditJobPage() {
       setCleaner2(job.cleaner_2_id || '');
       setNotes(job.notes || '');
       setStatus(job.status || 'scheduled');
+      setConflictAcknowledged(Boolean((job as any).availability_override));
     }
   }, [job]);
 
@@ -140,6 +146,8 @@ export default function EditJobPage() {
       cleaner_2_id: cleaner2 || null,
       notes: notes || null,
       status,
+      availability_override: availabilityOverride,
+      availability_override_reason: availabilityOverride ? 'Admin manually overrode cleaner availability while editing this clean.' : null,
     };
 
     // Detect changes that invalidate prior cleaner acceptance (re-acceptance required).
@@ -162,6 +170,8 @@ export default function EditJobPage() {
           cleaner_1_id: cleaner1,
           cleaner_2_id: cleaner2 || null,
           notes: notes || null,
+          availability_override: availabilityOverride,
+          availability_override_reason: availabilityOverride ? 'Admin manually overrode cleaner availability for future cleans in this series.' : null,
         } as any)
         .eq('series_id', seriesId)
         .gte('scheduled_date', format(date, 'yyyy-MM-dd'))
@@ -355,7 +365,7 @@ export default function EditJobPage() {
               <SelectTrigger className="h-14 rounded-2xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
                 {cleaners.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id] && !canOverrideAvailability} className={unavailableMap[c.id] ? 'opacity-60' : ''}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
@@ -370,6 +380,7 @@ export default function EditJobPage() {
               isOnLeave={c1Conflicts.isOnLeave}
               isUnavailable={c1Unavailable}
               dayName={dayName}
+              canOverrideAvailability={canOverrideAvailability}
               leaveReason={c1Conflicts.leaveOnDate[0]?.reason}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner1(job.cleaner_1_id || '')}
@@ -382,7 +393,7 @@ export default function EditJobPage() {
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {cleaners.filter((c: any) => c.id !== cleaner1).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id] && !canOverrideAvailability} className={unavailableMap[c.id] ? 'opacity-60' : ''}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
@@ -397,6 +408,7 @@ export default function EditJobPage() {
               isOnLeave={c2Conflicts.isOnLeave}
               isUnavailable={c2Unavailable}
               dayName={dayName}
+              canOverrideAvailability={canOverrideAvailability}
               leaveReason={c2Conflicts.leaveOnDate[0]?.reason}
               onConfirm={() => setConflictAcknowledged(true)}
               onCancel={() => setCleaner2(job.cleaner_2_id || '')}

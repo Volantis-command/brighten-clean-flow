@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Clock3,
   FileCheck2,
+  ExternalLink,
   Loader2,
   LockKeyhole,
   ShieldCheck,
@@ -41,6 +42,7 @@ import {
   STAFF_ONBOARDING_STEPS,
   type StaffOnboardingDraft,
 } from '@/lib/staffOnboarding';
+import { getSopsForAcknowledgement } from '@/lib/sopLibrary';
 
 type DocumentManifest = Record<string, {
   path?: string;
@@ -131,6 +133,7 @@ export default function StaffOnboardingPage() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [contractorTermsOpen, setContractorTermsOpen] = useState(false);
   const [openAcknowledgement, setOpenAcknowledgement] = useState<string | null>(null);
+  const [openedSopCodes, setOpenedSopCodes] = useState<string[]>([]);
 
   const invoke = async (action: string, extra: Record<string, unknown> = {}) => {
     const { data, error: invokeError } = await supabase.functions.invoke('staff-onboarding', {
@@ -491,8 +494,52 @@ export default function StaffOnboardingPage() {
                       <ChevronDown className={cn('h-4 w-4 transition-transform', openAcknowledgement === item.key && 'rotate-180')} />
                     </Button>
                   </div>
-                  {openAcknowledgement === item.key && <div className="space-y-4 border-y bg-background p-4 sm:p-5">{item.details.map((detail) => <div key={detail.title}><h3 className="text-sm font-bold">{detail.title}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{detail.body}</p></div>)}</div>}
-                  <label className="flex cursor-pointer items-start gap-3 p-4 sm:p-5"><Checkbox className="mt-0.5 h-5 w-5 shrink-0" checked={draft.sop_acknowledgements[item.key]} onCheckedChange={(value) => set('sop_acknowledgements', { ...draft.sop_acknowledgements, [item.key]: value === true })} /><span className="text-sm font-semibold leading-6 text-foreground">{item.declaration}</span></label>
+                  {openAcknowledgement === item.key && (
+                    <div className="space-y-5 border-y bg-background p-4 sm:p-5">
+                      <div>
+                        <h3 className="text-sm font-bold">Required documents</h3>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">Open every PDF in this section. Each one stays available later in your Brightly staff hub.</p>
+                        <div className="mt-3 grid gap-2">
+                          {getSopsForAcknowledgement(item.key).map((document) => {
+                            const opened = openedSopCodes.includes(document.code);
+                            return (
+                              <a
+                                key={document.code}
+                                href={document.pdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => setOpenedSopCodes((codes) => codes.includes(document.code) ? codes : [...codes, document.code])}
+                                className={cn('flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors', opened ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:border-primary/50')}
+                              >
+                                <span className="min-w-0"><span className="block text-[10px] text-muted-foreground">{document.code}</span><span className="block truncate">{document.title}</span></span>
+                                <ExternalLink className="h-4 w-4 shrink-0" />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {item.details.map((detail) => <div key={detail.title}><h3 className="text-sm font-bold">{detail.title}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{detail.body}</p></div>)}
+                    </div>
+                  )}
+                  {(() => {
+                    const documentsForSection = getSopsForAcknowledgement(item.key);
+                    const documentsOpened = documentsForSection.every((document) => openedSopCodes.includes(document.code));
+                    const canAcknowledge = draft.sop_acknowledgements[item.key] || documentsOpened;
+                    return (
+                      <label className={cn('flex items-start gap-3 p-4 sm:p-5', canAcknowledge ? 'cursor-pointer' : 'cursor-not-allowed opacity-60')}>
+                        <Checkbox
+                          className="mt-0.5 h-5 w-5 shrink-0"
+                          checked={draft.sop_acknowledgements[item.key]}
+                          disabled={!canAcknowledge}
+                          onCheckedChange={(value) => set('sop_acknowledgements', { ...draft.sop_acknowledgements, [item.key]: value === true })}
+                        />
+                        <span className="text-sm font-semibold leading-6 text-foreground">
+                          {item.declaration}
+                          {!canAcknowledge && <span className="mt-1 block text-xs font-normal text-muted-foreground">Open all {documentsForSection.length} PDF{documentsForSection.length === 1 ? '' : 's'} above to unlock this acknowledgement.</span>}
+                        </span>
+                      </label>
+                    );
+                  })()}
                 </article>
               ))}
             </div>
