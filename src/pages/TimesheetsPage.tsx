@@ -27,11 +27,13 @@ export default function TimesheetsPage() {
   const [editHours, setEditHours] = useState('');
   const [editReason, setEditReason] = useState('');
 
-  // Fetch cleaners
+  // Fetch every staff identity that can own a timesheet. Admins can also
+  // perform cleans, so filtering to cleaner roles makes valid entries appear
+  // as "Unknown" and incorrectly applies a $0 hourly rate.
   const { data: cleaners = [] } = useQuery({
     queryKey: ['cleaners-for-timesheet'],
     queryFn: async () => {
-      const { data: roles } = await supabase.from('user_roles').select('user_id').in('role', ['cleaner', 'head_cleaner']);
+      const { data: roles } = await supabase.from('user_roles').select('user_id').neq('role', 'client');
       if (!roles?.length) return [];
       const ids = roles.map(r => r.user_id);
       const { data: profiles } = await supabase.from('profiles').select('id, full_name, hourly_rate, employment_type, super_rate, pay_cycle').in('id', ids);
