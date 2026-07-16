@@ -158,8 +158,9 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         ok: true,
         token_hash: linkData.properties.hashed_token,
-        // Keep the returned token type aligned with generateLink above.
-        verify_type: "magiclink",
+        // Supabase verifyOtp expects type='email' for magic links
+        // generated via generateLink({type:'magiclink'}).
+        verify_type: "email",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
