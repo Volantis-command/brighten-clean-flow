@@ -82,7 +82,7 @@ export default function PhoneLoginPage() {
       // AuthContext's onAuthStateChange picks this up automatically.
       const { error: verifyErr } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
-        type: 'email',
+        type: 'magiclink',
       });
       if (verifyErr) throw verifyErr;
 
