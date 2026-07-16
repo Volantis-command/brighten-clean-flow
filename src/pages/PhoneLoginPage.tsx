@@ -10,6 +10,29 @@ import { toast } from 'sonner';
 
 type Step = 'phone' | 'code';
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+async function invokeLoginFunction<T>(functionName: string, body: Record<string, string>): Promise<T> {
+  if (!import.meta.env.PROD) {
+    const { data, error } = await supabase.functions.invoke(functionName, { body });
+    if (error) throw error;
+    return data as T;
+  }
+
+  const response = await fetch(`/edge/${functionName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => null) as T & { error?: string } | null;
+  if (!response.ok) {
+    throw new Error(data?.error || 'Login service unavailable. Please try again.');
+  }
+  return data as T;
+}
+
 export default function PhoneLoginPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -29,15 +52,14 @@ export default function PhoneLoginPage() {
     if (!phone.trim()) return;
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('request-login-otp', {
-        body: { phone: phone.trim() },
+      const data = await invokeLoginFunction<{ error?: string }>('request-login-otp', {
+        phone: phone.trim(),
       });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if (data?.error) throw new Error(data.error);
       toast.success("Code sent — check your phone.");
       setStep('code');
-    } catch (e: any) {
-      toast.error(e.message || 'Could not send code. Try again.');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Could not send code. Try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -48,12 +70,12 @@ export default function PhoneLoginPage() {
     if (!code.trim()) return;
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('verify-login-otp', {
-        body: { phone: phone.trim(), code: code.trim() },
+      const data = await invokeLoginFunction<{ error?: string; token_hash?: string }>('verify-login-otp', {
+        phone: phone.trim(),
+        code: code.trim(),
       });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const tokenHash = (data as any)?.token_hash;
+      if (data?.error) throw new Error(data.error);
+      const tokenHash = data?.token_hash;
       if (!tokenHash) throw new Error('Verification failed — try again.');
 
       // Establish a real Supabase auth session from the magic link token.
@@ -66,8 +88,8 @@ export default function PhoneLoginPage() {
 
       toast.success('Signed in.');
       navigate('/dashboard');
-    } catch (e: any) {
-      toast.error(e.message || 'Could not verify — try again.');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Could not verify — try again.'));
     } finally {
       setSubmitting(false);
     }
