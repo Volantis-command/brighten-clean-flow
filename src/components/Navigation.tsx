@@ -1,8 +1,24 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X, Sun, Moon } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
+
+/** Sun/Moon theme toggle — light default, remembers the user's choice. */
+function ThemeToggle({ compact = false }: { compact?: boolean }) {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+      className={`inline-flex items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${compact ? 'h-9 w-9' : 'h-10 w-10'}`}
+    >
+      {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </button>
+  );
+}
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -60,8 +76,8 @@ const cleanerMobileItems: NavItem[] = [
   { label: 'Ask AI', path: '/ai-assistant', icon: Bot, roles: ['cleaner'] },
 ];
 
-const NAV_BG = '#FFFFFF';
-const NAV_BORDER = 'rgba(36,50,49,0.08)';
+const NAV_BG = 'hsl(var(--sidebar-background))';
+const NAV_BORDER = 'hsl(var(--sidebar-border))';
 
 export function MobileNav() {
   const { role } = useAuth();
@@ -82,7 +98,7 @@ export function MobileNav() {
               to={item.path}
               className={({ isActive }) =>
               `flex flex-col items-center gap-1 px-2 py-3 rounded-2xl transition-all duration-200 min-w-[62px] ${
-                  isActive ? 'text-[#2E9AA0]' : 'text-[#5B6E6E]'
+                  isActive ? 'text-primary' : 'text-muted-foreground'
                 }`
               }
             >
@@ -93,7 +109,7 @@ export function MobileNav() {
                   {isActive && (
                     <div
                       className="w-8 h-1 rounded-full"
-                      style={{ background: '#2E9AA0', boxShadow: '0 0 8px rgba(46,154,160,0.6)' }}
+                      style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 8px rgba(46,154,160,0.6)' }}
                     />
                   )}
                 </>
@@ -127,7 +143,7 @@ export function MobileNav() {
                 to={item.path}
                 className={({ isActive }) =>
                   `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
-                    isActive ? 'text-[#2E9AA0]' : 'text-[#5B6E6E]'
+                    isActive ? 'text-primary' : 'text-muted-foreground'
                   }`
                 }
               >
@@ -148,7 +164,7 @@ export function MobileNav() {
                     {isActive && (
                       <div
                         className="w-5 h-0.5 rounded-full"
-                        style={{ background: '#2E9AA0', boxShadow: '0 0 6px rgba(46,154,160,0.6)' }}
+                        style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 6px rgba(46,154,160,0.6)' }}
                       />
                     )}
                   </>
@@ -158,7 +174,7 @@ export function MobileNav() {
 
             <button
               onClick={() => setMoreOpen(true)}
-              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl min-w-0 text-[#5B6E6E]"
+              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl min-w-0 text-muted-foreground"
             >
               <LayoutGrid className="h-5 w-5" />
               <span className="text-[10px] font-semibold">More</span>
@@ -175,8 +191,8 @@ export function MobileNav() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-extrabold text-lg" style={{ color: '#243231' }}>All sections</h3>
-                <button onClick={() => setMoreOpen(false)} className="p-1 text-[#5B6E6E]" aria-label="Close">
+                <h3 className="font-extrabold text-lg" style={{ color: 'hsl(var(--foreground))' }}>All sections</h3>
+                <button onClick={() => setMoreOpen(false)} className="p-1 text-muted-foreground" aria-label="Close">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -188,11 +204,11 @@ export function MobileNav() {
                     onClick={() => setMoreOpen(false)}
                     className={({ isActive }) =>
                       `flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors relative ${
-                        isActive ? 'text-[#2E9AA0]' : 'text-[#243231]'
+                        isActive ? 'text-primary' : 'text-foreground'
                       }`
                     }
                     style={({ isActive }) => ({
-                      background: isActive ? 'rgba(46,154,160,0.10)' : 'rgba(255,255,255,0.04)',
+                      background: isActive ? 'rgba(46,154,160,0.10)' : 'hsl(var(--secondary))',
                       border: `1px solid ${isActive ? 'rgba(46,154,160,0.3)' : NAV_BORDER}`,
                     })}
                   >
@@ -237,7 +253,7 @@ export function MobileNav() {
             to={item.path}
             className={({ isActive }) =>
               `flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
-                isActive ? 'text-[#2E9AA0]' : 'text-[#5B6E6E]'
+                isActive ? 'text-primary' : 'text-muted-foreground'
               }`
             }
           >
@@ -258,7 +274,7 @@ export function MobileNav() {
                 {isActive && (
                   <div
                     className="w-5 h-0.5 rounded-full"
-                    style={{ background: '#2E9AA0', boxShadow: '0 0 6px rgba(46,154,160,0.6)' }}
+                    style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 6px rgba(46,154,160,0.6)' }}
                   />
                 )}
               </>
@@ -289,13 +305,14 @@ export function DesktopSidebar() {
         borderRight: `1px solid ${NAV_BORDER}`,
       }}
     >
-      <div className="p-6 pb-4">
+      <div className="p-6 pb-4 flex items-center justify-between">
         <h2
           className="font-extrabold tracking-tight"
-          style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: '#243231' }}
+          style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: 'hsl(var(--foreground))' }}
         >
-          Brightly<span style={{ color: '#2E9AA0' }}>.</span>
+          Brightly<span style={{ color: 'hsl(var(--primary))' }}>.</span>
         </h2>
+        <ThemeToggle />
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 space-y-1">
@@ -306,15 +323,15 @@ export function DesktopSidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 relative ${
                 isActive
-                  ? 'text-[#2E9AA0]'
-                  : 'text-[#5B6E6E] hover:text-[#243231]'
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`
             }
             style={({ isActive }) =>
               isActive
                 ? {
                     background: 'rgba(46,154,160,0.08)',
-                    borderLeft: '3px solid #2E9AA0',
+                    borderLeft: '3px solid hsl(var(--primary))',
                     paddingLeft: '13px',
                   }
                 : undefined
@@ -345,15 +362,15 @@ export function DesktopSidebar() {
         <div className="flex items-center gap-3 mb-3">
           <div
             className="h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm"
-            style={{ background: '#2E9AA0', color: '#FFFFFF' }}
+            style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
           >
             {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold truncate" style={{ color: '#243231' }}>{profile?.full_name || 'User'}</p>
+            <p className="text-sm font-bold truncate" style={{ color: 'hsl(var(--foreground))' }}>{profile?.full_name || 'User'}</p>
             <span
               className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(46,154,160,0.15)', color: '#2E9AA0' }}
+              style={{ background: 'rgba(46,154,160,0.15)', color: 'hsl(var(--primary))' }}
             >
               {roleBadgeLabel}
             </span>
@@ -362,7 +379,7 @@ export function DesktopSidebar() {
         <button
           onClick={signOut}
           className="w-full text-sm font-semibold text-left transition-colors"
-          style={{ color: '#5B6E6E' }}
+          style={{ color: 'hsl(var(--muted-foreground))' }}
         >
           Sign out
         </button>

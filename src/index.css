@@ -62,44 +62,46 @@
     --sidebar-ring: 183 55% 40%;
   }
 
-  /* Sea Glass is a light theme. Keep .dark identical to :root so any lingering
-     `.dark` class can't resurrect the old dark palette. (index.html no longer sets it.) */
+  /* === DARK THEME === the original Tesla-dark look, kept as the opt-in dark mode.
+     Applied when <html> has the `.dark` class (set by the theme toggle). */
   .dark {
-    --background: 160 16% 96%;
-    --foreground: 176 16% 17%;
-    --card: 0 0% 100%;
-    --card-foreground: 176 16% 17%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 176 16% 17%;
-    --primary: 183 55% 40%;
-    --primary-foreground: 0 0% 100%;
-    --brightly-green: 183 55% 40%;
-    --secondary: 171 20% 93%;
-    --secondary-foreground: 176 16% 17%;
-    --muted: 165 15% 94%;
-    --muted-foreground: 183 13% 40%;
-    --accent: 177 42% 90%;
-    --accent-foreground: 176 16% 17%;
-    --destructive: 3 66% 55%;
+    --background: 240 2% 11%;
+    --foreground: 240 7% 97%;
+    --card: 240 2% 17%;
+    --card-foreground: 240 7% 97%;
+    --popover: 240 2% 17%;
+    --popover-foreground: 240 7% 97%;
+    --primary: 142 69% 58%;
+    --primary-foreground: 222 47% 6%;
+    --brightly-green: 142 69% 58%;
+    --secondary: 240 2% 23%;
+    --secondary-foreground: 240 7% 97%;
+    --muted: 240 2% 23%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 240 2% 11%;
+    --destructive: 4 100% 62%;
     --destructive-foreground: 0 0% 100%;
-    --border: 171 15% 91%;
-    --input: 171 15% 87%;
-    --ring: 183 55% 40%;
+    --border: 240 2% 28%;
+    --input: 240 2% 23%;
+    --ring: 142 69% 58%;
     --radius: 1rem;
-    --warm: 30 62% 68%;
-    --warm-foreground: 176 16% 17%;
-    --seafoam: 177 42% 90%;
-    --status-ok: 166 18% 42%;
-    --status-progress: 35 51% 44%;
-    --status-scheduled: 192 30% 42%;
-    --sidebar-background: 168 22% 98%;
-    --sidebar-foreground: 183 13% 40%;
-    --sidebar-primary: 183 55% 40%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 171 25% 94%;
-    --sidebar-accent-foreground: 176 16% 17%;
-    --sidebar-border: 171 15% 91%;
-    --sidebar-ring: 183 55% 40%;
+    /* warm/seafoam/status keep their light-derived values in dark too;
+       they're only referenced by tokenised light surfaces. */
+    --warm: 43 96% 58%;
+    --warm-foreground: 240 2% 11%;
+    --seafoam: 240 2% 23%;
+    --status-ok: 142 69% 58%;
+    --status-progress: 43 96% 58%;
+    --status-scheduled: 213 94% 68%;
+    --sidebar-background: 240 2% 9%;
+    --sidebar-foreground: 240 5% 65%;
+    --sidebar-primary: 142 69% 58%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 240 2% 17%;
+    --sidebar-accent-foreground: 240 7% 97%;
+    --sidebar-border: 240 2% 23%;
+    --sidebar-ring: 142 69% 58%;
   }
 }
 
