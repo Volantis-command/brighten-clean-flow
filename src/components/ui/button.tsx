@@ -9,19 +9,20 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Sea Teal is the single action colour — the one colour that means "do this".
         default:
-          "bg-[#FEDB00] text-[#0C463D] font-bold hover:bg-[#FFE633] hover:brightness-110 yellow-glow",
+          "bg-primary text-primary-foreground font-bold hover:bg-brightly-hover yellow-glow",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-white/15 bg-white/[0.04] text-[#F0FDF4] hover:bg-white/[0.08] hover:border-white/25 backdrop-blur-sm",
+          "border border-border bg-card text-foreground hover:bg-secondary hover:border-primary/40",
         secondary:
-          "bg-white/[0.06] text-[#F0FDF4] border border-white/10 hover:bg-white/[0.10]",
+          "bg-secondary text-secondary-foreground border border-border hover:bg-muted",
         ghost:
-          "text-[#86EFAC] hover:bg-white/[0.06] hover:text-[#F0FDF4]",
-        link: "text-[#FEDB00] underline-offset-4 hover:underline",
+          "text-primary hover:bg-secondary hover:text-brightly-hover",
+        link: "text-primary underline-offset-4 hover:underline",
         accent:
-          "bg-[#FEDB00] text-[#0C463D] hover:bg-[#FFE633] font-extrabold yellow-glow",
+          "bg-primary text-primary-foreground hover:bg-brightly-hover font-extrabold yellow-glow",
       },
       size: {
         default: "h-14 px-6 py-3",

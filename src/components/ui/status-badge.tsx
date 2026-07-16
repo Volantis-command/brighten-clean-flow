@@ -9,12 +9,14 @@
 
 type Tone = 'green' | 'amber' | 'blue' | 'red' | 'grey';
 
+// Sea Glass (light): soft tint + darker saturated text. Status hues stay
+// separate from the sea-teal action colour.
 const TONE: Record<Tone, { bg: string; fg: string }> = {
-  green: { bg: 'rgba(74,222,128,0.15)', fg: '#4ADE80' },
-  amber: { bg: 'rgba(251,191,36,0.15)', fg: '#FCD34D' },
-  blue: { bg: 'rgba(96,165,250,0.15)', fg: '#60A5FA' },
-  red: { bg: 'rgba(248,113,113,0.15)', fg: '#F87171' },
-  grey: { bg: 'rgba(255,255,255,0.08)', fg: '#94A3B8' },
+  green: { bg: 'rgba(95,138,128,0.16)', fg: '#3F5F57' },   // ok #5F8A80
+  amber: { bg: 'rgba(192,138,62,0.16)', fg: '#8A6220' },   // in-progress #C08A3E
+  blue: { bg: 'rgba(94,147,160,0.16)', fg: '#3D6470' },    // scheduled #5E93A0
+  red: { bg: 'rgba(220,90,84,0.15)', fg: '#B23A34' },
+  grey: { bg: 'rgba(138,160,160,0.18)', fg: '#566A6A' },
 };
 
 const STATUS_TONE: Record<string, Tone> = {

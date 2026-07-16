@@ -17,19 +17,19 @@ export default {
         sans: ["Nunito", "sans-serif"],
       },
       colors: {
-        // Direct Brightly brand tokens
+        // Direct Brightly brand tokens — Sea Glass
         brightly: {
-          DEFAULT: '#4ADE80',
-          hover: '#3A7560',
-          light: '#4ADE80',
-          glow: 'rgba(74, 222, 128, 0.25)',
-          yellow: "#FEDB00",
-          bg: "#1C1C1E",
-          card: "#2C2C2E",
-          card2: "#3A3A3C",
-          border: "#48484A",
-          text: "#F2F2F7",
-          "text-soft": "#8E8E93",
+          DEFAULT: '#2E9AA0',        // Sea Teal (action colour)
+          hover: '#25808A',          // darker teal for hover
+          light: '#DAF0EF',          // Sea Foam tint
+          glow: 'rgba(46, 154, 160, 0.22)',
+          yellow: "#E0AE7C",         // repointed → Warm Sand (highlight only)
+          bg: "#F4F7F6",             // Mist ground
+          card: "#FFFFFF",
+          card2: "#F0F4F3",
+          border: "#E4EBEA",         // Line
+          text: "#243231",           // Ink
+          "text-soft": "#8AA0A0",    // Muted
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

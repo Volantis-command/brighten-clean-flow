@@ -60,8 +60,8 @@ const cleanerMobileItems: NavItem[] = [
   { label: 'Ask AI', path: '/ai-assistant', icon: Bot, roles: ['cleaner'] },
 ];
 
-const NAV_BG = '#0A0F0E';
-const NAV_BORDER = 'rgba(255,255,255,0.06)';
+const NAV_BG = '#FFFFFF';
+const NAV_BORDER = 'rgba(36,50,49,0.08)';
 
 export function MobileNav() {
   const { role } = useAuth();
@@ -82,7 +82,7 @@ export function MobileNav() {
               to={item.path}
               className={({ isActive }) =>
               `flex flex-col items-center gap-1 px-2 py-3 rounded-2xl transition-all duration-200 min-w-[62px] ${
-                  isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
+                  isActive ? 'text-[#2E9AA0]' : 'text-[#5B6E6E]'
                 }`
               }
             >
@@ -93,7 +93,7 @@ export function MobileNav() {
                   {isActive && (
                     <div
                       className="w-8 h-1 rounded-full"
-                      style={{ background: '#FEDB00', boxShadow: '0 0 8px rgba(254,219,0,0.6)' }}
+                      style={{ background: '#2E9AA0', boxShadow: '0 0 8px rgba(46,154,160,0.6)' }}
                     />
                   )}
                 </>
@@ -127,7 +127,7 @@ export function MobileNav() {
                 to={item.path}
                 className={({ isActive }) =>
                   `flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
-                    isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
+                    isActive ? 'text-[#2E9AA0]' : 'text-[#5B6E6E]'
                   }`
                 }
               >
@@ -148,7 +148,7 @@ export function MobileNav() {
                     {isActive && (
                       <div
                         className="w-5 h-0.5 rounded-full"
-                        style={{ background: '#FEDB00', boxShadow: '0 0 6px rgba(254,219,0,0.6)' }}
+                        style={{ background: '#2E9AA0', boxShadow: '0 0 6px rgba(46,154,160,0.6)' }}
                       />
                     )}
                   </>
@@ -158,7 +158,7 @@ export function MobileNav() {
 
             <button
               onClick={() => setMoreOpen(true)}
-              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl min-w-0 text-[#86EFAC]"
+              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl min-w-0 text-[#5B6E6E]"
             >
               <LayoutGrid className="h-5 w-5" />
               <span className="text-[10px] font-semibold">More</span>
@@ -175,8 +175,8 @@ export function MobileNav() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-extrabold text-lg" style={{ color: '#F0FDF4' }}>All sections</h3>
-                <button onClick={() => setMoreOpen(false)} className="p-1 text-[#86EFAC]" aria-label="Close">
+                <h3 className="font-extrabold text-lg" style={{ color: '#243231' }}>All sections</h3>
+                <button onClick={() => setMoreOpen(false)} className="p-1 text-[#5B6E6E]" aria-label="Close">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -188,12 +188,12 @@ export function MobileNav() {
                     onClick={() => setMoreOpen(false)}
                     className={({ isActive }) =>
                       `flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors relative ${
-                        isActive ? 'text-[#FEDB00]' : 'text-[#F0FDF4]'
+                        isActive ? 'text-[#2E9AA0]' : 'text-[#243231]'
                       }`
                     }
                     style={({ isActive }) => ({
-                      background: isActive ? 'rgba(254,219,0,0.10)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${isActive ? 'rgba(254,219,0,0.3)' : NAV_BORDER}`,
+                      background: isActive ? 'rgba(46,154,160,0.10)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${isActive ? 'rgba(46,154,160,0.3)' : NAV_BORDER}`,
                     })}
                   >
                     <div className="relative">
@@ -237,7 +237,7 @@ export function MobileNav() {
             to={item.path}
             className={({ isActive }) =>
               `flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-0 relative ${
-                isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
+                isActive ? 'text-[#2E9AA0]' : 'text-[#5B6E6E]'
               }`
             }
           >
@@ -258,7 +258,7 @@ export function MobileNav() {
                 {isActive && (
                   <div
                     className="w-5 h-0.5 rounded-full"
-                    style={{ background: '#FEDB00', boxShadow: '0 0 6px rgba(254,219,0,0.6)' }}
+                    style={{ background: '#2E9AA0', boxShadow: '0 0 6px rgba(46,154,160,0.6)' }}
                   />
                 )}
               </>
@@ -292,9 +292,9 @@ export function DesktopSidebar() {
       <div className="p-6 pb-4">
         <h2
           className="font-extrabold tracking-tight"
-          style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: '#F0FDF4' }}
+          style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: '#243231' }}
         >
-          Brightly<span style={{ color: '#FEDB00' }}>.</span>
+          Brightly<span style={{ color: '#2E9AA0' }}>.</span>
         </h2>
       </div>
 
@@ -306,15 +306,15 @@ export function DesktopSidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 relative ${
                 isActive
-                  ? 'text-[#FEDB00]'
-                  : 'text-[#86EFAC] hover:text-[#F0FDF4]'
+                  ? 'text-[#2E9AA0]'
+                  : 'text-[#5B6E6E] hover:text-[#243231]'
               }`
             }
             style={({ isActive }) =>
               isActive
                 ? {
-                    background: 'rgba(254,219,0,0.08)',
-                    borderLeft: '3px solid #FEDB00',
+                    background: 'rgba(46,154,160,0.08)',
+                    borderLeft: '3px solid #2E9AA0',
                     paddingLeft: '13px',
                   }
                 : undefined
@@ -328,8 +328,8 @@ export function DesktopSidebar() {
                   <span
                     className="text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 tabular-nums"
                     style={{
-                      background: isActive ? '#EF4444' : 'rgba(239,68,68,0.2)',
-                      color: isActive ? '#FFFFFF' : '#FCA5A5',
+                      background: isActive ? '#DC5A54' : 'rgba(220,90,84,0.15)',
+                      color: isActive ? '#FFFFFF' : '#B23A34',
                     }}
                   >
                     {item.badge}
@@ -345,15 +345,15 @@ export function DesktopSidebar() {
         <div className="flex items-center gap-3 mb-3">
           <div
             className="h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm"
-            style={{ background: '#FEDB00', color: '#0C463D' }}
+            style={{ background: '#2E9AA0', color: '#FFFFFF' }}
           >
             {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold truncate" style={{ color: '#F0FDF4' }}>{profile?.full_name || 'User'}</p>
+            <p className="text-sm font-bold truncate" style={{ color: '#243231' }}>{profile?.full_name || 'User'}</p>
             <span
               className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(254,219,0,0.15)', color: '#FEDB00' }}
+              style={{ background: 'rgba(46,154,160,0.15)', color: '#2E9AA0' }}
             >
               {roleBadgeLabel}
             </span>
@@ -362,7 +362,7 @@ export function DesktopSidebar() {
         <button
           onClick={signOut}
           className="w-full text-sm font-semibold text-left transition-colors"
-          style={{ color: '#86EFAC' }}
+          style={{ color: '#5B6E6E' }}
         >
           Sign out
         </button>

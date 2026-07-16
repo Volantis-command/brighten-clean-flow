@@ -79,24 +79,24 @@ export default function PhoneLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#3A7560] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
           <h1
             className="text-4xl sm:text-5xl font-extrabold text-primary-foreground tracking-tight"
             style={{ fontFamily: 'Nunito, sans-serif' }}
           >
-            Brightly<span className="text-accent">.</span>
+            Brightly<span className="text-primary">.</span>
           </h1>
         </div>
 
         <div
           className="bg-card rounded-2xl shadow-xl p-8"
-          style={{ border: '1px solid rgba(254,219,0,0.15)' }}
+          style={{ border: '1px solid rgba(46,154,160,0.15)' }}
         >
           {step === 'phone' && (
             <>
-              <h2 className="text-2xl font-extrabold text-center mb-2" style={{ color: '#F0FDF4' }}>
+              <h2 className="text-2xl font-extrabold text-center mb-2" style={{ color: '#243231' }}>
                 Sign in
               </h2>
               <p className="text-sm text-muted-foreground text-center mb-6">
@@ -136,7 +136,7 @@ export default function PhoneLoginPage() {
               <button onClick={back} className="text-xs font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-3">
                 <ArrowLeft className="w-3 h-3" /> Use a different number
               </button>
-              <h2 className="text-2xl font-extrabold text-center mb-2" style={{ color: '#F0FDF4' }}>
+              <h2 className="text-2xl font-extrabold text-center mb-2" style={{ color: '#243231' }}>
                 Enter your code
               </h2>
               <p className="text-sm text-muted-foreground text-center mb-6">
