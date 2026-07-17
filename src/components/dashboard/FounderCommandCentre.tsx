@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { addDays, format, startOfMonth, subMonths } from 'date-fns';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { addDays, addMonths, format, startOfMonth, subMonths } from 'date-fns';
 import {
   AlertTriangle,
   ArrowRight,
@@ -42,6 +42,20 @@ interface OperatingJob {
   properties: { property_name: string | null; address: string | null } | null;
 }
 
+interface CommercialJob {
+  scheduled_date: string;
+  status: string;
+  invoice_status: string | null;
+  invoice_amount: number | null;
+  price_inc_gst: number | null;
+  properties: {
+    locked_price_inc_gst: number | null;
+    default_price: number | null;
+    price_includes_gst: boolean | null;
+    price_turnover: number | null;
+  } | null;
+}
+
 const ACTIVE_STATUSES = ['pending_cleaner', 'awaiting_cleaner_acceptance', 'scheduled', 'confirmed', 'in_progress', 'completed'];
 
 function money(value: number) {
@@ -53,13 +67,50 @@ function percentChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 100);
 }
 
+function bookedJobValue(job: CommercialJob) {
+  const property = job.properties;
+  const candidates = [job.invoice_amount, job.price_inc_gst, property?.locked_price_inc_gst];
+  for (const candidate of candidates) {
+    if (candidate !== null && candidate !== undefined && Number.isFinite(Number(candidate))) {
+      return Number(candidate);
+    }
+  }
+
+  if (property?.default_price !== null && property?.default_price !== undefined) {
+    const defaultPrice = Number(property.default_price);
+    if (Number.isFinite(defaultPrice)) return property.price_includes_gst ? defaultPrice : defaultPrice * 1.1;
+  }
+
+  if (property?.price_turnover !== null && property?.price_turnover !== undefined) {
+    const turnoverPrice = Number(property.price_turnover);
+    if (Number.isFinite(turnoverPrice)) return turnoverPrice * 1.1;
+  }
+
+  return null;
+}
+
 export function FounderCommandCentre({ firstName, role, pendingSuggestionCount }: FounderCommandCentreProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [sendQuoteOpen, setSendQuoteOpen] = useState(false);
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
   const thisMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const previousMonth = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd');
+  const nextMonth = format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd');
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('founder-booked-revenue-jobs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['founder-commercial-scorecard'] });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: operatingJobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['founder-operating-jobs', today, tomorrow],
@@ -79,12 +130,12 @@ export function FounderCommandCentre({ firstName, role, pendingSuggestionCount }
   });
 
   const { data: commercial } = useQuery({
-    queryKey: ['founder-commercial-scorecard', previousMonth],
+    queryKey: ['founder-commercial-scorecard', previousMonth, thisMonth, nextMonth],
     queryFn: async () => {
       const [{ data: jobs, error: jobsError }, { count: leadCount }, { count: quoteCount }] = await Promise.all([
         supabase
           .from('jobs')
-          .select('scheduled_date,status,invoice_status,invoice_amount,price_inc_gst')
+          .select('scheduled_date,status,invoice_status,invoice_amount,price_inc_gst,properties(locked_price_inc_gst,default_price,price_includes_gst,price_turnover)')
           .gte('scheduled_date', previousMonth),
         supabase
           .from('quote_requests')
@@ -96,21 +147,23 @@ export function FounderCommandCentre({ firstName, role, pendingSuggestionCount }
           .in('status', ['sent', 'viewed', 'pending']),
       ]);
       if (jobsError) throw jobsError;
-      const rows = jobs ?? [];
-      const paid = (from: string, to?: string) => rows
-        .filter((job) => job.scheduled_date >= from && (!to || job.scheduled_date < to) && job.invoice_status === 'paid')
-        .reduce((sum, job) => sum + Number(job.invoice_amount || job.price_inc_gst || 0), 0);
-      const currentRevenue = paid(thisMonth);
-      const previousRevenue = paid(previousMonth, thisMonth);
+      const rows = (jobs ?? []) as unknown as CommercialJob[];
+      const bookedJobs = (from: string, to: string) => rows
+        .filter((job) => job.scheduled_date >= from && job.scheduled_date < to && job.status !== 'cancelled');
+      const currentMonthJobs = bookedJobs(thisMonth, nextMonth);
+      const previousMonthJobs = bookedJobs(previousMonth, thisMonth);
+      const currentBookedRevenue = currentMonthJobs.reduce((sum, job) => sum + (bookedJobValue(job) ?? 0), 0);
+      const previousBookedRevenue = previousMonthJobs.reduce((sum, job) => sum + (bookedJobValue(job) ?? 0), 0);
+      const missingPriceCount = currentMonthJobs.filter((job) => bookedJobValue(job) === null).length;
       const outstanding = rows
         .filter((job) => ['sent', 'authorised', 'overdue'].includes(job.invoice_status || ''))
         .reduce((sum, job) => sum + Number(job.invoice_amount || job.price_inc_gst || 0), 0);
       const unbilled = rows
         .filter((job) => job.status === 'completed' && (!job.invoice_status || job.invoice_status === 'not_raised'))
         .reduce((sum, job) => sum + Number(job.price_inc_gst || 0), 0);
-      return { currentRevenue, previousRevenue, outstanding, unbilled, leadCount: leadCount || 0, quoteCount: quoteCount || 0 };
+      return { currentBookedRevenue, previousBookedRevenue, missingPriceCount, outstanding, unbilled, leadCount: leadCount || 0, quoteCount: quoteCount || 0 };
     },
-    refetchInterval: 120_000,
+    refetchInterval: 60_000,
   });
 
   const { data: quality } = useQuery({
@@ -178,7 +231,7 @@ export function FounderCommandCentre({ firstName, role, pendingSuggestionCount }
     return items;
   }, [awaitingCleaner, commercial?.unbilled, pendingSuggestionCount, today, unassigned]);
 
-  const revenueChange = percentChange(commercial?.currentRevenue || 0, commercial?.previousRevenue || 0);
+  const revenueChange = percentChange(commercial?.currentBookedRevenue || 0, commercial?.previousBookedRevenue || 0);
   const readinessTone = atRisk > 0 ? 'border-amber-400/30 bg-amber-400/[0.06]' : 'border-emerald-400/30 bg-emerald-400/[0.06]';
 
   return (
@@ -242,7 +295,7 @@ export function FounderCommandCentre({ firstName, role, pendingSuggestionCount }
 
         <section className="rounded-3xl border border-border bg-card p-5 sm:p-6">
           <div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Commercial pulse</p><h2 className="mt-1 text-xl font-black text-foreground">Money in motion</h2></div>
-          <button type="button" onClick={() => navigate('/financials')} className="mb-3 w-full rounded-2xl bg-primary p-5 text-left text-primary-foreground transition-transform active:scale-[0.99]"><div className="flex items-center justify-between"><TrendingUp className="h-5 w-5" /><span className="text-xs font-bold">{revenueChange >= 0 ? '+' : ''}{revenueChange}% vs last month</span></div><p className="mt-4 text-3xl font-black">{money(commercial?.currentRevenue || 0)}</p><p className="text-xs font-semibold opacity-75">Paid revenue this month</p></button>
+          <button type="button" onClick={() => navigate('/financials')} className="mb-3 w-full rounded-2xl bg-primary p-5 text-left text-primary-foreground transition-transform active:scale-[0.99]"><div className="flex items-center justify-between"><TrendingUp className="h-5 w-5" /><span className="text-xs font-bold">{revenueChange >= 0 ? '+' : ''}{revenueChange}% vs last month</span></div><p className="mt-4 text-3xl font-black">{money(commercial?.currentBookedRevenue || 0)}</p><p className="text-xs font-semibold opacity-75">Booked revenue this month (inc GST)</p>{(commercial?.missingPriceCount || 0) > 0 && <p className="mt-1 text-[11px] font-semibold opacity-75">{commercial?.missingPriceCount} booked job{commercial?.missingPriceCount === 1 ? '' : 's'} missing a price</p>}</button>
           <div className="grid grid-cols-2 gap-3">
             <button type="button" onClick={() => navigate('/financials')} className="rounded-2xl border border-border p-4 text-left hover:border-primary/40"><WalletCards className="mb-3 h-5 w-5 text-amber-400" /><p className="text-xl font-black text-foreground">{money(commercial?.outstanding || 0)}</p><p className="text-xs text-muted-foreground">Outstanding</p></button>
             <button type="button" onClick={() => navigate('/invoices/pending')} className="rounded-2xl border border-border p-4 text-left hover:border-primary/40"><Banknote className="mb-3 h-5 w-5 text-blue-400" /><p className="text-xl font-black text-foreground">{money(commercial?.unbilled || 0)}</p><p className="text-xs text-muted-foreground">Not yet billed</p></button>

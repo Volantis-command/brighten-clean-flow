@@ -17,6 +17,8 @@ interface RecurringJobParams {
   seriesId?: string | null;
   estimatedDuration?: number | null;
   source?: string | null;
+  availabilityOverride?: boolean;
+  availabilityOverrideReason?: string | null;
 }
 
 function getNextDates(startDate: Date, frequency: RecurringFrequency, count: number): Date[] {
@@ -56,7 +58,7 @@ function frequencyToIntervalWeeks(frequency: RecurringFrequency): number {
 }
 
 export async function createRecurringJobSeries(params: RecurringJobParams): Promise<{ seriesId: string | null; jobCount: number }> {
-  const { parentJobId, frequency, startDate, scheduledTime, propertyId, priceExGst, priceIncGst, notes, cleanerId, estimatedDuration, source } = params;
+  const { parentJobId, frequency, startDate, scheduledTime, propertyId, priceExGst, priceIncGst, notes, cleanerId, estimatedDuration, source, availabilityOverride = false, availabilityOverrideReason } = params;
   
   if (frequency === 'one-off') return { seriesId: null, jobCount: 0 };
 
@@ -102,13 +104,16 @@ export async function createRecurringJobSeries(params: RecurringJobParams): Prom
       frequency,
       recurring_parent_id: parentJobId,
       source: source || 'recurring',
+      availability_override: availabilityOverride,
+      availability_override_reason: availabilityOverride ? availabilityOverrideReason || 'Admin availability override carried into recurring clean.' : null,
     }));
 
     for (let i = 0; i < childJobs.length; i += 50) {
-      const { data: inserted } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from('jobs')
         .insert(childJobs.slice(i, i + 50) as any)
         .select('id');
+      if (insertError) throw insertError;
       (inserted || []).forEach((r: any) => insertedChildIds.push(r.id));
     }
   }

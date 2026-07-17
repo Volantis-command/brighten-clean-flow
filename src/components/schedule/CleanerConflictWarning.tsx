@@ -8,12 +8,12 @@ interface ConflictWarningProps {
   isUnavailable?: boolean;
   dayName?: string;
   leaveReason?: string;
+  canOverrideAvailability?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUnavailable, dayName, leaveReason, onConfirm, onCancel }: ConflictWarningProps) {
-  // Hard block for weekly unavailability — no "Assign Anyway"
+export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUnavailable, dayName, leaveReason, canOverrideAvailability = false, onConfirm, onCancel }: ConflictWarningProps) {
   if (isUnavailable) {
     return (
       <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 space-y-3">
@@ -23,11 +23,20 @@ export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUn
             <p className="text-sm font-bold text-destructive">
               ❌ {cleanerName} is not available on {dayName ? dayName.charAt(0).toUpperCase() + dayName.slice(1) + 's' : 'this day'}.
             </p>
-            <p className="text-xs text-muted-foreground">Change the day or assign a different cleaner.</p>
+            <p className="text-xs text-muted-foreground">
+              {canOverrideAvailability
+                ? 'Choose another cleaner, change the date, or record an admin override.'
+                : 'Change the day or assign a different cleaner. Only an admin can override this.'}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={onCancel} className="rounded-xl">Choose Different Cleaner</Button>
+          {canOverrideAvailability && (
+            <Button size="sm" onClick={onConfirm} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Override & Assign
+            </Button>
+          )}
         </div>
       </div>
     );

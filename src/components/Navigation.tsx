@@ -19,9 +19,10 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'My Jobs', path: '/my-jobs', icon: ClipboardList, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['admin', 'head_cleaner', 'cleaner'] },
+  { label: 'My Hub', path: '/profile', icon: User, roles: ['head_cleaner', 'cleaner'] },
   { label: 'Map', path: '/map', icon: MapPin, roles: ['admin', 'head_cleaner'] },
   { label: 'Quality (QC)', path: '/qc', icon: ClipboardCheck, roles: ['admin', 'head_cleaner'] },
-  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner'] },
+  { label: 'Ask Brightly', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Quoting', path: '/quoting', icon: Calculator, roles: ['admin'] },
   { label: 'Airbnb Quote', path: '/airbnb-quote', icon: Sparkles, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
@@ -55,7 +56,8 @@ const cleanerMobileItems: NavItem[] = [
   { label: 'Today', path: '/dashboard', icon: LayoutDashboard, roles: ['cleaner'] },
   { label: 'My Jobs', path: '/my-jobs', icon: Sparkles, roles: ['cleaner'] },
   { label: 'Schedule', path: '/schedule', icon: Calendar, roles: ['cleaner'] },
-  { label: 'Profile', path: '/profile', icon: User, roles: ['cleaner'] },
+  { label: 'My Hub', path: '/profile', icon: User, roles: ['cleaner'] },
+  { label: 'Ask AI', path: '/ai-assistant', icon: Bot, roles: ['cleaner'] },
 ];
 
 const NAV_BG = '#0A0F0E';
@@ -79,7 +81,7 @@ export function MobileNav() {
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-4 py-3 rounded-2xl transition-all duration-200 min-w-[72px] ${
+              `flex flex-col items-center gap-1 px-2 py-3 rounded-2xl transition-all duration-200 min-w-[62px] ${
                   isActive ? 'text-[#FEDB00]' : 'text-[#86EFAC]'
                 }`
               }
