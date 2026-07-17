@@ -147,6 +147,38 @@ export default function InstantQuotePage() {
       } as any);
       if (error) throw error;
 
+      // Instantly set them up as a client + create the property (onboarding state)
+      // + link to their portal — same mechanism the other intake forms use.
+      // Admin then cleans it up and flips the property live. Non-blocking.
+      const bedConfigStr = mode === "airbnb"
+        ? rooms.slice(0, type.beds).map((c, i) => `Bedroom ${i + 1}: ${c}`).join(", ")
+        : null;
+      supabase.functions.invoke("link-intake-to-profile", {
+        body: {
+          first_name: firstName,
+          last_name: lastName,
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim() || null,
+          property_address: address.trim(),
+          bedrooms: type.beds,
+          bathrooms: type.baths,
+          clean_type: cleanType,
+          linen_required: mode === "airbnb" ? linenIncluded : false,
+          host_preferences: notes.trim() || null,
+          ...(mode === "airbnb" ? {
+            access_method: accessMethod || null,
+            access_code: accessCode || null,
+            parking_instructions: parking || null,
+            platform: platform || null,
+            bed_config: bedConfigStr,
+            amenities_kit: consumablesIncluded,
+            wash_kit: consumablesIncluded,
+            tea_coffee_kit: consumablesIncluded,
+          } : {}),
+        },
+      }).catch((e) => console.error("link-intake-to-profile failed (non-blocking):", e));
+
       // Admin heads-up (existing, deployed). Non-blocking.
       supabase.functions.invoke("send-quote-notification", {
         body: { type: "intake_submitted", client_phone: phone.trim(), client_name: firstName, clean_type: cleanType, address: address.trim() },
