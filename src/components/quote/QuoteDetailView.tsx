@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, XCircle, Loader2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '@/components/Logo';
 
 type QuoteData = {
   id: string;
@@ -287,7 +288,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
         <header className="flex items-center justify-between max-w-2xl mx-auto w-full px-6 pt-6 mb-8">
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Brightly<span style={{ color: '#FEDB00' }}>.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
         </header>
 
@@ -368,7 +369,7 @@ export default function QuoteDetailView({ token }: { token: string }) {
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <header className="flex items-center justify-between max-w-2xl mx-auto w-full px-6 pt-6 mb-8">
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Brightly<span style={{ color: '#FEDB00' }}>.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </h1>
         <a href="/quote" className="text-[#4ADE80] text-sm font-medium">New Enquiry</a>
       </header>

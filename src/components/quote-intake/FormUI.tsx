@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { TermsModal } from '@/components/quote/TermsModal';
+import { Logo } from '@/components/Logo';
 
 /* ── Brand tokens ────────────────────────────────────────────────── */
 const BG       = '#173A27';
@@ -162,7 +163,7 @@ export function FormProgressHeader({
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-3">
           <span className="text-lg font-extrabold" style={{ color: WHITE }}>
-            Brightly<span style={{ color: YELLOW }}>.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </span>
           <span className="text-xs font-semibold" style={{ color: MUTED }}>
             Step {step + 1} of {totalSteps} — {stepLabel}

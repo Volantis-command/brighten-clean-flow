@@ -9,6 +9,7 @@ import PropertyCard from '@/components/client-portal/PropertyCard';
 import CleanHistoryList from '@/components/client-portal/CleanHistoryList';
 import InvoiceList from '@/components/client-portal/InvoiceList';
 import QuoteHistoryList from '@/components/client-portal/QuoteHistoryList';
+import { Logo } from '@/components/Logo';
 
 type PortalTab = 'overview' | 'properties' | 'cleans' | 'invoices' | 'quotes';
 
@@ -105,7 +106,7 @@ export default function ClientPortalDashboardPage() {
             className="text-2xl font-extrabold tracking-tight"
             style={{ fontFamily: 'Nunito, sans-serif' }}
           >
-            Brightly<span className="text-accent">.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
           <Button
             variant="ghost"

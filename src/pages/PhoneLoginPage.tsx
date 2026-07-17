@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Phone, ArrowLeft, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '@/components/Logo';
 
 type Step = 'phone' | 'code';
 
@@ -82,12 +83,7 @@ export default function PhoneLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
-          <h1
-            className="text-4xl sm:text-5xl font-extrabold text-foreground tracking-tight"
-            style={{ fontFamily: 'Nunito, sans-serif' }}
-          >
-            Brightly<span className="text-primary">.</span>
-          </h1>
+          <Logo className="h-12 w-auto" />
         </div>
 
         <div

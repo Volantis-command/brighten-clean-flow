@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Logo } from '@/components/Logo';
 
 
 type Mode = 'sign_in' | 'sign_up' | 'forgot_password';
@@ -71,7 +72,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
           <h1 className="text-5xl font-extrabold text-primary-foreground tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '48px' }}>
-            Brightly<span className="text-accent">.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
         </div>
 

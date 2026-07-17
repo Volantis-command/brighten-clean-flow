@@ -9,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Logo } from '@/components/Logo';
 
 const TIME_PREFERENCES = [
   { value: 'morning', label: 'Morning', desc: '7am – 11am' },
@@ -153,7 +154,7 @@ export default function ClientSchedulePage() {
         <header className="bg-[#131920] border-b border-border/50 sticky top-0 z-40">
           <div className="max-w-lg mx-auto px-4 py-3">
             <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
-              Brightly<span className="text-accent">.</span>
+              <Logo variant="cream" className="h-9 w-auto inline-block" />
             </h1>
           </div>
         </header>
@@ -176,7 +177,7 @@ export default function ClientSchedulePage() {
       <header className="bg-[#131920] border-b border-border/50 sticky top-0 z-40">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Brightly<span className="text-accent">.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
           <span className="text-xs font-semibold text-white/60 bg-muted px-2 py-0.5 rounded-full">Book</span>
         </div>

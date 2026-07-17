@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMinutes } from "date-fns";
 import { CheckCircle2, Minus, X, Printer, AlertTriangle } from "lucide-react";
+import { Logo } from '@/components/Logo';
 
 interface ReportData {
   job: any;
@@ -205,7 +206,7 @@ export default function CleanReportPage() {
       {/* Header */}
       <div className="clean-report-header bg-[#1B4332] text-white px-5 pt-8 pb-6 relative">
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Nunito, sans-serif" }}>
-          Brightly<span className="text-[#52B788]">.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </h1>
         <p className="text-white/70 text-sm mt-1">Clean Report</p>
         <h2 className="text-xl font-bold mt-4">{property?.property_name || "Property"}</h2>

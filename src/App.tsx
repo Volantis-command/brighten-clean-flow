@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ActiveClockBanner } from "./components/ActiveClockBanner";
+import { Logo } from '@/components/Logo';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const PhoneLoginPage = lazy(() => import('./pages/PhoneLoginPage'));
@@ -102,12 +103,7 @@ class AppErrorBoundary extends Component<
 function BrandedLoading() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-primary">
-      <h1
-        className="text-5xl font-extrabold text-primary-foreground tracking-tight"
-        style={{ fontFamily: 'Nunito, sans-serif' }}
-      >
-        Brightly<span className="text-accent">.</span>
-      </h1>
+      <Logo variant="cream" className="h-14 w-auto" />
       <p className="text-primary-foreground/60 text-sm mt-3 animate-pulse">Loading…</p>
     </div>
   );

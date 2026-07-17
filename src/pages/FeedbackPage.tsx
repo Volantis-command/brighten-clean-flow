@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Star, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '@/components/Logo';
 
 const REASONS = [
   'Bathroom not cleaned properly', 'Kitchen missed', 'Floors not mopped/vacuumed',
@@ -136,7 +137,7 @@ export default function FeedbackPage() {
     <div className="min-h-screen bg-[#0B0F17]">
       <header className="bg-[#131920] border-b border-border/50 sticky top-0 z-40">
         <div className="max-w-lg mx-auto px-4 py-3">
-          <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}>Brightly<span className="text-accent">.</span></h1>
+          <h1 className="text-2xl font-extrabold text-primary" style={{ fontFamily: 'Nunito, sans-serif' }}><Logo variant="cream" className="h-9 w-auto inline-block" /></h1>
         </div>
       </header>
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6 pb-20">

@@ -5,6 +5,7 @@ import QuoteDetailView from '@/components/quote/QuoteDetailView';
 import ResidentialForm from '@/components/quote-intake/ResidentialForm';
 import AirbnbForm from '@/components/quote-intake/AirbnbForm';
 import CommercialForm from '@/components/quote-intake/CommercialForm';
+import { Logo } from '@/components/Logo';
 
 type CleanType = 'standard' | 'deep' | 'airbnb' | 'commercial' | null;
 
@@ -50,7 +51,7 @@ function Welcome({ onSelect }: { onSelect: (t: CleanType) => void }) {
       {/* Header */}
       <header className="flex items-center justify-between px-6 pt-7 pb-2 max-w-2xl mx-auto w-full">
         <span className="text-2xl font-extrabold tracking-tight" style={{ color: WHITE }}>
-          Brightly<span style={{ color: YELLOW }}>.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </span>
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: MUTED }}>
           Get a Quote
@@ -132,7 +133,7 @@ function Confirmation() {
       {/* Logo */}
       <div className="mb-10">
         <span className="text-2xl font-extrabold" style={{ color: WHITE }}>
-          Brightly<span style={{ color: YELLOW }}>.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </span>
       </div>
 

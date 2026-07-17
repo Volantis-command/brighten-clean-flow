@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, CheckCircle2, Loader2, ShieldAlert } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Logo } from '@/components/Logo';
 
 const TIME_WINDOWS = [
   { value: 'morning', label: '🌅 Morning (7am – 11am)' },
@@ -232,7 +233,7 @@ export default function BookingPage() {
       <div className="rounded-3xl shadow-xl p-6 sm:p-8 max-w-md w-full space-y-6" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', color: '#F0FDF4' }}>
-            Brightly<span style={{ color: '#FEDB00' }}>.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
           <h2 className="text-xl font-bold" style={{ color: '#F0FDF4' }}>Book Your Clean</h2>
           {displayName ? <p style={{ color: 'rgba(240,253,244,0.5)' }}>Hi {displayName.split(' ')[0]}, confirm your booking details below.</p> : null}

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
+import { Logo } from '@/components/Logo';
 
 export default function PropertyPassportPage() {
   const { propertyId } = useParams<{ propertyId: string }>();
@@ -75,7 +76,7 @@ export default function PropertyPassportPage() {
       {/* Header */}
       <div className="bg-primary px-5 pt-6 pb-5">
         <h1 className="text-xl font-extrabold text-primary-foreground tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Brightly<span className="text-accent">.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </h1>
         <h2 className="text-lg font-bold text-primary-foreground mt-3">{property.property_name}</h2>
         <p className="text-primary-foreground/70 text-sm">{property.address}</p>

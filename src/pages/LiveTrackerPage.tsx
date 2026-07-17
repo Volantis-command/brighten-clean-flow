@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Phone, Star, CheckCircle2, Camera, CalendarDays, Car, Sparkles } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 /* ─── Brightly brand (Quote-Dark) ─── */
 const BG = '#0B0F17';
@@ -98,7 +99,7 @@ export default function LiveTrackerPage() {
   if (notFound || !data) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: BG, fontFamily: FONT }}>
-        <p className="text-2xl font-extrabold" style={{ color: YELLOW }}>Brightly<span className="text-white/30">.</span></p>
+        <p className="text-2xl font-extrabold" style={{ color: YELLOW }}><Logo variant="cream" className="h-9 w-auto inline-block" /></p>
         <h1 className="text-xl font-bold text-white mt-6">Tracker not available</h1>
         <p className="text-white/50 mt-2 text-sm">This link may be invalid or the clean isn't scheduled yet.</p>
         <a href="tel:0418878707" className="inline-flex items-center gap-2 mt-6 text-sm font-bold" style={{ color: YELLOW }}>
@@ -117,7 +118,7 @@ export default function LiveTrackerPage() {
         {/* Header */}
         <header className="pt-8 pb-2 text-center">
           <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: YELLOW }}>
-            Brightly<span className="text-white/30">.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-5">Live Turnover Tracker</p>
           <p className="text-white text-lg font-extrabold mt-1">{t.property.name}</p>

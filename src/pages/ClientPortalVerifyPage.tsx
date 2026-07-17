@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { Logo } from '@/components/Logo';
 
 export default function ClientPortalVerifyPage() {
   const [params] = useSearchParams();
@@ -69,7 +70,7 @@ export default function ClientPortalVerifyPage() {
             className="text-5xl font-extrabold text-primary tracking-tight"
             style={{ fontFamily: 'Nunito, sans-serif' }}
           >
-            Brightly<span className="text-accent">.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
         </div>
 

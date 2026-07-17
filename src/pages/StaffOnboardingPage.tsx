@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import brightlyLogo from '@/assets/brightly-logo.png';
+import { Logo } from '@/components/Logo';
 import {
   DAYS_OF_WEEK,
   DOCUMENT_TYPES,
@@ -337,7 +337,7 @@ export default function StaffOnboardingPage() {
   if (error) return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 p-5">
       <div className="w-full max-w-md rounded-3xl border bg-card p-7 text-center shadow-xl">
-        <img src={brightlyLogo} alt="Brightly Cleaning" className="mx-auto mb-6 h-12 w-auto" />
+        <Logo variant="ink" className="mx-auto mb-6 h-12 w-auto" />
         <ShieldCheck className="mx-auto mb-4 h-11 w-11 text-destructive" />
         <h1 className="text-xl font-bold">We can’t open this link</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">{error}</p>
@@ -348,7 +348,7 @@ export default function StaffOnboardingPage() {
   if (submitted) return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 p-5">
       <div className="w-full max-w-lg rounded-3xl border bg-card p-7 text-center shadow-xl sm:p-10">
-        <img src={brightlyLogo} alt="Brightly Cleaning" className="mx-auto mb-7 h-12 w-auto" />
+        <Logo variant="ink" className="mx-auto mb-7 h-12 w-auto" />
         <CheckCircle2 className="mx-auto h-14 w-14 text-primary" />
         <h1 className="mt-5 text-2xl font-extrabold">You’re officially in the Brightly pipeline</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Your details, documents, acknowledgements and knowledge check are safely on file. The Brightly team will verify your documents and arrange your induction and two shadow cleans before solo work.</p>
@@ -361,7 +361,7 @@ export default function StaffOnboardingPage() {
     <main className="min-h-screen overflow-x-hidden bg-gradient-to-b from-primary/5 via-background to-muted/30 pb-28">
       <header className="border-b bg-background/95 px-4 py-4 backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-          <img src={brightlyLogo} alt="Brightly Cleaning" className="h-9 w-auto max-w-[140px]" />
+          <Logo variant="ink" className="h-9 w-auto max-w-[140px]" />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><LockKeyhole className="h-3.5 w-3.5" /> Private & secure</div>
         </div>
       </header>

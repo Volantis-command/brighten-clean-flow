@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/Logo';
 
 export default function GuestReadyReportPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -73,7 +74,7 @@ export default function GuestReadyReportPage() {
       {/* Header */}
       <div className="bg-primary px-5 pt-6 pb-4">
         <h1 className="text-xl font-extrabold text-primary-foreground tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-          Brightly<span className="text-accent">.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </h1>
       </div>
 

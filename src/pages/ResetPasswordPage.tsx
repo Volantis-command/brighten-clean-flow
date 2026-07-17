@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Logo } from '@/components/Logo';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -76,7 +77,7 @@ export default function ResetPasswordPage() {
               className="text-5xl font-extrabold text-primary-foreground tracking-tight"
               style={{ fontFamily: 'Nunito, sans-serif', fontSize: '48px' }}
             >
-              Brightly<span className="text-accent">.</span>
+              <Logo variant="cream" className="h-9 w-auto inline-block" />
             </h1>
           </div>
           <div className="bg-card rounded-2xl shadow-xl p-8" style={{ border: '1px solid rgba(254,219,0,0.15)' }}>
@@ -103,7 +104,7 @@ export default function ResetPasswordPage() {
             className="text-5xl font-extrabold text-primary-foreground tracking-tight"
             style={{ fontFamily: 'Nunito, sans-serif', fontSize: '48px' }}
           >
-            Brightly<span className="text-accent">.</span>
+            <Logo variant="cream" className="h-9 w-auto inline-block" />
           </h1>
         </div>
 

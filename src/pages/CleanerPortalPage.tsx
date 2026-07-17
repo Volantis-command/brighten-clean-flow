@@ -9,6 +9,7 @@ import { format, isToday, isTomorrow, differenceInHours } from "date-fns";
 import { toast } from "sonner";
 import ActiveJobView from "@/components/cleaner-portal/ActiveJobView";
 import { sendJobSms } from "@/lib/sendJobSms";
+import { Logo } from '@/components/Logo';
 
 type TokenState =
   | { status: "loading" }
@@ -225,7 +226,7 @@ export default function CleanerPortalPage() {
       {/* Header */}
       <header className="bg-[hsl(166,73%,16%)] text-white px-5 py-5 safe-area-top">
         <h1 className="text-xl font-extrabold tracking-tight" style={{ fontFamily: "Nunito, sans-serif" }}>
-          Brightly<span className="text-[hsl(49,99%,50%)]">.</span>
+          <Logo variant="cream" className="h-9 w-auto inline-block" />
         </h1>
         <p className="text-white/80 text-base mt-1">Hi {firstName} 👋</p>
       </header>
