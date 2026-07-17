@@ -212,9 +212,9 @@ function AppRoutes() {
           site's "Get a Quote" CTA (brightly.cleaning). */}
       <Route path="/residential-quote" element={<Navigate to="/quote" replace />} />
       <Route path="/airbnb" element={<Navigate to="/quote" replace />} />
-      <Route path="/onboard" element={<Navigate to="/quote" replace />} />
-      <Route path="/contact" element={<Navigate to="/quote" replace />} />
-      <Route path="/get-quote" element={<Navigate to="/quote" replace />} />
+      <Route path="/onboard" element={<Navigate to="/instant-quote" replace />} />
+      <Route path="/contact" element={<Navigate to="/instant-quote" replace />} />
+      <Route path="/get-quote" element={<Navigate to="/instant-quote" replace />} />
       <Route path="/track/:jobId" element={<LiveTrackerPage />} />
       <Route path="/guest-report/:jobId" element={<GuestReadyReportPage />} />
       <Route path="/cleaner-onboarding" element={<AuthenticatedArea><CleanerOnboardingPage /></AuthenticatedArea>} />
