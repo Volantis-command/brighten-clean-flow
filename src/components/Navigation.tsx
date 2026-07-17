@@ -1,24 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
-
-/** Sun/Moon theme toggle — light default, remembers the user's choice. */
-function ThemeToggle({ compact = false }: { compact?: boolean }) {
-  const { theme, toggleTheme } = useTheme();
-  return (
-    <button
-      onClick={toggleTheme}
-      aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-      title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
-      className={`inline-flex items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${compact ? 'h-9 w-9' : 'h-10 w-10'}`}
-    >
-      {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-    </button>
-  );
-}
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -305,14 +289,13 @@ export function DesktopSidebar() {
         borderRight: `1px solid ${NAV_BORDER}`,
       }}
     >
-      <div className="p-6 pb-4 flex items-center justify-between">
+      <div className="p-6 pb-4">
         <h2
           className="font-extrabold tracking-tight"
           style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: 'hsl(var(--foreground))' }}
         >
           Brightly<span style={{ color: 'hsl(var(--primary))' }}>.</span>
         </h2>
-        <ThemeToggle />
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 space-y-1">

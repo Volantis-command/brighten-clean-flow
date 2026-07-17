@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/NotificationBell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function TopBar() {
   const { profile, role } = useAuth();
@@ -10,11 +11,12 @@ export function TopBar() {
     <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-background border-b border-border">
       <div className="md:hidden">
         <h1 className="text-2xl font-extrabold font-sans text-foreground">
-          Brightly<span className="text-accent">.</span>
+          Brightly<span className="text-primary">.</span>
         </h1>
       </div>
       <div className="hidden md:block" />
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <NotificationBell />
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-full flex items-center justify-center font-bold text-sm bg-primary text-primary-foreground">
