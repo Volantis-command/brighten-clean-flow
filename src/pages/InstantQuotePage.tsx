@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
-import { Bed, ChevronDown, ShieldCheck, Camera, Clock, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
+import { Bed, ChevronDown, Camera, Clock, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,9 @@ const YELLOW = "#FEDB00";
 const TEXT = "#F8FAFC";
 const MUTED = "#94A3B8";
 const BORDER = "rgba(74,222,128,0.18)";
+
+// Client Airbnb margin — 30% for now (admin default is 35%).
+const AIRBNB_CLIENT_GP = 0.30;
 
 const fmt = (n: number) =>
   "$" + (isFinite(n) ? n : 0).toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -63,11 +66,14 @@ export default function InstantQuotePage() {
 
   const quote: QuoteResult = useMemo(() => {
     if (mode === "residential") return residentialQuote(typeIdx);
-    return airbnbQuote({ typeIdx, rooms, labourHrs: type.labour, linenIncluded, consumablesIncluded });
+    return airbnbQuote({ typeIdx, rooms, labourHrs: type.labour, linenIncluded, consumablesIncluded, gp: AIRBNB_CLIENT_GP });
   }, [mode, typeIdx, rooms, type.labour, linenIncluded, consumablesIncluded]);
 
-  const priceIncGst = quote.sellIncGst;
-  const animated = useCountUp(priceIncGst);
+  // Airbnb hosts are GST-registered businesses → show ex GST. Residential consumers → inc GST.
+  const showExGst = mode === "airbnb";
+  const price = showExGst ? quote.sellExGst : quote.sellIncGst;
+  const gstLabel = showExGst ? "ex GST" : "inc GST";
+  const animated = useCountUp(price);
 
   const setRoom = (i: number, val: string) =>
     setRooms((prev) => prev.map((r, idx) => (idx === i ? val : r)));
@@ -173,7 +179,7 @@ export default function InstantQuotePage() {
           {mode === "airbnb" ? "Quote accepted" : "Booking requested"}
         </h1>
         <p style={{ color: MUTED, maxWidth: 380, fontSize: 15, lineHeight: 1.6, margin: "0 0 24px" }}>
-          Your {type.name} {mode === "airbnb" ? "turnover" : "clean"} is <b style={{ color: TEXT }}>{fmt(priceIncGst)}</b> inc GST.
+          Your {type.name} {mode === "airbnb" ? "turnover" : "clean"} is <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel}.
           {mode === "residential"
             ? ` We'll confirm your ${preferredDate} slot and text you on ${phone}.`
             : " We've got your property details — we'll set everything up and text you to lock it in."}
@@ -217,7 +223,7 @@ export default function InstantQuotePage() {
                 {type.name} · {mode === "airbnb" ? "Turnover" : "Standard clean"}
               </div>
               <div style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
-                {fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: MUTED }}>inc GST</span>
+                {fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: MUTED }}>{gstLabel}</span>
               </div>
               <div style={{ height: 3, width: 92, marginTop: 8, borderRadius: 3, background: `linear-gradient(90deg, ${GREEN}, ${YELLOW})` }} />
             </div>
@@ -227,7 +233,10 @@ export default function InstantQuotePage() {
         <div style={{ padding: "18px 16px 0" }}>
           {/* trust chips */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-            {[[ShieldCheck, "Police-checked & insured"], [Camera, "Photo report every clean"], [Clock, "24hr turnaround"]].map(([Icon, t]: any) => (
+            {(mode === "airbnb"
+              ? [[Camera, "Photo report every clean"], [Clock, "24hr turnaround"]]
+              : [[Clock, "24hr turnaround"]]
+            ).map(([Icon, t]: any) => (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, color: MUTED }}>
                 <Icon size={14} color={GREEN} /> {t}
               </div>
@@ -335,7 +344,7 @@ export default function InstantQuotePage() {
         <div style={{ maxWidth: 520, margin: "0 auto", display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</div>
-            <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmt(priceIncGst)}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmt(price)}</div>
           </div>
           {phase === "quote" ? (
             <button onClick={() => { setPhase("book"); window.scrollTo(0, 0); }}
