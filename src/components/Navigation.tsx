@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
+import brightlyWordmark from '@/assets/brightly-wordmark-ink.png';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -290,12 +291,7 @@ export function DesktopSidebar() {
       }}
     >
       <div className="p-6 pb-4">
-        <h2
-          className="font-extrabold tracking-tight"
-          style={{ fontFamily: 'Nunito, sans-serif', fontSize: '32px', color: 'hsl(var(--foreground))' }}
-        >
-          Brightly<span style={{ color: 'hsl(var(--primary))' }}>.</span>
-        </h2>
+        <img src={brightlyWordmark} alt="Brightly" className="h-10 w-auto" />
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 space-y-1">
