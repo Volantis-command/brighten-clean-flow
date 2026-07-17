@@ -204,7 +204,7 @@ function AppRoutes() {
       <Route path="/report/:token" element={<CleanReportPage />} />
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
-      {/* Public instant-quote calculator (exact price + book). Flip /onboard here to go live. */}
+      {/* Public instant-quote calculator — the marketing site's "Get Instant Quote" CTA. */}
       <Route path="/instant-quote" element={<InstantQuotePage />} />
       {/* Legacy redirects — the marketing SMS + Airbnb rebook button send clients to
           these paths. Do not delete without also updating send-quote-link-sms edge

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Home, SprayCan, Building2, BedDouble, CheckCircle2 } from 'lucide-react';
 import QuoteDetailView from '@/components/quote/QuoteDetailView';
@@ -166,6 +166,17 @@ export default function QuoteIntakePage() {
   const { token } = useParams<{ token: string }>();
   const [selectedType, setSelectedType] = useState<CleanType>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  // Google Ads conversion tracking — fires once when any quote form is submitted
+  useEffect(() => {
+    if (submitted && typeof window.gtag === 'function') {
+      window.gtag('event', 'conversion', {
+        send_to: 'AW-18046329250/gQZiCLyh9qocEKLDlJ1D',
+        value: 150.0,
+        currency: 'AUD',
+      });
+    }
+  }, [submitted]);
 
   if (token) return <QuoteDetailView token={token} />;
   if (submitted) return <Confirmation />;

@@ -18,13 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign, Upload, MapPin } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRef } from 'react';
 import { format } from 'date-fns';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
@@ -288,11 +286,10 @@ export default function StaffPage() {
 
   const approveDeploymentMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from('staff_onboarding')
-        .update({ director_approved: true } as any)
-        .eq('user_id', userId);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('staff-onboarding', {
+        body: { action: 'approve_deployment', staff_id: userId },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
     },
     onSuccess: () => {
       toast.success('Cleaner approved for deployment!');
@@ -707,15 +704,6 @@ function StaffCard({ member: m, perfBadges, onboardingStatuses, isAdmin, onSelec
   );
 }
 
-// ─── Paperwork Checklist Items ───
-const PAPERWORK_ITEMS = [
-  { key: 'police_check', label: 'Police Check' },
-  { key: 'tax_file_number', label: 'Tax File Number' },
-  { key: 'bank_details', label: 'Bank Details' },
-  { key: 'signed_contract', label: 'Signed Employment Contract' },
-  { key: 'wwcc', label: 'Working With Children Check' },
-];
-
 // ─── Staff Detail View (tabbed) ───
 function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboardingLink, onboardingLinkCopied, copyOnboardingLink, ensureOnboardingMutation, markReviewedMutation, approveDeploymentMutation, setMagicLinkConfirm, sendMagicLinkMutation, resetPasswordMutation }: {
   staff: StaffMember;
@@ -782,25 +770,6 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
     },
   });
 
-  const paperworkStatus: Record<string, boolean> = (staffProfile as any)?.paperwork_status || {};
-
-  const savePaperworkMutation = useMutation({
-    mutationFn: async (updated: Record<string, boolean>) => {
-      const { error } = await supabase.from('profiles').update({ paperwork_status: updated } as any).eq('id', staff.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('Paperwork updated');
-      queryClient.invalidateQueries({ queryKey: ['staff-profile-detail', staff.id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const togglePaperwork = (key: string) => {
-    const updated = { ...paperworkStatus, [key]: !paperworkStatus[key] };
-    savePaperworkMutation.mutate(updated);
-  };
-
   // Hourly rate and pay
   const hourlyRate = (staffProfile as any)?.hourly_rate || 45;
 
@@ -841,7 +810,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full grid grid-cols-6 bg-muted rounded-xl">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-muted p-1 sm:grid-cols-6">
           <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Overview</TabsTrigger>
           <TabsTrigger value="inductions" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Inductions</TabsTrigger>
           <TabsTrigger value="paperwork" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-[10px] sm:text-xs">Paperwork</TabsTrigger>
@@ -953,25 +922,6 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
         {/* PAPERWORK TAB */}
         <TabsContent value="paperwork" className="space-y-4 mt-4">
           <StaffOnboardingDataView staffId={staff.id} />
-          <div className="bg-card rounded-2xl shadow-md p-5">
-            <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><FileCheck className="w-4 h-4" /> Required Documents</h3>
-            <div className="space-y-3">
-              {PAPERWORK_ITEMS.map(item => (
-                <PaperworkItemRow
-                  key={item.key}
-                  itemKey={item.key}
-                  label={item.label}
-                  checked={!!paperworkStatus[item.key]}
-                  onToggle={() => isAdmin && togglePaperwork(item.key)}
-                  isAdmin={isAdmin}
-                  staffId={staff.id}
-                />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-4">
-              {Object.values(paperworkStatus).filter(Boolean).length}/{PAPERWORK_ITEMS.length} documents received
-            </p>
-          </div>
         </TabsContent>
 
         {/* CLEAN HISTORY TAB */}
@@ -1068,7 +1018,7 @@ function EditableProfileSection({ staffId, staff, onSaved }: { staffId: string; 
   const [address, setAddress] = useState('');
   const [abn, setAbn] = useState('');
 
-  // Load address + ABN from cleaner_onboarding (not on profiles table)
+  // Address and ABN live in the canonical staff onboarding record.
   const { data: onboardingData } = useQuery({
     queryKey: ['staff-onboarding-profile', staffId],
     queryFn: async () => {
@@ -1164,82 +1114,6 @@ function EditableProfileSection({ staffId, staff, onSaved }: { staffId: string; 
           Save
         </Button>
       </div>
-    </div>
-  );
-}
-
-// ─── Paperwork Item with Upload ───
-function PaperworkItemRow({ itemKey, label, checked, onToggle, isAdmin, staffId }: {
-  itemKey: string; label: string; checked: boolean; onToggle: () => void; isAdmin: boolean; staffId: string;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [docUrl, setDocUrl] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  // Check if a document was already uploaded for this item
-  const { data: existingDoc } = useQuery({
-    queryKey: ['paperwork-doc', staffId, itemKey],
-    queryFn: async () => {
-      const { data } = await supabase.from('job_photos' as any)
-        .select('public_url')
-        .eq('job_id', staffId)
-        .eq('room_label', `paperwork_${itemKey}`)
-        .maybeSingle();
-      return (data as any)?.public_url || null;
-    },
-  });
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const ext = file.name.split('.').pop() || 'pdf';
-    const path = `staff-documents/paperwork/${staffId}/${itemKey}_${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('staff-documents').upload(path, file, { contentType: file.type });
-    if (error) {
-      toast.error('Upload failed: ' + error.message);
-      setUploading(false);
-      e.target.value = '';
-      return;
-    }
-    const { data: urlData } = supabase.storage.from('staff-documents').getPublicUrl(path);
-    setDocUrl(urlData.publicUrl);
-
-    // Store reference
-    await supabase.from('job_photos' as any).insert({
-      job_id: staffId,
-      storage_path: path,
-      public_url: urlData.publicUrl,
-      room_label: `paperwork_${itemKey}`,
-    });
-
-    // Auto-check the paperwork item
-    if (!checked) onToggle();
-
-    toast.success(`${label} uploaded`);
-    setUploading(false);
-    e.target.value = '';
-  };
-
-  const url = docUrl || existingDoc;
-
-  return (
-    <div className="flex items-center gap-3">
-      <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleUpload} />
-      <Checkbox checked={checked} onCheckedChange={onToggle} disabled={!isAdmin} />
-      <span className={`text-sm flex-1 ${checked ? 'text-foreground' : 'text-muted-foreground'}`}>
-        {label}
-      </span>
-      {url ? (
-        <a href={url} target="_blank" rel="noopener" className="text-xs text-primary underline">View</a>
-      ) : null}
-      {isAdmin && (
-        <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 px-2" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-          {url ? 'Replace' : 'Upload'}
-        </Button>
-      )}
-      {checked && <CheckCircle2 className="w-4 h-4 text-brightly shrink-0" />}
     </div>
   );
 }

@@ -56,6 +56,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const [notes, setNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
   const [frequency, setFrequency] = useState('one-off');
+  const [availabilityOverride, setAvailabilityOverride] = useState(false);
 
   const { unavailableMap } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
@@ -113,6 +114,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       setNotes('');
       setInternalNotes('');
       setFrequency('one-off');
+      setAvailabilityOverride(false);
     }
   }, [open]);
 
@@ -125,6 +127,10 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const handleSave = async () => {
     if (!propertyId) { toast.error('Please select a property.'); return; }
     if (!date) { toast.error('Please select a date.'); return; }
+    if (cleanerId && unavailableMap[cleanerId] && !availabilityOverride) {
+      toast.error('This cleaner is unavailable. Choose another cleaner or confirm the admin override.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -151,6 +157,10 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         status,
         source: 'manual',
         frequency,
+        availability_override: Boolean(cleanerId && unavailableMap[cleanerId] && availabilityOverride),
+        availability_override_reason: cleanerId && unavailableMap[cleanerId] && availabilityOverride
+          ? 'Admin manually overrode cleaner availability from the client scheduling panel.'
+          : null,
       } as any).select('id').single();
 
       if (error) throw error;
@@ -171,8 +181,12 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
             cleanerId: cleanerId || null,
             estimatedDuration: parseInt(duration),
             source: 'manual',
+            availabilityOverride: Boolean(cleanerId && unavailableMap[cleanerId] && availabilityOverride),
+            availabilityOverrideReason: 'Admin manually overrode cleaner availability for this recurring schedule.',
           });
-        } catch { /* non-blocking */ }
+        } catch (error: any) {
+          toast.error(`The first clean was saved, but the recurring series could not be created: ${error.message}`);
+        }
       }
 
       // Fire Google Calendar event (non-blocking)
@@ -325,17 +339,30 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
           {/* Cleaner */}
           <div className="space-y-1">
             <Label className="text-sm font-semibold">Assigned Cleaner</Label>
-            <Select value={cleanerId || '__none__'} onValueChange={v => setCleanerId(v === '__none__' ? '' : v)}>
+            <Select value={cleanerId || '__none__'} onValueChange={v => { setCleanerId(v === '__none__' ? '' : v); setAvailabilityOverride(false); }}>
               <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select cleaner" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {cleaners.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} disabled={!!unavailableMap[c.id]} className={unavailableMap[c.id] ? 'opacity-40 line-through' : ''}>
+                  <SelectItem key={c.id} value={c.id} className={unavailableMap[c.id] ? 'opacity-60' : ''}>
                     {getCleanerLabel(c)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {cleanerId && unavailableMap[cleanerId] && (
+              <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3">
+                <input
+                  type="checkbox"
+                  checked={availabilityOverride}
+                  onChange={(event) => setAvailabilityOverride(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-destructive"
+                />
+                <span className="text-xs leading-5 text-foreground">
+                  <strong>Admin override:</strong> assign this cleaner even though their recorded availability says they are off.
+                </span>
+              </label>
+            )}
           </div>
 
           {/* Price */}

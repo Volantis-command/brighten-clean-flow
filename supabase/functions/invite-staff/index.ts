@@ -51,19 +51,48 @@ Deno.serve(async (req) => {
 
     // Helper to ensure onboarding record exists for a user
     async function ensureOnboarding(userId: string, name?: string, userEmail?: string) {
-      const { data: existing } = await adminClient
+      const { data: existing, error: existingError } = await adminClient
         .from("staff_onboarding")
-        .select("id")
+        .select("id, onboarding_token, submitted_at, token_expires_at")
         .eq("user_id", userId)
         .maybeSingle();
+      if (existingError) throw existingError;
+
       if (!existing) {
-        await adminClient.from("staff_onboarding").insert({
-          user_id: userId,
-          full_name: name || null,
-          email: userEmail || null,
-          status: "pending",
-        });
+        const { data: created, error: createError } = await adminClient
+          .from("staff_onboarding")
+          .insert({
+            user_id: userId,
+            full_name: name || null,
+            email: userEmail || null,
+            status: "pending",
+            onboarding_version: "B-ABNB-HR-002-v1.0",
+            token_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          })
+          .select("onboarding_token")
+          .single();
+        if (createError) throw createError;
+        return created.onboarding_token;
       }
+
+      const expired = !existing.submitted_at
+        && existing.token_expires_at
+        && new Date(existing.token_expires_at).getTime() <= Date.now();
+      if (expired) {
+        const token = crypto.randomUUID();
+        const { error: refreshError } = await adminClient
+          .from("staff_onboarding")
+          .update({
+            onboarding_token: token,
+            token_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (refreshError) throw refreshError;
+        return token;
+      }
+
+      return existing.onboarding_token;
     }
 
     if (action === "create_user") {
@@ -310,6 +339,7 @@ Deno.serve(async (req) => {
           admin_reviewed_at: new Date().toISOString(),
           admin_reviewed_by: caller.id,
           status: "reviewed",
+          deployment_status: "reviewed",
         })
         .eq("user_id", user_id);
 
@@ -335,15 +365,9 @@ Deno.serve(async (req) => {
         );
       }
 
-      await ensureOnboarding(user_id, full_name, email);
-      // Return the token
-      const { data: record } = await adminClient
-        .from("staff_onboarding")
-        .select("onboarding_token")
-        .eq("user_id", user_id)
-        .single();
+      const onboardingToken = await ensureOnboarding(user_id, full_name, email);
       return new Response(
-        JSON.stringify({ success: true, token: record?.onboarding_token }),
+        JSON.stringify({ success: true, token: onboardingToken }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

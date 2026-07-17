@@ -1,481 +1,112 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+/* eslint-disable @typescript-eslint/no-explicit-any, react-refresh/only-export-components -- JSON training records and exported query hooks intentionally share this module. */
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, CheckCircle2, ClipboardList, GraduationCap, Loader2, Save, ShieldCheck } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import {
-  ClipboardList, User, Landmark, Shield, Camera, IdCard, CreditCard,
-  FileSignature, GraduationCap, Smartphone, ShieldCheck, Car, Upload,
-  AlertTriangle, Loader2,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
-import { format, differenceInDays, parseISO } from 'date-fns';
-import { useState, useRef } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
+import { isRequirementComplete, PRESTART_REQUIREMENTS } from '@/lib/staffOnboarding';
 
-interface Props {
-  staffId: string;
-  staffName: string;
+interface Props { staffId: string; staffName: string }
+type TrainingRecord = Record<string, any>;
+
+function TrainingClean({ number, value, onChange }: { number: 1 | 2; value: Record<string, any>; onChange: (next: Record<string, any>) => void }) {
+  return <div className="rounded-2xl border p-4"><h4 className="font-bold">Shadow Clean {number}</h4><div className="mt-4 grid gap-4 sm:grid-cols-2">
+    <div><Label className="text-xs">Date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={value.date || ''} onChange={(e) => onChange({ ...value, date: e.target.value })} /></div>
+    <div><Label className="text-xs">Supervisor</Label><Input className="mt-1 h-10 rounded-xl" value={value.supervisor || ''} onChange={(e) => onChange({ ...value, supervisor: e.target.value })} /></div>
+    {number === 2 && <div><Label className="text-xs">QC score (%)</Label><Input type="number" min="0" max="100" className="mt-1 h-10 rounded-xl" value={value.qc_score ?? ''} onChange={(e) => onChange({ ...value, qc_score: e.target.value === '' ? '' : Number(e.target.value) })} /></div>}
+    <div className={number === 1 ? 'sm:col-span-2' : ''}><Label className="text-xs">Debrief completed</Label><label className="mt-2 flex min-h-10 items-center gap-2"><Checkbox checked={Boolean(value.debrief_completed)} onCheckedChange={(checked) => onChange({ ...value, debrief_completed: checked === true })} /><span className="text-sm">Yes</span></label></div>
+    <div className="sm:col-span-2"><Label className="text-xs">Coach notes / improvement actions</Label><Textarea className="mt-1 min-h-20 rounded-xl" value={value.notes || ''} onChange={(e) => onChange({ ...value, notes: e.target.value })} /></div>
+  </div></div>;
 }
 
-const CHECKLIST_ITEMS = [
-  { key: 'profile_photo', label: 'Profile photo uploaded', icon: Camera },
-  { key: 'id_verified', label: 'ID verified', icon: IdCard },
-  { key: 'bank_details', label: 'Bank details provided', icon: CreditCard },
-  { key: 'signed_agreement', label: 'Signed cleaning agreement', icon: FileSignature },
-  { key: 'first_training_clean', label: 'Completed first training clean', icon: GraduationCap },
-  { key: 'active_on_app', label: 'Active on app', icon: Smartphone },
-];
-
 export function StaffOnboardingSection({ staffId, staffName }: Props) {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const insuranceInputRef = useRef<HTMLInputElement>(null);
-  const licenceInputRef = useRef<HTMLInputElement>(null);
-  const vevoInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState<string | null>(null);
-
+  const [training, setTraining] = useState<TrainingRecord>({});
   const { data, isLoading } = useQuery({
     queryKey: ['staff-onboarding', staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cleaner_onboarding')
-        .select('*')
-        .eq('user_id', staffId)
-        .maybeSingle();
+      const { data, error } = await supabase.from('staff_onboarding').select('*').eq('user_id', staffId).maybeSingle();
       if (error) throw error;
-      return data;
+      return data as any;
     },
   });
 
-  const d = data as any;
+  useEffect(() => { setTraining(data?.training_record ?? {}); }, [data?.training_record]);
 
-  // Also load from staff_onboarding for checklist
-  const { data: staffOnb } = useQuery({
-    queryKey: ['staff-onboarding-legacy', staffId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('staff_onboarding')
-        .select('*')
-        .eq('user_id', staffId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const getChecklist = (): Record<string, boolean> => {
-    const so = staffOnb as any;
-    const manual: Record<string, boolean> = {};
-    if (so) {
-      const acks = so.policy_acknowledgements;
-      if (acks && typeof acks === 'object' && !Array.isArray(acks) && acks.checklist) {
-        Object.assign(manual, acks.checklist);
-      }
-    }
-
-    // Auto-derive from staff_onboarding data
-    const auto: Record<string, boolean> = {};
-    if (so) {
-      // Bank details provided
-      if (so.bank_account_name && so.bank_bsb && so.bank_account_number) {
-        auto.bank_details = true;
-      }
-      // ID verified
-      if (so.id_document_url) {
-        auto.id_verified = true;
-      }
-      // Signed cleaning agreement — all policy acks are true
-      const policyAcks = so.policy_acknowledgements;
-      if (policyAcks && typeof policyAcks === 'object' && !Array.isArray(policyAcks)) {
-        const { checklist: _c, ...policies } = policyAcks;
-        const policyKeys = Object.keys(policies);
-        if (policyKeys.length > 0 && policyKeys.every(k => !!policies[k])) {
-          auto.signed_agreement = true;
-        }
-      }
-      // Active on app
-      if (so.status === 'completed' || so.status === 'submitted') {
-        auto.active_on_app = true;
-      }
-    }
-
-    return { ...auto, ...manual };
-  };
-
-  const checklist = getChecklist();
-
-  const toggleMutation = useMutation({
-    mutationFn: async ({ key, checked }: { key: string; checked: boolean }) => {
-      const so = staffOnb as any;
-      const currentAcks = so?.policy_acknowledgements && typeof so.policy_acknowledgements === 'object' && !Array.isArray(so.policy_acknowledgements)
-        ? so.policy_acknowledgements
-        : {};
-      const currentChecklist = currentAcks.checklist || {};
-      const newChecklist = { ...currentChecklist, [key]: checked };
-      const newAcks = { ...currentAcks, checklist: newChecklist };
-
-      if (!staffOnb) {
-        const { error } = await supabase.from('staff_onboarding').insert({
-          user_id: staffId,
-          status: 'pending',
-          policy_acknowledgements: newAcks,
-        } as any);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('staff_onboarding')
-          .update({ policy_acknowledgements: newAcks, updated_at: new Date().toISOString() } as any)
-          .eq('user_id', staffId);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-legacy', staffId] });
-      toast.success('Checklist updated');
-    },
-    onError: () => toast.error('Failed to update'),
-  });
-
-  const updateFieldMutation = useMutation({
-    mutationFn: async (fields: Record<string, any>) => {
-      if (!d) {
-        const { error } = await supabase.from('cleaner_onboarding').insert({
-          user_id: staffId,
-          ...fields,
-        } as any);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('cleaner_onboarding')
-          .update(fields as any)
-          .eq('user_id', staffId);
-        if (error) throw error;
-      }
+  const adminUpdate = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data: result, error } = await supabase.functions.invoke('staff-onboarding', { body: { action: 'admin_update', staff_id: staffId, ...body } });
+      if (error || result?.error) throw new Error(result?.error || error?.message);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff-onboarding', staffId] });
-      toast.success('Updated');
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-data', staffId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
   });
 
-  const handleFileUpload = async (file: File, folder: string, fieldName: string) => {
-    setUploading(fieldName);
-    try {
-      const ext = file.name.split('.').pop();
-      const path = `${folder}/${staffId}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('staff-documents').upload(path, file);
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from('staff-documents').getPublicUrl(path);
-      await updateFieldMutation.mutateAsync({ [fieldName]: urlData.publicUrl });
-    } catch (err: any) {
-      toast.error('Upload failed: ' + err.message);
-    } finally {
-      setUploading(null);
-    }
-  };
+  const requirements = (data?.prestart_requirements ?? {}) as Record<string, unknown>;
+  const completedCount = PRESTART_REQUIREMENTS.filter((item) => isRequirementComplete(requirements[item.key])).length;
+  const completion = Math.round((completedCount / PRESTART_REQUIREMENTS.length) * 100);
+  const alerts = useMemo(() => {
+    if (!data) return [] as { label: string; days: number }[];
+    return [
+      ['Public liability', data.public_liability_expiry],
+      ['Driver licence', data.drivers_licence_expiry],
+      ['Annual SOP re-sign', data.sops_resign_due],
+    ].flatMap(([label, date]) => {
+      if (!date) return [];
+      const days = differenceInDays(parseISO(String(date)), new Date());
+      return days <= 30 ? [{ label: String(label), days }] : [];
+    });
+  }, [data]);
 
-  if (isLoading) return <div className="text-sm text-muted-foreground">Loading HR details...</div>;
+  if (isLoading) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading induction record…</div>;
+  if (!data) return <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground">No onboarding record exists. Send {staffName} a fresh onboarding link.</p>;
 
-  const so = staffOnb as any;
-  const reviewed = !!so?.admin_reviewed_at;
-  const submitted = !!so?.submitted_at || !!d?.onboarding_complete;
-  const completedCount = CHECKLIST_ITEMS.filter(item => checklist[item.key]).length;
+  return <div className="space-y-4">
+    {alerts.map((alert) => <div key={alert.label} className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${alert.days <= 0 ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-amber-300 bg-amber-50 text-amber-900'}`}><AlertTriangle className="h-4 w-4" />{alert.label}: {alert.days <= 0 ? 'expired' : `expires in ${alert.days} days`}</div>)}
 
-  // Expiry alerts
-  const expiryAlerts: { label: string; daysLeft: number }[] = [];
-  if (d?.public_liability_expiry) {
-    const days = differenceInDays(parseISO(d.public_liability_expiry), new Date());
-    if (days <= 30) expiryAlerts.push({ label: 'Public Liability', daysLeft: days });
-  }
-  if (d?.drivers_licence_expiry) {
-    const days = differenceInDays(parseISO(d.drivers_licence_expiry), new Date());
-    if (days <= 30) expiryAlerts.push({ label: "Driver's Licence", daysLeft: days });
-  }
-  if (d?.sops_resign_due) {
-    const days = differenceInDays(parseISO(d.sops_resign_due), new Date());
-    if (days <= 30) expiryAlerts.push({ label: 'SOP Re-sign', daysLeft: days });
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Expiry Warnings */}
-      {expiryAlerts.length > 0 && (
-        <div className="space-y-2">
-          {expiryAlerts.map(a => (
-            <div key={a.label} className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
-              a.daysLeft <= 0 ? 'bg-destructive/10 text-destructive border border-destructive/30' :
-              a.daysLeft <= 7 ? 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D] border border-orange-300' :
-              'bg-amber-50 text-amber-800 border border-amber-200'
-            }`}>
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {a.label}: {a.daysLeft <= 0 ? 'EXPIRED' : `expires in ${a.daysLeft} days`}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* HR & Onboarding Checklist */}
-      <div className="bg-card rounded-2xl shadow-md p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-            <ClipboardList className="w-5 h-5" /> HR & Onboarding
-          </h2>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {completedCount}/{CHECKLIST_ITEMS.length}
-            </Badge>
-            {reviewed ? (
-              <Badge className="bg-brightly/10 text-brightly">Reviewed ✓</Badge>
-            ) : submitted ? (
-              <Badge className="bg-[rgba(251,191,36,0.15)] text-[#FCD34D]">Action Needed</Badge>
-            ) : null}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Onboarding Checklist</h3>
-          <div className="space-y-3">
-            {CHECKLIST_ITEMS.map(({ key, label, icon: Icon }) => (
-              <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                <Checkbox
-                  checked={!!checklist[key]}
-                  onCheckedChange={(checked) => toggleMutation.mutate({ key, checked: !!checked })}
-                  className="h-5 w-5"
-                />
-                <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className={`text-sm font-medium ${checklist[key] ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                  {label}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
+    <section className="rounded-2xl border bg-card p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 text-lg font-bold"><ClipboardList className="h-5 w-5 text-primary" />Pre-start control centre</h2><p className="mt-1 text-sm text-muted-foreground">Every item must be complete before Director approval.</p></div><Badge className={completion === 100 ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-800'}>{completedCount}/{PRESTART_REQUIREMENTS.length} complete</Badge></div>
+      <Progress value={completion} className="my-4 h-2" />
+      <div className="grid gap-2 sm:grid-cols-2">
+        {PRESTART_REQUIREMENTS.map((item) => {
+          const checked = isRequirementComplete(requirements[item.key]);
+          const adminControlled = item.owner === 'admin';
+          return <label key={item.key} className={`flex min-h-14 items-start gap-3 rounded-xl border p-3 ${checked ? 'border-primary/30 bg-primary/5' : 'border-border'} ${adminControlled ? 'cursor-pointer' : 'cursor-default'}`}><Checkbox checked={checked} disabled={!adminControlled || adminUpdate.isPending} onCheckedChange={(value) => adminUpdate.mutate({ prestart_requirements: { [item.key]: { completed: value === true } } })} className="mt-0.5 h-5 w-5" /><span className="min-w-0"><span className="block text-sm font-semibold">{item.label}</span><span className="text-[11px] text-muted-foreground">{adminControlled ? 'Verified by Brightly' : 'From cleaner submission'}</span></span></label>;
+        })}
       </div>
+    </section>
 
-      {/* Profile Photo */}
-      <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Camera className="w-4 h-4" /> Profile Photo
-        </h3>
-        <div className="flex items-center gap-4">
-          {d?.profile_photo_url ? (
-            <img src={d.profile_photo_url} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-primary/20" />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-              <Camera className="w-6 h-6" />
-            </div>
-          )}
-          <div>
-            <input ref={photoInputRef} type="file" accept="image/*" capture="user" className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'profile-photos', 'profile_photo_url')} />
-            <Button variant="outline" size="sm" className="gap-1 rounded-xl"
-              disabled={uploading === 'profile_photo_url'}
-              onClick={() => photoInputRef.current?.click()}>
-              {uploading === 'profile_photo_url' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {d?.profile_photo_url ? 'Replace' : 'Upload'}
-            </Button>
-          </div>
-        </div>
+    <section className="rounded-2xl border bg-card p-5 shadow-sm">
+      <div className="mb-5 flex items-start gap-2"><GraduationCap className="mt-0.5 h-5 w-5 text-primary" /><div><h2 className="text-lg font-bold">Induction & training record</h2><p className="text-sm text-muted-foreground">Record the evidence behind the admin-controlled checklist.</p></div></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><Label className="text-xs">Welcome induction date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={training.welcome_induction_date || ''} onChange={(e) => setTraining({ ...training, welcome_induction_date: e.target.value })} /></div>
+        <div><Label className="text-xs">Induction facilitator</Label><Input className="mt-1 h-10 rounded-xl" value={training.induction_facilitator || ''} onChange={(e) => setTraining({ ...training, induction_facilitator: e.target.value })} /></div>
+        <div><Label className="text-xs">Verbal knowledge check date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={training.verbal_check_date || ''} onChange={(e) => setTraining({ ...training, verbal_check_date: e.target.value })} /></div>
+        <div><Label className="text-xs">Brightly test-job date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={training.brightly_test_date || ''} onChange={(e) => setTraining({ ...training, brightly_test_date: e.target.value })} /></div>
+        <div><Label className="text-xs">Kit issued date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={training.kit_issued_date || ''} onChange={(e) => setTraining({ ...training, kit_issued_date: e.target.value })} /></div>
       </div>
-
-      {/* Insurance */}
-      <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4" /> Insurance
-        </h3>
-        <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Public Liability Certificate</Label>
-            <div className="flex items-center gap-2 mt-1">
-              {d?.public_liability_url ? (
-                <a href={d.public_liability_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate max-w-[200px]">View certificate</a>
-              ) : (
-                <span className="text-xs text-muted-foreground">Not uploaded</span>
-              )}
-              <input ref={insuranceInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'insurance', 'public_liability_url')} />
-              <Button variant="outline" size="sm" className="gap-1 rounded-xl h-7 text-xs"
-                disabled={uploading === 'public_liability_url'}
-                onClick={() => insuranceInputRef.current?.click()}>
-                {uploading === 'public_liability_url' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                Upload
-              </Button>
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Expiry Date</Label>
-            <Input type="date" className="h-8 text-sm"
-              value={d?.public_liability_expiry || ''}
-              onChange={(e) => updateFieldMutation.mutate({ public_liability_expiry: e.target.value || null })} />
-          </div>
-        </div>
+      <div className="mt-5 space-y-4">
+        <TrainingClean number={1} value={training.shadow_clean_1 ?? {}} onChange={(next) => setTraining({ ...training, shadow_clean_1: next })} />
+        <TrainingClean number={2} value={training.shadow_clean_2 ?? {}} onChange={(next) => setTraining({ ...training, shadow_clean_2: next })} />
       </div>
+      <Button className="mt-5 h-11 w-full rounded-xl sm:w-auto" disabled={adminUpdate.isPending} onClick={() => adminUpdate.mutate({ training_record: training })}>{adminUpdate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save training record</Button>
+    </section>
 
-      {/* Identity & Compliance */}
-      <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <IdCard className="w-4 h-4" /> Identity & Compliance
-        </h3>
-        <div className="space-y-3">
-          {/* VEVO */}
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">VEVO Check Required</Label>
-            <Switch checked={d?.vevo_required || false}
-              onCheckedChange={(checked) => updateFieldMutation.mutate({ vevo_required: checked })} />
-          </div>
-          {d?.vevo_required && (
-            <div className="pl-4 border-l-2 border-primary/20 space-y-2">
-              <div className="flex items-center gap-2">
-                {d?.vevo_check_url ? (
-                  <a href={d.vevo_check_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">View VEVO</a>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Not uploaded</span>
-                )}
-                <input ref={vevoInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'vevo', 'vevo_check_url')} />
-                <Button variant="outline" size="sm" className="gap-1 rounded-xl h-7 text-xs"
-                  disabled={uploading === 'vevo_check_url'}
-                  onClick={() => vevoInputRef.current?.click()}>
-                  {uploading === 'vevo_check_url' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                  Upload
-                </Button>
-              </div>
-              {d?.vevo_verified_at && (
-                <p className="text-xs text-brightly">Verified {format(parseISO(d.vevo_verified_at), 'dd MMM yyyy')}</p>
-              )}
-            </div>
-          )}
-
-          {/* Driver's Licence */}
-          <div>
-            <Label className="text-xs">Driver's Licence</Label>
-            <div className="flex items-center gap-2 mt-1">
-              {d?.drivers_licence_url ? (
-                <a href={d.drivers_licence_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">View licence</a>
-              ) : (
-                <span className="text-xs text-muted-foreground">Not uploaded</span>
-              )}
-              <input ref={licenceInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'licences', 'drivers_licence_url')} />
-              <Button variant="outline" size="sm" className="gap-1 rounded-xl h-7 text-xs"
-                disabled={uploading === 'drivers_licence_url'}
-                onClick={() => licenceInputRef.current?.click()}>
-                {uploading === 'drivers_licence_url' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                Upload
-              </Button>
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Licence Expiry</Label>
-            <Input type="date" className="h-8 text-sm"
-              value={d?.drivers_licence_expiry || ''}
-              onChange={(e) => updateFieldMutation.mutate({ drivers_licence_expiry: e.target.value || null })} />
-          </div>
-
-          {/* Vehicle Rego */}
-          <div>
-            <Label className="text-xs">Vehicle Rego</Label>
-            <Input className="h-8 text-sm" placeholder="e.g. ABC123"
-              defaultValue={d?.vehicle_rego || ''}
-              onBlur={(e) => {
-                if (e.target.value !== (d?.vehicle_rego || '')) {
-                  updateFieldMutation.mutate({ vehicle_rego: e.target.value || null });
-                }
-              }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Tax & Super (existing data + GST) */}
-      {submitted && (
-        <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1 mb-2">
-            <Shield className="w-4 h-4" /> Tax & Super
-          </h3>
-          <div className="grid gap-1 sm:grid-cols-2 text-sm">
-            <p><span className="font-medium">ABN:</span> {d?.abn || '—'}</p>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">GST Registered:</span>
-              <Switch checked={d?.gst_registered || false}
-                onCheckedChange={(checked) => updateFieldMutation.mutate({ gst_registered: checked })} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Kit & Uniform */}
-      <div className="bg-card rounded-2xl shadow-md p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <ClipboardList className="w-4 h-4" /> Kit & Uniform
-        </h3>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <Checkbox checked={d?.uniform_received || false}
-            onCheckedChange={(checked) => updateFieldMutation.mutate({ uniform_received: !!checked })}
-            className="h-5 w-5" />
-          <span className="text-sm font-medium">Uniform received</span>
-        </label>
-      </div>
-
-      {/* SOP Re-sign Status */}
-      {d?.sops_resign_due && (
-        <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FileSignature className="w-4 h-4" /> SOP Re-sign
-          </h3>
-          <p className="text-sm">
-            Due: <span className="font-bold">{format(parseISO(d.sops_resign_due), 'dd MMM yyyy')}</span>
-            {differenceInDays(parseISO(d.sops_resign_due), new Date()) <= 0 && (
-              <Badge className="ml-2 bg-destructive text-destructive-foreground">OVERDUE</Badge>
-            )}
-          </p>
-        </div>
-      )}
-
-      {/* Submitted HR data (existing personal/bank sections) */}
-      {submitted && d && (
-        <>
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1 mb-2">
-              <User className="w-4 h-4" /> Personal Details
-            </h3>
-            <div className="grid gap-1 sm:grid-cols-2 text-sm">
-              <p><span className="font-medium">Name:</span> {d.full_name}</p>
-              <p><span className="font-medium">Email:</span> {d.email}</p>
-              <p><span className="font-medium">Phone:</span> {d.mobile}</p>
-              {d.suburb && <p><span className="font-medium">Suburb:</span> {d.suburb}</p>}
-              {d.date_of_birth && <p><span className="font-medium">DOB:</span> {d.date_of_birth}</p>}
-              {d.emergency_contact_name && (
-                <p className="sm:col-span-2">
-                  <span className="font-medium">Emergency:</span> {d.emergency_contact_name} — {d.emergency_contact_phone}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-card rounded-2xl shadow-md p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1 mb-2">
-              <Landmark className="w-4 h-4" /> Bank Details
-            </h3>
-            <div className="grid gap-1 sm:grid-cols-2 text-sm">
-              <p><span className="font-medium">BSB:</span> {d.bank_bsb || '—'}</p>
-              <p><span className="font-medium">Account #:</span> {d.bank_account ? '••••' + d.bank_account.slice(-4) : '—'}</p>
-              <p><span className="font-medium">Account Name:</span> {d.bank_name || '—'}</p>
-            </div>
-          </div>
-        </>
-      )}
-
-      {!submitted && (
-        <p className="text-sm text-muted-foreground">
-          Onboarding form has not been submitted yet. Send the onboarding link to {staffName}.
-        </p>
-      )}
-    </div>
-  );
+    <section className="rounded-2xl border bg-card p-5 shadow-sm"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 text-primary" /><div><h3 className="font-bold">Deployment gate</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Current status: <strong className="text-foreground">{data.deployment_status || 'onboarding'}</strong>. A 100% pre-start checklist and Shadow Clean 2 QC score of 80% or higher are enforced again when the Director approves deployment.</p>{data.director_approved && <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-primary"><CheckCircle2 className="h-4 w-4" />Approved {data.director_approved_at ? new Date(data.director_approved_at).toLocaleString('en-AU') : ''}</p>}</div></div></section>
+  </div>;
 }
 
 export function useStaffOnboardingStatuses(staffIds: string[]) {
@@ -483,52 +114,30 @@ export function useStaffOnboardingStatuses(staffIds: string[]) {
     queryKey: ['staff-onboarding-statuses', staffIds],
     enabled: staffIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('staff_onboarding')
-        .select('user_id, status, submitted_at, admin_reviewed_at, onboarding_token, director_approved')
-        .in('user_id', staffIds);
+      const { data, error } = await supabase.from('staff_onboarding').select('user_id, status, submitted_at, admin_reviewed_at, onboarding_token, director_approved, deployment_status').in('user_id', staffIds);
       if (error) throw error;
-      const map: Record<string, { status: string; submitted: boolean; reviewed: boolean; token: string; directorApproved: boolean }> = {};
-      (data || []).forEach((r: any) => {
-        map[r.user_id] = {
-          status: r.status,
-          submitted: !!r.submitted_at,
-          reviewed: !!r.admin_reviewed_at,
-          token: r.onboarding_token,
-          directorApproved: !!r.director_approved,
-        };
-      });
+      const map: Record<string, { status: string; submitted: boolean; reviewed: boolean; token: string; directorApproved: boolean; deploymentStatus: string }> = {};
+      (data || []).forEach((record: any) => { map[record.user_id] = { status: record.status, submitted: Boolean(record.submitted_at), reviewed: Boolean(record.admin_reviewed_at), token: record.onboarding_token, directorApproved: Boolean(record.director_approved), deploymentStatus: record.deployment_status }; });
       return map;
     },
   });
 }
 
-/** Compute cleaner "active" status from compliance fields */
 export function useCleanerActiveStatus(staffId: string) {
   return useQuery({
     queryKey: ['cleaner-active-status', staffId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('cleaner_onboarding')
-        .select('onboarding_complete, police_check_url, police_check_date, public_liability_expiry, drivers_licence_expiry, sops_resign_due, id_document_url, bank_bsb, bank_account, abn')
-        .eq('user_id', staffId)
-        .maybeSingle();
+      const { data } = await supabase.from('staff_onboarding').select('submitted_at, director_approved, deployment_status, prestart_requirements, public_liability_expiry, drivers_licence_expiry, sops_resign_due').eq('user_id', staffId).maybeSingle();
       if (!data) return { active: false, reason: 'No onboarding record' };
-
-      const d = data as any;
-      const today = new Date();
+      const record = data as any;
       const reasons: string[] = [];
-
-      if (!d.onboarding_complete) reasons.push('Onboarding incomplete');
-      if (!d.id_document_url) reasons.push('Missing ID');
-      if (!d.bank_bsb || !d.bank_account) reasons.push('Missing bank details');
-      if (!d.abn) reasons.push('Missing ABN');
-      if (!d.police_check_url) reasons.push('Missing police check');
-
-      if (d.public_liability_expiry && parseISO(d.public_liability_expiry) < today) reasons.push('Public liability expired');
-      if (d.drivers_licence_expiry && parseISO(d.drivers_licence_expiry) < today) reasons.push('Licence expired');
-      if (d.sops_resign_due && parseISO(d.sops_resign_due) < today) reasons.push('SOP re-sign overdue');
-
+      if (!record.submitted_at) reasons.push('Onboarding incomplete');
+      if (!record.director_approved || record.deployment_status !== 'approved') reasons.push('Director approval required');
+      PRESTART_REQUIREMENTS.forEach((item) => { if (!isRequirementComplete(record.prestart_requirements?.[item.key])) reasons.push(item.label); });
+      const today = new Date();
+      if (record.public_liability_expiry && parseISO(record.public_liability_expiry) < today) reasons.push('Public liability expired');
+      if (record.drivers_licence_expiry && parseISO(record.drivers_licence_expiry) < today) reasons.push('Licence expired');
+      if (record.sops_resign_due && parseISO(record.sops_resign_due) < today) reasons.push('SOP re-sign overdue');
       return { active: reasons.length === 0, reason: reasons.join(', ') || 'All clear' };
     },
   });

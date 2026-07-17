@@ -116,28 +116,47 @@ export function useAllCleanerLeave(date: Date | undefined) {
 // Map day index (0=Sun) to short day name used in weekly_availability
 const DAY_INDEX_TO_NAME = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
+export function isWeeklyDayAvailable(weeklyAvailability: unknown, dayName: string) {
+  if (Array.isArray(weeklyAvailability)) {
+    return weeklyAvailability.some((day) => {
+      const normalised = String(day).trim().toLowerCase();
+      return normalised === dayName || normalised.slice(0, 3) === dayName;
+    });
+  }
+
+  if (weeklyAvailability && typeof weeklyAvailability === 'object') {
+    const shifts = (weeklyAvailability as Record<string, unknown>)[dayName];
+    return Array.isArray(shifts) && shifts.length > 0;
+  }
+
+  return ['mon', 'tue', 'wed', 'thu', 'fri'].includes(dayName);
+}
+
 // Fetch all cleaners' weekly availability for a given date's day-of-week
 export function useAllCleanerAvailability(date: Date | undefined, cleanerIds: string[]) {
   const dayName = date ? DAY_INDEX_TO_NAME[date.getDay()] : '';
+  const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
 
   const { data: unavailableMap = {} } = useQuery({
-    queryKey: ['all-cleaner-availability', dayName, cleanerIds.join(',')],
+    queryKey: ['all-cleaner-availability', dateStr, cleanerIds.join(',')],
     queryFn: async () => {
-      if (!dayName || cleanerIds.length === 0) return {};
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, weekly_availability')
-        .in('id', cleanerIds);
+      if (!dayName || !dateStr || cleanerIds.length === 0) return {};
+      const [profilesResult, dateOverridesResult] = await Promise.all([
+        supabase.from('profiles').select('id, weekly_availability').in('id', cleanerIds),
+        supabase.from('cleaner_availability').select('user_id, available').eq('date', dateStr).in('user_id', cleanerIds),
+      ]);
+
+      const explicitAvailability = new Map<string, boolean>();
+      (dateOverridesResult.data || []).forEach((row: any) => explicitAvailability.set(row.user_id, row.available));
       const map: Record<string, boolean> = {};
-      (data || []).forEach((p: any) => {
-        const avail: string[] = p.weekly_availability || ['mon', 'tue', 'wed', 'thu', 'fri'];
-        if (!avail.includes(dayName)) {
-          map[p.id] = true; // true = unavailable
-        }
+      (profilesResult.data || []).forEach((profile: any) => {
+        const explicit = explicitAvailability.get(profile.id);
+        const available = explicit ?? isWeeklyDayAvailable(profile.weekly_availability, dayName);
+        if (!available) map[profile.id] = true;
       });
       return map;
     },
-    enabled: !!dayName && cleanerIds.length > 0,
+    enabled: !!dayName && !!dateStr && cleanerIds.length > 0,
   });
 
   return { unavailableMap, dayName };
