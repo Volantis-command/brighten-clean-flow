@@ -73,6 +73,7 @@ const SmokeTestPage = lazy(() => import('./pages/SmokeTestPage'));
 const ClientPortalVerifyPage = lazy(() => import('./pages/ClientPortalVerifyPage'));
 const ClientPortalDashboardPage = lazy(() => import('./pages/ClientPortalDashboardPage'));
 const ClientPortalPropertyPage = lazy(() => import('./pages/ClientPortalPropertyPage'));
+const InstantQuotePage = lazy(() => import('./pages/InstantQuotePage'));
 
 const queryClient = new QueryClient();
 
@@ -199,6 +200,11 @@ function AppRoutes() {
       <Route path="/report/:token" element={<CleanReportPage />} />
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
+      {/* Public instant-quote calculator — the marketing site's "Get Instant Quote" CTA. */}
+      <Route path="/instant-quote" element={<InstantQuotePage />} />
+      <Route path="/onboard" element={<Navigate to="/instant-quote" replace />} />
+      <Route path="/contact" element={<Navigate to="/instant-quote" replace />} />
+      <Route path="/get-quote" element={<Navigate to="/instant-quote" replace />} />
       {/* Legacy redirects — the marketing SMS + Airbnb rebook button send clients to
           these paths. Do not delete without also updating send-quote-link-sms edge
           function and GuestReadyReportPage. The /onboard path is the main marketing
