@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Trash2 } from 'lucide-react';
+import { Loader2, Eye, Trash2, Download } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LeadDetailSlideOver from './LeadDetailSlideOver';
 import { useState } from 'react';
@@ -92,6 +92,25 @@ export default function LeadsTab() {
         return group ? group.includes(l.status) : l.status === statusFilter;
       });
 
+  // Download the current lead list (name, phone, email + quote details) as CSV
+  // for bulk email / marketing.
+  const exportCsv = () => {
+    const rows = filtered.length ? filtered : leads;
+    if (!rows.length) { toast.error('No leads to export'); return; }
+    const cols = ['first_name', 'last_name', 'phone', 'email', 'address', 'clean_type', 'status', 'total_inc_gst', 'created_at'];
+    const header = ['First name', 'Last name', 'Phone', 'Email', 'Address', 'Clean type', 'Status', 'Quoted (inc GST)', 'Created'];
+    const esc = (v: any) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const csv = [header.join(','), ...rows.map((r: any) => cols.map(c => esc(r[c])).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brightly-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} lead${rows.length === 1 ? '' : 's'}`);
+  };
+
   const getNavTarget = (lead: any) => {
     const s = lead.status;
     if (['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response'].includes(s)) {
@@ -129,6 +148,9 @@ export default function LeadsTab() {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={exportCsv} className="ml-auto h-10 rounded-xl gap-2">
+          <Download className="w-4 h-4" /> Export CSV
+        </Button>
         <span className="text-sm text-muted-foreground">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 

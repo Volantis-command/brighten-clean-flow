@@ -93,7 +93,56 @@ export default function InstantQuotePage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Lead gate — the price stays hidden until they give name + mobile + email.
+  const [unlocked, setUnlocked] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const [revealing, setRevealing] = useState(false);
+
   const cleanType = mode === "airbnb" ? "Airbnb / Short-Stay Turnover" : "Standard Clean";
+
+  // Capture the lead the moment they ask to see their price. Everyone who
+  // reveals a quote lands in the database — not just people who book.
+  const revealPrice = async () => {
+    if (!fullName.trim() || !phone.trim() || !email.trim()) {
+      toast.error("Name, mobile and email are needed to see your quote");
+      return;
+    }
+    setRevealing(true);
+    try {
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ");
+      const { data, error } = await supabase.from("quote_requests").insert({
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone.trim(),
+        email: email.trim(),
+        clean_type: cleanType,
+        bedrooms: type.beds,
+        bathrooms: type.baths,
+        estimated_hours: quote.hours,
+        total_ex_gst: Math.round(quote.sellExGst * 100) / 100,
+        total_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
+        status: "form_submitted",
+        form_submitted_at: new Date().toISOString(),
+        addons: mode === "airbnb" ? { linen_required: linenIncluded, consumables: consumablesIncluded } : null,
+        form_data: {
+          source: "instant_quote",
+          mode,
+          property_size: type.name,
+          quoted_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
+          captured_at_reveal: true,
+        },
+      } as any).select("id").single();
+      if (error) throw error;
+      setLeadId(data?.id ?? null);
+      setUnlocked(true);
+    } catch (err: any) {
+      toast.error(err.message || "Couldn't load your quote — try again");
+    } finally {
+      setRevealing(false);
+    }
+  };
 
   const submit = async () => {
     if (!fullName.trim() || !phone.trim() || !address.trim()) {
@@ -109,7 +158,7 @@ export default function InstantQuotePage() {
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ");
-      const { error } = await supabase.from("quote_requests").insert({
+      const payload = {
         first_name: firstName,
         last_name: lastName,
         phone: phone.trim(),
@@ -144,7 +193,12 @@ export default function InstantQuotePage() {
           platform: mode === "airbnb" ? platform : null,
           parking: mode === "airbnb" ? parking : null,
         },
-      } as any);
+      };
+      // If we already captured this person at price-reveal, update that lead
+      // instead of creating a duplicate.
+      const { error } = leadId
+        ? await supabase.from("quote_requests").update(payload as any).eq("id", leadId)
+        : await supabase.from("quote_requests").insert(payload as any);
       if (error) throw error;
 
       // Instantly set them up as a client + create the property (onboarding state)
@@ -255,7 +309,9 @@ export default function InstantQuotePage() {
                 {type.name} · {mode === "airbnb" ? "Turnover" : "Standard clean"}
               </div>
               <div style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
-                {fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: MUTED }}>{gstLabel}</span>
+                {unlocked
+                  ? <>{fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: MUTED }}>{gstLabel}</span></>
+                  : <span style={{ letterSpacing: "0.04em" }}>$<span style={{ opacity: 0.55 }}>•••</span></span>}
               </div>
               <div style={{ height: 3, width: 92, marginTop: 8, borderRadius: 3, background: `linear-gradient(90deg, ${GREEN}, ${YELLOW})` }} />
             </div>
@@ -331,6 +387,25 @@ export default function InstantQuotePage() {
                   ? "Includes full turnover clean" + (linenIncluded ? ", linen" : "") + (consumablesIncluded ? " & consumables." : ".")
                   : "Standard residential clean, charged at $70/hr."}
               </div>
+
+              {!unlocked && (
+                <div id="reveal-gate" style={{ marginTop: 22, background: CARD, border: `1.5px solid ${GREEN}66`, borderRadius: 18, padding: "18px 16px", boxShadow: `0 0 26px ${GREEN}22` }}>
+                  <div style={{ fontSize: 16.5, fontWeight: 800, marginBottom: 4 }}>See your instant price 👇</div>
+                  <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 14px", lineHeight: 1.5 }}>
+                    Pop in your details and we'll show your quote straight away — no obligation, takes 10 seconds.
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
+                    <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
+                    <Field label="Email *" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
+                  </div>
+                  <button onClick={revealPrice} disabled={revealing}
+                    style={{ width: "100%", marginTop: 14, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: revealing ? 0.7 : 1 }}>
+                    {revealing && <Loader2 size={18} className="animate-spin" />}
+                    Reveal my price
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -376,13 +451,20 @@ export default function InstantQuotePage() {
         <div style={{ maxWidth: 520, margin: "0 auto", display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</div>
-            <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmt(price)}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{unlocked ? fmt(price) : "$•••"}</div>
           </div>
           {phase === "quote" ? (
+            !unlocked ? (
+              <button onClick={() => { const el = document.getElementById("reveal-gate"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+                style={{ flex: 1, padding: "14px", borderRadius: 14, background: CARD, border: `1px solid ${BORDER}`, color: TEXT, fontWeight: 800, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                See my instant price
+              </button>
+            ) : (
             <button onClick={() => { setPhase("book"); window.scrollTo(0, 0); }}
               style={{ flex: 1, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: `0 0 24px ${GREEN}44` }}>
               {mode === "residential" ? "Book this clean" : "Accept & continue"} <ArrowRight size={17} />
             </button>
+            )
           ) : (
             <div style={{ flex: 1, display: "flex", gap: 8 }}>
               <button onClick={() => { setPhase("quote"); }} style={{ padding: "14px 16px", borderRadius: 14, background: CARD, border: `1px solid ${BORDER}`, color: TEXT, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Back</button>
