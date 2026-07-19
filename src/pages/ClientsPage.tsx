@@ -183,6 +183,45 @@ export default function ClientsPage() {
       .some((v: any) => String(v).toLowerCase().includes(q));
   });
 
+  // ── Active vs Lead classification ──
+  // Active = has ≥1 clean (a linked property with a job), OR manually moved to
+  // Active. Lead = no cleans yet, OR manually moved to Leads.
+  const { data: cleanedPropertyIds = new Set<string>() } = useQuery({
+    queryKey: ['property-ids-with-jobs'],
+    queryFn: async () => {
+      const { data } = await supabase.from('jobs').select('property_id').not('property_id', 'is', null);
+      return new Set((data || []).map((j: any) => j.property_id as string));
+    },
+  });
+  const { data: leadStages = {} as Record<string, string> } = useQuery({
+    queryKey: ['client-lead-stages'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, lead_stage').not('lead_stage', 'is', null);
+      const m: Record<string, string> = {};
+      (data || []).forEach((p: any) => { if (p.lead_stage) m[p.id] = p.lead_stage; });
+      return m;
+    },
+  });
+  const hasCleans = (c: any) => (c.linked_properties || []).some((lp: any) => cleanedPropertyIds.has(lp.property_id));
+  const isActiveClient = (c: any) => leadStages[c.id] === 'active' || (hasCleans(c) && leadStages[c.id] !== 'lead');
+  const activeClients = filteredClients.filter(isActiveClient);
+  const leadClients = filteredClients.filter((c: any) => !isActiveClient(c));
+
+  const setLeadStageMutation = useMutation({
+    mutationFn: async ({ id, stage }: { id: string; stage: 'active' | 'lead' }) => {
+      if (id.startsWith('property-') || id.startsWith('qr-')) {
+        throw new Error('Onboard this lead as a client first, then you can move it.');
+      }
+      const { error } = await supabase.from('profiles').update({ lead_stage: stage } as any).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.stage === 'active' ? 'Moved to Active clients' : 'Moved to Leads');
+      queryClient.invalidateQueries({ queryKey: ['client-lead-stages'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // Create form state
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
@@ -451,9 +490,9 @@ export default function ClientsPage() {
           />
         </div>
         <div className="space-y-3 md:hidden">
-          {filteredClients.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No clients match your search.</div>
-          ) : filteredClients.map((client) => (
+          {activeClients.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No active clients. New quote leads land in the Leads tab.</div>
+          ) : activeClients.map((client) => (
             <article key={client.id} className="min-w-0 rounded-2xl border border-border bg-card p-4">
               <button type="button" onClick={() => navigate(`/clients/${client.id}`)} className="w-full min-w-0 text-left">
                 <p className="truncate text-base font-extrabold text-primary">{getClientDisplayName(client)}</p>
@@ -471,6 +510,7 @@ export default function ClientsPage() {
                 <Button variant="outline" size="icon" className="h-11 w-full" aria-label={`Send onboarding to ${getClientDisplayName(client)}`} onClick={() => openOnboardModal(client)}><Send className="h-4 w-4" /></Button>
                 <Button variant="outline" size="icon" className="h-11 w-full text-destructive" aria-label={`Delete ${getClientDisplayName(client)}`} onClick={() => setDeleteClient(client)}><Trash2 className="h-4 w-4" /></Button>
               </div>
+              <button onClick={() => setLeadStageMutation.mutate({ id: client.id, stage: 'lead' })} className="mt-2 w-full text-xs font-semibold text-muted-foreground hover:text-foreground">↓ Move to Leads</button>
             </article>
           ))}
         </div>
@@ -487,9 +527,9 @@ export default function ClientsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClients.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No clients match your search.</TableCell></TableRow>
-              ) : filteredClients.map(c => (
+              {activeClients.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No active clients. New quote leads land in the Leads tab.</TableCell></TableRow>
+              ) : activeClients.map(c => (
                 <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
                   <TableCell className="font-semibold text-primary">{getClientDisplayName(c)}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || '—'}</TableCell>
@@ -532,6 +572,7 @@ export default function ClientsPage() {
                       <Button variant="ghost" size="sm" onClick={() => openOnboardModal(c)} title="Send Onboarding Form">
                         <Send className="w-4 h-4" />
                       </Button>
+                      <Button variant="ghost" size="sm" className="text-xs font-semibold text-muted-foreground" onClick={(e) => { e.stopPropagation(); setLeadStageMutation.mutate({ id: c.id, stage: 'lead' }); }} title="Move to Leads">↓ Lead</Button>
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteClient(c); }} title="Delete Client">
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -546,7 +587,30 @@ export default function ClientsPage() {
       )}
         </TabsContent>
 
-        <TabsContent value="leads" className="mt-4">
+        <TabsContent value="leads" className="mt-4 space-y-4">
+          {leadClients.length > 0 && (
+            <div className="bg-card rounded-2xl shadow-md border border-border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border text-sm font-bold text-muted-foreground uppercase tracking-wide">Clients not yet cleaning ({leadClients.length})</div>
+              <div className="divide-y divide-border">
+                {leadClients.map((c: any) => {
+                  const movable = !c.id.startsWith('property-') && !c.id.startsWith('qr-');
+                  return (
+                    <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => navigate(`/clients/${c.id}`)}>
+                        <p className="truncate font-semibold text-primary">{getClientDisplayName(c)}</p>
+                        <p className="truncate text-xs text-muted-foreground">{c.email || 'No email'} · {c.phone || 'No phone'}</p>
+                      </div>
+                      {movable ? (
+                        <Button variant="outline" size="sm" className="rounded-xl shrink-0" onClick={() => setLeadStageMutation.mutate({ id: c.id, stage: 'active' })}>↑ Move to Active</Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground shrink-0">Onboard first</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <LeadsTab />
         </TabsContent>
       </Tabs>
