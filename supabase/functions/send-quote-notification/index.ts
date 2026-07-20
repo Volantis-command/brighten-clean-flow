@@ -123,6 +123,34 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── New lead captured (instant-quote price reveal) ───
+    if (type === 'lead_captured') {
+      const { client_name, client_phone, client_email, clean_type, quoted } = body;
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+
+      for (const admin of (admins || [])) {
+        await supabase.from('notifications').insert({
+          user_id: admin.user_id,
+          type: 'quote',
+          title: '🔔 New lead',
+          message: `${client_name || 'New lead'}${client_phone ? ` · ${client_phone}` : ''}${client_email ? ` · ${client_email}` : ''} — ${clean_type || 'Instant quote'}${quoted ? ` ($${quoted})` : ''}`,
+          link: '/clients',
+        });
+
+        const { data: profile } = await supabase.from('profiles').select('phone').eq('id', admin.user_id).single();
+        if (profile?.phone) {
+          await sendTwilioSms(
+            formatAuPhone(profile.phone),
+            `🔔 New Brightly lead\n${client_name || 'Someone'} — ${client_phone || 'no phone'}${client_email ? `\n${client_email}` : ''}\n${clean_type || 'Instant quote'}${quoted ? ` · $${quoted}` : ''}`
+          );
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ─── Send quote SMS (professional quote link) ───
     if (type === 'send_quote_sms') {
       const { to, first_name, quote_url } = body;

@@ -137,6 +137,17 @@ export default function InstantQuotePage() {
       if (error) throw error;
       setLeadId(data?.id ?? null);
       setUnlocked(true);
+      // Ping admins (SMS + in-app) so no lead ever goes unseen. Non-blocking.
+      supabase.functions.invoke("send-quote-notification", {
+        body: {
+          type: "lead_captured",
+          client_name: fullName.trim(),
+          client_phone: phone.trim(),
+          client_email: email.trim(),
+          clean_type: cleanType,
+          quoted: Math.round(quote.sellIncGst),
+        },
+      }).catch(() => {});
     } catch (err: any) {
       toast.error(err.message || "Couldn't load your quote — try again");
     } finally {
