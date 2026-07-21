@@ -465,11 +465,35 @@ Deno.serve(async (req: Request) => {
       if (linkErr) throw new Error(`client_properties link: ${linkErr.message}`);
     }
 
+    // Residential auto-book: create the clean at the client's chosen slot so it
+    // lands in the schedule as a new job needing a cleaner. Airbnb never sends
+    // create_job — its dates track guest checkouts, so the admin coordinates it.
+    let jobId: string | null = null;
+    if (body.create_job && propertyId && body.scheduled_date) {
+      const { data: job, error: jobErr } = await supabase.from('jobs').insert({
+        property_id: propertyId,
+        scheduled_date: body.scheduled_date,
+        scheduled_time: body.scheduled_time || null,
+        status: 'pending_cleaner',
+        clean_type: body.clean_type || 'Standard Clean',
+        client_name: fullName,
+        price_inc_gst: body.price_inc_gst ?? null,
+        price_ex_gst: body.price_ex_gst ?? null,
+        estimated_duration: body.estimated_hours != null ? Math.round(Number(body.estimated_hours) * 60) : null,
+      } as any).select('id').single();
+      if (jobErr) {
+        console.error('auto-book job insert failed (non-fatal):', jobErr.message);
+      } else {
+        jobId = job?.id ?? null;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         client_profile_id: clientProfileId,
         property_id: propertyId,
+        job_id: jobId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

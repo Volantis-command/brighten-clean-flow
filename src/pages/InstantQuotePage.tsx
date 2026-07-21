@@ -97,8 +97,34 @@ export default function InstantQuotePage() {
   const [unlocked, setUnlocked] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
+  const [outcome, setOutcome] = useState<"booked" | "info" | null>(null);
 
   const cleanType = mode === "airbnb" ? "Airbnb / Short-Stay Turnover" : "Standard Clean";
+
+  // "I have a question — call me": capture the intent so the admin phones them
+  // instead of waiting for a booking that isn't coming.
+  const requestInfo = async () => {
+    setSubmitting(true);
+    try {
+      if (leadId) {
+        await supabase.from("quote_requests").update({ status: "info_requested" } as any).eq("id", leadId);
+      }
+      supabase.functions.invoke("send-quote-notification", {
+        body: {
+          type: "lead_captured", intent: "info", mode,
+          client_name: fullName.trim(), client_phone: phone.trim(), client_email: email.trim(),
+          clean_type: cleanType, quoted: Math.round(quote.sellIncGst),
+        },
+      }).catch(() => {});
+      setOutcome("info");
+      setPhase("done");
+      window.scrollTo(0, 0);
+    } catch (err: any) {
+      toast.error(err.message || "Something went wrong — call 0418 878 707");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Capture the lead the moment they ask to see their price. Everyone who
   // reveals a quote lands in the database — not just people who book.
@@ -123,7 +149,7 @@ export default function InstantQuotePage() {
         estimated_hours: quote.hours,
         total_ex_gst: Math.round(quote.sellExGst * 100) / 100,
         total_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
-        status: "form_submitted",
+        status: "price_viewed",
         form_submitted_at: new Date().toISOString(),
         addons: mode === "airbnb" ? { linen_required: linenIncluded, consumables: consumablesIncluded } : null,
         form_data: {
@@ -141,6 +167,8 @@ export default function InstantQuotePage() {
       supabase.functions.invoke("send-quote-notification", {
         body: {
           type: "lead_captured",
+          intent: "viewed",
+          mode,
           client_name: fullName.trim(),
           client_phone: phone.trim(),
           client_email: email.trim(),
@@ -240,13 +268,33 @@ export default function InstantQuotePage() {
             amenities_kit: consumablesIncluded,
             wash_kit: consumablesIncluded,
             tea_coffee_kit: consumablesIncluded,
-          } : {}),
+          } : {
+            // Residential can auto-book: create the clean at their chosen slot.
+            // (Airbnb turnovers can't — their dates track guest checkouts.)
+            create_job: true,
+            scheduled_date: preferredDate,
+            scheduled_time: preferredTime || null,
+            price_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
+            price_ex_gst: Math.round(quote.sellExGst * 100) / 100,
+            estimated_hours: quote.hours,
+          }),
         },
       }).catch((e) => console.error("link-intake-to-profile failed (non-blocking):", e));
 
-      // Admin heads-up (existing, deployed). Non-blocking.
+      // Admin heads-up — tells you the intent so you know how to act. Non-blocking.
       supabase.functions.invoke("send-quote-notification", {
-        body: { type: "intake_submitted", client_phone: phone.trim(), client_name: firstName, clean_type: cleanType, address: address.trim() },
+        body: {
+          type: "lead_captured",
+          intent: mode === "residential" ? "book_resi" : "book_airbnb",
+          mode,
+          client_name: fullName.trim(),
+          client_phone: phone.trim(),
+          client_email: email.trim() || null,
+          clean_type: cleanType,
+          quoted: Math.round(quote.sellIncGst),
+          address: address.trim(),
+          when: mode === "residential" ? `${preferredDate}${preferredTime ? " " + preferredTime : ""}` : null,
+        },
       }).catch(() => {});
 
       if (typeof (window as any).gtag === "function") {
@@ -255,6 +303,7 @@ export default function InstantQuotePage() {
           value: Math.round(quote.sellIncGst), currency: "AUD",
         });
       }
+      setOutcome("booked");
       setPhase("done");
       window.scrollTo(0, 0);
     } catch (err: any) {
@@ -273,13 +322,19 @@ export default function InstantQuotePage() {
           <CheckCircle2 size={40} color={GREEN} />
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: "0 0 12px" }}>
-          {mode === "airbnb" ? "Quote accepted" : "Booking requested"}
+          {outcome === "info"
+            ? "We'll call you shortly"
+            : mode === "residential"
+              ? "You're booked in!"
+              : "Quote accepted"}
         </h1>
         <p style={{ color: MUTED, maxWidth: 380, fontSize: 15, lineHeight: 1.6, margin: "0 0 24px" }}>
-          Your {type.name} {mode === "airbnb" ? "turnover" : "clean"} is <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel}.
-          {mode === "residential"
-            ? ` We'll confirm your ${preferredDate} slot and text you on ${phone}.`
-            : " We've got your property details — we'll set everything up and text you to lock it in."}
+          {outcome === "info"
+            ? <>We've got your quote of <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel} and one of the team will call you on {phone} shortly to answer your questions.</>
+            : <>Your {type.name} {mode === "airbnb" ? "turnover" : "clean"} is <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel}.
+              {mode === "residential"
+                ? ` Your ${preferredDate} slot is locked in — we'll text you on ${phone} to confirm your cleaner.`
+                : " We've got your property details — we'll set everything up and text you to lock in your turnover."}</>}
         </p>
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "16px 28px", color: MUTED, fontSize: 14 }}>
           <p style={{ fontWeight: 700, color: TEXT, margin: "0 0 2px" }}>Questions?</p>
@@ -417,6 +472,15 @@ export default function InstantQuotePage() {
                   </button>
                 </div>
               )}
+
+              {unlocked && (
+                <div style={{ marginTop: 18, textAlign: "center" }}>
+                  <button onClick={requestInfo} disabled={submitting}
+                    style={{ background: "transparent", border: "none", color: MUTED, fontSize: 13.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, opacity: submitting ? 0.6 : 1 }}>
+                    Not ready to book? I've got a question — call me
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -482,7 +546,7 @@ export default function InstantQuotePage() {
               <button onClick={submit} disabled={submitting}
                 style={{ flex: 1, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: submitting ? 0.7 : 1 }}>
                 {submitting && <Loader2 size={18} className="animate-spin" />}
-                {mode === "residential" ? "Request booking" : "Submit"}
+                {mode === "residential" ? "Confirm my booking" : "Request my turnover"}
               </button>
             </div>
           )}

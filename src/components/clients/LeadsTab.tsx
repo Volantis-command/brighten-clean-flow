@@ -16,6 +16,10 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending_form: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
   form_submitted: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
   awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  // Instant-quote lead stages — tell you at a glance how to act.
+  price_viewed: { label: '👀 Viewed Price', className: 'bg-[rgba(138,160,160,0.18)] text-[#566A6A]' },
+  info_requested: { label: '💬 Wants a Call', className: 'bg-[rgba(192,138,62,0.16)] text-[#8A6220]' },
+  booking_requested: { label: '🔔 Wants to Book', className: 'bg-emerald-100 text-[#3F5F57]' },
   quote_sent: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
   awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
   accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
@@ -70,7 +74,7 @@ export default function LeadsTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response', 'quote_declined', 'declined'];
+  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'price_viewed', 'info_requested', 'booking_requested', 'quote_sent', 'awaiting_client_response', 'quote_declined', 'declined'];
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['quote-requests-leads'],

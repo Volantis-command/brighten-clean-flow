@@ -123,25 +123,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── New lead captured (instant-quote price reveal) ───
+    // ─── New lead captured (instant-quote) — intent tells the admin how to act ───
     if (type === 'lead_captured') {
-      const { client_name, client_phone, client_email, clean_type, quoted } = body;
+      const { client_name, client_phone, client_email, clean_type, quoted, intent, when } = body;
+      // What did they actually do? Drives the emoji, the headline, and the action.
+      const HEAD: Record<string, { emoji: string; title: string; action: string }> = {
+        viewed:      { emoji: '👀', title: 'viewed their price',   action: 'Follow up to win the job.' },
+        info:        { emoji: '💬', title: 'wants a call',         action: 'Call them — they have a question.' },
+        book_airbnb: { emoji: '✅', title: 'wants to book (Airbnb)', action: 'Set up the turnover & confirm.' },
+        book_resi:   { emoji: '✅', title: 'BOOKED IN',            action: `Clean auto-created${when ? ` for ${when}` : ''} — assign a cleaner.` },
+      };
+      const h = HEAD[intent as string] || HEAD.viewed;
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
 
       for (const admin of (admins || [])) {
         await supabase.from('notifications').insert({
           user_id: admin.user_id,
           type: 'quote',
-          title: '🔔 New lead',
-          message: `${client_name || 'New lead'}${client_phone ? ` · ${client_phone}` : ''}${client_email ? ` · ${client_email}` : ''} — ${clean_type || 'Instant quote'}${quoted ? ` ($${quoted})` : ''}`,
-          link: '/clients',
+          title: `${h.emoji} Lead ${h.title}`,
+          message: `${client_name || 'New lead'}${client_phone ? ` · ${client_phone}` : ''}${client_email ? ` · ${client_email}` : ''} — ${clean_type || 'Instant quote'}${quoted ? ` ($${quoted})` : ''}. ${h.action}`,
+          link: intent === 'book_resi' ? '/schedule' : '/clients',
         });
 
         const { data: profile } = await supabase.from('profiles').select('phone').eq('id', admin.user_id).single();
         if (profile?.phone) {
           await sendTwilioSms(
             formatAuPhone(profile.phone),
-            `🔔 New Brightly lead\n${client_name || 'Someone'} — ${client_phone || 'no phone'}${client_email ? `\n${client_email}` : ''}\n${clean_type || 'Instant quote'}${quoted ? ` · $${quoted}` : ''}`
+            `${h.emoji} Brightly lead — ${h.title.toUpperCase()}\n${client_name || 'Someone'} — ${client_phone || 'no phone'}${client_email ? `\n${client_email}` : ''}\n${clean_type || 'Instant quote'}${quoted ? ` · $${quoted}` : ''}${when ? `\n🗓 ${when}` : ''}\n\n${h.action}`
           );
         }
       }
