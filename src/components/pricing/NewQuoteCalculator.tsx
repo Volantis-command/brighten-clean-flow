@@ -362,6 +362,14 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
         const bedroomCount = qr.bedrooms || 1;
         const parsedBedTypes = normaliseStoredBedTypes(fd.bed_types, bedroomCount);
 
+        // Instant-quote leads carry the exact price the customer was shown on the
+        // website. Pin the calculator to that number (via the manual-price override)
+        // so the admin sees and sends the SAME price — not a fresh recalculation
+        // that leaves out linen/consumables and undercuts what the client was quoted.
+        const instantTotal = qr.total_inc_gst != null ? Number(qr.total_inc_gst)
+          : (fd.quoted_inc_gst != null ? Number(fd.quoted_inc_gst) : null);
+        const fromInstantQuote = fd.source === 'instant_quote' || (instantTotal != null && instantTotal > 0);
+
         setForm(prev => ({
           ...prev,
           cleanType: ct,
@@ -379,7 +387,7 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
           sofaBeds: fd.sofa_beds != null ? Number(fd.sofa_beds) : 0,
           outdoorAreas: fd.outdoor_areas === true,
           bedTypes: parsedBedTypes.length > 0 ? parsedBedTypes : ['Queen'],
-          hours: fd.hours != null ? Number(fd.hours) : DEFAULT_HOURS[ct] || 3,
+          hours: fd.hours != null ? Number(fd.hours) : (qr.estimated_hours != null ? Number(qr.estimated_hours) : DEFAULT_HOURS[ct] || 3),
           notes: fd.quote_notes ?? [qr.extra_notes, fd.hosting_notes].filter(Boolean).join('\n'),
           consumables: {
             amenities_kit: storedConsumables.amenities_kit === true || fd.amenities_kit === true,
@@ -387,8 +395,8 @@ export default function NewQuoteCalculator({ editQuote, onSaved }: { editQuote?:
             tea_coffee_kit: storedConsumables.tea_coffee_kit === true || fd.tea_coffee_kit === true,
           },
           includePhotoReport: fd.include_photo_report === true,
-          manualPriceOverride: fd.manual_price_override === true,
-          manualPriceIncGst: fd.manual_price_inc_gst != null ? String(fd.manual_price_inc_gst) : '',
+          manualPriceOverride: fd.manual_price_override === true || (fromInstantQuote && instantTotal != null),
+          manualPriceIncGst: fd.manual_price_inc_gst != null ? String(fd.manual_price_inc_gst) : (fromInstantQuote && instantTotal != null ? String(instantTotal) : ''),
           gpOverride: fd.gp_override != null ? String(fd.gp_override) : '',
           discountGp: fd.discount_gp != null ? String(fd.discount_gp) : '',
           linenRequired: fd.linen_change === true,
