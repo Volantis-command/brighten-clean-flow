@@ -24,8 +24,9 @@ Deno.serve(async (req) => {
       bedrooms, bathrooms, bed_types,
       labour_cost, linen_cost, consumables_cost,
       gp_percent, sell_price_ex_gst, sell_price_inc_gst,
-      hours, notes, linen_required,
+      hours, notes, linen_required, clean_type,
     } = body;
+    const cleanType = clean_type || 'Airbnb Turnover';
 
     if (!client_name || !client_phone) {
       return new Response(JSON.stringify({ error: 'client_name and client_phone required' }), {
@@ -64,8 +65,8 @@ Deno.serve(async (req) => {
         actual_gp_percent: gp_percent || 0.35,
         hours: hours || null,
         notes: notes || null,
-        clean_type: 'Airbnb Turnover',
-        service_type: 'Airbnb Turnover',
+        clean_type: cleanType,
+        service_type: cleanType,
         linen_required: linen_required ?? (linen_cost > 0),
         status: 'sent',
         quote_token,

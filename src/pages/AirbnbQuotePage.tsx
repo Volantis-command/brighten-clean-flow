@@ -93,6 +93,15 @@ const TYPES = [
   { name: "4 bed 4 bath", beds: 4, baths: 4, labour: 4.0  },
 ];
 
+// Residential clean types — priced on labour hours × rate (no linen/consumables).
+const RESI_TYPES = [
+  { name: "Standard Clean", hours: 3 },
+  { name: "Deep Clean", hours: 5 },
+  { name: "Post-Renovation Clean", hours: 6 },
+  { name: "Bond / End of Lease Clean", hours: 6 },
+  { name: "Office / Commercial Clean", hours: 3 },
+];
+
 const fmt = (n: number) =>
   "$" + (isFinite(n) ? n : 0).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -126,6 +135,9 @@ export default function AirbnbQuotePage() {
   const [incGst, setIncGst] = useState(false);
   const [showRates, setShowRates] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
+  const [mode, setMode] = useState<'airbnb' | 'residential'>('airbnb');
+  const [resiIdx, setResiIdx] = useState(0);
+  const resiType = RESI_TYPES[resiIdx];
 
   // Send to client
   const [showSend, setShowSend] = useState(false);
@@ -151,6 +163,13 @@ export default function AirbnbQuotePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeIdx]);
 
+  // Residential: hours come from the selected clean type. Also resets hours
+  // when you switch between Airbnb and Residential.
+  useEffect(() => {
+    setLabourOverride(String(mode === 'residential' ? RESI_TYPES[resiIdx].hours : TYPES[typeIdx].labour));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, resiIdx]);
+
   const labourHrs    = labourOverride === "" ? type.labour : Number(labourOverride) || 0;
   const bedroomLinen = rooms.slice(0, type.beds).reduce((sum, cfg) => sum + configLinen(cfg, p), 0);
   const bathLinen    = type.baths * p.bath;
@@ -158,7 +177,7 @@ export default function AirbnbQuotePage() {
   const linenTotal   = bedroomLinen + bathLinen + kitchenLinen;
   const labourCost      = labourHrs * rates.labourRate;
   const consumablesTotal = rates.consumables * type.baths;
-  const cost            = labourCost + linenTotal + consumablesTotal;
+  const cost            = mode === 'airbnb' ? labourCost + linenTotal + consumablesTotal : labourCost;
   const sell         = cost / (1 - gp);
   const gpDollars    = sell - cost;
   const markup       = cost > 0 ? (sell - cost) / cost : 0;
@@ -187,18 +206,19 @@ export default function AirbnbQuotePage() {
           client_phone: sendPhone.trim(),
           client_email: sendEmail.trim() || null,
           property_name: sendPropName.trim() || null,
-          bedrooms: type.beds,
-          bathrooms: type.baths,
-          bed_types: rooms.slice(0, type.beds),
+          clean_type: mode === 'airbnb' ? 'Airbnb Turnover' : resiType.name,
+          bedrooms: mode === 'airbnb' ? type.beds : null,
+          bathrooms: mode === 'airbnb' ? type.baths : null,
+          bed_types: mode === 'airbnb' ? rooms.slice(0, type.beds) : null,
           labour_cost: labourCost,
-          linen_cost: linenTotal,
-          consumables_cost: consumablesTotal,
+          linen_cost: mode === 'airbnb' ? linenTotal : 0,
+          consumables_cost: mode === 'airbnb' ? consumablesTotal : 0,
           total_cost: cost,
           gp_percent: gp,
           sell_price_ex_gst: sell,
           sell_price_inc_gst: sell * 1.1,
           hours: labourHrs,
-          linen_required: linenTotal > 0,
+          linen_required: mode === 'airbnb' ? linenTotal > 0 : false,
           notes: sendNotes.trim() || null,
         },
       });
@@ -230,7 +250,7 @@ export default function AirbnbQuotePage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${GREEN}, ${YELLOW})` }} />
-                <span style={{ color: TEXT, fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em" }}>Airbnb Quote</span>
+                <span style={{ color: TEXT, fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em" }}>Quote Builder</span>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={resetAll} aria-label="Reset" style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 8, cursor: "pointer" }}>
@@ -242,10 +262,23 @@ export default function AirbnbQuotePage() {
               </div>
             </div>
 
+            {/* Mode toggle — Airbnb (linen/config) vs Residential (hours-based) */}
+            <div style={{ display: "flex", gap: 6, marginTop: 14, background: CARD, borderRadius: 12, padding: 4, border: `1px solid ${BORDER}` }}>
+              {([["airbnb", "Airbnb / Short-Stay"], ["residential", "Residential"]] as ['airbnb' | 'residential', string][]).map(([m, label]) => {
+                const active = mode === m;
+                return (
+                  <button key={m} onClick={() => setMode(m)}
+                    style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: active ? GREEN : "transparent", color: active ? "#000" : MUTED, transition: "all .15s" }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div style={{ marginTop: 14, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
               <div>
                 <div style={{ color: MUTED, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  Quote · {type.name}
+                  Quote · {mode === 'airbnb' ? type.name : resiType.name}
                 </div>
                 <div style={{ color: TEXT, fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
                   {fmt(animated)}
@@ -270,6 +303,23 @@ export default function AirbnbQuotePage() {
 
         <div style={{ padding: "18px 16px 0" }}>
 
+          {mode === 'residential' && (
+            <Section n="1" label="Clean type">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {RESI_TYPES.map((t, i) => {
+                  const active = i === resiIdx;
+                  return (
+                    <button key={t.name} onClick={() => setResiIdx(i)}
+                      style={{ border: active ? `1.5px solid ${GREEN}` : `1.5px solid ${BORDER}`, background: active ? GREEN : CARD, color: active ? '#000' : TEXT, borderRadius: 12, padding: "9px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}>
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+
+          {mode === 'airbnb' && (<>
           {/* ---- 1. PROPERTY SIZE ---- */}
           <Section n="1" label="Property size">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -317,14 +367,16 @@ export default function AirbnbQuotePage() {
             </div>
           </Section>
 
-          {/* ---- 3. LABOUR ---- */}
-          <Section n="3" label="Confirm labour">
+          </>)}
+
+          {/* ---- LABOUR (shared) ---- */}
+          <Section n={mode === 'airbnb' ? "3" : "2"} label="Confirm labour">
             <div style={{ background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: "hidden" }}>
               {/* Hours row */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderBottom: `1px solid ${BORDER}` }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>Hours on site</div>
-                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>Suggested {type.labour}h</div>
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>Suggested {mode === 'airbnb' ? type.labour : resiType.hours}h</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input inputMode="decimal" value={labourOverride}
@@ -386,10 +438,12 @@ export default function AirbnbQuotePage() {
             {showBreakdown && (
               <div style={{ padding: "0 16px 14px" }}>
                 <Line label="Labour"         sub={`${labourHrs}h × ${fmt(rates.labourRate)}`} val={labourCost} />
+                {mode === 'airbnb' && (<>
                 <Line label="Bedroom linen"  sub={`${type.beds} room${type.beds > 1 ? "s" : ""}`} val={bedroomLinen} />
                 <Line label="Bathroom linen" sub={`${type.baths} × ${fmt(p.bath)}`} val={bathLinen} />
                 <Line label="Kitchen linen"  sub="tea towel + bag" val={kitchenLinen} />
                 <Line label="Consumables" sub={`${type.baths} bath${type.baths > 1 ? 's' : ''} × ${fmt(rates.consumables)}`} val={consumablesTotal} />
+                </>)}
                 <div style={{ height: 1, background: BORDER, margin: "8px 0" }} />
                 <Line label="Total cost" val={cost} bold />
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "12px 14px", background: BG, borderRadius: 12, border: `1px solid ${BORDER}` }}>
