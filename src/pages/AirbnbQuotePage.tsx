@@ -93,14 +93,9 @@ const TYPES = [
   { name: "4 bed 4 bath", beds: 4, baths: 4, labour: 4.0  },
 ];
 
-// Residential clean types — priced on labour hours × rate (no linen/consumables).
-const RESI_TYPES = [
-  { name: "Standard Clean", hours: 3 },
-  { name: "Deep Clean", hours: 5 },
-  { name: "Post-Renovation Clean", hours: 6 },
-  { name: "Bond / End of Lease Clean", hours: 6 },
-  { name: "Office / Commercial Clean", hours: 3 },
-];
+// Residential — flat client sell rate, priced on property size × $70/hr.
+// (Matches the client Instant Quote tool exactly: no linen, no consumables, no GP.)
+const RESIDENTIAL_HOURLY = 70;
 
 const fmt = (n: number) =>
   "$" + (isFinite(n) ? n : 0).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -136,8 +131,6 @@ export default function AirbnbQuotePage() {
   const [showRates, setShowRates] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
   const [mode, setMode] = useState<'airbnb' | 'residential'>('airbnb');
-  const [resiIdx, setResiIdx] = useState(0);
-  const resiType = RESI_TYPES[resiIdx];
 
   // Send to client
   const [showSend, setShowSend] = useState(false);
@@ -163,13 +156,6 @@ export default function AirbnbQuotePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeIdx]);
 
-  // Residential: hours come from the selected clean type. Also resets hours
-  // when you switch between Airbnb and Residential.
-  useEffect(() => {
-    setLabourOverride(String(mode === 'residential' ? RESI_TYPES[resiIdx].hours : TYPES[typeIdx].labour));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, resiIdx]);
-
   const labourHrs    = labourOverride === "" ? type.labour : Number(labourOverride) || 0;
   const bedroomLinen = rooms.slice(0, type.beds).reduce((sum, cfg) => sum + configLinen(cfg, p), 0);
   const bathLinen    = type.baths * p.bath;
@@ -177,8 +163,9 @@ export default function AirbnbQuotePage() {
   const linenTotal   = bedroomLinen + bathLinen + kitchenLinen;
   const labourCost      = labourHrs * rates.labourRate;
   const consumablesTotal = rates.consumables * type.baths;
-  const cost            = mode === 'airbnb' ? labourCost + linenTotal + consumablesTotal : labourCost;
-  const sell         = cost / (1 - gp);
+  const cost            = labourCost + linenTotal + consumablesTotal;
+  // Airbnb: cost / (1 - GP). Residential: flat property-size hours × $70/hr sell.
+  const sell         = mode === 'airbnb' ? cost / (1 - gp) : type.labour * RESIDENTIAL_HOURLY;
   const gpDollars    = sell - cost;
   const markup       = cost > 0 ? (sell - cost) / cost : 0;
   const display      = incGst ? sell * 1.1 : sell;
@@ -200,30 +187,61 @@ export default function AirbnbQuotePage() {
     if (!sendName.trim() || !sendPhone.trim()) return;
     setSending(true);
     try {
+      const cleanType = mode === 'airbnb' ? 'Airbnb Turnover' : 'Standard Clean';
+      const quoteHours = mode === 'airbnb' ? labourHrs : type.labour;
       const { data, error } = await supabase.functions.invoke('create-airbnb-quote-and-send', {
         body: {
           client_name: sendName.trim(),
           client_phone: sendPhone.trim(),
           client_email: sendEmail.trim() || null,
           property_name: sendPropName.trim() || null,
-          clean_type: mode === 'airbnb' ? 'Airbnb Turnover' : resiType.name,
-          bedrooms: mode === 'airbnb' ? type.beds : null,
-          bathrooms: mode === 'airbnb' ? type.baths : null,
+          clean_type: cleanType,
+          bedrooms: type.beds,
+          bathrooms: type.baths,
           bed_types: mode === 'airbnb' ? rooms.slice(0, type.beds) : null,
           labour_cost: labourCost,
           linen_cost: mode === 'airbnb' ? linenTotal : 0,
           consumables_cost: mode === 'airbnb' ? consumablesTotal : 0,
-          total_cost: cost,
+          total_cost: mode === 'airbnb' ? cost : sell,
           gp_percent: gp,
           sell_price_ex_gst: sell,
           sell_price_inc_gst: sell * 1.1,
-          hours: labourHrs,
+          hours: quoteHours,
           linen_required: mode === 'airbnb' ? linenTotal > 0 : false,
           notes: sendNotes.trim() || null,
         },
       });
       if (error) throw error;
       setSentUrl(data.quote_url);
+
+      // Keep everyone we send a quote to — lands in Leads as "Quote sent" so no
+      // client's details are ever lost and you know the next action to take.
+      const nameParts = sendName.trim().split(/\s+/);
+      supabase.from('quote_requests').insert({
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(' ') || null,
+        phone: sendPhone.trim(),
+        email: sendEmail.trim() || null,
+        address: sendPropName.trim() || null,
+        clean_type: cleanType,
+        bedrooms: type.beds,
+        bathrooms: type.baths,
+        estimated_hours: quoteHours,
+        total_ex_gst: Math.round(sell * 100) / 100,
+        total_inc_gst: Math.round(sell * 110) / 100,
+        status: 'quote_sent',
+        form_submitted_at: new Date().toISOString(),
+        extra_notes: sendNotes.trim() || null,
+        form_data: {
+          source: 'quote_builder',
+          mode,
+          property_size: type.name,
+          quote_url: data.quote_url,
+          quoted_inc_gst: Math.round(sell * 110) / 100,
+        },
+      } as any).then(({ error: leadErr }) => {
+        if (leadErr) console.error('Lead capture failed (non-blocking):', leadErr);
+      });
     } catch (e) {
       alert('Failed to send quote. Check connection and try again.');
     } finally {
@@ -278,7 +296,7 @@ export default function AirbnbQuotePage() {
             <div style={{ marginTop: 14, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
               <div>
                 <div style={{ color: MUTED, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  Quote · {mode === 'airbnb' ? type.name : resiType.name}
+                  {mode === 'airbnb' ? `${type.name} · Turnover` : `${type.name} · Standard clean`}
                 </div>
                 <div style={{ color: TEXT, fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
                   {fmt(animated)}
@@ -290,12 +308,20 @@ export default function AirbnbQuotePage() {
                   style={{ background: incGst ? GREEN : CARD, color: incGst ? '#000' : MUTED, border: `1px solid ${incGst ? GREEN : BORDER}`, borderRadius: 20, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                   {incGst ? "inc GST" : "ex GST"}
                 </button>
-                <div style={{ color: YELLOW, fontSize: 12, fontWeight: 600, marginTop: 8, fontVariantNumeric: "tabular-nums" }}>
-                  GP {fmt(gpDollars)}
-                </div>
-                <div style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
-                  {(gp * 100).toFixed(0)}% margin
-                </div>
+                {mode === 'airbnb' ? (
+                  <>
+                    <div style={{ color: YELLOW, fontSize: 12, fontWeight: 600, marginTop: 8, fontVariantNumeric: "tabular-nums" }}>
+                      GP {fmt(gpDollars)}
+                    </div>
+                    <div style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
+                      {(gp * 100).toFixed(0)}% margin
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: MUTED, fontSize: 11, marginTop: 8 }}>
+                    {type.labour}h × ${RESIDENTIAL_HOURLY}/hr
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -303,24 +329,7 @@ export default function AirbnbQuotePage() {
 
         <div style={{ padding: "18px 16px 0" }}>
 
-          {mode === 'residential' && (
-            <Section n="1" label="Clean type">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {RESI_TYPES.map((t, i) => {
-                  const active = i === resiIdx;
-                  return (
-                    <button key={t.name} onClick={() => setResiIdx(i)}
-                      style={{ border: active ? `1.5px solid ${GREEN}` : `1.5px solid ${BORDER}`, background: active ? GREEN : CARD, color: active ? '#000' : TEXT, borderRadius: 12, padding: "9px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}>
-                      {t.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </Section>
-          )}
-
-          {mode === 'airbnb' && (<>
-          {/* ---- 1. PROPERTY SIZE ---- */}
+          {/* ---- 1. PROPERTY SIZE (both modes) ---- */}
           <Section n="1" label="Property size">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {TYPES.map((t, i) => {
@@ -341,6 +350,13 @@ export default function AirbnbQuotePage() {
             </div>
           </Section>
 
+          {mode === 'residential' && (
+            <div style={{ marginTop: -4, marginBottom: 18, textAlign: "center", fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
+              Standard residential clean, charged at ${RESIDENTIAL_HOURLY}/hr.
+            </div>
+          )}
+
+          {mode === 'airbnb' && (<>
           {/* ---- 2. BED CONFIG ---- */}
           <Section n="2" label="Bed config per room">
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -367,16 +383,14 @@ export default function AirbnbQuotePage() {
             </div>
           </Section>
 
-          </>)}
-
-          {/* ---- LABOUR (shared) ---- */}
-          <Section n={mode === 'airbnb' ? "3" : "2"} label="Confirm labour">
+          {/* ---- 3. LABOUR (Airbnb only) ---- */}
+          <Section n="3" label="Confirm labour">
             <div style={{ background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: "hidden" }}>
               {/* Hours row */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderBottom: `1px solid ${BORDER}` }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>Hours on site</div>
-                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>Suggested {mode === 'airbnb' ? type.labour : resiType.hours}h</div>
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>Suggested {type.labour}h</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input inputMode="decimal" value={labourOverride}
@@ -464,6 +478,7 @@ export default function AirbnbQuotePage() {
             Linen rates from real invoice (ex GST, 06/07/26).<br />
             Confirm labour is fully-loaded (super + workcover + insurance).
           </div>
+          </>)}
 
           {/* ---- SEND TO CLIENT ---- */}
           <div style={{ marginTop: 20 }}>
