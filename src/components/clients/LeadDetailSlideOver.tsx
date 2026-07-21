@@ -29,9 +29,8 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
     ? new Date(lead.preferred_date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : lead.asap ? 'As Soon As Possible' : null;
 
-  const handleSendQuote = () => {
-    onClose();
-    navigate('/quoting', { state: { quoteRequestId: lead.id } });
+  const handleCall = () => {
+    if (lead.phone) window.location.href = `tel:${lead.phone}`;
   };
 
   return (
@@ -100,9 +99,11 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
         </div>
 
         <div className="mt-8 space-y-3">
-          <Button onClick={handleSendQuote} className="w-full h-12 font-bold bg-primary text-[#0C463D]">
-            Open in Quote Calculator
-          </Button>
+          {lead.phone && (
+            <Button onClick={handleCall} className="w-full h-12 font-bold bg-primary text-primary-foreground">
+              📞 Call {lead.phone}
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose} className="w-full h-12">
             Close
           </Button>
