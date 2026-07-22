@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { Settings, X, ChevronDown, Bed, RotateCcw, Info, Send, Copy, Check, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -145,6 +146,8 @@ export default function AirbnbQuotePage() {
   const [sendNotes, setSendNotes] = useState('');
   const [photoMode, setPhotoMode] = useState<'free' | 'addon'>('addon'); // photo/damage report: free or $15 add-on
   const [sending, setSending] = useState(false);
+  const [prefillLeadId, setPrefillLeadId] = useState<string | null>(null);
+  const location = useLocation();
   const [sentUrl, setSentUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -160,6 +163,36 @@ export default function AirbnbQuotePage() {
     setLabourOverride(String(TYPES[typeIdx].labour));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeIdx]);
+
+  // ── Prefill from a lead (Leads → "Edit & send quote") ──
+  // Load the lead's config into the builder + open the send drawer with their
+  // contact details. Sending UPDATEs this same lead so it stays the one source
+  // of truth (no duplicate row).
+  useEffect(() => {
+    const lead = (location.state as any)?.prefillLead;
+    if (!lead) return;
+    const leadMode: 'airbnb' | 'residential' =
+      lead.form_data?.mode === 'residential' ? 'residential'
+      : String(lead.clean_type || '').toLowerCase().includes('airbnb') ? 'airbnb'
+      : lead.form_data?.mode === 'airbnb' ? 'airbnb' : 'residential';
+    setMode(leadMode);
+    const beds = Number(lead.bedrooms) || 0;
+    const baths = Number(lead.bathrooms) || 0;
+    let idx = TYPES.findIndex((t) => t.beds === beds && t.baths === baths);
+    if (idx < 0) idx = TYPES.findIndex((t) => t.beds === beds);
+    if (idx >= 0) setTypeIdx(idx);
+    if (leadMode === 'airbnb') setGp(0.30); // instant quote shows clients 30% — match it
+    setSendName([lead.first_name, lead.last_name].filter(Boolean).join(' ') || '');
+    setSendPhone(lead.phone || '');
+    setSendEmail(lead.email || '');
+    setSendPropName(lead.address || '');
+    setPrefillLeadId(lead.id || null);
+    setSentUrl(null);
+    setShowSend(true);
+    // Clear router state so a refresh doesn't re-trigger the prefill.
+    window.history.replaceState({}, '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const labourHrs    = labourOverride === "" ? type.labour : Number(labourOverride) || 0;
   const bedroomLinen = rooms.slice(0, type.beds).reduce((sum, cfg) => sum + configLinen(cfg, p), 0);
@@ -223,8 +256,10 @@ export default function AirbnbQuotePage() {
 
       // Keep everyone we send a quote to — lands in Leads as "Quote sent" so no
       // client's details are ever lost and you know the next action to take.
+      // If we opened FROM a lead (Edit & send quote), UPDATE that same row so it
+      // stays the single source of truth — no duplicate lead.
       const nameParts = sendName.trim().split(/\s+/);
-      supabase.from('quote_requests').insert({
+      const leadRow = {
         first_name: nameParts[0],
         last_name: nameParts.slice(1).join(' ') || null,
         phone: sendPhone.trim(),
@@ -245,8 +280,13 @@ export default function AirbnbQuotePage() {
           property_size: type.name,
           quote_url: data.quote_url,
           quoted_inc_gst: Math.round(sell * 110) / 100,
+          photo_report_fee: photoMode === 'addon' ? 15 : 0,
         },
-      } as any).then(({ error: leadErr }) => {
+      };
+      const leadWrite = prefillLeadId
+        ? supabase.from('quote_requests').update(leadRow as any).eq('id', prefillLeadId)
+        : supabase.from('quote_requests').insert(leadRow as any);
+      leadWrite.then(({ error: leadErr }) => {
         if (leadErr) console.error('Lead capture failed (non-blocking):', leadErr);
       });
     } catch (e) {

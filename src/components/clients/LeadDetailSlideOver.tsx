@@ -1,7 +1,8 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, FileText, Phone, Mail, Home, Wrench, Loader2, UserPlus } from 'lucide-react';
+import { Calendar, Clock, MapPin, FileText, Phone, Mail, Home, Wrench, Loader2, UserPlus, FilePen } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -61,8 +62,17 @@ function stageInfo(lead: any) {
 }
 
 export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
+  const navigate = useNavigate();
   const [addingClient, setAddingClient] = useState(false);
   if (!lead) return null;
+
+  // Open the Quote Builder pre-filled with this lead's config so you can edit
+  // the quote and send it back. The lead stays the source of truth — sending
+  // updates THIS lead (not a duplicate). See AirbnbQuotePage prefill handling.
+  const handleEditQuote = () => {
+    navigate('/airbnb-quote', { state: { prefillLead: lead } });
+    onClose();
+  };
 
   const name = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—';
   const preferredDate = lead.preferred_date
@@ -142,8 +152,11 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
         </div>
 
         <div className="mt-8 space-y-3">
+          <Button onClick={handleEditQuote} className="w-full h-12 font-bold bg-primary text-primary-foreground gap-2">
+            <FilePen className="w-4 h-4" /> Edit &amp; send quote
+          </Button>
           {lead.phone && (
-            <Button onClick={handleCall} className="w-full h-12 font-bold bg-primary text-primary-foreground">
+            <Button variant="outline" onClick={handleCall} className="w-full h-12 font-bold gap-2">
               <Phone className="w-4 h-4" /> Call {lead.phone}
             </Button>
           )}
