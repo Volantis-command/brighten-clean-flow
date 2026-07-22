@@ -91,6 +91,10 @@ const TYPES = [
   { name: "4 bed 2 bath", beds: 4, baths: 2, labour: 3.25 },
   { name: "4 bed 3 bath", beds: 4, baths: 3, labour: 3.5  },
   { name: "4 bed 4 bath", beds: 4, baths: 4, labour: 4.0  },
+  { name: "5 bed 2 bath", beds: 5, baths: 2, labour: 3.75 },
+  { name: "5 bed 3 bath", beds: 5, baths: 3, labour: 4.0  },
+  { name: "6 bed 3 bath", beds: 6, baths: 3, labour: 4.5  },
+  { name: "6 bed 4 bath", beds: 6, baths: 4, labour: 5.0  },
 ];
 
 // Residential — flat client sell rate, priced on property size × $70/hr.
