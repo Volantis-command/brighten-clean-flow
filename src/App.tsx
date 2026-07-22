@@ -23,7 +23,6 @@ const EditJobPage = lazy(() => import('./pages/EditJobPage'));
 const PropertyProfilePage = lazy(() => import('./pages/PropertyProfilePage'));
 const PropertyFormPage = lazy(() => import('./pages/PropertyFormPage'));
 const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
-const QuotingPage = lazy(() => import('./pages/QuotingPage'));
 const AirbnbQuotePage = lazy(() => import('./pages/AirbnbQuotePage'));
 const StaffPage = lazy(() => import('./pages/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -244,7 +243,8 @@ function AppRoutes() {
         <Route path="/jobs/:jobId/edit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><EditJobPage /></ProtectedRoute>} />
         <Route path="/jobs/:jobId/checklist" element={<JobChecklistPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
-        <Route path="/quoting" element={<ProtectedRoute allowedRoles={['admin']}><QuotingPage /></ProtectedRoute>} />
+        {/* Quotes merged into the Clients hub (Stage 2). Old links land there. */}
+        <Route path="/quoting" element={<Navigate to="/clients" replace />} />
         <Route path="/airbnb-quote" element={<ProtectedRoute allowedRoles={['admin']}><AirbnbQuotePage /></ProtectedRoute>} />
         <Route path="/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffPage /></ProtectedRoute>} />
         <Route path="/clients" element={<ProtectedRoute allowedRoles={['admin']}><ClientsPage /></ProtectedRoute>} />

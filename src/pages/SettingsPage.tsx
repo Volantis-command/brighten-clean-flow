@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import BusinessSection from '@/components/settings/BusinessSection';
 import TeamSection from '@/components/settings/TeamSection';
 import PricingSection from '@/components/settings/PricingSection';
+import RateSettings from '@/components/pricing/RateSettings';
 import PropertiesSection from '@/components/settings/PropertiesSection';
 import ClientsSection from '@/components/settings/ClientsSection';
 import AppSettingsSection from '@/components/settings/AppSettingsSection';
@@ -187,7 +188,7 @@ export default function SettingsPage() {
 
         <TabsContent value="business"><BusinessSection /></TabsContent>
         <TabsContent value="team"><TeamSection /></TabsContent>
-        <TabsContent value="pricing"><PricingSection /></TabsContent>
+        <TabsContent value="pricing" className="space-y-6"><PricingSection /><RateSettings /></TabsContent>
         <TabsContent value="properties"><PropertiesSection /></TabsContent>
         <TabsContent value="clients"><ClientsSection /></TabsContent>
         <TabsContent value="app"><AppSettingsSection /></TabsContent>

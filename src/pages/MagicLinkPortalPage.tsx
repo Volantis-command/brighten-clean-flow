@@ -12,15 +12,15 @@ import {
   parseISO,
 } from 'date-fns';
 
-/* ── Theme — dark admin palette ────────────────────────────────── */
-const BG     = '#0B0F17';
-const CARD   = '#131920';
-const CARD2  = '#1A2130';
-const BORDER = 'rgba(255,255,255,0.07)';
-const GREEN  = '#4ADE80';
-const YELLOW = '#FEDB00';
-const WHITE  = '#FFFFFF';
-const MUTED  = 'rgba(255,255,255,0.45)';
+/* ── Theme — Sea Glass (light) palette ─────────────────────────── */
+const BG     = '#F4F7F6';   // page background
+const CARD   = '#FFFFFF';   // cards
+const CARD2  = '#EEF3F2';   // raised / hover
+const BORDER = '#E4EBEA';   // hairlines
+const GREEN  = '#2E9AA0';   // teal — the single action colour
+const YELLOW = '#E0AE7C';   // warm accent
+const WHITE  = '#243231';   // primary ink text (name kept to limit churn)
+const MUTED  = '#8AA0A0';   // secondary text
 
 
 const ACTIVE     = ['confirmed', 'scheduled', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'in_progress'];
@@ -28,7 +28,7 @@ const NEEDS_ATTN = ['pending_cleaner', 'awaiting_cleaner_acceptance'];
 const DONE       = ['completed', 'complete'];
 
 function jobStatus(s: string) {
-  if (DONE.includes(s))        return { label: 'Completed',    color: 'rgba(255,255,255,0.28)' };
+  if (DONE.includes(s))        return { label: 'Completed',    color: 'rgba(0,0,0,0.28)' };
   if (s === 'in_progress')     return { label: 'In Progress',  color: '#60A5FA' };
   if (NEEDS_ATTN.includes(s)) return { label: 'Needs Cleaner', color: '#F59E0B' };
   if (s === 'cancelled')       return { label: 'Cancelled',    color: '#EF4444' };
@@ -130,7 +130,7 @@ function PortalMonthCalendar({
               onClick={() => setSelectedDate(dStr)}
               className="text-left p-1.5 min-h-[68px] transition-colors"
               style={{
-                background: isSel ? 'rgba(74,222,128,0.07)' : CARD,
+                background: isSel ? 'rgba(46,154,160,0.10)' : CARD,
                 outline: isSel ? `1.5px solid ${GREEN}` : isToday ? `1.5px solid ${YELLOW}` : 'none',
                 opacity: inMonth ? 1 : 0.22,
               }}
@@ -145,7 +145,7 @@ function PortalMonthCalendar({
                 {visible.slice(0, 2).map((j: any) => {
                   const isDone = DONE.includes(j.status);
                   const isAttn = NEEDS_ATTN.includes(j.status);
-                  const dotColor = isDone ? 'rgba(255,255,255,0.28)' : isAttn ? '#F59E0B' : GREEN;
+                  const dotColor = isDone ? 'rgba(0,0,0,0.28)' : isAttn ? '#F59E0B' : GREEN;
                   const prop = properties.find((p: any) => p.id === j.property_id);
                   const label = prop?.property_name || '·';
                   return (
@@ -153,7 +153,7 @@ function PortalMonthCalendar({
                       key={j.id}
                       className="text-[8px] font-bold px-1 py-0.5 rounded truncate leading-tight"
                       style={{
-                        background: isDone ? 'rgba(255,255,255,0.05)' : `${dotColor}1A`,
+                        background: isDone ? 'rgba(0,0,0,0.05)' : `${dotColor}1A`,
                         color: dotColor,
                       }}
                     >
@@ -176,7 +176,7 @@ function PortalMonthCalendar({
           { color: GREEN,                     label: 'Scheduled' },
           { color: '#F59E0B',                 label: 'Needs Cleaner' },
           { color: '#60A5FA',                 label: 'In Progress' },
-          { color: 'rgba(255,255,255,0.25)',  label: 'Completed' },
+          { color: 'rgba(0,0,0,0.25)',  label: 'Completed' },
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ background: l.color }} />
@@ -214,7 +214,7 @@ function PortalMonthCalendar({
                     <div className="flex items-start gap-2.5">
                       <div
                         className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
-                        style={{ background: si.color === 'rgba(255,255,255,0.28)' ? 'rgba(255,255,255,0.28)' : GREEN }}
+                        style={{ background: si.color === 'rgba(0,0,0,0.28)' ? 'rgba(0,0,0,0.28)' : GREEN }}
                       />
                       <div>
                         <p className="text-sm font-bold" style={{ color: WHITE }}>
@@ -536,7 +536,7 @@ export default function MagicLinkPortalPage() {
         {/* Greeting + client logo */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: YELLOW }}>
+            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: GREEN }}>
               Welcome back
             </p>
             <h1 className="text-2xl font-extrabold leading-tight mt-0.5" style={{ color: WHITE }}>
@@ -619,7 +619,7 @@ export default function MagicLinkPortalPage() {
 
         {/* Footer */}
         <div className="text-center pt-4 pb-6">
-          <p className="text-xs font-extrabold" style={{ color: 'rgba(255,255,255,0.13)' }}>
+          <p className="text-xs font-extrabold" style={{ color: 'rgba(0,0,0,0.13)' }}>
             Brightly<span style={{ color: 'rgba(254,219,0,0.2)' }}>.</span>
           </p>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Bot, Calculator, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bot, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
 import { Logo } from '@/components/Logo';
@@ -24,8 +24,7 @@ const navItems: NavItem[] = [
   { label: 'Map', path: '/map', icon: MapPin, roles: ['admin', 'head_cleaner'] },
   { label: 'Quality (QC)', path: '/qc', icon: ClipboardCheck, roles: ['admin', 'head_cleaner'] },
   { label: 'Ask Brightly', path: '/ai-assistant', icon: Bot, roles: ['admin', 'head_cleaner', 'cleaner'] },
-  { label: 'Quotes', path: '/quoting', icon: Calculator, roles: ['admin'] },
-  { label: 'Airbnb Quote', path: '/airbnb-quote', icon: Sparkles, roles: ['admin'] },
+  { label: 'Quote Builder', path: '/airbnb-quote', icon: Sparkles, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
   { label: 'Staff', path: '/staff', icon: Users, roles: ['admin'] },
   { label: 'Timesheets', path: '/timesheets', icon: ClipboardList, roles: ['admin'] },

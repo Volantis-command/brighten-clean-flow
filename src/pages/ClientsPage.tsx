@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { sendJobSms } from '@/lib/sendJobSms';
 import LeadsTab from '@/components/clients/LeadsTab';
+import SavedQuotesList from '@/components/pricing/SavedQuotesList';
 import SendQuoteLinkModal from '@/components/dashboard/SendQuoteLinkModal';
 import { getAppBaseUrl } from '@/lib/appUrl';
 
@@ -468,9 +469,10 @@ export default function ClientsPage() {
       </div>
 
       <Tabs defaultValue="clients" className="w-full">
-        <TabsList className="w-full grid grid-cols-2 rounded-2xl h-12">
+        <TabsList className="w-full grid grid-cols-3 rounded-2xl h-12">
           <TabsTrigger value="clients" className="rounded-xl font-bold">Clients</TabsTrigger>
           <TabsTrigger value="leads" className="rounded-xl font-bold">Leads</TabsTrigger>
+          <TabsTrigger value="quotes" className="rounded-xl font-bold">Quotes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="clients" className="mt-4">
@@ -612,6 +614,16 @@ export default function ClientsPage() {
             </div>
           )}
           <LeadsTab />
+        </TabsContent>
+
+        <TabsContent value="quotes" className="mt-4 space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <h2 className="text-lg font-extrabold text-primary">Sent quotes</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Every quote you've sent from the Quote Builder — with its link and status. New quotes also appear in <span className="font-semibold text-foreground">Leads</span> as “Quote sent”.
+            </p>
+          </div>
+          <SavedQuotesList onEdit={() => {}} />
         </TabsContent>
       </Tabs>
 
