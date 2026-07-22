@@ -188,7 +188,10 @@ export default function AirbnbQuotePage() {
     setSendPropName(lead.address || '');
     setPrefillLeadId(lead.id || null);
     setSentUrl(null);
-    setShowSend(true);
+    // Land on the FULL editable builder (not the send drawer) so you can change
+    // beds/baths, bed config, hours, GP, add-ons — everything — before sending.
+    // Her contact details are already loaded; open "Send Quote" when ready.
+    window.scrollTo(0, 0);
     // Clear router state so a refresh doesn't re-trigger the prefill.
     window.history.replaceState({}, '');
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -375,6 +378,12 @@ export default function AirbnbQuotePage() {
         </div>
 
         <div style={{ padding: "18px 16px 0" }}>
+
+          {prefillLeadId && (
+            <div style={{ marginBottom: 16, background: `${GREEN}14`, border: `1px solid ${GREEN}44`, borderRadius: 12, padding: "10px 14px", fontSize: 12.5, color: TEXT }}>
+              ✎ Editing <b>{sendName || 'this lead'}</b>’s quote — change anything below, then tap <b>Send Quote to Client</b>. Sending updates their lead (no duplicate).
+            </div>
+          )}
 
           {/* ---- 1. PROPERTY SIZE (both modes) ---- */}
           <Section n="1" label="Property size">
