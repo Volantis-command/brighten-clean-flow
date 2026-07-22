@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+// Public page — always read/write as the anon role, never the admin's session,
+// so a logged-in admin sees the quote just like a logged-out client does.
+import { supabasePublic as supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle2, XCircle, Send, Phone, Shield, Star, Clock, CalendarDays } from 'lucide-react';
 import { TimeSelect } from '@/components/ui/time-select';
 import { toast } from 'sonner';

@@ -38,3 +38,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Public (anon-only) client for CLIENT-FACING pages like the quote view. It never
+// attaches a logged-in user's session, so a public quote reads the same whether
+// the viewer is anonymous (a client) or an admin who happens to be logged in.
+// Fixes "Quote link expired or invalid" for logged-in admins previewing a quote.
+export const supabasePublic = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  }
+});
