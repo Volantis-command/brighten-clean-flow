@@ -423,12 +423,8 @@ export default function AirbnbQuotePage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Bedroom {i + 1}</div>
-                    <div style={{ position: "relative", marginTop: 3 }}>
-                      <select value={cfg} onChange={(e) => setRoom(i, e.target.value)}
-                        style={{ width: "100%", border: "none", background: "transparent", fontSize: 15, fontWeight: 600, color: TEXT, paddingRight: 22, cursor: "pointer", fontFamily: "inherit", appearance: "none" as const }}>
-                        {BED_CONFIGS.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                      </select>
-                      <ChevronDown size={15} color={MUTED} style={{ position: "absolute", right: 0, top: 3, pointerEvents: "none" }} />
+                    <div style={{ marginTop: 3 }}>
+                      <BedSelect value={cfg} onChange={(v) => setRoom(i, v)} />
                     </div>
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: GREEN, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
@@ -729,6 +725,38 @@ export default function AirbnbQuotePage() {
 }
 
 // ---- Sub-components ----
+
+// Custom tap-based dropdown for bed config. Native <select> onChange is
+// unreliable in the desktop app webview (picks don't register), so we use
+// onClick like the buttons that do work.
+function BedSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", fontSize: 15, fontWeight: 600, color: TEXT, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 2 }}>
+        <span>{value}</span>
+        <ChevronDown size={15} color={MUTED} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 45 }} />
+          <div style={{ position: "absolute", top: "calc(100% + 6px)", left: -6, right: -6, background: "#1A2130", border: `1px solid ${BORDER}`, borderRadius: 12, zIndex: 50, maxHeight: 260, overflowY: "auto", boxShadow: "0 12px 34px rgba(0,0,0,0.55)" }}>
+            {BED_CONFIGS.map((c) => {
+              const active = c.name === value;
+              return (
+                <button key={c.name} type="button" onClick={() => { onChange(c.name); setOpen(false); }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", border: "none", background: active ? `${GREEN}22` : "transparent", color: active ? GREEN : TEXT, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function Section({ n, label, children }: { n: string; label: string; children: ReactNode }) {
   return (
