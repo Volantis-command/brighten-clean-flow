@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
       labour_cost, linen_cost, consumables_cost,
       gp_percent, sell_price_ex_gst, sell_price_inc_gst,
       hours, notes, linen_required, clean_type,
+      include_photo_report, photo_report_fee,
     } = body;
     const cleanType = clean_type || 'Airbnb Turnover';
 
@@ -67,6 +68,10 @@ Deno.serve(async (req) => {
         notes: notes || null,
         clean_type: cleanType,
         service_type: cleanType,
+        consumables_selection: {
+          include_photo_report: include_photo_report ?? false,
+          photo_report_fee: photo_report_fee ?? 0,
+        },
         linen_required: linen_required ?? (linen_cost > 0),
         status: 'sent',
         quote_token,

@@ -143,6 +143,7 @@ export default function AirbnbQuotePage() {
   const [sendEmail, setSendEmail] = useState('');
   const [sendPropName, setSendPropName] = useState('');
   const [sendNotes, setSendNotes] = useState('');
+  const [photoMode, setPhotoMode] = useState<'free' | 'addon'>('addon'); // photo/damage report: free or $15 add-on
   const [sending, setSending] = useState(false);
   const [sentUrl, setSentUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -212,6 +213,8 @@ export default function AirbnbQuotePage() {
           sell_price_inc_gst: sell * 1.1,
           hours: quoteHours,
           linen_required: mode === 'airbnb' ? linenTotal > 0 : false,
+          include_photo_report: true,
+          photo_report_fee: photoMode === 'addon' ? 15 : 0,
           notes: sendNotes.trim() || null,
         },
       });
@@ -575,6 +578,27 @@ export default function AirbnbQuotePage() {
                 <SendField label="Email (optional)" value={sendEmail} onChange={setSendEmail} placeholder="client@example.com" type="email" />
                 <SendField label="Property name / address" value={sendPropName} onChange={setSendPropName} placeholder="e.g. Broadwater Lux, 12 Marine Pde" />
                 <SendField label="Notes for client (optional)" value={sendNotes} onChange={setSendNotes} placeholder="e.g. Includes linen changeover for all bedrooms" multiline />
+
+                {/* Photo / damage reporting — free or a $15 add-on the client can toggle */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 6 }}>
+                    Photo &amp; damage report
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {([["free", "Free ($0)"], ["addon", "Add-on ($15)"]] as ['free' | 'addon', string][]).map(([m, label]) => {
+                      const active = photoMode === m;
+                      return (
+                        <button key={m} type="button" onClick={() => setPhotoMode(m)}
+                          style={{ flex: 1, border: `1.5px solid ${active ? GREEN : BORDER}`, background: active ? GREEN : BG, color: active ? '#000' : TEXT, borderRadius: 12, padding: "11px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>
+                    Client sees a “Photo reporting” toggle at {photoMode === 'addon' ? '+$15' : '$0'}. Damage reporting is always listed as included.
+                  </div>
+                </div>
 
                 <button
                   onClick={handleSendQuote}

@@ -54,10 +54,10 @@ function getInclusions(quote: any): string[] {
     const cs = (quote?.consumables_selection || {}) as Record<string, any>;
 
     if (quote?.linen_required === true) items.push('Fresh linen supplied & made up');
+    items.push('Damage reporting');
     if (cs.amenities_kit === true) items.push('Guest amenities kit (shampoo, soap, etc.)');
     if (cs.wash_kit === true) items.push('Laundry / wash kit');
     if (cs.tea_coffee_kit === true) items.push('Tea & coffee restock');
-    if (cs.include_photo_report === true) items.push('Photo report after every clean');
 
     return items;
   }
@@ -87,22 +87,32 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * Used by BOTH the live display and the accept handlers so the price the
  * client sees is exactly the price that gets saved, invoiced and charged.
  */
-function computeAdjustedQuote(quote: any, linenOn: boolean, consumablesOn: boolean) {
+function computeAdjustedQuote(quote: any, linenOn: boolean, consumablesOn: boolean, photoOn: boolean = true) {
   const labourCostStored = Number(quote?.labour_cost || 0);
   const linenCostStored = Number(quote?.linen_cost || 0);
   const consumablesCostStored = Number(quote?.consumables_cost || 0);
   const gpPct = Number(quote?.gp_percent || 0);
   const hasInteractive = (linenCostStored > 0 || consumablesCostStored > 0) && gpPct > 0;
 
+  // Photo/damage reporting add-on — a FLAT inc-GST fee ($0 if admin made it
+  // free, $15 if a paid add-on) set on the quote by admin. Added on top of the
+  // base clean price; the stored sell_price is always the base (photo excluded).
+  const cs = (quote?.consumables_selection || {}) as Record<string, any>;
+  const photoFeeInc = Number(cs?.photo_report_fee || 0);
+  const photoAddInc = photoOn ? photoFeeInc : 0;
+  const photoAddExc = photoAddInc / 1.1;
+
   const cost = labourCostStored
     + (linenOn ? linenCostStored : 0)
     + (consumablesOn ? consumablesCostStored : 0);
-  const sellExGst = hasInteractive && labourCostStored > 0
+  const baseExGst = hasInteractive && labourCostStored > 0
     ? cost / (1 - gpPct)
     : Number(quote?.sell_price_ex_gst || 0);
-  const sellIncGst = hasInteractive && labourCostStored > 0
-    ? sellExGst * 1.1
+  const baseIncGst = hasInteractive && labourCostStored > 0
+    ? baseExGst * 1.1
     : Number(quote?.sell_price_inc_gst || quote?.price || 0);
+  const sellExGst = baseExGst + photoAddExc;
+  const sellIncGst = baseIncGst + photoAddInc;
   const linenSellContrib = hasInteractive && gpPct > 0
     ? (linenCostStored / (1 - gpPct)) * 1.1
     : linenCostStored;
@@ -114,13 +124,32 @@ function computeAdjustedQuote(quote: any, linenOn: boolean, consumablesOn: boole
     labourCostStored, linenCostStored, consumablesCostStored, gpPct,
     hasInteractive, cost, sellExGst, sellIncGst,
     linenSellContrib, consumablesSellContrib,
+    photoFeeInc, photoAddInc,
   };
 }
 
 /** The quote-row patch that persists a client's toggle choices at accept time. */
-function pricingPatchForAccept(quote: any, linenOn: boolean, consumablesOn: boolean) {
-  const a = computeAdjustedQuote(quote, linenOn, consumablesOn);
-  if (!a.hasInteractive) return {};
+function pricingPatchForAccept(quote: any, linenOn: boolean, consumablesOn: boolean, photoOn: boolean = true) {
+  const a = computeAdjustedQuote(quote, linenOn, consumablesOn, photoOn);
+  const cs = (quote?.consumables_selection || {}) as Record<string, any>;
+  const photoAvailable = cs.include_photo_report === true;
+  const photoPatch = photoAvailable
+    ? { consumables_selection: { ...cs, photo_report_selected: photoOn } }
+    : {};
+
+  if (!a.hasInteractive) {
+    // No interactive linen/consumables — but still persist a photo-adjusted
+    // total so the accepted price matches what the client saw.
+    if (photoAvailable) {
+      return {
+        sell_price_ex_gst: round2(a.sellExGst),
+        sell_price_inc_gst: round2(a.sellIncGst),
+        gst: round2(a.sellExGst * 0.1),
+        ...photoPatch,
+      };
+    }
+    return {};
+  }
   return {
     sell_price_ex_gst: round2(a.sellExGst),
     sell_price_inc_gst: round2(a.sellIncGst),
@@ -129,6 +158,7 @@ function pricingPatchForAccept(quote: any, linenOn: boolean, consumablesOn: bool
     linen_required: linenOn,
     linen_cost: linenOn ? round2(a.linenCostStored) : 0,
     consumables_cost: consumablesOn ? round2(a.consumablesCostStored) : 0,
+    ...photoPatch,
   };
 }
 
@@ -366,6 +396,7 @@ export default function QuoteViewPage() {
   // Interactive pricing
   const [linenOn, setLinenOn] = useState(true);
   const [consumablesOn, setConsumablesOn] = useState(true);
+  const [photoOn, setPhotoOn] = useState(true);
 
   // AI chat
   const [chatHistory, setChatHistory] = useState<{role: string; content: string}[]>([]);
@@ -458,7 +489,7 @@ export default function QuoteViewPage() {
     try {
       // Persist the client's linen/consumables toggle choices + adjusted price
       // so the accepted quote matches exactly what they saw on screen.
-      const adj = computeAdjustedQuote(quote, linenOn, consumablesOn);
+      const adj = computeAdjustedQuote(quote, linenOn, consumablesOn, photoOn);
       await (supabase as any).from('quotes').update({
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
@@ -466,7 +497,7 @@ export default function QuoteViewPage() {
         tcs_accepted: true,
         tcs_accepted_at: new Date().toISOString(),
         tcs_version: '2026-03',
-        ...pricingPatchForAccept(quote, linenOn, consumablesOn),
+        ...pricingPatchForAccept(quote, linenOn, consumablesOn, photoOn),
       }).eq('quote_token', token);
 
       if (quote.lead_id) {
@@ -499,7 +530,7 @@ export default function QuoteViewPage() {
       toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  }, [tcsAccepted, isAirbnbQuote, quote, token, linenOn, consumablesOn]);
+  }, [tcsAccepted, isAirbnbQuote, quote, token, linenOn, consumablesOn, photoOn]);
 
   // ─── Step 2: Confirm booking with date/time ───
   const handleConfirmBooking = useCallback(async () => {
@@ -511,7 +542,7 @@ export default function QuoteViewPage() {
       // because that function reads the price back off the quote row (not the
       // request body). This is what makes the job + Xero invoice bill exactly
       // what the client saw and accepted.
-      const adj = computeAdjustedQuote(quote, linenOn, consumablesOn);
+      const adj = computeAdjustedQuote(quote, linenOn, consumablesOn, photoOn);
       await (supabase as any).from('quotes').update({
         status: 'accepted',
         quote_accepted_at: new Date().toISOString(),
@@ -519,7 +550,7 @@ export default function QuoteViewPage() {
         tcs_accepted: true,
         tcs_accepted_at: new Date().toISOString(),
         tcs_version: '2026-03',
-        ...pricingPatchForAccept(quote, linenOn, consumablesOn),
+        ...pricingPatchForAccept(quote, linenOn, consumablesOn, photoOn),
       }).eq('quote_token', token);
 
       // 2. Update quote_requests if linked
@@ -570,7 +601,7 @@ export default function QuoteViewPage() {
       toast.error(e.message || 'Something went wrong. Please try again.');
     }
     setConfirming(false);
-  }, [quote, token, preferredDate, preferredTime, linenOn, consumablesOn]);
+  }, [quote, token, preferredDate, preferredTime, linenOn, consumablesOn, photoOn]);
 
   // ─── Decline flow ───
   const handleDecline = useCallback(async () => {
@@ -675,9 +706,14 @@ export default function QuoteViewPage() {
   const cleanType = quote.clean_type || quote.service_type || 'Clean';
   const inclusions = getInclusions(quote);
 
+  // Photo/damage reporting add-on availability (set by admin on the quote).
+  const photoCs = (quote?.consumables_selection || {}) as Record<string, any>;
+  const photoAvailable = photoCs.include_photo_report === true;
+  const photoFeeInc = Number(photoCs.photo_report_fee || 0);
+
   // Interactive pricing — derived from the SAME helper the accept handlers use,
   // so what the client sees is exactly what gets saved and invoiced.
-  const adjusted = computeAdjustedQuote(quote, linenOn, consumablesOn);
+  const adjusted = computeAdjustedQuote(quote, linenOn, consumablesOn, photoOn);
   const { hasInteractive, linenCostStored, consumablesCostStored, linenSellContrib, consumablesSellContrib } = adjusted;
   const price = adjusted.sellIncGst;
 
@@ -776,7 +812,7 @@ export default function QuoteViewPage() {
         </div>
 
         {/* ═══ ADJUST YOUR QUOTE ═══ */}
-        {hasInteractive && (
+        {(hasInteractive || photoAvailable) && (
           <div className="space-y-3 fade-in" style={{ animationDelay: '0.35s' }}>
             <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2 px-1">
               <span style={{ color: '#4ADE80' }}>⚙</span> Adjust Your Quote
@@ -829,6 +865,28 @@ export default function QuoteViewPage() {
                     >
                       <span className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
                         style={{ transform: consumablesOn ? 'translateX(22px)' : 'translateX(2px)' }} />
+                    </button>
+                  </div>
+                </label>
+              )}
+
+              {photoAvailable && (
+                <label className="flex items-center justify-between cursor-pointer py-1">
+                  <div>
+                    <div className="text-sm font-semibold text-white">Photo reporting</div>
+                    <div className="text-xs text-white/60">Full photo report delivered after every clean</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold" style={{ color: '#4ADE80' }}>
+                      {photoFeeInc > 0 ? `+$${photoFeeInc.toFixed(2)}` : '$0'}
+                    </span>
+                    <button
+                      onClick={() => setPhotoOn(v => !v)}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                      style={{ background: photoOn ? '#4ADE80' : 'rgba(74,222,128,0.12)' }}
+                    >
+                      <span className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: photoOn ? 'translateX(22px)' : 'translateX(2px)' }} />
                     </button>
                   </div>
                 </label>
