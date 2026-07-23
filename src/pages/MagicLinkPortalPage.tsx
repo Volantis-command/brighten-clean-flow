@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Loader2, ChevronLeft, ChevronRight, ChevronRight as ArrowRight,
-  Calendar, Home, Send, CheckCircle2,
+  Calendar, Home, Send, CheckCircle2, Building2, User, Phone, Mail,
+  MapPin, Bed, Bath, KeyRound, Car, Wifi, FileText, Clock,
+  AlertTriangle, Receipt, Sparkles, ShieldCheck, Users,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
@@ -302,8 +304,8 @@ function PortalMonthCalendar({
 
 /* ── Properties tab ─────────────────────────────────────────────── */
 function PropertiesTab({
-  properties, jobs, token, navigate,
-}: { properties: any[]; jobs: any[]; token: string; navigate: (to: string) => void }) {
+  properties, jobs, onSelect,
+}: { properties: any[]; jobs: any[]; onSelect: (id: string) => void }) {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   return (
@@ -318,7 +320,7 @@ function PropertiesTab({
         return (
           <button
             key={prop.id}
-            onClick={() => navigate(`/client/${token}/property/${prop.id}`)}
+            onClick={() => onSelect(prop.id)}
             className="w-full text-left rounded-2xl overflow-hidden transition-colors"
             style={{
               background: CARD,
@@ -373,11 +375,387 @@ function PropertiesTab({
   );
 }
 
+/* ── UI atoms ───────────────────────────────────────────────────── */
+function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between mb-2.5 mt-1">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: MUTED }}>{children}</p>
+      {action}
+    </div>
+  );
+}
+
+function Card({ children, className = '', accent }: { children: React.ReactNode; className?: string; accent?: string }) {
+  return (
+    <div className={`rounded-2xl ${className}`}
+      style={{ background: CARD, border: `1px solid ${accent || BORDER}`, boxShadow: '0 1px 2px rgba(36,50,49,0.04), 0 8px 24px rgba(36,50,49,0.05)' }}>
+      {children}
+    </div>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${GREEN}14` }}>
+        <Icon className="w-4 h-4" style={{ color: GREEN }} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10.5px] font-bold uppercase tracking-wider" style={{ color: MUTED }}>{label}</p>
+        <p className="text-sm font-semibold break-words" style={{ color: WHITE }}>{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ value, label, tone }: { value: React.ReactNode; label: string; tone?: string }) {
+  return (
+    <Card className="p-3.5 text-center">
+      <p className="text-[19px] font-extrabold leading-none" style={{ color: tone || WHITE }}>{value}</p>
+      <p className="text-[10.5px] mt-1.5 font-semibold" style={{ color: MUTED }}>{label}</p>
+    </Card>
+  );
+}
+
+/* ── HOME ───────────────────────────────────────────────────────── */
+function HomeTab({
+  greeting, clientName, logoUrl, properties, jobs, avgScore, goTo, openProperty,
+}: any) {
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayJobs = jobs.filter((j: any) => j.scheduled_date === todayStr && !['cancelled'].includes(j.status));
+  const upcoming = jobs
+    .filter((j: any) => j.scheduled_date >= todayStr && ACTIVE.includes(j.status))
+    .sort((a: any, b: any) => a.scheduled_date.localeCompare(b.scheduled_date));
+  const lastDone = jobs.filter((j: any) => DONE.includes(j.status))
+    .sort((a: any, b: any) => b.scheduled_date.localeCompare(a.scheduled_date))[0];
+  const attention = upcoming.filter((j: any) => NEEDS_ATTN.includes(j.status));
+  const propName = (id: string) => properties.find((p: any) => p.id === id)?.property_name || 'Property';
+  const next = upcoming[0];
+
+  return (
+    <div className="space-y-6">
+      {/* Hero */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-extrabold tracking-[0.16em] uppercase" style={{ color: GREEN }}>Welcome back</p>
+          <h1 className="text-[26px] font-extrabold leading-tight mt-1 tracking-tight" style={{ color: WHITE }}>
+            {greeting}, {clientName}.
+          </h1>
+          <p className="text-sm mt-1.5" style={{ color: MUTED }}>
+            {properties.length === 1 ? '1 property' : `${properties.length} properties`} managed by Brightly.
+          </p>
+        </div>
+        {logoUrl && <img src={logoUrl} alt="" className="h-14 w-auto object-contain shrink-0 opacity-90" />}
+      </div>
+
+      {/* Today */}
+      {todayJobs.length > 0 && (
+        <div>
+          <SectionTitle>Today</SectionTitle>
+          <Card accent={`${GREEN}55`}>
+            {todayJobs.map((j: any, idx: number) => {
+              const si = jobStatus(j.status);
+              return (
+                <button key={j.id} onClick={() => openProperty(j.property_id)}
+                  className="w-full text-left flex items-center gap-3 px-4 py-3.5"
+                  style={{ borderTop: idx ? `1px solid ${BORDER}` : 'none' }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${GREEN}18` }}>
+                    <Sparkles className="w-4 h-4" style={{ color: GREEN }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-extrabold truncate" style={{ color: WHITE }}>{propName(j.property_id)}</p>
+                    <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                      {j.scheduled_time ? j.scheduled_time.slice(0, 5) : 'Time TBC'} · cleaning today
+                    </p>
+                  </div>
+                  <span className="text-[10.5px] font-bold px-2 py-1 rounded-full shrink-0"
+                    style={{ background: `${si.color}18`, color: si.color }}>{si.label}</span>
+                </button>
+              );
+            })}
+          </Card>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2.5">
+        <Stat value={properties.length || '—'} label="Properties" />
+        <Stat value={upcoming.length || '—'} label="Upcoming" tone={upcoming.length ? GREEN : undefined} />
+        <Stat value={avgScore ? `${avgScore}%` : '—'} label="Avg quality"
+          tone={avgScore && avgScore >= 90 ? GREEN : avgScore ? YELLOW : undefined} />
+      </div>
+
+      {/* Needs attention */}
+      {attention.length > 0 && (
+        <Card accent="rgba(245,158,11,0.4)" className="px-4 py-3.5 flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#D68A18' }} />
+          <div>
+            <p className="text-sm font-extrabold" style={{ color: WHITE }}>
+              {attention.length} clean{attention.length > 1 ? 's' : ''} awaiting a cleaner
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: MUTED }}>We're allocating your team — we'll confirm shortly.</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Next clean */}
+      <div>
+        <SectionTitle action={
+          <button onClick={() => goTo('calendar')} className="text-[11px] font-bold" style={{ color: GREEN }}>View calendar →</button>
+        }>Next clean</SectionTitle>
+        {next ? (
+          <Card className="px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl flex flex-col items-center justify-center shrink-0" style={{ background: `${GREEN}14` }}>
+                <span className="text-[9px] font-bold uppercase leading-none" style={{ color: GREEN }}>
+                  {format(parseISO(next.scheduled_date), 'MMM')}
+                </span>
+                <span className="text-base font-extrabold leading-none mt-0.5" style={{ color: GREEN }}>
+                  {format(parseISO(next.scheduled_date), 'd')}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-extrabold truncate" style={{ color: WHITE }}>{propName(next.property_id)}</p>
+                <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                  {format(parseISO(next.scheduled_date), 'EEEE d MMMM')}
+                  {next.scheduled_time ? ` · ${next.scheduled_time.slice(0, 5)}` : ''}
+                </p>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card className="px-4 py-5 text-center">
+            <p className="text-sm" style={{ color: MUTED }}>No upcoming cleans booked.</p>
+          </Card>
+        )}
+      </div>
+
+      {/* Last clean */}
+      {lastDone && (
+        <div>
+          <SectionTitle>Last clean</SectionTitle>
+          <Card className="px-4 py-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${GREEN}14` }}>
+              <CheckCircle2 className="w-4 h-4" style={{ color: GREEN }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold truncate" style={{ color: WHITE }}>{propName(lastDone.property_id)}</p>
+              <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                Completed {format(parseISO(lastDone.scheduled_date), 'd MMMM')}
+              </p>
+            </div>
+            {lastDone.report_token && (
+              <a href={`/report/${lastDone.report_token}`} target="_blank" rel="noreferrer"
+                className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg shrink-0"
+                style={{ background: `${GREEN}14`, color: GREEN }}>Report</a>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Quick nav */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <button onClick={() => goTo('properties')}>
+          <Card className="px-4 py-4 text-left">
+            <Building2 className="w-4 h-4 mb-2" style={{ color: GREEN }} />
+            <p className="text-sm font-extrabold" style={{ color: WHITE }}>My properties</p>
+            <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>Details, access & history</p>
+          </Card>
+        </button>
+        <button onClick={() => goTo('calendar')}>
+          <Card className="px-4 py-4 text-left">
+            <Calendar className="w-4 h-4 mb-2" style={{ color: GREEN }} />
+            <p className="text-sm font-extrabold" style={{ color: WHITE }}>Calendar</p>
+            <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>Past & upcoming cleans</p>
+          </Card>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── PROPERTY DETAIL ────────────────────────────────────────────── */
+function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack: () => void }) {
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const mine = jobs.filter((j: any) => j.property_id === prop.id);
+  const upcoming = mine.filter((j: any) => j.scheduled_date >= todayStr && ACTIVE.includes(j.status))
+    .sort((a: any, b: any) => a.scheduled_date.localeCompare(b.scheduled_date));
+  const past = mine.filter((j: any) => DONE.includes(j.status))
+    .sort((a: any, b: any) => b.scheduled_date.localeCompare(a.scheduled_date));
+
+  const fullAddress = [prop.address, prop.suburb, prop.state, prop.postcode].filter(Boolean).join(', ');
+  const beds = prop.bed_config || prop.bed_types || null;
+  const accessBits = [
+    prop.access_method && `Method: ${prop.access_method}`,
+    prop.access_code && `Code: ${prop.access_code}`,
+    prop.lockbox_code && `Lockbox: ${prop.lockbox_code}`,
+    prop.alarm_code && `Alarm: ${prop.alarm_code}`,
+    prop.garage_code && `Garage: ${prop.garage_code}`,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <div className="space-y-5">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: GREEN }}>
+        <ChevronLeft className="w-4 h-4" /> All properties
+      </button>
+
+      <Card className="overflow-hidden">
+        {prop.hero_image_url && <img src={prop.hero_image_url} alt="" className="w-full h-40 object-cover" />}
+        <div className="p-4">
+          <h2 className="text-xl font-extrabold tracking-tight" style={{ color: WHITE }}>{prop.property_name || 'Property'}</h2>
+          {fullAddress && <p className="text-sm mt-1" style={{ color: MUTED }}>{fullAddress}</p>}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {[
+              prop.bedrooms != null && `${prop.bedrooms} bed`,
+              prop.bathrooms != null && `${prop.bathrooms} bath`,
+              prop.max_guests && `${prop.max_guests} guests`,
+              prop.property_type,
+              prop.platform,
+            ].filter(Boolean).map((t: any) => (
+              <span key={t} className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+                style={{ background: CARD2, color: WHITE }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Property info */}
+      <div>
+        <SectionTitle>Property details</SectionTitle>
+        <Card className="divide-y overflow-hidden" >
+          <InfoRow icon={MapPin} label="Address" value={fullAddress} />
+          <InfoRow icon={Bed} label="Bed configuration" value={beds} />
+          <InfoRow icon={Bath} label="Bathrooms" value={prop.bathrooms != null ? String(prop.bathrooms) : null} />
+          <InfoRow icon={KeyRound} label="Entry & access" value={accessBits || prop.access_details || prop.access_notes} />
+          <InfoRow icon={Car} label="Parking" value={prop.parking_instructions} />
+          <InfoRow icon={Wifi} label="WiFi" value={prop.guest_wifi || prop.wifi_password} />
+          <InfoRow icon={Clock} label="Check-in / out" value={
+            prop.checkin_time || prop.checkout_time
+              ? `${prop.checkout_time ? `Out ${prop.checkout_time}` : ''}${prop.checkout_time && prop.checkin_time ? ' · ' : ''}${prop.checkin_time ? `In ${prop.checkin_time}` : ''}`
+              : null} />
+          <InfoRow icon={FileText} label="Special instructions" value={prop.special_instructions || prop.property_notes} />
+          <InfoRow icon={Users} label="Pets" value={prop.pet_notes} />
+        </Card>
+      </div>
+
+      {/* Upcoming */}
+      <div>
+        <SectionTitle>Upcoming cleans</SectionTitle>
+        <Card className="overflow-hidden">
+          {upcoming.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-center" style={{ color: MUTED }}>No upcoming cleans.</p>
+          ) : upcoming.map((j: any, i: number) => {
+            const si = jobStatus(j.status);
+            return (
+              <div key={j.id} className="flex items-center justify-between gap-3 px-4 py-3.5"
+                style={{ borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: WHITE }}>
+                    {format(parseISO(j.scheduled_date), 'EEE d MMM yyyy')}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                    {j.scheduled_time ? j.scheduled_time.slice(0, 5) : 'Time TBC'}
+                  </p>
+                </div>
+                <span className="text-[10.5px] font-bold px-2 py-1 rounded-full"
+                  style={{ background: `${si.color}18`, color: si.color }}>{si.label}</span>
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+
+      {/* Past cleans + reports */}
+      <div>
+        <SectionTitle>Past cleans</SectionTitle>
+        <Card className="overflow-hidden">
+          {past.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-center" style={{ color: MUTED }}>No completed cleans yet.</p>
+          ) : past.slice(0, 25).map((j: any, i: number) => (
+            <div key={j.id} className="flex items-center justify-between gap-3 px-4 py-3.5"
+              style={{ borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" style={{ color: WHITE }}>
+                  {format(parseISO(j.scheduled_date), 'EEE d MMM yyyy')}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="text-xs" style={{ color: MUTED }}>Completed</span>
+                  {j.feedback_score != null && (
+                    <span className="text-[10.5px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: `${GREEN}14`, color: GREEN }}>{j.feedback_score}%</span>
+                  )}
+                  {j.damage_reported && (
+                    <span className="text-[10.5px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: 'rgba(214,138,24,0.14)', color: '#D68A18' }}>Damage reported</span>
+                  )}
+                </div>
+              </div>
+              {j.report_token && (
+                <a href={`/report/${j.report_token}`} target="_blank" rel="noreferrer"
+                  className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg shrink-0"
+                  style={{ background: `${GREEN}14`, color: GREEN }}>View report</a>
+              )}
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN ──────────────────────────────────────────────────────── */
+function AdminTab({ profile, properties }: { profile: any; properties: any[] }) {
+  const p0 = properties[0] || {};
+  const company = profile?.full_name || p0.business_name || p0.client_name || '—';
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-[22px] font-extrabold tracking-tight" style={{ color: WHITE }}>Account</h2>
+        <p className="text-sm mt-1" style={{ color: MUTED }}>Your company & billing details on file with Brightly.</p>
+      </div>
+
+      <div>
+        <SectionTitle>Company</SectionTitle>
+        <Card className="overflow-hidden">
+          <InfoRow icon={Building2} label="Company name" value={company} />
+          <InfoRow icon={FileText} label="ABN" value={p0.abn} />
+          <InfoRow icon={Building2} label="Properties managed" value={String(properties.length)} />
+        </Card>
+      </div>
+
+      <div>
+        <SectionTitle>Contact</SectionTitle>
+        <Card className="overflow-hidden">
+          <InfoRow icon={User} label="Primary contact" value={profile?.full_name || p0.client_name} />
+          <InfoRow icon={Phone} label="Phone" value={profile?.phone || p0.client_phone} />
+          <InfoRow icon={Mail} label="Email" value={profile?.email || p0.client_email} />
+          <InfoRow icon={Receipt} label="Accounts / billing email" value={p0.billing_email || p0.client_email} />
+          <InfoRow icon={FileText} label="Payment terms" value={p0.payment_terms} />
+        </Card>
+      </div>
+
+      <div>
+        <SectionTitle>Your Brightly team</SectionTitle>
+        <Card className="overflow-hidden">
+          <a href="tel:0418878707"><InfoRow icon={Phone} label="Call us" value="0418 878 707" /></a>
+          <a href="mailto:hello@brightly.cleaning"><InfoRow icon={Mail} label="Email us" value="hello@brightly.cleaning" /></a>
+          <InfoRow icon={ShieldCheck} label="Fully insured" value="Public liability & workers cover" />
+        </Card>
+        <p className="text-[11px] mt-3 px-1 leading-relaxed" style={{ color: MUTED }}>
+          Need something changed — a detail above, a clean time, or a new property added? Call or email us and we'll update it for you.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main page ─────────────────────────────────────────────────── */
 export default function MagicLinkPortalPage() {
   const { token }  = useParams<{ token: string }>();
   const navigate   = useNavigate();
-  const [tab, setTab] = useState<'calendar' | 'properties'>('calendar');
+  const [tab, setTab] = useState<'home' | 'calendar' | 'properties' | 'admin'>('home');
+  const [selectedProp, setSelectedProp] = useState<string | null>(null);
 
   /* ── Token → client lookup ─────────────────────────────────────── */
   const { data: clientProp, isLoading: loadingToken, error: tokenError } = useQuery({
@@ -424,7 +802,7 @@ export default function MagicLinkPortalPage() {
       if (!clientId) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, logo_url')
+        .select('full_name, logo_url, email, phone')
         .eq('id', clientId)
         .single();
       return data;
@@ -508,123 +886,93 @@ export default function MagicLinkPortalPage() {
   }
 
   /* ── Render ──────────────────────────────────────────────────── */
+  const openProperty = (id: string) => { setSelectedProp(id); setTab('properties'); window.scrollTo(0, 0); };
+  const goTo = (t: typeof tab) => { setTab(t); setSelectedProp(null); window.scrollTo(0, 0); };
+  const detail = selectedProp ? properties.find((p: any) => p.id === selectedProp) : null;
+
+  const TABS = [
+    { key: 'home',       label: 'Home',       icon: Home },
+    { key: 'calendar',   label: 'Calendar',   icon: Calendar },
+    { key: 'properties', label: 'Properties', icon: Building2 },
+    { key: 'admin',      label: 'Admin',      icon: User },
+  ] as const;
+
   return (
     <div className="min-h-screen" style={{ background: BG }}>
 
-      {/* Sticky header */}
+      {/* App bar */}
       <header
         className="sticky top-0 z-40 px-5 flex items-center justify-between"
         style={{
-          background: 'rgba(11,15,23,0.92)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: `2px solid ${GREEN}`,
+          background: 'rgba(244,247,246,0.85)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          borderBottom: `1px solid ${BORDER}`,
         }}
       >
-        <span className="text-xl font-extrabold py-3.5" style={{ color: WHITE }}>
-          Brightly<span style={{ color: YELLOW }}>.</span>
+        <span className="text-[19px] font-extrabold py-3.5 tracking-tight" style={{ color: WHITE }}>
+          Brightly<span style={{ color: GREEN }}>.</span>
         </span>
         <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: `${GREEN}18`, color: GREEN, border: `1px solid ${GREEN}30` }}
+          className="text-[10.5px] font-bold px-2.5 py-1 rounded-full"
+          style={{ background: `${GREEN}14`, color: GREEN }}
         >
           Client Portal
         </span>
       </header>
 
-      <main className="max-w-2xl mx-auto px-5 py-7 space-y-6">
-
-        {/* Greeting + client logo */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: GREEN }}>
-              Welcome back
-            </p>
-            <h1 className="text-2xl font-extrabold leading-tight mt-0.5" style={{ color: WHITE }}>
-              {greeting}, {clientName}.
-            </h1>
-            <p className="text-sm mt-1.5" style={{ color: MUTED }}>
-              {properties.length === 1 ? '1 property' : `${properties.length} properties`} managed by Brightly.
-            </p>
-          </div>
-          {logoUrl && (
-            <img
-              src={logoUrl}
-              alt="Client logo"
-              className="h-24 w-auto object-contain shrink-0"
-            />
-          )}
-        </div>
-
-        {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            {
-              value: upcomingCount > 0 ? upcomingCount : '—',
-              label: 'Upcoming',
-              color: GREEN,
-            },
-            {
-              value: lastCompleted ? format(parseISO(lastCompleted.scheduled_date), 'd MMM') : '—',
-              label: 'Last clean',
-              color: WHITE,
-            },
-            {
-              value: avgScore ? `${avgScore}%` : '—',
-              label: 'Avg quality',
-              color: avgScore && avgScore >= 90 ? GREEN : avgScore ? YELLOW : WHITE,
-            },
-          ].map(s => (
-            <div
-              key={s.label}
-              className="rounded-2xl p-3.5 text-center"
-              style={{ background: CARD, border: `1px solid ${BORDER}` }}
-            >
-              <p className="text-xl font-extrabold" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Tab bar */}
-        <div
-          className="flex gap-1 p-1 rounded-xl"
-          style={{ background: CARD, border: `1.5px solid ${GREEN}40` }}
-        >
-          {(['calendar', 'properties'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold transition-all"
-              style={
-                tab === t
-                  ? { background: GREEN, color: '#000' }
-                  : { color: MUTED }
-              }
-            >
-              {t === 'calendar'
-                ? <Calendar className="w-3.5 h-3.5" />
-                : <Home className="w-3.5 h-3.5" />
-              }
-              {t === 'calendar' ? 'Calendar' : 'Properties'}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
-        {tab === 'calendar' ? (
-          <PortalMonthCalendar jobs={jobs} properties={properties} token={token!} />
-        ) : (
-          <PropertiesTab properties={properties} jobs={jobs} token={token!} navigate={navigate} />
+      {/* Content — bottom padding clears the tab bar */}
+      <main className="max-w-2xl mx-auto px-5 pt-6" style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
+        {tab === 'home' && (
+          <HomeTab
+            greeting={greeting} clientName={clientName} logoUrl={logoUrl}
+            properties={properties} jobs={jobs} avgScore={avgScore}
+            goTo={goTo} openProperty={openProperty}
+          />
         )}
 
-        {/* Footer */}
-        <div className="text-center pt-4 pb-6">
-          <p className="text-xs font-extrabold" style={{ color: 'rgba(0,0,0,0.13)' }}>
-            Brightly<span style={{ color: 'rgba(254,219,0,0.2)' }}>.</span>
-          </p>
-        </div>
+        {tab === 'calendar' && (
+          <PortalMonthCalendar jobs={jobs} properties={properties} token={token!} />
+        )}
 
+        {tab === 'properties' && (
+          detail
+            ? <PropertyDetail prop={detail} jobs={jobs} onBack={() => { setSelectedProp(null); window.scrollTo(0, 0); }} />
+            : <PropertiesTab properties={properties} jobs={jobs} onSelect={openProperty} />
+        )}
+
+        {tab === 'admin' && <AdminTab profile={profile} properties={properties} />}
       </main>
+
+      {/* Bottom tab bar */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50"
+        style={{
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderTop: `1px solid ${BORDER}`,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -6px 24px rgba(36,50,49,0.06)',
+        }}
+      >
+        <div className="max-w-2xl mx-auto grid grid-cols-4">
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => goTo(key as typeof tab)}
+                className="flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
+                style={{ color: active ? GREEN : MUTED }}
+              >
+                <Icon className="w-[21px] h-[21px]" strokeWidth={active ? 2.4 : 1.9} />
+                <span className="text-[10.5px] font-bold tracking-tight">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
