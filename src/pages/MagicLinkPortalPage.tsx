@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, createContext, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 // Public client-facing page — always read as anon, never the admin's session.
@@ -7,7 +7,7 @@ import {
   Loader2, ChevronLeft, ChevronRight, ChevronRight as ArrowRight,
   Calendar, Home, Send, CheckCircle2, Building2, User, Phone, Mail,
   MapPin, Bed, Bath, KeyRound, Car, Wifi, FileText, Clock,
-  AlertTriangle, Receipt, Sparkles, ShieldCheck, Users,
+  AlertTriangle, Receipt, Sparkles, ShieldCheck, Users, Sun, Moon,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
@@ -15,33 +15,54 @@ import {
   parseISO,
 } from 'date-fns';
 
-/* ── Theme — Sea Glass (light) palette ─────────────────────────── */
-const BG     = '#F4F7F6';   // page background
-const CARD   = '#FFFFFF';   // cards
-const CARD2  = '#EEF3F2';   // raised / hover
-const BORDER = '#E4EBEA';   // hairlines
-const GREEN  = '#2E9AA0';   // teal — the single action colour
-const YELLOW = '#E0AE7C';   // warm accent
-const WHITE  = '#243231';   // primary ink text (name kept to limit churn)
-const MUTED  = '#8AA0A0';   // secondary text
+/* ── Theme — Brightly, light (Sea Glass) or dark. Client's choice. ──
+   Both palettes use the SAME keys so every component just destructures
+   the active one. WHITE = primary text (name kept to limit churn). */
+type Palette = {
+  BG: string; CARD: string; CARD2: string; BORDER: string;
+  GREEN: string; YELLOW: string; WHITE: string; MUTED: string;
+  DIM: string; FAINT: string; BARBG: string; HEADBG: string; SHADOW: string;
+};
+
+const LIGHT: Palette = {
+  BG: '#F4F7F6', CARD: '#FFFFFF', CARD2: '#EEF3F2', BORDER: '#E4EBEA',
+  GREEN: '#2E9AA0', YELLOW: '#C98A46', WHITE: '#243231', MUTED: '#8AA0A0',
+  DIM: 'rgba(36,50,49,0.28)', FAINT: 'rgba(36,50,49,0.05)',
+  BARBG: 'rgba(255,255,255,0.92)', HEADBG: 'rgba(244,247,246,0.85)',
+  SHADOW: '0 1px 2px rgba(36,50,49,0.04), 0 8px 24px rgba(36,50,49,0.05)',
+};
+
+const DARK: Palette = {
+  BG: '#0E1413', CARD: '#18211F', CARD2: '#212C2A', BORDER: 'rgba(255,255,255,0.09)',
+  GREEN: '#45C2C8', YELLOW: '#E8B983', WHITE: '#F2F7F6', MUTED: 'rgba(242,247,246,0.55)',
+  DIM: 'rgba(242,247,246,0.32)', FAINT: 'rgba(255,255,255,0.05)',
+  BARBG: 'rgba(14,20,19,0.92)', HEADBG: 'rgba(14,20,19,0.85)',
+  SHADOW: '0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.35)',
+};
+
+const PaletteCtx = createContext<Palette>(LIGHT);
+const usePalette = () => useContext(PaletteCtx);
+const THEME_KEY = 'brightly-portal-theme';
 
 
 const ACTIVE     = ['confirmed', 'scheduled', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'in_progress'];
 const NEEDS_ATTN = ['pending_cleaner', 'awaiting_cleaner_acceptance'];
 const DONE       = ['completed', 'complete'];
 
-function jobStatus(s: string) {
-  if (DONE.includes(s))        return { label: 'Completed',    color: 'rgba(0,0,0,0.28)' };
-  if (s === 'in_progress')     return { label: 'In Progress',  color: '#60A5FA' };
-  if (NEEDS_ATTN.includes(s)) return { label: 'Needs Cleaner', color: '#F59E0B' };
-  if (s === 'cancelled')       return { label: 'Cancelled',    color: '#EF4444' };
-  return { label: 'Scheduled', color: GREEN };
+function jobStatus(s: string, P: Palette) {
+  if (DONE.includes(s))       return { label: 'Completed',    color: P.DIM,    done: true };
+  if (s === 'in_progress')    return { label: 'In Progress',  color: '#60A5FA', done: false };
+  if (NEEDS_ATTN.includes(s)) return { label: 'Needs Cleaner', color: '#F59E0B', done: false };
+  if (s === 'cancelled')      return { label: 'Cancelled',    color: '#EF4444', done: false };
+  return { label: 'Scheduled', color: P.GREEN, done: false };
 }
 
 /* ── Month Calendar ─────────────────────────────────────────────── */
 function PortalMonthCalendar({
   jobs, properties, token,
 }: { jobs: any[]; properties: any[]; token: string }) {
+  const P = usePalette();
+  const { CARD, CARD2, BORDER, GREEN, YELLOW, WHITE, MUTED, DIM, FAINT } = P;
   const [viewDate,     setViewDate]     = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [requestJobId, setRequestJobId] = useState<string | null>(null);
@@ -133,7 +154,7 @@ function PortalMonthCalendar({
               onClick={() => setSelectedDate(dStr)}
               className="text-left p-1.5 min-h-[68px] transition-colors"
               style={{
-                background: isSel ? 'rgba(46,154,160,0.10)' : CARD,
+                background: isSel ? `${GREEN}1A` : CARD,
                 outline: isSel ? `1.5px solid ${GREEN}` : isToday ? `1.5px solid ${YELLOW}` : 'none',
                 opacity: inMonth ? 1 : 0.22,
               }}
@@ -148,7 +169,7 @@ function PortalMonthCalendar({
                 {visible.slice(0, 2).map((j: any) => {
                   const isDone = DONE.includes(j.status);
                   const isAttn = NEEDS_ATTN.includes(j.status);
-                  const dotColor = isDone ? 'rgba(0,0,0,0.28)' : isAttn ? '#F59E0B' : GREEN;
+                  const dotColor = isDone ? DIM : isAttn ? '#F59E0B' : GREEN;
                   const prop = properties.find((p: any) => p.id === j.property_id);
                   const label = prop?.property_name || '·';
                   return (
@@ -156,7 +177,7 @@ function PortalMonthCalendar({
                       key={j.id}
                       className="text-[8px] font-bold px-1 py-0.5 rounded truncate leading-tight"
                       style={{
-                        background: isDone ? 'rgba(0,0,0,0.05)' : `${dotColor}1A`,
+                        background: isDone ? FAINT : `${dotColor}1A`,
                         color: dotColor,
                       }}
                     >
@@ -179,7 +200,7 @@ function PortalMonthCalendar({
           { color: GREEN,                     label: 'Scheduled' },
           { color: '#F59E0B',                 label: 'Needs Cleaner' },
           { color: '#60A5FA',                 label: 'In Progress' },
-          { color: 'rgba(0,0,0,0.25)',  label: 'Completed' },
+          { color: DIM, label: 'Completed' },
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ background: l.color }} />
@@ -208,7 +229,7 @@ function PortalMonthCalendar({
           <div className="divide-y" style={{ borderColor: BORDER }}>
             {selectedJobs.map((j: any) => {
               const prop      = properties.find((p: any) => p.id === j.property_id);
-              const si        = jobStatus(j.status);
+              const si        = jobStatus(j.status, P);
               const canChange = ACTIVE.includes(j.status);
 
               return (
@@ -217,7 +238,7 @@ function PortalMonthCalendar({
                     <div className="flex items-start gap-2.5">
                       <div
                         className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
-                        style={{ background: si.color === 'rgba(0,0,0,0.28)' ? 'rgba(0,0,0,0.28)' : GREEN }}
+                        style={{ background: si.done ? DIM : GREEN }}
                       />
                       <div>
                         <p className="text-sm font-bold" style={{ color: WHITE }}>
@@ -307,6 +328,7 @@ function PortalMonthCalendar({
 function PropertiesTab({
   properties, jobs, onSelect,
 }: { properties: any[]; jobs: any[]; onSelect: (id: string) => void }) {
+  const { CARD, BORDER, GREEN, WHITE, MUTED } = usePalette();
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   return (
@@ -378,6 +400,7 @@ function PropertiesTab({
 
 /* ── UI atoms ───────────────────────────────────────────────────── */
 function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  const { MUTED } = usePalette();
   return (
     <div className="flex items-center justify-between mb-2.5 mt-1">
       <p className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: MUTED }}>{children}</p>
@@ -387,15 +410,17 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
 }
 
 function Card({ children, className = '', accent }: { children: React.ReactNode; className?: string; accent?: string }) {
+  const { CARD, BORDER, SHADOW } = usePalette();
   return (
     <div className={`rounded-2xl ${className}`}
-      style={{ background: CARD, border: `1px solid ${accent || BORDER}`, boxShadow: '0 1px 2px rgba(36,50,49,0.04), 0 8px 24px rgba(36,50,49,0.05)' }}>
+      style={{ background: CARD, border: `1px solid ${accent || BORDER}`, boxShadow: SHADOW }}>
       {children}
     </div>
   );
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value?: string | null }) {
+  const { GREEN, WHITE, MUTED } = usePalette();
   if (!value) return null;
   return (
     <div className="flex items-start gap-3 px-4 py-3">
@@ -411,6 +436,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value
 }
 
 function Stat({ value, label, tone }: { value: React.ReactNode; label: string; tone?: string }) {
+  const { WHITE, MUTED } = usePalette();
   return (
     <Card className="p-3.5 text-center">
       <p className="text-[19px] font-extrabold leading-none" style={{ color: tone || WHITE }}>{value}</p>
@@ -423,6 +449,8 @@ function Stat({ value, label, tone }: { value: React.ReactNode; label: string; t
 function HomeTab({
   greeting, clientName, logoUrl, properties, jobs, avgScore, goTo, openProperty,
 }: any) {
+  const P = usePalette();
+  const { CARD2, BORDER, GREEN, YELLOW, WHITE, MUTED } = P;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayJobs = jobs.filter((j: any) => j.scheduled_date === todayStr && !['cancelled'].includes(j.status));
   const upcoming = jobs
@@ -456,7 +484,7 @@ function HomeTab({
           <SectionTitle>Today</SectionTitle>
           <Card accent={`${GREEN}55`}>
             {todayJobs.map((j: any, idx: number) => {
-              const si = jobStatus(j.status);
+              const si = jobStatus(j.status, P);
               return (
                 <button key={j.id} onClick={() => openProperty(j.property_id)}
                   className="w-full text-left flex items-center gap-3 px-4 py-3.5"
@@ -578,6 +606,8 @@ function HomeTab({
 
 /* ── PROPERTY DETAIL ────────────────────────────────────────────── */
 function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack: () => void }) {
+  const P = usePalette();
+  const { CARD2, BORDER, GREEN, WHITE, MUTED } = P;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const mine = jobs.filter((j: any) => j.property_id === prop.id);
   const upcoming = mine.filter((j: any) => j.scheduled_date >= todayStr && ACTIVE.includes(j.status))
@@ -647,7 +677,7 @@ function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack
           {upcoming.length === 0 ? (
             <p className="px-4 py-5 text-sm text-center" style={{ color: MUTED }}>No upcoming cleans.</p>
           ) : upcoming.map((j: any, i: number) => {
-            const si = jobStatus(j.status);
+            const si = jobStatus(j.status, P);
             return (
               <div key={j.id} className="flex items-center justify-between gap-3 px-4 py-3.5"
                 style={{ borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
@@ -707,6 +737,7 @@ function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack
 
 /* ── ADMIN ──────────────────────────────────────────────────────── */
 function AdminTab({ profile, properties }: { profile: any; properties: any[] }) {
+  const { WHITE, MUTED } = usePalette();
   const p0 = properties[0] || {};
   const company = profile?.full_name || p0.business_name || p0.client_name || '—';
   return (
@@ -757,6 +788,17 @@ export default function MagicLinkPortalPage() {
   const navigate   = useNavigate();
   const [tab, setTab] = useState<'home' | 'calendar' | 'properties' | 'admin'>('home');
   const [selectedProp, setSelectedProp] = useState<string | null>(null);
+
+  /* Light / dark — the client's own choice, remembered on their device. */
+  const [dark, setDark] = useState<boolean>(() => {
+    try { return localStorage.getItem(THEME_KEY) === 'dark'; } catch { return false; }
+  });
+  const P = dark ? DARK : LIGHT;
+  const { BG, CARD, BORDER, GREEN, YELLOW, WHITE, MUTED, BARBG, HEADBG } = P;
+  useEffect(() => {
+    try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch { /* ignore */ }
+    document.body.style.background = P.BG;
+  }, [dark, P.BG]);
 
   /* ── Token → client lookup ─────────────────────────────────────── */
   const { data: clientProp, isLoading: loadingToken, error: tokenError } = useQuery({
@@ -899,13 +941,14 @@ export default function MagicLinkPortalPage() {
   ] as const;
 
   return (
+    <PaletteCtx.Provider value={P}>
     <div className="min-h-screen" style={{ background: BG }}>
 
       {/* App bar */}
       <header
         className="sticky top-0 z-40 px-5 flex items-center justify-between"
         style={{
-          background: 'rgba(244,247,246,0.85)',
+          background: HEADBG,
           backdropFilter: 'blur(14px)',
           WebkitBackdropFilter: 'blur(14px)',
           borderBottom: `1px solid ${BORDER}`,
@@ -914,12 +957,23 @@ export default function MagicLinkPortalPage() {
         <span className="text-[19px] font-extrabold py-3.5 tracking-tight" style={{ color: WHITE }}>
           Brightly<span style={{ color: GREEN }}>.</span>
         </span>
-        <span
-          className="text-[10.5px] font-bold px-2.5 py-1 rounded-full"
-          style={{ background: `${GREEN}14`, color: GREEN }}
-        >
-          Client Portal
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className="text-[10.5px] font-bold px-2.5 py-1 rounded-full"
+            style={{ background: `${GREEN}14`, color: GREEN }}
+          >
+            Client Portal
+          </span>
+          {/* Light / dark — client's choice */}
+          <button
+            onClick={() => setDark(v => !v)}
+            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{ background: CARD, border: `1px solid ${BORDER}`, color: dark ? YELLOW : MUTED }}
+          >
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+        </div>
       </header>
 
       {/* Content — bottom padding clears the tab bar */}
@@ -949,12 +1003,12 @@ export default function MagicLinkPortalPage() {
       <nav
         className="fixed bottom-0 left-0 right-0 z-50"
         style={{
-          background: 'rgba(255,255,255,0.92)',
+          background: BARBG,
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           borderTop: `1px solid ${BORDER}`,
           paddingBottom: 'env(safe-area-inset-bottom)',
-          boxShadow: '0 -6px 24px rgba(36,50,49,0.06)',
+          boxShadow: '0 -6px 24px rgba(0,0,0,0.10)',
         }}
       >
         <div className="max-w-2xl mx-auto grid grid-cols-4">
@@ -975,5 +1029,6 @@ export default function MagicLinkPortalPage() {
         </div>
       </nav>
     </div>
+    </PaletteCtx.Provider>
   );
 }
