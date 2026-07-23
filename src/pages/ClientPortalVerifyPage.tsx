@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+// Public client-facing page — always read as anon, never the admin's session.
+import { supabasePublic as supabase } from '@/integrations/supabase/client';
 import { Logo } from '@/components/Logo';
 
 export default function ClientPortalVerifyPage() {

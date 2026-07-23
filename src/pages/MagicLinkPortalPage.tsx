@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+// Public client-facing page — always read as anon, never the admin's session.
+import { supabasePublic as supabase } from '@/integrations/supabase/client';
 import {
   Loader2, ChevronLeft, ChevronRight, ChevronRight as ArrowRight,
   Calendar, Home, Send, CheckCircle2, Building2, User, Phone, Mail,
