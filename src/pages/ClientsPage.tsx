@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,6 +176,20 @@ export default function ClientsPage() {
   const [onboardMethod, setOnboardMethod] = useState<'sms' | 'email'>('sms');
   const [quoteLinkOpen, setQuoteLinkOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+
+  // Deep link from a lead notification: /clients?lead=<id> opens the Leads tab
+  // with that lead's slide-over already showing — no hunting through the list.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const leadParam = searchParams.get('lead');
+  const [activeTab, setActiveTab] = useState(leadParam ? 'leads' : 'clients');
+  const [focusLeadId, setFocusLeadId] = useState<string | null>(leadParam);
+  useEffect(() => {
+    if (leadParam) { setFocusLeadId(leadParam); setActiveTab('leads'); }
+  }, [leadParam]);
+  const clearFocusLead = useCallback(() => {
+    setFocusLeadId(null);
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('lead'); return p; }, { replace: true });
+  }, [setSearchParams]);
   const filteredClients = clients.filter((c: any) => {
     const q = clientSearch.trim().toLowerCase();
     if (!q) return true;
@@ -468,7 +482,7 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="clients" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-3 rounded-2xl h-12">
           <TabsTrigger value="clients" className="rounded-xl font-bold">Clients</TabsTrigger>
           <TabsTrigger value="leads" className="rounded-xl font-bold">Leads</TabsTrigger>
@@ -613,7 +627,7 @@ export default function ClientsPage() {
               </div>
             </div>
           )}
-          <LeadsTab />
+          <LeadsTab focusLeadId={focusLeadId} onFocusHandled={clearFocusLead} />
         </TabsContent>
 
         <TabsContent value="quotes" className="mt-4 space-y-4">

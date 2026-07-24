@@ -3,66 +3,68 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Trash2, Download } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Loader2, Eye, Trash2, Download, Search, Phone } from 'lucide-react';
 import LeadDetailSlideOver from './LeadDetailSlideOver';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useNavigate } from 'react-router-dom';
 import { getAppBaseUrl } from '@/lib/appUrl';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  pending_form: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
-  form_submitted: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
-  awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#FCD34D]' },
+  pending_form: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#8A6220]' },
+  form_submitted: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#8A6220]' },
+  awaiting_quote: { label: '🟡 New Enquiry', className: 'bg-[rgba(251,191,36,0.15)] text-[#8A6220]' },
   // Instant-quote lead stages — tell you at a glance how to act.
   price_viewed: { label: '👀 Viewed Price', className: 'bg-[rgba(138,160,160,0.18)] text-[#566A6A]' },
   info_requested: { label: '💬 Wants a Call', className: 'bg-[rgba(192,138,62,0.16)] text-[#8A6220]' },
   booking_requested: { label: '🔔 Wants to Book', className: 'bg-emerald-100 text-[#3F5F57]' },
-  quote_sent: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
-  awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
-  accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
-  client_accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
-  awaiting_schedule_approval: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#4ADE80]' },
-  scheduled: { label: '📅 Scheduled', className: 'bg-primary/10 text-primary' },
-  in_progress: { label: '🔄 In Progress', className: 'bg-[rgba(96,165,250,0.15)] text-[#60A5FA]' },
-  completed: { label: '✅ Completed', className: 'bg-primary/20 text-primary' },
+  quote_sent: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#2563EB]' },
+  awaiting_client_response: { label: '📤 Quote Sent', className: 'bg-[rgba(96,165,250,0.15)] text-[#2563EB]' },
+  accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#3F5F57]' },
+  client_accepted: { label: '✅ Accepted', className: 'bg-emerald-100 text-[#3F5F57]' },
   quote_declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
   declined: { label: '❌ Declined', className: 'bg-destructive/10 text-destructive' },
   expired: { label: '⏳ Expired', className: 'bg-muted text-muted-foreground' },
 };
 
-const FILTER_OPTIONS = [
-  { value: 'pending_form', label: '🟡 New Enquiry' },
-  { value: 'quote_sent', label: '📤 Quote Sent' },
-  { value: 'client_accepted', label: '✅ Accepted' },
-  { value: 'scheduled', label: '📅 Scheduled' },
-  { value: 'in_progress', label: '🔄 In Progress' },
-  { value: 'completed', label: '✅ Completed' },
-  { value: 'quote_declined', label: '❌ Declined' },
-  { value: 'expired', label: '⏳ Expired' },
+/** Quick filters, in the order BJ actually works them. */
+const CHIPS: { key: string; label: string; match: (s: string) => boolean }[] = [
+  { key: 'all', label: 'All', match: () => true },
+  { key: 'hot', label: '🔔 Wants to book', match: s => s === 'booking_requested' },
+  { key: 'call', label: '💬 Wants a call', match: s => s === 'info_requested' },
+  { key: 'viewed', label: '👀 Viewed price', match: s => s === 'price_viewed' },
+  { key: 'new', label: '🟡 New enquiry', match: s => ['pending_form', 'form_submitted', 'awaiting_quote'].includes(s) },
+  { key: 'sent', label: '📤 Quote sent', match: s => ['quote_sent', 'awaiting_client_response'].includes(s) },
+  { key: 'dead', label: '❌ Declined', match: s => ['quote_declined', 'declined'].includes(s) },
 ];
 
-const FILTER_GROUP: Record<string, string[]> = {
-  pending_form: ['pending_form', 'form_submitted', 'awaiting_quote'],
-  quote_sent: ['quote_sent', 'awaiting_client_response'],
-  client_accepted: ['accepted', 'client_accepted', 'awaiting_schedule_approval'],
-  quote_declined: ['quote_declined', 'declined'],
-};
+const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'price_viewed', 'info_requested', 'booking_requested', 'quote_sent', 'awaiting_client_response', 'quote_declined', 'declined'];
 
-export default function LeadsTab() {
-  const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState('all');
+/** "11 min ago" / "3 hr ago" / "2 days ago" — so you can see what's fresh. */
+function timeAgo(iso?: string) {
+  if (!iso) return '—';
+  const secs = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${Math.round(secs / 60)} min ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)} hr ago`;
+  const days = Math.round(secs / 86400);
+  if (days < 31) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
+const isFresh = (iso?: string) => !!iso && (Date.now() - new Date(iso).getTime()) < 24 * 3600 * 1000;
+
+export default function LeadsTab({ focusLeadId, onFocusHandled }: { focusLeadId?: string | null; onFocusHandled?: () => void } = {}) {
+  const [chip, setChip] = useState('all');
+  const [search, setSearch] = useState('');
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [deleteLead, setDeleteLead] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
     mutationFn: async (lead: any) => {
-      // Delete any quotes linked to this request
       await (supabase.from('quotes').delete() as any).eq('quote_request_id', lead.id);
-      // Delete the lead/quote_request
       const { error } = await supabase.from('quote_requests').delete().eq('id', lead.id);
       if (error) throw new Error(`Failed to delete lead: ${error.message}`);
     },
@@ -73,8 +75,6 @@ export default function LeadsTab() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  const LEAD_STATUSES = ['pending_form', 'form_submitted', 'awaiting_quote', 'price_viewed', 'info_requested', 'booking_requested', 'quote_sent', 'awaiting_client_response', 'quote_declined', 'declined'];
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['quote-requests-leads'],
@@ -87,17 +87,41 @@ export default function LeadsTab() {
       if (error) throw error;
       return data || [];
     },
+    // Leads land while you're looking at the page — keep it live.
+    refetchInterval: 60_000,
   });
 
-  const filtered = statusFilter === 'all'
-    ? leads
-    : leads.filter(l => {
-        const group = FILTER_GROUP[statusFilter];
-        return group ? group.includes(l.status) : l.status === statusFilter;
-      });
+  // Deep link from a notification (/clients?lead=<id>) — open that lead straight away.
+  useEffect(() => {
+    if (!focusLeadId || !leads.length) return;
+    const hit = leads.find((l: any) => l.id === focusLeadId);
+    if (hit) {
+      setSelectedLead(hit);
+      onFocusHandled?.();
+    }
+  }, [focusLeadId, leads, onFocusHandled]);
 
-  // Download the current lead list (name, phone, email + quote details) as CSV
-  // for bulk email / marketing.
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    CHIPS.forEach(ch => { c[ch.key] = leads.filter((l: any) => ch.match(l.status)).length; });
+    return c;
+  }, [leads]);
+
+  const newToday = useMemo(() => leads.filter((l: any) => isFresh(l.created_at)).length, [leads]);
+
+  // Newest first (the query already sorts) — filtered by chip + search.
+  const filtered = useMemo(() => {
+    const chipDef = CHIPS.find(c => c.key === chip) || CHIPS[0];
+    const q = search.trim().toLowerCase();
+    return leads.filter((l: any) => {
+      if (!chipDef.match(l.status)) return false;
+      if (!q) return true;
+      const hay = [l.first_name, l.last_name, l.phone, l.email, l.address, l.clean_type]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [leads, chip, search]);
+
   const exportCsv = () => {
     const rows = filtered.length ? filtered : leads;
     if (!rows.length) { toast.error('No leads to export'); return; }
@@ -115,20 +139,6 @@ export default function LeadsTab() {
     toast.success(`Exported ${rows.length} lead${rows.length === 1 ? '' : 's'}`);
   };
 
-  const getNavTarget = (lead: any) => {
-    const s = lead.status;
-    if (['pending_form', 'form_submitted', 'awaiting_quote', 'quote_sent', 'awaiting_client_response'].includes(s)) {
-      return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
-    }
-    if (['accepted', 'client_accepted', 'awaiting_schedule_approval'].includes(s)) {
-      return { pathname: '/actions' };
-    }
-    if (['scheduled', 'in_progress', 'completed'].includes(s)) {
-      return { pathname: '/schedule' };
-    }
-    return { pathname: '/quoting', state: { quoteRequestId: lead.id } };
-  };
-
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   if (leads.length === 0) return (
@@ -140,22 +150,52 @@ export default function LeadsTab() {
   return (
     <>
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48 rounded-xl h-10">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {FILTER_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={exportCsv} className="ml-auto h-10 rounded-xl gap-2">
+      {/* Headline — what came in today */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[220px]">
+          <p className="text-lg font-extrabold text-foreground">
+            {newToday > 0
+              ? <>{newToday} new lead{newToday === 1 ? '' : 's'} in the last 24 hours</>
+              : <>{leads.length} lead{leads.length === 1 ? '' : 's'} · newest first</>}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Click any lead to see their full story and what to do next.</p>
+        </div>
+        <Button variant="outline" onClick={exportCsv} className="h-10 rounded-xl gap-2">
           <Download className="w-4 h-4" /> Export CSV
         </Button>
-        <span className="text-sm text-muted-foreground">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search name, phone, email or address…"
+          className="pl-9 h-11 rounded-xl bg-card"
+        />
+      </div>
+
+      {/* Quick filters */}
+      <div className="flex flex-wrap gap-2">
+        {CHIPS.map(ch => {
+          const active = chip === ch.key;
+          const n = counts[ch.key] ?? 0;
+          if (ch.key !== 'all' && n === 0) return null;
+          return (
+            <button
+              key={ch.key}
+              onClick={() => setChip(ch.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                active
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {ch.label} <span className={active ? 'opacity-80' : 'opacity-60'}>{n}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="bg-card rounded-2xl shadow-md border border-border overflow-hidden">
@@ -163,41 +203,59 @@ export default function LeadsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Added</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>Address</TableHead>
               <TableHead>Clean Type</TableHead>
-              <TableHead>Requested Date</TableHead>
+              <TableHead>Quoted</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                  No leads match — try a different filter or search.
+                </TableCell>
+              </TableRow>
+            )}
             {filtered.map(lead => {
               const cfg = STATUS_CONFIG[lead.status] || { label: lead.status, className: 'bg-muted text-muted-foreground' };
-              const nav = getNavTarget(lead);
+              const fresh = isFresh(lead.created_at);
+              const name = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—';
               return (
                 <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/60"
                   onClick={() => setSelectedLead(lead)}>
                   <TableCell className="font-semibold text-primary">
-                    {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || '—'}
+                    <span className="flex items-center gap-2">
+                      {fresh && <span className="w-2 h-2 rounded-full bg-primary shrink-0" title="New in the last 24 hours" />}
+                      {name}
+                    </span>
+                  </TableCell>
+                  <TableCell className={fresh ? 'font-bold text-foreground' : 'text-muted-foreground'}>
+                    {timeAgo(lead.created_at)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{lead.phone || '—'}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-[200px] truncate">{lead.address || '—'}</TableCell>
-                  <TableCell>{lead.clean_type || '—'}</TableCell>
-                  <TableCell>{lead.preferred_date ? new Date(lead.preferred_date + 'T00:00:00').toLocaleDateString('en-AU') : '—'}</TableCell>
+                  <TableCell className="max-w-[160px] truncate">{lead.clean_type || '—'}</TableCell>
+                  <TableCell className="font-semibold">
+                    {lead.total_inc_gst != null ? `$${Math.round(Number(lead.total_inc_gst))}` : '—'}
+                  </TableCell>
                   <TableCell>
-                    <Badge className={`${cfg.className} text-xs font-semibold`}>
+                    <Badge className={`${cfg.className} text-xs font-semibold whitespace-nowrap`}>
                       {cfg.label}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
+                      {lead.phone && (
+                        <Button variant="ghost" size="sm" title={`Call ${lead.phone}`} asChild
+                          onClick={(e) => e.stopPropagation()}>
+                          <a href={`tel:${lead.phone}`}><Phone className="w-4 h-4" /></a>
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" title="Copy form link"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // /quote/<token> is the intake form — correct for a "form link"
-                          // (the lead hasn't filled it in yet). Use getAppBaseUrl so the
-                          // copied URL points at app.brightly.cleaning, never a preview.
                           const url = `${getAppBaseUrl()}/quote/${lead.token}`;
                           navigator.clipboard.writeText(url);
                           toast.success('Quote form link copied');

@@ -111,7 +111,7 @@ export default function InstantQuotePage() {
       }
       supabase.functions.invoke("send-quote-notification", {
         body: {
-          type: "lead_captured", intent: "info", mode,
+          type: "lead_captured", intent: "info", mode, lead_id: leadId,
           client_name: fullName.trim(), client_phone: phone.trim(), client_email: email.trim(),
           clean_type: cleanType, quoted: Math.round(quote.sellIncGst),
         },
@@ -169,6 +169,7 @@ export default function InstantQuotePage() {
           type: "lead_captured",
           intent: "viewed",
           mode,
+          lead_id: data?.id ?? null,
           client_name: fullName.trim(),
           client_phone: phone.trim(),
           client_email: email.trim(),
@@ -286,6 +287,7 @@ export default function InstantQuotePage() {
         body: {
           type: "lead_captured",
           intent: mode === "residential" ? "book_resi" : "book_airbnb",
+          lead_id: leadId,
           mode,
           client_name: fullName.trim(),
           client_phone: phone.trim(),

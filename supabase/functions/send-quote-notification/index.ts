@@ -125,7 +125,9 @@ Deno.serve(async (req) => {
 
     // ─── New lead captured (instant-quote) — intent tells the admin how to act ───
     if (type === 'lead_captured') {
-      const { client_name, client_phone, client_email, clean_type, quoted, intent, when } = body;
+      const { client_name, client_phone, client_email, clean_type, quoted, intent, when, lead_id } = body;
+      // Deep-link straight to THIS lead so one tap opens their full story.
+      const leadLink = lead_id ? `/clients?lead=${lead_id}` : '/clients';
       // What did they actually do? Drives the emoji, the headline, and the action.
       const HEAD: Record<string, { emoji: string; title: string; action: string }> = {
         viewed:      { emoji: '👀', title: 'viewed their price',   action: 'Follow up to win the job.' },
@@ -142,7 +144,7 @@ Deno.serve(async (req) => {
           type: 'quote',
           title: `${h.emoji} Lead ${h.title}`,
           message: `${client_name || 'New lead'}${client_phone ? ` · ${client_phone}` : ''}${client_email ? ` · ${client_email}` : ''} — ${clean_type || 'Instant quote'}${quoted ? ` ($${quoted})` : ''}. ${h.action}`,
-          link: intent === 'book_resi' ? '/schedule' : '/clients',
+          link: leadLink,
         });
 
         const { data: profile } = await supabase.from('profiles').select('phone').eq('id', admin.user_id).single();
