@@ -946,9 +946,9 @@ export default function MagicLinkPortalPage() {
       background: BG,
       // Living canvas — soft teal corner glows + faint engraved hairlines.
       backgroundImage:
-        `radial-gradient(ellipse 85% 55% at 100% -2%, ${GREEN}3a, transparent 62%),`
-        + `radial-gradient(ellipse 72% 50% at 0% 100%, ${GREEN}2b, transparent 58%),`
-        + `repeating-linear-gradient(135deg, ${GREEN}14 0px, ${GREEN}14 1px, transparent 1px, transparent 14px)`,
+        `radial-gradient(ellipse 90% 60% at 100% -2%, ${GREEN}47, transparent 64%),`
+        + `radial-gradient(ellipse 75% 52% at 0% 100%, ${GREEN}33, transparent 60%),`
+        + `repeating-linear-gradient(135deg, ${GREEN}1c 0px, ${GREEN}1c 1px, transparent 1px, transparent 12px)`,
       backgroundAttachment: 'fixed',
     }}>
 

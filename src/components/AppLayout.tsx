@@ -14,7 +14,7 @@ export default function AppLayout() {
   const inCleanWorkflow = pathname.startsWith('/clean/');
 
   return (
-    <div className={`min-h-screen flex w-full min-w-0 max-w-full bg-background ${activeEntry ? 'pt-[60px]' : ''}`}>
+    <div className={`brightly-canvas min-h-screen flex w-full min-w-0 max-w-full ${activeEntry ? 'pt-[60px]' : ''}`}>
       <DesktopSidebar />
       <div className="flex-1 min-w-0 w-full max-w-full flex flex-col min-h-screen">
         <TopBar />
