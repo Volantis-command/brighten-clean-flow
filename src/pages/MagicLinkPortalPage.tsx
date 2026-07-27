@@ -942,7 +942,15 @@ export default function MagicLinkPortalPage() {
 
   return (
     <PaletteCtx.Provider value={P}>
-    <div className="min-h-screen" style={{ background: BG }}>
+    <div className="min-h-screen" style={{
+      background: BG,
+      // Living canvas — soft teal corner glows + faint engraved hairlines.
+      backgroundImage:
+        `radial-gradient(ellipse 82% 52% at 100% -2%, ${GREEN}22, transparent 60%),`
+        + `radial-gradient(ellipse 70% 46% at 0% 100%, ${GREEN}18, transparent 55%),`
+        + `repeating-linear-gradient(135deg, ${GREEN}0d 0px, ${GREEN}0d 1px, transparent 1px, transparent 15px)`,
+      backgroundAttachment: 'fixed',
+    }}>
 
       {/* App bar */}
       <header
