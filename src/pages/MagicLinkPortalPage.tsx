@@ -314,6 +314,25 @@ function PortalMonthCalendar({
                       )}
                     </div>
                   )}
+
+                  {/* View report — every completed clean with a report */}
+                  {si.done && (
+                    <div className="mt-2 ml-5">
+                      {j.report_token ? (
+                        <a
+                          href={`/report/${j.report_token}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg"
+                          style={{ background: `${GREEN}1A`, color: GREEN, border: `1px solid ${GREEN}55` }}
+                        >
+                          <FileText className="w-3.5 h-3.5" /> View report
+                        </a>
+                      ) : (
+                        <span className="text-xs" style={{ color: MUTED }}>Report being prepared</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
