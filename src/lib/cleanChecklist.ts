@@ -25,6 +25,20 @@ export interface ChecklistItem {
   required: boolean;
   /** Core items can't be excluded by a cleaner — every property has them. */
   core?: boolean;
+  /** Allows a third answer: N/A (e.g. no lockbox at this property). */
+  na?: boolean;
+}
+
+/**
+ * A full-screen pause before an area's items. Used for the pack-up gate: the
+ * cleaner puts the equipment away and mops their way out, THEN comes back to
+ * finish the form. Floors are deliberately not asked per-room, because you
+ * physically do them last on the way out.
+ */
+export interface ChecklistGate {
+  headline: string;
+  body: string;
+  cta: string;
 }
 
 export interface ChecklistArea {
@@ -32,6 +46,7 @@ export interface ChecklistArea {
   title: string;
   /** Shown on the "go to next room" hand-off screen. */
   blurb?: string;
+  gate?: ChecklistGate;
   items: ChecklistItem[];
 }
 
@@ -46,8 +61,8 @@ export interface ChecklistOverride {
 const photo = (key: string, label: string, required = true, core = false): ChecklistItem =>
   ({ key, label, kind: 'photo', required, core });
 
-const check = (key: string, label: string, required = true, core = false): ChecklistItem =>
-  ({ key, label, kind: 'check', required, core });
+const check = (key: string, label: string, required = true, core = false, na = false): ChecklistItem =>
+  ({ key, label, kind: 'check', required, core, na });
 
 /**
  * Build the ordered checklist for a job.
@@ -92,11 +107,9 @@ export function buildChecklist(
       photo('fridge', 'Fridge — door open, interior clean and empty', deep),
       photo('dishwasher', 'Dishwasher — empty and clean', deep),
       photo('coffee_machine', 'Coffee machine — clean and descaled', deep),
-      photo('toaster', 'Toaster — emptied and clean', deep),
       check('bin_liner', 'Bin emptied and a fresh liner in', true, true),
       check('cupboards', 'Cupboards and drawers wiped, no crumbs', false),
       check('consumables', 'Tea, coffee and dishwashing restocked', deep),
-      check('floor', 'Floor swept and mopped', true, true),
     ],
   });
 
@@ -113,12 +126,15 @@ export function buildChecklist(
       check('surfaces', 'All surfaces dusted, including shelves and sills', false),
       check('under_cushions', 'Under and behind cushions checked for rubbish', true, true),
       check('remotes', 'Remotes present, TV works, batteries in', false),
-      check('floor', 'Floor vacuumed and mopped', true, true),
     ],
   });
 
   // ── Bathrooms ─────────────────────────────────────────────────────────────
   for (let i = 1; i <= bathrooms; i++) {
+    // The main bathroom gets the full photo set. Second and third bathrooms get
+    // the three that matter (wide, shower, toilet) — keeps a 3-bathroom place
+    // from costing 18 photos while still proving every bathroom was done.
+    const isMain = i === 1;
     areas.push({
       id: `bathroom_${i}`,
       title: bathrooms > 1 ? `Bathroom ${i}` : 'Bathroom',
@@ -127,13 +143,14 @@ export function buildChecklist(
         photo('wide_shot', 'Bathroom — wide shot', true, true),
         photo('shower', 'Shower interior — tiles and screen clean', true, true),
         photo('toilet', 'Inside the toilet bowl — clean', true, true),
-        photo('vanity', 'Vanity / bench — clean and clear', true, true),
-        photo('mirror', 'Mirror — streak-free', true, true),
+        ...(isMain ? [
+          photo('vanity', 'Vanity / bench — clean and clear', true, true),
+          photo('mirror', 'Mirror — streak-free', true, true),
+        ] : []),
         ...(linen ? [photo('towels', 'Towels — fresh, folded and placed', deep)] : []),
         check('bin_liner', 'Bin emptied and a fresh liner in', true, true),
         check('drains', 'Hair removed from drains and plugholes', true, true),
         check('toiletries', 'Soap and amenities restocked', deep),
-        check('floor', 'Floor cleaned, behind the toilet too', true, true),
       ],
     });
   }
@@ -151,7 +168,6 @@ export function buildChecklist(
         check('under_bed', 'Under the bed checked — nothing left behind', true, true),
         check('wardrobe', 'Wardrobe and drawers empty and wiped', false),
         check('surfaces', 'Bedsides and surfaces dusted', false),
-        check('floor', 'Floor vacuumed', true, true),
       ],
     });
   }
@@ -164,10 +180,11 @@ export function buildChecklist(
     items: [
       photo('washing_machine', 'Washing machine — clean, door left ajar', deep),
       photo('dryer', 'Dryer — clean exterior', deep),
-      photo('washing_filter', 'Washing machine filter — removed and clean', deep),
-      photo('dryer_filter', 'Dryer lint filter — removed and clean', deep),
+      // Filters are a weekly/monthly job, not every turnover — visible so they
+      // can still upload when they do them, but never blocks submission.
+      photo('washing_filter', 'Washing machine filter — removed and clean', false),
+      photo('dryer_filter', 'Dryer lint filter — removed and clean', false),
       check('empty', 'No laundry left in either machine', true, true),
-      check('floor', 'Laundry floor cleaned', false),
     ],
   });
 
@@ -188,18 +205,29 @@ export function buildChecklist(
     });
   }
 
-  // ── Final walk-through ────────────────────────────────────────────────────
+  // ── Pack up, floors, lock-up ───────────────────────────────────────────────
+  //
+  // Floors are NOT asked room by room, because that isn't how it's done — you
+  // pack the gear, then vacuum and mop your way out. So the form pauses here
+  // (~90%), sends them off to do it, and only asks the lock-up questions once
+  // they're back. Everything below happens on the way out the door.
   areas.push({
     id: 'final',
-    title: 'Final Check & Lock-up',
-    blurb: 'Last look before you leave.',
+    title: 'Pack Up & Lock-Up',
+    blurb: 'On your way out the door.',
+    gate: {
+      headline: "You're at 90% — just the floors to go",
+      body: 'Remove all your cleaning equipment from the property, then vacuum and mop your way out. Come back and finish the form once the floors are done.',
+      cta: "Floors done — finish the form",
+    },
     items: [
       photo('entry', 'Entry / hallway — wide shot, guest-ready', true, true),
-      check('rubbish_out', 'All rubbish removed from the property', true, true),
-      check('lights_aircon', 'Lights and aircon / heating turned off', true, true),
-      check('windows_locked', 'All windows and doors locked', true, true),
-      check('keys', 'Keys returned to the lockbox / safe', true, true),
-      check('final_look', 'Walked through one last time — nothing missed', true, true),
+      check('windows_locked', 'All windows and doors locked?', true, true),
+      check('lights_aircon', 'All lights and aircon units off?', true, true),
+      check('floors_done', 'Floors vacuumed and mopped?', true, true),
+      check('rubbish_out', 'All rubbish removed from the property?', true, true),
+      // N/A allowed — not every property has a key box (host present, smart lock).
+      check('keys', 'Keys back in the key box?', true, true, true),
     ],
   });
 
