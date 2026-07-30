@@ -475,17 +475,22 @@ Deno.serve(async (req: Request) => {
         scheduled_date: body.scheduled_date,
         scheduled_time: body.scheduled_time || null,
         status: 'pending_cleaner',
-        clean_type: body.clean_type || 'Standard Clean',
+        source: 'instant_quote',
+        frequency: 'one-off',
         client_name: fullName,
         price_inc_gst: body.price_inc_gst ?? null,
         price_ex_gst: body.price_ex_gst ?? null,
         estimated_duration: body.estimated_hours != null ? Math.round(Number(body.estimated_hours) * 60) : null,
       } as any).select('id').single();
       if (jobErr) {
-        console.error('auto-book job insert failed (non-fatal):', jobErr.message);
-      } else {
-        jobId = job?.id ?? null;
+        // Surface the real reason so approval isn't a silent no-op.
+        console.error('auto-book job insert failed:', jobErr.message);
+        return new Response(
+          JSON.stringify({ success: false, error: `Job insert failed: ${jobErr.message}`, client_profile_id: clientProfileId, property_id: propertyId, job_id: null }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+      jobId = job?.id ?? null;
     }
 
     return new Response(
