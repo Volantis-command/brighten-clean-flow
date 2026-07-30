@@ -1,6 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, FileText, Phone, Mail, Home, Wrench, Loader2, UserPlus, FilePen } from 'lucide-react';
+import { Calendar, Clock, MapPin, FileText, Phone, Mail, Home, Wrench, Loader2, UserPlus, FilePen, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,12 +38,16 @@ function stageInfo(lead: any) {
       return { emoji: '💬', title: 'Wants a call', tone: 'border-[#C08A3E] bg-[rgba(192,138,62,0.12)]',
         story: `Got a quote of ${q || '—'} for a ${size}${type} ${ago}, then asked you to call — they have a question before deciding.`,
         action: 'Call them now — they\'re waiting to hear from you.' };
-    case 'booking_requested':
-      return { emoji: '✅', title: mode === 'residential' ? 'Booked in' : 'Wants to book (Airbnb)', tone: 'border-emerald-400 bg-emerald-50',
+    case 'booking_requested': {
+      const pref = lead.preferred_date
+        ? new Date(lead.preferred_date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+        : null;
+      return { emoji: '🔔', title: mode === 'residential' ? 'Wants to book — needs your approval' : 'Wants to book (Airbnb)', tone: 'border-emerald-400 bg-emerald-50',
         story: mode === 'residential'
-          ? `Accepted ${q || 'their quote'} for a ${type} and picked a slot ${ago} — the clean is already in your Schedule.`
+          ? `Accepted ${q || 'their quote'} for a ${type} and asked for ${pref || 'a slot'} ${ago}. Approve it and the clean drops onto that date in your Schedule (pending a cleaner).`
           : `Accepted ${q || 'their quote'} for an Airbnb turnover ${ago}. Airbnb dates track guest checkouts, so this one needs setting up with them.`,
-        action: mode === 'residential' ? 'Add to clients & assign a cleaner to the booked clean.' : 'Add to clients, then confirm the turnover schedule with them.' };
+        action: mode === 'residential' ? `Approve & schedule the clean${pref ? ` for ${pref}` : ''}.` : 'Add to clients, then confirm the turnover schedule with them.' };
+    }
     case 'quote_sent':
     case 'awaiting_client_response':
       return { emoji: '📤', title: 'Quote sent', tone: 'border-[#5E93A0] bg-[rgba(94,147,160,0.12)]',
@@ -64,7 +68,45 @@ function stageInfo(lead: any) {
 export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
   const navigate = useNavigate();
   const [addingClient, setAddingClient] = useState(false);
+  const [approving, setApproving] = useState(false);
   if (!lead) return null;
+
+  // A residential booking with a chosen date can be approved → creates the
+  // clean on that exact date (pending a cleaner), reliably, from here.
+  const canApprove = lead.status === 'booking_requested'
+    && lead.form_data?.mode !== 'airbnb'
+    && !!lead.preferred_date;
+
+  const handleApprove = async () => {
+    setApproving(true);
+    try {
+      const nm = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || 'Client';
+      const { data, error } = await supabase.functions.invoke('link-intake-to-profile', {
+        body: {
+          first_name: lead.first_name, last_name: lead.last_name, full_name: nm,
+          phone: lead.phone || null, email: lead.email || null,
+          property_address: lead.address || `${nm}'s property`,
+          bedrooms: lead.bedrooms || null, bathrooms: lead.bathrooms || null,
+          clean_type: lead.clean_type || 'Standard Clean',
+          create_job: true,
+          scheduled_date: lead.preferred_date,
+          scheduled_time: lead.preferred_time || null,
+          price_inc_gst: lead.total_inc_gst ?? null,
+          price_ex_gst: lead.total_ex_gst ?? null,
+          estimated_hours: lead.estimated_hours ?? null,
+        },
+      });
+      if (error) throw error;
+      if (!data?.job_id) throw new Error('Could not create the clean — check the address on the lead and try again.');
+      await supabase.from('quote_requests').update({ status: 'accepted' } as any).eq('id', lead.id);
+      toast.success(`Approved — ${nm}'s clean is in your Schedule. Now assign a cleaner.`);
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || 'Could not approve the booking');
+    } finally {
+      setApproving(false);
+    }
+  };
 
   // Open the Quote Builder pre-filled with this lead's config so you can edit
   // the quote and send it back. The lead stays the source of truth — sending
@@ -152,7 +194,15 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
         </div>
 
         <div className="mt-8 space-y-3">
-          <Button onClick={handleEditQuote} className="w-full h-12 font-bold bg-primary text-primary-foreground gap-2">
+          {canApprove && (
+            <Button onClick={handleApprove} disabled={approving} className="w-full h-12 font-bold bg-primary text-primary-foreground gap-2">
+              {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Approve &amp; schedule
+            </Button>
+          )}
+          <Button onClick={handleEditQuote}
+            className={`w-full h-12 font-bold gap-2 ${canApprove ? 'bg-card border border-border text-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}
+            variant={canApprove ? 'outline' : 'default'}>
             <FilePen className="w-4 h-4" /> Edit &amp; send quote
           </Button>
           {lead.phone && (

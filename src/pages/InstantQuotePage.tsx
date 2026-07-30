@@ -270,9 +270,11 @@ export default function InstantQuotePage() {
             wash_kit: consumablesIncluded,
             tea_coffee_kit: consumablesIncluded,
           } : {
-            // Residential can auto-book: create the clean at their chosen slot.
-            // (Airbnb turnovers can't — their dates track guest checkouts.)
-            create_job: true,
+            // Residential: DON'T silently create the clean. Onboard the client +
+            // property, but the booking waits in Leads for the admin to Approve —
+            // approval creates the clean on the client's chosen date (pending a
+            // cleaner). Their requested date/time is stored on the lead.
+            create_job: false,
             scheduled_date: preferredDate,
             scheduled_time: preferredTime || null,
             price_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
