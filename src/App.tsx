@@ -58,6 +58,7 @@ const QuoteIntakePage = lazy(() => import('./pages/QuoteIntakePage'));
 const MyJobsPage = lazy(() => import('./pages/MyJobsPage'));
 const CleanWorkflowPage = lazy(() => import('./pages/CleanWorkflowPage'));
 const CompletionFormPage = lazy(() => import('./pages/CompletionFormPage'));
+const GuidedCompletionPage = lazy(() => import('./pages/GuidedCompletionPage'));
 const JobCompleteDonePage = lazy(() => import('./pages/JobCompleteDonePage'));
 const JobAuditPage = lazy(() => import('./pages/JobAuditPage'));
 const PendingInvoicesPage = lazy(() => import('./pages/PendingInvoicesPage'));
@@ -264,6 +265,8 @@ function AppRoutes() {
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
         <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
+        {/* New guided flow — runs alongside the old form until approved. */}
+        <Route path="/clean/:jobId/guided" element={<GuidedCompletionPage />} />
         <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
         <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
         {/* cleaner-onboarding moved to public routes for token access */}

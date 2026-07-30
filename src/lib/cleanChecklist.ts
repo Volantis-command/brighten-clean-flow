@@ -107,6 +107,7 @@ export function buildChecklist(
       photo('fridge', 'Fridge — door open, interior clean and empty', deep),
       photo('dishwasher', 'Dishwasher — empty and clean', deep),
       photo('coffee_machine', 'Coffee machine — clean and descaled', deep),
+      photo('toaster', 'Toaster — emptied and clean', deep),
       check('bin_liner', 'Bin emptied and a fresh liner in', true, true),
       check('cupboards', 'Cupboards and drawers wiped, no crumbs', false),
       check('consumables', 'Tea, coffee and dishwashing restocked', deep),
@@ -180,10 +181,9 @@ export function buildChecklist(
     items: [
       photo('washing_machine', 'Washing machine — clean, door left ajar', deep),
       photo('dryer', 'Dryer — clean exterior', deep),
-      // Filters are a weekly/monthly job, not every turnover — visible so they
-      // can still upload when they do them, but never blocks submission.
-      photo('washing_filter', 'Washing machine filter — removed and clean', false),
-      photo('dryer_filter', 'Dryer lint filter — removed and clean', false),
+      // BJ: filters are done on EVERY clean — required, no exceptions.
+      photo('washing_filter', 'Washing machine filter — removed and clean', true),
+      photo('dryer_filter', 'Dryer lint filter — removed and clean', true),
       check('empty', 'No laundry left in either machine', true, true),
     ],
   });
