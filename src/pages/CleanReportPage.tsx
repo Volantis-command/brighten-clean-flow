@@ -4,6 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMinutes } from "date-fns";
 import { CheckCircle2, Minus, X, Printer, AlertTriangle } from "lucide-react";
 import { Logo } from '@/components/Logo';
+import { buildChecklist } from '@/lib/cleanChecklist';
+
+// The guided flow stores each answer's wording alongside it, but cleans done
+// before that change only have the item key. Harvest the real question text
+// (and the canonical room order) from a "maximal" checklist once — labels and
+// ordering don't depend on the property, only which items appear do.
+const GUIDED_LABELS: Record<string, string> = {};
+const GUIDED_ORDER: string[] = [];
+{
+  const maximal = buildChecklist(
+    { bedrooms: 4, bathrooms: 4, has_outdoor_area: true, has_pool: true, has_oven: true,
+      has_glass_screens: true, linen_required: true },
+    'Airbnb Turnover',
+  );
+  for (const a of maximal) {
+    const base = a.id.replace(/_\d+$/, '');
+    if (!GUIDED_ORDER.includes(base)) GUIDED_ORDER.push(base);
+    for (const i of a.items) GUIDED_LABELS[`${base}.${i.key}`] = i.label;
+  }
+}
 
 interface ReportData {
   job: any;
@@ -168,20 +188,40 @@ export default function CleanReportPage() {
     photosByRoom[room].push(p);
   });
 
-  // Tick answers from the guided flow, room by room. `label` is stored with the
-  // answer; older cleans predate that, so fall back to humanising the key.
+  // Tick answers from the guided flow, room by room, in the order the property
+  // is actually walked (JSONB key order is not the insertion order, so it has
+  // to be re-sorted). Question wording: stored label first, then the canonical
+  // text from the resolver, and only then a humanised key as a last resort.
   const humanise = (k: string) =>
     k.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
-  const guidedChecks: { title: string; items: { key: string; label: string; answer: string; note?: string }[] }[] = [];
+  const guidedChecks: { id: string; title: string; items: { key: string; label: string; answer: string; note?: string }[] }[] = [];
   const gAreas = (job as any)?.completion_form_data?.areas;
   if (gAreas && typeof gAreas === 'object') {
     for (const [areaId, area] of Object.entries<any>(gAreas)) {
+      const base = areaId.replace(/_\d+$/, '');
       const items = Object.entries<any>(area?.checks || {})
         .filter(([, v]) => v && v.answer)
-        .map(([k, v]) => ({ key: k, label: v.label || humanise(k), answer: v.answer, note: v.note }));
-      if (items.length) guidedChecks.push({ title: area?.title || humanise(areaId), items });
+        .map(([k, v]) => ({
+          key: k,
+          label: v.label || GUIDED_LABELS[`${base}.${k}`] || humanise(k),
+          answer: v.answer,
+          note: v.note,
+        }));
+      if (items.length) guidedChecks.push({ id: areaId, title: area?.title || humanise(areaId), items });
     }
+    const rank = (id: string) => {
+      const base = id.replace(/_\d+$/, '');
+      const n = Number(id.match(/_(\d+)$/)?.[1] ?? 0);
+      const i = GUIDED_ORDER.indexOf(base);
+      return (i < 0 ? GUIDED_ORDER.length : i) * 100 + n;
+    };
+    guidedChecks.sort((a, b) => rank(a.id) - rank(b.id));
   }
+
+  // Rooms figure for the summary strip. Guided cleans don't write to the old
+  // job_checklist_items table, which is why this read 0/0 — count the rooms
+  // that were actually walked instead.
+  const guidedAreaCount = gAreas && typeof gAreas === 'object' ? Object.keys(gAreas).length : 0;
 
   return (
     <div className="min-h-screen bg-background print:bg-white clean-report-root">
@@ -242,8 +282,14 @@ export default function CleanReportPage() {
       {/* Summary strip */}
       <div className="flex gap-2 px-4 -mt-3 overflow-x-auto pb-1">
         <div className="flex-1 min-w-[100px] bg-card border border-border rounded-xl px-3 py-2.5 text-center shadow-sm">
-          <span className="text-lg">{allComplete ? "✓" : `${completedItems}/${totalItems}`}</span>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{allComplete ? "All rooms complete" : "Rooms checked"}</p>
+          <span className="text-lg">
+            {guidedAreaCount > 0 ? "✓" : allComplete ? "✓" : `${completedItems}/${totalItems}`}
+          </span>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {guidedAreaCount > 0
+              ? `All ${guidedAreaCount} rooms complete`
+              : allComplete ? "All rooms complete" : "Rooms checked"}
+          </p>
         </div>
         {durationText && (
           <div className="flex-1 min-w-[100px] bg-card border border-border rounded-xl px-3 py-2.5 text-center shadow-sm">
