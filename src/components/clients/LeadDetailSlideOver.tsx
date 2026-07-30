@@ -1,7 +1,8 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, FileText, Phone, Mail, Home, Wrench, Loader2, UserPlus, FilePen, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, FileText, Phone, Mail, Home, Wrench, Loader2, UserPlus, FilePen, CheckCircle2, CalendarCheck } from 'lucide-react';
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -67,15 +68,37 @@ function stageInfo(lead: any) {
 
 export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [addingClient, setAddingClient] = useState(false);
   const [approving, setApproving] = useState(false);
   if (!lead) return null;
 
-  // A residential booking with a chosen date can be approved → creates the
-  // clean on that exact date (pending a cleaner), reliably, from here.
-  const canApprove = lead.status === 'booking_requested'
+  // Has a clean already been scheduled for this person? Shown so you can see at
+  // a glance that approval worked (and so Approve doesn't reappear once done).
+  const leadFullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ');
+  const { data: scheduledJob } = useQuery({
+    queryKey: ['lead-scheduled-job', lead.id, leadFullName],
+    queryFn: async () => {
+      if (!leadFullName) return null;
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, scheduled_time, status, cleaner_1_id')
+        .eq('client_name', leadFullName)
+        .neq('status', 'cancelled')
+        .order('scheduled_date', { ascending: false })
+        .limit(1);
+      return data?.[0] ?? null;
+    },
+    enabled: !!leadFullName,
+  });
+
+  // Approve is offered whenever they've asked for a date, it's not an Airbnb
+  // turnover, and no clean exists yet — so it stays available if approval ever
+  // fails, and disappears once the clean is actually in the Schedule.
+  const canApprove = ['booking_requested', 'accepted', 'client_accepted'].includes(lead.status)
     && lead.form_data?.mode !== 'airbnb'
-    && !!lead.preferred_date;
+    && !!lead.preferred_date
+    && !scheduledJob;
 
   const handleApprove = async () => {
     setApproving(true);
@@ -99,8 +122,9 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
       if (error) throw error;
       if (!data?.job_id) throw new Error('Could not create the clean — check the address on the lead and try again.');
       await supabase.from('quote_requests').update({ status: 'accepted' } as any).eq('id', lead.id);
+      queryClient.invalidateQueries({ queryKey: ['lead-scheduled-job'] });
+      queryClient.invalidateQueries({ queryKey: ['quote-requests-leads'] });
       toast.success(`Approved — ${nm}'s clean is in your Schedule. Now assign a cleaner.`);
-      onClose();
     } catch (e: any) {
       toast.error(e.message || 'Could not approve the booking');
     } finally {
@@ -158,9 +182,35 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
           <p className="text-sm text-foreground/80 mt-1.5 leading-relaxed">{s.story}</p>
           <div className="mt-3 rounded-xl bg-card/70 border border-border px-3 py-2">
             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Your move</p>
-            <p className="text-sm font-semibold text-foreground mt-0.5">→ {s.action}</p>
+            <p className="text-sm font-semibold text-foreground mt-0.5">
+              → {scheduledJob
+                ? (scheduledJob.cleaner_1_id ? 'Nothing — this one\'s scheduled and covered.' : 'Assign a cleaner to the scheduled clean.')
+                : s.action}
+            </p>
           </div>
         </div>
+
+        {/* ── Already scheduled? Show it, so approval is never ambiguous ── */}
+        {scheduledJob && (
+          <button
+            onClick={() => { navigate('/schedule'); onClose(); }}
+            className="w-full text-left rounded-2xl border border-primary/40 bg-primary/5 p-4 mb-5"
+          >
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm font-extrabold text-foreground">Clean scheduled</p>
+            </div>
+            <p className="text-sm text-foreground mt-1.5 font-semibold">
+              {new Date(scheduledJob.scheduled_date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {scheduledJob.scheduled_time ? ` · ${String(scheduledJob.scheduled_time).slice(0, 5)}` : ''}
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground">
+              {scheduledJob.cleaner_1_id
+                ? 'Cleaner assigned. Tap to view in Schedule.'
+                : '⚠️ No cleaner assigned yet — tap to open Schedule and assign one.'}
+            </p>
+          </button>
+        )}
 
         <div className="space-y-5 text-sm">
           <div className="space-y-2">
