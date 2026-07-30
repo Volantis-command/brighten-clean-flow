@@ -55,7 +55,7 @@ function timeAgo(iso?: string) {
 
 const isFresh = (iso?: string) => !!iso && (Date.now() - new Date(iso).getTime()) < 24 * 3600 * 1000;
 
-export default function LeadsTab({ focusLeadId, onFocusHandled }: { focusLeadId?: string | null; onFocusHandled?: () => void } = {}) {
+export default function LeadsTab({ focusLeadId, focusLeadPhone, onFocusHandled }: { focusLeadId?: string | null; focusLeadPhone?: string | null; onFocusHandled?: () => void } = {}) {
   const [chip, setChip] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedLead, setSelectedLead] = useState<any>(null);
@@ -91,15 +91,28 @@ export default function LeadsTab({ focusLeadId, onFocusHandled }: { focusLeadId?
     refetchInterval: 60_000,
   });
 
-  // Deep link from a notification (/clients?lead=<id>) — open that lead straight away.
+  // Deep link from a notification: /clients?lead=<id> or ?leadPhone=<phone>.
+  // Fetched DIRECTLY by id/phone — never via the filtered list — so it still
+  // opens when the lead's status has moved on (e.g. accepted) or a chip filter
+  // is active. Searching the list was the old bug: approved leads vanished.
+  const { data: focusedLead } = useQuery({
+    queryKey: ['lead-focus', focusLeadId, focusLeadPhone],
+    queryFn: async () => {
+      let q = supabase.from('quote_requests').select('*');
+      if (focusLeadId) q = q.eq('id', focusLeadId);
+      else if (focusLeadPhone) q = q.eq('phone', focusLeadPhone);
+      else return null;
+      const { data } = await q.order('created_at', { ascending: false }).limit(1);
+      return data?.[0] ?? null;
+    },
+    enabled: !!(focusLeadId || focusLeadPhone),
+  });
+
   useEffect(() => {
-    if (!focusLeadId || !leads.length) return;
-    const hit = leads.find((l: any) => l.id === focusLeadId);
-    if (hit) {
-      setSelectedLead(hit);
-      onFocusHandled?.();
-    }
-  }, [focusLeadId, leads, onFocusHandled]);
+    if (!focusedLead) return;
+    setSelectedLead(focusedLead);
+    onFocusHandled?.();
+  }, [focusedLead, onFocusHandled]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};

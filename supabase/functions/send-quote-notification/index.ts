@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
         viewed:      { emoji: '👀', title: 'viewed their price',   action: 'Follow up to win the job.' },
         info:        { emoji: '💬', title: 'wants a call',         action: 'Call them — they have a question.' },
         book_airbnb: { emoji: '✅', title: 'wants to book (Airbnb)', action: 'Set up the turnover & confirm.' },
-        book_resi:   { emoji: '✅', title: 'BOOKED IN',            action: `Clean auto-created${when ? ` for ${when}` : ''} — assign a cleaner.` },
+        book_resi:   { emoji: '🔔', title: 'wants to book — needs approval', action: `Asked for${when ? ` ${when}` : ' a slot'} — open the lead and tap Approve & schedule.` },
       };
       const h = HEAD[intent as string] || HEAD.viewed;
       const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');

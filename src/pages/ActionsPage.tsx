@@ -224,11 +224,18 @@ export default function ActionsPage() {
               className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
               onClick={() => {
                 if (!n.read) markAsRead.mutate(n.id);
-                const dest =
+                let dest =
                   n.link ||
                   (n.event_type === 'property_change_requested' && n.metadata?.property_id
                     ? `/properties/${n.metadata.property_id}`
                     : null);
+                // Lead alerts created before lead ids were added to the link land
+                // on a bare /clients. Pull the mobile out of the message so the
+                // click still opens THAT lead instead of the client list.
+                if (dest === '/clients' && /lead/i.test(n.title || '')) {
+                  const phone = (n.message || '').match(/(?:\+61|0)[45]\d{2}\s?\d{3}\s?\d{3}/);
+                  if (phone) dest = `/clients?leadPhone=${encodeURIComponent(phone[0].replace(/\s/g, ''))}`;
+                }
                 if (dest) navigate(dest);
               }}
             >

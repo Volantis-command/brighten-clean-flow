@@ -181,14 +181,28 @@ export default function ClientsPage() {
   // with that lead's slide-over already showing — no hunting through the list.
   const [searchParams, setSearchParams] = useSearchParams();
   const leadParam = searchParams.get('lead');
-  const [activeTab, setActiveTab] = useState(leadParam ? 'leads' : 'clients');
+  // ?leadPhone= is the fallback for notifications created before lead ids were
+  // included in the link — resolves the lead by phone instead.
+  const leadPhoneParam = searchParams.get('leadPhone');
+  const hasFocus = !!(leadParam || leadPhoneParam);
+  const [activeTab, setActiveTab] = useState(hasFocus ? 'leads' : 'clients');
   const [focusLeadId, setFocusLeadId] = useState<string | null>(leadParam);
+  const [focusLeadPhone, setFocusLeadPhone] = useState<string | null>(leadPhoneParam);
   useEffect(() => {
-    if (leadParam) { setFocusLeadId(leadParam); setActiveTab('leads'); }
-  }, [leadParam]);
+    if (leadParam || leadPhoneParam) {
+      setFocusLeadId(leadParam);
+      setFocusLeadPhone(leadPhoneParam);
+      setActiveTab('leads');
+    }
+  }, [leadParam, leadPhoneParam]);
   const clearFocusLead = useCallback(() => {
     setFocusLeadId(null);
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('lead'); return p; }, { replace: true });
+    setFocusLeadPhone(null);
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      p.delete('lead'); p.delete('leadPhone');
+      return p;
+    }, { replace: true });
   }, [setSearchParams]);
   const filteredClients = clients.filter((c: any) => {
     const q = clientSearch.trim().toLowerCase();
@@ -627,7 +641,7 @@ export default function ClientsPage() {
               </div>
             </div>
           )}
-          <LeadsTab focusLeadId={focusLeadId} onFocusHandled={clearFocusLead} />
+          <LeadsTab focusLeadId={focusLeadId} focusLeadPhone={focusLeadPhone} onFocusHandled={clearFocusLead} />
         </TabsContent>
 
         <TabsContent value="quotes" className="mt-4 space-y-4">
