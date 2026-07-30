@@ -11,7 +11,9 @@
 // questions, and signatures. Everything autosaves locally as they go, so a
 // dropped signal in a lift never loses their work.
 //
-// Runs at /clean/:jobId/guided alongside the existing form until it's approved.
+// Live at /clean/:jobId/complete. Photos are queued to IndexedDB the instant
+// they're taken and uploaded in the background, so no shot is ever lost to a
+// dropped signal. The old form remains at /complete-classic as a fallback.
 // ============================================================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,9 +23,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Loader2, ArrowRight, Check, X, MinusCircle, Camera, Sparkles,
-  CircleCheck, Trash2, PenLine, CloudOff, ShieldCheck,
+  CircleCheck, Trash2, PenLine, CloudOff, ShieldCheck, CheckCheck,
 } from 'lucide-react';
 import GuidedCamera from '@/components/clean/GuidedCamera';
+import { enqueuePhoto, pendingPhotos, countPending, removePhoto, bumpAttempts, clearJob } from '@/lib/photoQueue';
 import SignaturePad from '@/components/clean-workflow/SignaturePad';
 import { buildChecklist, type ChecklistArea, type ChecklistItem } from '@/lib/cleanChecklist';
 
@@ -59,6 +62,7 @@ export default function GuidedCompletionPage() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
+  const [pendingCount, setPendingCount] = useState(0);
   const restored = useRef(false);
 
   useEffect(() => {
@@ -90,9 +94,6 @@ export default function GuidedCompletionPage() {
     enabled: !!jobId,
   });
 
-  const cleanType = (data?.property as any)?.clean_frequency
-    ? undefined
-    : undefined; // clean type comes off the property/job below
   const areas: ChecklistArea[] = useMemo(() => {
     if (!data?.property) return [];
     const type = (data.property as any)?.clean_standard || (data.job as any)?.clean_type || 'Airbnb Turnover';
@@ -116,13 +117,86 @@ export default function GuidedCompletionPage() {
     } catch { /* corrupt draft — start fresh */ }
   }, [jobId, areas.length]);
 
-  /* ── Autosave every change, instantly, on the device ── */
+  /* ── Autosave every change, instantly, on the device ──
+     Only real (https) photo URLs are persisted. A blob: URL is dead after a
+     reload, so saving one would restore a broken image — those photos live in
+     the IndexedDB queue instead and pick up their real URL once uploaded. */
   useEffect(() => {
     if (!jobId) return;
     try {
-      localStorage.setItem(draftKey(jobId), JSON.stringify({ photos, checks, areaIdx, phase }));
-    } catch { /* storage full — keep going, DB save still happens */ }
+      const uploaded = Object.fromEntries(
+        Object.entries(photos).filter(([, url]) => url.startsWith('http')),
+      );
+      localStorage.setItem(draftKey(jobId), JSON.stringify({ photos: uploaded, checks, areaIdx, phase }));
+    } catch { /* storage full — the photo queue is still safe in IndexedDB */ }
   }, [jobId, photos, checks, areaIdx, phase]);
+
+  /* ── Background upload of everything the camera queued ──
+     Runs on mount, whenever signal returns, after each shot, and on a timer
+     while anything is pending. Safe to call at any time — it self-guards. */
+  const flushing = useRef(false);
+  const flush = useCallback(async () => {
+    if (!jobId || flushing.current || !navigator.onLine) return;
+    flushing.current = true;
+    try {
+      const queue = await pendingPhotos(jobId);
+      for (const rec of queue) {
+        try {
+          const { error } = await supabase.storage
+            .from('job-photos')
+            .upload(rec.path, rec.blob, { contentType: 'image/jpeg', upsert: true });
+          if (error) throw error;
+          const { data: pub } = supabase.storage.from('job-photos').getPublicUrl(rec.path);
+
+          // The client report reads job_photos and groups by room_label, so
+          // every shot needs a row here or the report comes out empty.
+          await supabase.from('job_photos').insert({
+            job_id: rec.jobId,
+            storage_path: rec.path,
+            public_url: pub.publicUrl,
+            room_label: rec.roomLabel,
+          } as any);
+
+          // Swap the local blob preview for the real URL now it's safely up.
+          setPhotos(p => ({ ...p, [key(rec.areaId, rec.itemKey)]: pub.publicUrl }));
+          if (rec.id != null) await removePhoto(rec.id);
+        } catch {
+          // Leave it queued and try again on the next pass — never drop a photo.
+          await bumpAttempts(rec);
+          break; // almost certainly the connection; stop hammering it
+        }
+      }
+      setPendingCount(await countPending(jobId));
+    } finally {
+      flushing.current = false;
+    }
+  }, [jobId]);
+
+  // Kick the queue: on load, when signal returns, and every 8s while pending.
+  useEffect(() => {
+    if (!jobId) return;
+    void (async () => {
+      // Re-show any photos still queued from a previous session, otherwise they'd
+      // look "not taken" after a reload and the flow would ask for them again.
+      const queued = await pendingPhotos(jobId);
+      if (queued.length) {
+        setPhotos(p => {
+          const next = { ...p };
+          for (const rec of queued) {
+            const k = key(rec.areaId, rec.itemKey);
+            if (!next[k]) next[k] = URL.createObjectURL(rec.blob);
+          }
+          return next;
+        });
+      }
+      setPendingCount(queued.length);
+    })();
+    void flush();
+    const onOnline = () => { setOffline(false); void flush(); };
+    window.addEventListener('online', onOnline);
+    const t = setInterval(() => { if (navigator.onLine) void flush(); }, 8000);
+    return () => { window.removeEventListener('online', onOnline); clearInterval(t); };
+  }, [jobId, flush]);
 
   const area = areas[areaIdx];
   const livePhotos = useMemo(
@@ -142,33 +216,27 @@ export default function GuidedCompletionPage() {
     return all.length ? Math.round((done / all.length) * 100) : 0;
   }, [areas, photos, checks]);
 
-  /* ── Upload one photo ── */
+  /* ── Capture a photo ──
+     Queued to IndexedDB and the cleaner moves on instantly — signal or no
+     signal. A background flush does the actual uploading. */
   const uploadPhoto = useCallback(async (item: ChecklistItem, blob: Blob) => {
     if (!jobId || !area) return;
     setSaving(true);
     try {
       const path = `${jobId}/${area.id}_${item.key}_${Date.now()}.jpg`;
-      const { error } = await supabase.storage.from('job-photos').upload(path, blob, { contentType: 'image/jpeg' });
-      if (error) throw error;
-      const { data: pub } = supabase.storage.from('job-photos').getPublicUrl(path);
-      setPhotos(p => ({ ...p, [key(area.id, item.key)]: pub.publicUrl }));
-
-      // The client-facing report reads from job_photos and groups by room_label,
-      // so every shot needs a row here or the report comes out empty. Grouped by
-      // ROOM (not one group per photo) so the report reads room by room.
-      await supabase.from('job_photos').insert({
-        job_id: jobId,
-        storage_path: path,
-        public_url: pub.publicUrl,
-        room_label: area.title,
-      } as any);
+      await enqueuePhoto({ jobId, areaId: area.id, itemKey: item.key, path, roomLabel: area.title, blob });
+      // Show their own shot straight away from the local blob.
+      setPhotos(p => ({ ...p, [key(area.id, item.key)]: URL.createObjectURL(blob) }));
+      setPendingCount(c => c + 1);
+      void flush();                                   // fire and forget
       if (itemIdx + 1 < livePhotos.length) setItemIdx(i => i + 1);
       else { setItemIdx(0); setPhase(liveChecks.length ? 'checks' : 'recap'); }
-    } catch (e: any) {
-      toast.error('Photo did not save — try again');
+    } catch {
+      toast.error('Could not save that photo — try again');
     } finally {
       setSaving(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, area, itemIdx, livePhotos.length, liveChecks.length]);
 
   /* ── Answer a tick question ── */
@@ -228,6 +296,23 @@ export default function GuidedCompletionPage() {
     if (!jobId) return;
     setSubmitting(true);
     try {
+      // Never complete a clean while photos are still queued — the report would
+      // be missing shots. Try once more, then tell them plainly what's needed.
+      if (pendingCount > 0) {
+        await flush();
+        const still = await countPending(jobId);
+        setPendingCount(still);
+        if (still > 0) {
+          toast.error(
+            navigator.onLine
+              ? `${still} photo${still === 1 ? '' : 's'} still uploading — keep this open a moment`
+              : `You're offline. ${still} photo${still === 1 ? '' : 's'} will send when you get signal — your work is saved.`,
+            { duration: 6000 },
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
       const now = new Date().toISOString();
       const formData: any = { areas: {}, completed_via: 'guided_flow', integrity: {} };
       for (const a of areas) {
@@ -260,6 +345,7 @@ export default function GuidedCompletionPage() {
       if (error) throw error;
 
       localStorage.removeItem(draftKey(jobId));
+      await clearJob(jobId); // queue is drained; nothing left to keep
       setPhase('done');
     } catch (e: any) {
       toast.error(e.message || 'Could not submit — your work is saved, try again');
@@ -297,9 +383,18 @@ export default function GuidedCompletionPage() {
       <div className="sticky top-0 z-30 bg-background/90 backdrop-blur px-5 pt-4 pb-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-extrabold text-foreground">{progress}% complete</p>
-          {offline && (
+          {offline ? (
             <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600">
-              <CloudOff className="w-3.5 h-3.5" /> Offline — saved on your phone
+              <CloudOff className="w-3.5 h-3.5" />
+              Offline — {pendingCount > 0 ? `${pendingCount} saved on your phone` : 'saved on your phone'}
+            </span>
+          ) : pendingCount > 0 ? (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading {pendingCount}…
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-primary">
+              <CheckCheck className="w-3.5 h-3.5" /> All photos saved
             </span>
           )}
         </div>
@@ -444,9 +539,16 @@ export default function GuidedCompletionPage() {
               </div>
             )}
 
+            {pendingCount > 0 && (
+              <p className="text-center text-xs font-semibold text-muted-foreground">
+                {offline
+                  ? `${pendingCount} photo${pendingCount === 1 ? '' : 's'} waiting for signal — they'll send automatically.`
+                  : `Uploading ${pendingCount} photo${pendingCount === 1 ? '' : 's'}…`}
+              </p>
+            )}
             <Big onClick={submit} disabled={!sig1 || (!solo && !sig2) || submitting}>
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-              Submit clean
+              {pendingCount > 0 ? `Finish (${pendingCount} uploading)` : 'Submit clean'}
             </Big>
           </Stack>
         )}
