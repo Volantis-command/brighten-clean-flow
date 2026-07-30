@@ -235,8 +235,14 @@ export default function GuidedCompletionPage() {
           title: a.title,
           photos: Object.fromEntries(a.items.filter(i => i.kind === 'photo')
             .map(i => [i.key, photos[key(a.id, i.key)] || null]).filter(([, v]) => v)),
+          // The label is stored WITH the answer so the client report is
+          // self-describing — it never has to re-derive what was asked, even if
+          // the property or the template changes later.
           checks: Object.fromEntries(a.items.filter(i => i.kind === 'check')
-            .map(i => [i.key, checks[key(a.id, i.key)] || null]).filter(([, v]) => v)),
+            .map(i => {
+              const ans = checks[key(a.id, i.key)];
+              return ans ? [i.key, { ...ans, label: i.label }] : [i.key, null];
+            }).filter(([, v]) => v)),
         };
       }
       const sigs: any = {};

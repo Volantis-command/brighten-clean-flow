@@ -168,6 +168,21 @@ export default function CleanReportPage() {
     photosByRoom[room].push(p);
   });
 
+  // Tick answers from the guided flow, room by room. `label` is stored with the
+  // answer; older cleans predate that, so fall back to humanising the key.
+  const humanise = (k: string) =>
+    k.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+  const guidedChecks: { title: string; items: { key: string; label: string; answer: string; note?: string }[] }[] = [];
+  const gAreas = (job as any)?.completion_form_data?.areas;
+  if (gAreas && typeof gAreas === 'object') {
+    for (const [areaId, area] of Object.entries<any>(gAreas)) {
+      const items = Object.entries<any>(area?.checks || {})
+        .filter(([, v]) => v && v.answer)
+        .map(([k, v]) => ({ key: k, label: v.label || humanise(k), answer: v.answer, note: v.note }));
+      if (items.length) guidedChecks.push({ title: area?.title || humanise(areaId), items });
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background print:bg-white clean-report-root">
       {/*
@@ -209,7 +224,9 @@ export default function CleanReportPage() {
           <Logo variant="cream" className="h-9 w-auto inline-block" />
         </h1>
         <p className="text-white/70 text-sm mt-1">Clean Report</p>
-        <h2 className="text-xl font-bold mt-4">{property?.property_name || "Property"}</h2>
+        {/* text-white must be explicit — the global heading rule applies
+            text-foreground, which renders this dark-on-dark green. */}
+        <h2 className="text-xl font-bold mt-4 text-white">{property?.property_name || "Property"}</h2>
         <p className="text-white/70 text-sm">{[property?.address, property?.suburb].filter(Boolean).join(", ")}</p>
         <p className="text-white/80 text-sm mt-2">{finishedTime}</p>
         <p className="text-white/70 text-sm">Cleaned by {cleanerNames}</p>
@@ -300,6 +317,47 @@ export default function CleanReportPage() {
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* Checks — the questions the cleaner answered, room by room.
+            Photos prove what it looks like; these prove the things a photo
+            can't show (bin liners, drains, locked up, keys returned). */}
+        {guidedChecks.length > 0 && (
+          <section className="mb-5">
+            <h3 className="text-base font-bold text-foreground mb-1">Checked &amp; confirmed</h3>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              {guidedChecks.reduce((n, r) => n + r.items.length, 0)} checks confirmed by the cleaner on site
+            </p>
+            <div className="space-y-3">
+              {guidedChecks.map(room => (
+                <div key={room.title} className="rounded-xl border border-border bg-card overflow-hidden">
+                  <p className="px-3 py-2 text-sm font-semibold text-foreground border-b border-border bg-muted/40">
+                    {room.title}
+                  </p>
+                  <div className="divide-y divide-border">
+                    {room.items.map(it => (
+                      <div key={it.key} className="flex items-start gap-2.5 px-3 py-2">
+                        <span className="mt-[2px] shrink-0 text-[13px] leading-none">
+                          {it.answer === 'yes' ? '✅' : it.answer === 'na' ? '➖' : '⚠️'}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[13px] text-foreground leading-snug">{it.label}</p>
+                          {it.answer === 'na' && (
+                            <p className="text-[11px] text-muted-foreground">Not applicable at this property</p>
+                          )}
+                          {it.answer === 'no' && (
+                            <p className="text-[11px] text-amber-700">
+                              Flagged{it.note ? `: ${it.note}` : ' — reported to the office'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
