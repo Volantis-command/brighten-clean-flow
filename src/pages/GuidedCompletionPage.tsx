@@ -152,6 +152,16 @@ export default function GuidedCompletionPage() {
       if (error) throw error;
       const { data: pub } = supabase.storage.from('job-photos').getPublicUrl(path);
       setPhotos(p => ({ ...p, [key(area.id, item.key)]: pub.publicUrl }));
+
+      // The client-facing report reads from job_photos and groups by room_label,
+      // so every shot needs a row here or the report comes out empty. Grouped by
+      // ROOM (not one group per photo) so the report reads room by room.
+      await supabase.from('job_photos').insert({
+        job_id: jobId,
+        storage_path: path,
+        public_url: pub.publicUrl,
+        room_label: area.title,
+      } as any);
       if (itemIdx + 1 < livePhotos.length) setItemIdx(i => i + 1);
       else { setItemIdx(0); setPhase(liveChecks.length ? 'checks' : 'recap'); }
     } catch (e: any) {
