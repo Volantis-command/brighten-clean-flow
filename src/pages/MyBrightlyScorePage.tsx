@@ -116,6 +116,57 @@ export default function MyBrightlyScorePage() {
     },
   });
 
+  /* ── Your run: streaks built from real completed-clean data ──
+     Deliberately NOT speed-based — rewarding a fast clean makes cleans worse.
+     A clean counts toward the streak when it was completed through the guided
+     flow with nothing flagged as a problem. Cleans from before the guided flow
+     have no flag data, so they're skipped rather than counted either way. */
+  const { data: run } = useQuery({
+    queryKey: ['my-clean-run', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data: jobs } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, completion_form_data')
+        .or(`cleaner_1_id.eq.${user!.id},cleaner_2_id.eq.${user!.id}`)
+        .eq('status', 'completed')
+        .order('scheduled_date', { ascending: false })
+        .limit(200);
+
+      const all = (jobs ?? []) as any[];
+      const monthStart = new Date();
+      monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+
+      const hasFlag = (j: any) => {
+        const areas = j?.completion_form_data?.areas;
+        if (!areas || typeof areas !== 'object') return null; // not a guided clean
+        for (const a of Object.values<any>(areas)) {
+          for (const c of Object.values<any>(a?.checks || {})) {
+            if (c?.answer === 'no') return true;
+          }
+        }
+        return false;
+      };
+
+      let current = 0, best = 0, guided = 0, run_ = 0, broken = false;
+      for (const j of all) {                       // newest → oldest
+        const flagged = hasFlag(j);
+        if (flagged === null) continue;            // pre-guided clean, skip
+        guided++;
+        if (flagged) { broken = true; run_ = 0; }
+        else { run_++; if (!broken) current = run_; best = Math.max(best, run_); }
+      }
+
+      return {
+        total: all.length,
+        thisMonth: all.filter(j => j.scheduled_date && new Date(j.scheduled_date + 'T00:00:00') >= monthStart).length,
+        guided,
+        current,
+        best,
+      };
+    },
+  });
+
   const stats = useMemo(() => {
     if (!audits.length) {
       return { avgPercent: 0, starRating: 0, totalAudits: 0, passRate: 0, recent: [] as AuditRow[] };
@@ -156,13 +207,52 @@ export default function MyBrightlyScorePage() {
         </p>
       </div>
 
+      {/* Your run — the part that works from day one */}
+      {run && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="glass-card p-4 text-center">
+            <p className="text-2xl font-extrabold text-foreground">
+              {run.current > 0 ? `🔥 ${run.current}` : '—'}
+            </p>
+            <p className="text-[11px] mt-1 text-muted-foreground">Clean streak</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <p className="text-2xl font-extrabold text-foreground">{run.thisMonth}</p>
+            <p className="text-[11px] mt-1 text-muted-foreground">This month</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <p className="text-2xl font-extrabold text-foreground">{run.total}</p>
+            <p className="text-[11px] mt-1 text-muted-foreground">Cleans all time</p>
+          </div>
+        </div>
+      )}
+      {run && run.guided > 0 && (
+        <p className="text-center text-xs text-muted-foreground -mt-2">
+          {run.current > 0
+            ? `${run.current} clean${run.current === 1 ? '' : 's'} in a row with nothing flagged${run.best > run.current ? ` · your best is ${run.best}` : ''}. Keep it going.`
+            : 'Your streak counts cleans finished with nothing flagged as a problem.'}
+        </p>
+      )}
+
       <div className="glass-card p-6 flex flex-col items-center text-center hover-lift">
         <p className="section-label mb-4">Current Score</p>
-        <BrightlyScoreRing scorePct={stats.avgPercent} label="Brightly Score" />
-        <p className="text-xs mt-4" style={{ color: '#86EFAC' }}>
-          {stats.totalAudits} audits · {stats.passRate}% pass rate ·{' '}
-          {stats.starRating ? stats.starRating.toFixed(1) : '—'} stars
-        </p>
+        {stats.totalAudits === 0 ? (
+          <>
+            <p className="text-4xl">🧼</p>
+            <p className="mt-3 font-extrabold text-foreground">No QC audits yet</p>
+            <p className="text-xs mt-1.5 max-w-[16rem] text-muted-foreground">
+              Your score appears here once a head cleaner has audited one of your cleans.
+            </p>
+          </>
+        ) : (
+          <>
+            <BrightlyScoreRing scorePct={stats.avgPercent} label="Brightly Score" />
+            <p className="text-xs mt-4" style={{ color: '#86EFAC' }}>
+              {stats.totalAudits} audits · {stats.passRate}% pass rate ·{' '}
+              {stats.starRating ? stats.starRating.toFixed(1) : '—'} stars
+            </p>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -256,12 +256,34 @@ export default function CleanReportPage() {
           .clean-report-root img { max-width: 100% !important; height: auto !important; }
           /* Ensure browser prints background colors on photos / signatures */
           .clean-report-root { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+          /* A 40-photo report at screen size runs to a dozen pages. Print them
+             4-up at a fixed height so a full turnover lands in 3–4 pages. */
+          .clean-report-root .report-photo-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 3mm !important;
+          }
+          .clean-report-root .report-photo-grid > * {
+            aspect-ratio: auto !important;
+            height: 30mm !important;
+          }
+          .clean-report-root .report-photo-grid img { height: 100% !important; object-fit: cover !important; }
+
+          /* Keep a room's heading with its photos. */
+          .clean-report-root .report-room { break-inside: avoid; page-break-inside: avoid; }
+
+          .report-print-footer { display: block !important; }
         }
+        .report-print-footer { display: none; }
       `}</style>
       {/* Header */}
       <div className="clean-report-header bg-[#1B4332] text-white px-5 pt-8 pb-6 relative">
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Nunito, sans-serif" }}>
-          <Logo variant="cream" className="h-9 w-auto inline-block" />
+          {/* Print forces a white header, so the cream wordmark would be
+              invisible in the PDF — swap to the ink one for print. */}
+          <Logo variant="cream" className="h-9 w-auto inline-block print:hidden" />
+          <Logo variant="ink" className="h-9 w-auto hidden print:inline-block" />
         </h1>
         <p className="text-white/70 text-sm mt-1">Clean Report</p>
         {/* text-white must be explicit — the global heading rule applies
@@ -413,9 +435,9 @@ export default function CleanReportPage() {
           <section>
             <h3 className="text-base font-bold text-foreground mb-3">Photos</h3>
             {Object.entries(photosByRoom).map(([room, roomPhotos]) => (
-              <div key={room} className="mb-3">
+              <div key={room} className="report-room mb-3">
                 <p className="text-sm font-semibold text-foreground mb-1.5">{room}</p>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="report-photo-grid grid grid-cols-3 gap-1.5">
                   {roomPhotos.map((p: any) => (
                     <button key={p.id} onClick={() => setLightboxUrl(p.public_url)} className="aspect-square rounded-lg overflow-hidden">
                       <img src={p.public_url} alt={room} className="w-full h-full object-cover" />
@@ -500,6 +522,13 @@ export default function CleanReportPage() {
           <p className="text-xs text-muted-foreground">Cleaned and certified by Brightly</p>
           <p className="text-xs text-muted-foreground mt-1">Gold Coast's trusted short-term rental cleaning service</p>
           <a href="https://app.brightly.cleaning" className="text-xs text-[#52B788] font-semibold mt-1 inline-block">app.brightly.cleaning</a>
+          {/* Print only — a saved PDF gets separated from the browser, so it
+              needs to say what clean it is and when it was produced. */}
+          <p className="report-print-footer text-[10px] text-muted-foreground mt-3">
+            {[property?.property_name, finishedTime].filter(Boolean).join(' · ')}
+            {' · '}Report generated {format(new Date(), 'd MMM yyyy, h:mma')}
+            {' · '}0418 878 707
+          </p>
         </footer>
       </div>
 
