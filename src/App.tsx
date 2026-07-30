@@ -264,9 +264,13 @@ function AppRoutes() {
         <Route path="/my-cleans" element={<Navigate to="/my-jobs" replace />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
-        <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
-        {/* New guided flow — runs alongside the old form until approved. */}
+        {/* The guided room-by-room flow is now the completion form. Pointing the
+            original path at it means every existing link, button and bookmark
+            follows automatically. The old form stays reachable at
+            /complete-classic purely as an escape hatch if a cleaner gets stuck. */}
+        <Route path="/clean/:jobId/complete" element={<GuidedCompletionPage />} />
         <Route path="/clean/:jobId/guided" element={<GuidedCompletionPage />} />
+        <Route path="/clean/:jobId/complete-classic" element={<CompletionFormPage />} />
         <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
         <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
         {/* cleaner-onboarding moved to public routes for token access */}
