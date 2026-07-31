@@ -71,6 +71,7 @@ const PropertyPassportPage = lazy(() => import('./pages/PropertyPassportPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const SmokeTestPage = lazy(() => import('./pages/SmokeTestPage'));
 const ClientPortalVerifyPage = lazy(() => import('./pages/ClientPortalVerifyPage'));
+const ClientPortalLoginPage = lazy(() => import('./pages/ClientPortalLoginPage'));
 const ClientPortalDashboardPage = lazy(() => import('./pages/ClientPortalDashboardPage'));
 const ClientPortalPropertyPage = lazy(() => import('./pages/ClientPortalPropertyPage'));
 const InstantQuotePage = lazy(() => import('./pages/InstantQuotePage'));
@@ -224,7 +225,8 @@ function AppRoutes() {
       <Route path="/linen-portal/dashboard" element={<LinenPortalDashboardPage />} />
 
       {/* Client portal (SMS magic link session) */}
-      <Route path="/client-portal" element={<Navigate to="/login" replace />} />
+      {/* Clients sign in with phone OTP — a real session, same as staff. */}
+      <Route path="/client-portal" element={<ClientPortalLoginPage />} />
       <Route path="/client-portal/verify" element={<ClientPortalVerifyPage />} />
       <Route path="/client-portal/dashboard" element={<ClientPortalDashboardPage />} />
       <Route path="/client-portal/property/:id" element={<ClientPortalPropertyPage />} />

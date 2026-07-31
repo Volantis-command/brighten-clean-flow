@@ -35,3 +35,8 @@ Brightly App - Claude Code/
 AGENTS.md
 .vercel
 .env*
+
+# Capacitor native build artefacts
+ios/App/Pods/
+ios/App/App/public/
+ios/App/build/

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-// Public client-facing page — always read as anon, never the admin's session.
-import { supabasePublic as supabase } from '@/integrations/supabase/client';
+// Client portal is now behind a real login, so it uses the SESSION-bound client
+// (supabasePublic has persistSession:false and would never see the session).
+import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInMinutes } from 'date-fns';
 import { ArrowLeft, Loader2, Download, CheckCircle2, AlertTriangle, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -23,6 +23,48 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // ── AUTHORISATION ──────────────────────────────────────────────────────
+    // This endpoint used to return a client's entire portal to anyone who
+    // supplied a client_id — no login at all. Property addresses, cleaning
+    // history and access/alarm/lockbox codes were readable by any caller.
+    // Identity now comes from the verified session, never from the request.
+    const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+    const { data: userData } = await supabase.auth.getUser(jwt);
+    const caller = userData?.user;
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "not signed in" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Staff may open any client's portal (support / troubleshooting).
+    const { data: callerRoles } = await supabase
+      .from("user_roles").select("role").eq("user_id", caller.id);
+    const isStaff = (callerRoles || []).some((r: any) =>
+      ["admin", "head_cleaner"].includes(r.role));
+
+    if (!isStaff) {
+      let allowed = false;
+      if (client_type === "profile") {
+        // A client may only ever load their own portal.
+        allowed = caller.id === client_id;
+      } else if (client_type === "property") {
+        const { data: link } = await supabase
+          .from("client_properties").select("id")
+          .eq("client_id", caller.id).eq("property_id", client_id)
+          .maybeSingle();
+        allowed = !!link;
+      }
+      if (!allowed) {
+        return new Response(JSON.stringify({ error: "not your portal" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     let propertyIds: string[] = [];
     let clientName = "";
     let clientEmail = "";

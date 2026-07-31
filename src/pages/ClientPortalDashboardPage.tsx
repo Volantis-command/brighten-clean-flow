@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-// Public client-facing page — always read as anon, never the admin's session.
-import { supabasePublic as supabase } from '@/integrations/supabase/client';
+// Client portal is now behind a real login, so it uses the SESSION-bound client
+// (supabasePublic has persistSession:false and would never see the session).
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Loader2, LogOut, Home, CalendarDays, FileText, Receipt, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import CleanHistoryList from '@/components/client-portal/CleanHistoryList';
 import InvoiceList from '@/components/client-portal/InvoiceList';
 import QuoteHistoryList from '@/components/client-portal/QuoteHistoryList';
 import { Logo } from '@/components/Logo';
+import DeleteAccountButton from '@/components/DeleteAccountButton';
 
 type PortalTab = 'overview' | 'properties' | 'cleans' | 'invoices' | 'quotes';
 
@@ -22,17 +24,22 @@ export default function ClientPortalDashboardPage() {
   const [activeTab, setActiveTab] = useState<PortalTab>('overview');
   const [cleanPropertyFilter, setCleanPropertyFilter] = useState('all');
 
+  // Identity comes from the verified Supabase session, never from browser
+  // storage — the old version trusted a localStorage value anyone could edit.
   useEffect(() => {
-    const id = localStorage.getItem('brightly_client_id');
-    const name = localStorage.getItem('brightly_client_name');
-    const type = localStorage.getItem('brightly_client_type');
-    if (!id) {
-      navigate('/client-portal', { replace: true });
-      return;
-    }
-    setClientId(id);
-    setClientName(name || '');
-    setClientType(type || 'profile');
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (!user) {
+        navigate('/client-portal', { replace: true });
+        return;
+      }
+      setClientId(user.id);
+      setClientType('profile');
+      const { data: profile } = await supabase
+        .from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+      setClientName((profile as any)?.full_name || '');
+    })();
   }, [navigate]);
 
   const { data, isLoading } = useQuery({
@@ -47,10 +54,11 @@ export default function ClientPortalDashboardPage() {
     enabled: !!clientId,
   });
 
-  const handleLogout = () => {
-    localStorage.removeItem('brightly_client_id');
-    localStorage.removeItem('brightly_client_name');
-    localStorage.removeItem('brightly_client_type');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    // Clear the legacy keys too, so an old spoofed value can't linger.
+    ['brightly_client_id', 'brightly_client_name', 'brightly_client_type']
+      .forEach(k => localStorage.removeItem(k));
     navigate('/client-portal', { replace: true });
   };
 
@@ -269,6 +277,11 @@ export default function ClientPortalDashboardPage() {
             <QuoteHistoryList quotes={data?.quotes || []} />
           </div>
         )}
+
+        {/* Account deletion — required in-app by the App Store. */}
+        <div className="pt-6 mt-2 border-t border-border">
+          <DeleteAccountButton redirectTo="/client-portal" />
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,16 @@
 {
   "name": "Brightly Cleaning",
   "short_name": "Brightly",
-  "description": "Guest-ready cleaning operations for teams and property managers.",
-  "start_url": "/dashboard",
+  "description": "Cleans, photo reports and property details for Brightly clients and cleaners.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0A0F0E",
-  "theme_color": "#0A0F0E",
+  "background_color": "#F4F7F6",
+  "theme_color": "#F4F7F6",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon", "purpose": "any" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

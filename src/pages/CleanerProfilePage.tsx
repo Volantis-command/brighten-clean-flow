@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import DeleteAccountButton from '@/components/DeleteAccountButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -270,6 +271,11 @@ export default function CleanerProfilePage() {
       )}
 
       <Button variant="outline" size="lg" onClick={signOut} className="w-full rounded-2xl"><LogOut className="mr-2 h-5 w-5" />Sign out</Button>
+
+      {/* Account deletion — required in-app by the App Store. */}
+      <div className="pt-2 flex justify-center">
+        <DeleteAccountButton redirectTo="/login" />
+      </div>
     </div>
   );
 }
