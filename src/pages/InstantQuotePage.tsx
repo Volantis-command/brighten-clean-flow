@@ -95,6 +95,8 @@ export default function InstantQuotePage() {
 
   // Lead gate — the price stays hidden until they give name + mobile + email.
   const [unlocked, setUnlocked] = useState(false);
+  const [gateStep, setGateStep] = useState<"details" | "code">("details");
+  const [smsCode, setSmsCode] = useState("");
   const [leadId, setLeadId] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
   const [outcome, setOutcome] = useState<"booked" | "info" | null>(null);
@@ -126,15 +128,43 @@ export default function InstantQuotePage() {
     }
   };
 
-  // Capture the lead the moment they ask to see their price. Everyone who
-  // reveals a quote lands in the database — not just people who book.
-  const revealPrice = async () => {
+  // Step 1 — text them a code. The price stays hidden until they prove they
+  // hold the phone, which stops made-up leads and competitors price-fishing.
+  const sendCode = async () => {
     if (!fullName.trim() || !phone.trim() || !email.trim()) {
       toast.error("Name, mobile and email are needed to see your quote");
       return;
     }
     setRevealing(true);
     try {
+      const { data, error } = await supabase.functions.invoke("request-quote-otp", {
+        body: { phone: phone.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setGateStep("code");
+      toast.success("Code sent — check your phone.");
+    } catch (err: any) {
+      toast.error(err.message || "Couldn't send the code — try again");
+    } finally {
+      setRevealing(false);
+    }
+  };
+
+  // Step 2 — verify the code, then capture the lead and show the price.
+  const revealPrice = async () => {
+    if (!smsCode.trim()) {
+      toast.error("Enter the code we sent you");
+      return;
+    }
+    setRevealing(true);
+    try {
+      const { data: v, error: vErr } = await supabase.functions.invoke("verify-quote-otp", {
+        body: { phone: phone.trim(), code: smsCode.trim() },
+      });
+      if (vErr) throw vErr;
+      if ((v as any)?.error) throw new Error((v as any).error);
+      if (!(v as any)?.verified) throw new Error("Could not verify that code");
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ");
@@ -158,6 +188,8 @@ export default function InstantQuotePage() {
           property_size: type.name,
           quoted_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
           captured_at_reveal: true,
+          phone_verified: true,          // proved they hold this handset
+          phone_verified_at: new Date().toISOString(),
         },
       } as any).select("id").single();
       if (error) throw error;
@@ -169,6 +201,7 @@ export default function InstantQuotePage() {
           type: "lead_captured",
           intent: "viewed",
           mode,
+          phone_verified: true,
           lead_id: data?.id ?? null,
           client_name: fullName.trim(),
           client_phone: phone.trim(),
@@ -460,20 +493,57 @@ export default function InstantQuotePage() {
 
               {!unlocked && (
                 <div id="reveal-gate" style={{ marginTop: 22, background: CARD, border: `1.5px solid ${GREEN}66`, borderRadius: 18, padding: "18px 16px", boxShadow: `0 0 26px ${GREEN}22` }}>
-                  <div style={{ fontSize: 16.5, fontWeight: 800, marginBottom: 4 }}>See your instant price 👇</div>
-                  <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 14px", lineHeight: 1.5 }}>
-                    Pop in your details and we'll show your quote straight away — no obligation, takes 10 seconds.
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
-                    <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
-                    <Field label="Email *" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
-                  </div>
-                  <button onClick={revealPrice} disabled={revealing}
-                    style={{ width: "100%", marginTop: 14, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: revealing ? 0.7 : 1 }}>
-                    {revealing && <Loader2 size={18} className="animate-spin" />}
-                    Reveal my price
-                  </button>
+                  {gateStep === "details" ? (
+                    <>
+                      <div style={{ fontSize: 16.5, fontWeight: 800, marginBottom: 4 }}>See your instant price 👇</div>
+                      <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 14px", lineHeight: 1.5 }}>
+                        Pop in your details and we'll text you a quick code to unlock your quote — takes 20 seconds.
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
+                        <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
+                        <Field label="Email *" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
+                      </div>
+                      <button onClick={sendCode} disabled={revealing}
+                        style={{ width: "100%", marginTop: 14, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: revealing ? 0.7 : 1 }}>
+                        {revealing && <Loader2 size={18} className="animate-spin" />}
+                        Text me my code
+                      </button>
+                      <p style={{ fontSize: 11, color: MUTED, textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>
+                        We verify your mobile so we only quote real customers. We never share your details.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 16.5, fontWeight: 800, marginBottom: 4 }}>Enter your code 📱</div>
+                      <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 14px", lineHeight: 1.5 }}>
+                        We sent a 6-digit code to {phone}. Pop it in to see your price.
+                      </p>
+                      <input
+                        value={smsCode}
+                        onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="123456"
+                        style={{ width: "100%", border: `1.5px solid ${BORDER}`, borderRadius: 12, padding: "16px 14px", fontSize: 26, fontWeight: 800, letterSpacing: "0.3em", textAlign: "center", color: TEXT, fontFamily: "inherit", background: BG, outline: "none" }}
+                      />
+                      <button onClick={revealPrice} disabled={revealing || smsCode.length < 4}
+                        style={{ width: "100%", marginTop: 12, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: (revealing || smsCode.length < 4) ? 0.6 : 1 }}>
+                        {revealing && <Loader2 size={18} className="animate-spin" />}
+                        Show my price
+                      </button>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                        <button onClick={() => { setGateStep("details"); setSmsCode(""); }}
+                          style={{ background: "none", border: "none", color: MUTED, fontSize: 12.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+                          Change my number
+                        </button>
+                        <button onClick={sendCode} disabled={revealing}
+                          style={{ background: "none", border: "none", color: GREEN, fontSize: 12.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+                          Resend code
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

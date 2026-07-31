@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Eye, Trash2, Download, Search, Phone } from 'lucide-react';
+import { Loader2, Eye, Trash2, Download, Search, Phone, ShieldCheck } from 'lucide-react';
 import LeadDetailSlideOver from './LeadDetailSlideOver';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -243,6 +243,10 @@ export default function LeadsTab({ focusLeadId, focusLeadPhone, onFocusHandled }
                     <span className="flex items-center gap-2">
                       {fresh && <span className="w-2 h-2 rounded-full bg-primary shrink-0" title="New in the last 24 hours" />}
                       {name}
+                      {lead.form_data?.phone_verified && (
+                        <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0"
+                          aria-label="Phone verified" />
+                      )}
                     </span>
                   </TableCell>
                   <TableCell className={fresh ? 'font-bold text-foreground' : 'text-muted-foreground'}>
