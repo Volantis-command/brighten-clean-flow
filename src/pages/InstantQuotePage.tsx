@@ -195,6 +195,20 @@ export default function InstantQuotePage() {
       if (error) throw error;
       setLeadId(data?.id ?? null);
       setUnlocked(true);
+
+      // Jess texts them straight away, while they're still looking at the price.
+      // Speed to lead is the whole game — this fires within a second or two of
+      // the reveal. Non-blocking: a texting hiccup must never hide their quote.
+      supabase.functions.invoke("jess-first-touch", {
+        body: {
+          lead_id: data?.id ?? null,
+          first_name: firstName,
+          phone: phone.trim(),
+          quoted: Math.round(quote.sellIncGst),
+          clean_type: cleanType,
+          property_size: type.name,
+        },
+      }).catch(() => {});
       // Ping admins (SMS + in-app) so no lead ever goes unseen. Non-blocking.
       supabase.functions.invoke("send-quote-notification", {
         body: {
