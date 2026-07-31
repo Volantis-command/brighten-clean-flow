@@ -59,17 +59,21 @@ async function parseIncoming(req: Request) {
 
   if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
     const formData = await req.formData();
+    const original = ((formData.get('Body') as string) || '').trim();
     return {
       from: ((formData.get('From') as string) || '').trim(),
-      body: ((formData.get('Body') as string) || '').trim().toUpperCase(),
+      body: original.toUpperCase(),   // uppercased for keyword matching
+      rawBody: original,              // original case, for Jess to read naturally
     };
   }
 
   const raw = await req.text();
   const params = new URLSearchParams(raw);
+  const original = (params.get('Body') || '').trim();
   return {
     from: (params.get('From') || '').trim(),
-    body: (params.get('Body') || '').trim().toUpperCase(),
+    body: original.toUpperCase(),
+    rawBody: original,
   };
 }
 
@@ -285,7 +289,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { from, body } = await parseIncoming(req);
+    const { from, body, rawBody } = await parseIncoming(req);
 
     console.log(`[twilio-inbound-sms v5] From: "${from}"`);
     console.log(`[twilio-inbound-sms v5] Body: "${body}"`);
@@ -490,13 +494,32 @@ Deno.serve(async (req) => {
       if (quoteResult) return quoteResult;
     }
 
-    // ─── 4. No match — generic response ───
-    if (matchingProfiles.length > 0) {
-      const firstName = (matchingProfiles[0].full_name || 'there').split(' ')[0];
-      return twimlResponse(`Hi ${firstName}, we received your message but couldn't match it to a pending action. Please reply YES or NO. - Brightly`);
+    // ─── 4. No keyword match: hand the whole message to Jess ───
+    //
+    // This used to dead-end with "couldn't match it to a pending action, please
+    // reply YES or NO", which is what anyone got for writing a normal sentence.
+    // Jess works out who they are, loads their quote/jobs, and answers properly.
+    // She sends the SMS herself, so we return empty TwiML (no second message).
+    try {
+      const jessRes = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/jess-reply`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({ phone: from, body: rawBody ?? body }),
+        },
+      );
+      if (jessRes.ok) return twimlResponse('');
+      console.error('jess-reply failed:', await jessRes.text());
+    } catch (e) {
+      console.error('jess-reply threw:', e);
     }
 
-    return twimlResponse('Sorry, we could not find your account. Please contact your manager. - Brightly');
+    // Jess unreachable: say something human rather than the old robot line.
+    return twimlResponse("Thanks for that, we'll come straight back to you. If it's urgent give us a call on 0418 878 707.");
   } catch (err) {
     console.error('[twilio-inbound-sms] Unhandled error:', err);
     return twimlResponse('');
