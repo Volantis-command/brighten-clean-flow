@@ -266,13 +266,14 @@ function AppRoutes() {
         <Route path="/my-cleans" element={<Navigate to="/my-jobs" replace />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/clean/:jobId" element={<CleanWorkflowPage />} />
-        {/* The guided room-by-room flow is now the completion form. Pointing the
-            original path at it means every existing link, button and bookmark
-            follows automatically. The old form stays reachable at
-            /complete-classic purely as an escape hatch if a cleaner gets stuck. */}
-        <Route path="/clean/:jobId/complete" element={<GuidedCompletionPage />} />
+        {/* /clean/:jobId/complete is what the "Report Damage / Issue" button in
+            CleanWorkflowPage opens. It is NOT the completion flow: cleans are
+            finished by PhotoReportingWizard inside CleanWorkflowPage. Repointing
+            this at the guided checklist broke damage reporting for cleaners on
+            30 Jul, so it is back to the form it has always opened. The guided
+            flow stays on its own route until it is properly integrated. */}
+        <Route path="/clean/:jobId/complete" element={<CompletionFormPage />} />
         <Route path="/clean/:jobId/guided" element={<GuidedCompletionPage />} />
-        <Route path="/clean/:jobId/complete-classic" element={<CompletionFormPage />} />
         <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
         <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
         {/* cleaner-onboarding moved to public routes for token access */}
