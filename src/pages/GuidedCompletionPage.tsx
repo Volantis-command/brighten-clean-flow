@@ -29,6 +29,7 @@ import GuidedCamera from '@/components/clean/GuidedCamera';
 import { enqueuePhoto, pendingPhotos, countPending, removePhoto, bumpAttempts, clearJob } from '@/lib/photoQueue';
 import SignaturePad from '@/components/clean-workflow/SignaturePad';
 import { buildChecklist, type ChecklistArea, type ChecklistItem } from '@/lib/cleanChecklist';
+import { sendJobSms } from '@/lib/sendJobSms';
 
 type Answer = 'yes' | 'no' | 'na';
 interface CheckAnswer { answer: Answer; note?: string; at: string }
@@ -344,6 +345,24 @@ export default function GuidedCompletionPage() {
       } as any).eq('id', jobId);
       if (error) throw error;
 
+      // Everything the old PhotoReportingWizard fired on completion. Without
+      // these the clean finishes but nobody is told and it never gets invoiced,
+      // which is a far worse failure than a missing photo. All non-blocking:
+      // a hiccup in an SMS must not make the cleaner think the clean failed.
+      try { await sendJobSms({ job_id: jobId }); } catch { /* non-blocking */ }
+      try {
+        await supabase.functions.invoke('job-completed-sms', { body: { job_id: jobId } });
+      } catch { /* non-blocking */ }
+      if ((data?.property as any)?.client_type === 'airbnb') {
+        try {
+          await supabase.functions.invoke('guest-ready-sms', { body: { job_id: jobId } });
+        } catch { /* non-blocking */ }
+      }
+      try {
+        const { triggerJobAutoInvoice } = await import('@/lib/jobInvoice');
+        await triggerJobAutoInvoice(jobId);
+      } catch { /* non-blocking */ }
+
       localStorage.removeItem(draftKey(jobId));
       await clearJob(jobId); // queue is drained; nothing left to keep
       setPhase('done');
@@ -558,9 +577,10 @@ export default function GuidedCompletionPage() {
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/15">
               <Check className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-center text-2xl font-extrabold text-foreground">Clean submitted</h2>
+            <h2 className="text-center text-2xl font-extrabold text-foreground">Clean finished</h2>
             <p className="text-center text-sm text-muted-foreground">
-              Nice work. The photo report has gone to the office.
+              Nice work, the photo report has gone to the office. Mop your way out,
+              then tap Clock Out when you actually leave.
             </p>
             <Big onClick={() => navigate('/my-jobs')}>Back to my jobs</Big>
           </Stack>

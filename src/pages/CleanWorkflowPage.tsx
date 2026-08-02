@@ -28,7 +28,7 @@ import PreJobAssessmentModal from '@/components/clean-workflow/PreJobAssessmentM
 import ClockedOnBanner from '@/components/clean-workflow/ClockedOnBanner';
 import { ActiveClockBanner } from '@/components/ActiveClockBanner';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
-import PhotoReportingWizard, { buildPhotoSections } from '@/components/clean-workflow/PhotoReportingWizard';
+import GuidedCompletionPage from '@/pages/GuidedCompletionPage';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -302,24 +302,18 @@ export default function CleanWorkflowPage() {
     );
   }
 
-  // ── Photo Reporting Wizard (sequential room-by-room after COMPLETE JOB) ──
+  // ── Guided completion (sequential room-by-room after COMPLETE JOB) ──
+  //
+  // This is the cleaner's real finishing flow. It replaced PhotoReportingWizard
+  // on 2 Aug: same job in the process, but the camera stays open between shots
+  // instead of closing after every photo, the tick questions are asked one at a
+  // time, floors move to a pack-up gate at the end, and photos queue to
+  // IndexedDB so a dropped signal can't lose them.
+  //
+  // It reads :jobId from this same route, and fires the identical completion
+  // side effects (client SMS, guest-ready SMS, Xero auto-invoice) on submit.
   if (showPhotoWizard) {
-    const cleanType = (job as any)?.clean_type || property?.client_type || null;
-    const photoSections = buildPhotoSections(property, cleanType);
-    return (
-      <PhotoReportingWizard
-        job={job}
-        property={property}
-        sections={photoSections}
-        cleanerProfiles={profiles}
-        userId={user!.id}
-        onComplete={() => {
-          refreshJob();
-          // Find next job for today and navigate, or go to /my-jobs
-          navigate('/my-jobs');
-        }}
-      />
-    );
+    return <GuidedCompletionPage />;
   }
 
   // ── Active Clean — SOP checklist, restocking, floating damage, completion ──
