@@ -71,13 +71,18 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
   const queryClient = useQueryClient();
   const [addingClient, setAddingClient] = useState(false);
   const [approving, setApproving] = useState(false);
-  if (!lead) return null;
 
-  // Has a clean already been scheduled for this person? Shown so you can see at
-  // a glance that approval worked (and so Approve doesn't reappear once done).
-  const leadFullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ');
+  // NOTE: every hook below must run on EVERY render, including the renders
+  // where there is no lead yet. This component stays mounted while the list is
+  // open, so `lead` flips between null and an object. An early `if (!lead)
+  // return null` used to sit above useQuery, which meant React saw four hooks
+  // on one render and five on the next, and threw "Rendered more hooks than
+  // during the previous render" (#310) — the app crashed to a black screen.
+  // The guard now lives below the hooks, and the query simply stays disabled
+  // until there is a lead to look up.
+  const leadFullName = [lead?.first_name, lead?.last_name].filter(Boolean).join(' ');
   const { data: scheduledJob } = useQuery({
-    queryKey: ['lead-scheduled-job', lead.id, leadFullName],
+    queryKey: ['lead-scheduled-job', lead?.id ?? null, leadFullName],
     queryFn: async () => {
       if (!leadFullName) return null;
       const { data } = await supabase
@@ -89,8 +94,11 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
         .limit(1);
       return data?.[0] ?? null;
     },
-    enabled: !!leadFullName,
+    enabled: !!lead && !!leadFullName,
   });
+
+  // Safe to bail out now — every hook above has already run.
+  if (!lead) return null;
 
   // Approve is offered whenever they've asked for a date, it's not an Airbnb
   // turnover, and no clean exists yet — so it stays available if approval ever

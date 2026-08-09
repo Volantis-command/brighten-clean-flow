@@ -132,6 +132,10 @@ export default function AirbnbQuotePage() {
   const [rooms, setRooms] = useState<string[]>(Array(4).fill("1 Queen"));
   const [labourOverride, setLabourOverride] = useState(String(TYPES[2].labour));
   const [gp, setGp] = useState(0.35);
+  // GST display follows who's buying, and switching mode resets it:
+  //   Residential  → households, so the headline price is INC GST
+  //   Airbnb       → GST-registered businesses who claim it back, so EX GST
+  // The chip next to the price is still a manual override either way.
   const [incGst, setIncGst] = useState(false);
   const [showRates, setShowRates] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
@@ -176,6 +180,7 @@ export default function AirbnbQuotePage() {
       : String(lead.clean_type || '').toLowerCase().includes('airbnb') ? 'airbnb'
       : lead.form_data?.mode === 'airbnb' ? 'airbnb' : 'residential';
     setMode(leadMode);
+    setIncGst(leadMode === 'residential');
     const beds = Number(lead.bedrooms) || 0;
     const baths = Number(lead.bathrooms) || 0;
     let idx = TYPES.findIndex((t) => t.beds === beds && t.baths === baths);
@@ -335,7 +340,7 @@ export default function AirbnbQuotePage() {
               {([["airbnb", "Airbnb / Short-Stay"], ["residential", "Residential"]] as ['airbnb' | 'residential', string][]).map(([m, label]) => {
                 const active = mode === m;
                 return (
-                  <button key={m} onClick={() => setMode(m)}
+                  <button key={m} onClick={() => { setMode(m); setIncGst(m === 'residential'); }}
                     style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: active ? GREEN : "transparent", color: active ? "#000" : MUTED, transition: "all .15s" }}>
                     {label}
                   </button>
@@ -572,7 +577,7 @@ export default function AirbnbQuotePage() {
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: TEXT }}>Send Quote</div>
                 <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
-                  {type.name} · {fmt(sell)} ex GST
+                  {type.name} · {fmt(display)} {incGst ? 'inc GST' : 'ex GST'}
                 </div>
               </div>
               <button onClick={() => setShowSend(false)} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 8, cursor: "pointer" }}>
