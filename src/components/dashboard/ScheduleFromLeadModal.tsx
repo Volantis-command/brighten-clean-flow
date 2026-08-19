@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
+import { DURATIONS } from '@/lib/jobDurations';
 
 /**
  * Opens from Dashboard -> Accepted column -> "Schedule Clean" / "Assign Cleaner".
@@ -38,15 +39,6 @@ import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurri
  *      column on the dashboard.
  */
 
-const DURATIONS = [
-  { value: '60', label: '1 hr' },
-  { value: '90', label: '1.5 hr' },
-  { value: '120', label: '2 hr' },
-  { value: '150', label: '2.5 hr' },
-  { value: '180', label: '3 hr' },
-  { value: '240', label: '4 hr' },
-  { value: '300', label: '5 hr' },
-];
 
 // Time slot options — 30-minute increments, 6 AM → 9 PM. Replaces the
 // native browser <input type="time"> which renders an awkward 3-column

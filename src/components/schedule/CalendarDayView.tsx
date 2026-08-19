@@ -15,8 +15,24 @@ interface CalendarDayViewProps {
   onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
 }
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 6); // 6am-6pm
-const HOUR_HEIGHT = 72; // taller rows for day view
+const DAY_START = 6;          // 6am, the earliest a turnover realistically starts
+const DAY_END_MIN = 18;       // normally draw through to 6pm
+const HOUR_HEIGHT = 72;       // taller rows for day view
+
+// The grid used to be a fixed 6am-6pm. Long jobs (a full-day deep clean is 8
+// to 12 hours) ran straight off the bottom and were clipped, so a booking you
+// had definitely made looked wrong or invisible on the calendar. The grid now
+// stretches to fit the latest finish of the day, and only when it needs to, so
+// an ordinary day looks exactly as it did.
+function buildHours(jobs: { scheduled_time: string | null; estimated_duration: number | null }[]) {
+  let end = DAY_END_MIN;
+  for (const j of jobs) {
+    const finish = parseTime(j.scheduled_time) + getDurationHours(j.estimated_duration);
+    if (finish > end) end = Math.ceil(finish);
+  }
+  end = Math.min(end, 24);
+  return Array.from({ length: end - DAY_START + 1 }, (_, i) => i + DAY_START);
+}
 
 function parseTime(time: string | null): number {
   if (!time) return 8;
@@ -44,6 +60,7 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
 
   const dateStr = format(date, 'yyyy-MM-dd');
   const today = isToday(date);
+  const HOURS = useMemo(() => buildHours(dayJobs), [dayJobs]);
   const firstHour = HOURS[0];
   const totalHeight = HOURS.length * HOUR_HEIGHT;
 

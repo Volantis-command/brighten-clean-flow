@@ -23,17 +23,8 @@ import { generateRecurringDates } from '@/lib/recurringJobs';
 import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 import { useAuth } from '@/contexts/AuthContext';
+import { DURATIONS } from '@/lib/jobDurations';
 
-const DURATIONS = [
-  { value: '60', label: '1 hr' },
-  { value: '90', label: '1.5 hr' },
-  { value: '120', label: '2 hr' },
-  { value: '150', label: '2.5 hr' },
-  { value: '180', label: '3 hr' },
-  { value: '210', label: '3.5 hr' },
-  { value: '240', label: '4 hr' },
-  { value: '300', label: '4 hr+' },
-];
 
 const SOFA_OPTIONS = [
   { value: 'yes', label: 'Yes' },

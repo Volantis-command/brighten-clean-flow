@@ -17,19 +17,12 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
+import { DURATIONS } from '@/lib/jobDurations';
 
 const CLEAN_TYPES = [
   'House Clean', 'Deep Clean', 'End of Lease', 'Post-Build', 'Turnover Clean',
 ];
 
-const DURATIONS = [
-  { value: '60', label: '1 hr' },
-  { value: '90', label: '1.5 hr' },
-  { value: '120', label: '2 hr' },
-  { value: '150', label: '2.5 hr' },
-  { value: '180', label: '3 hr' },
-  { value: '240', label: '4 hr' },
-];
 
 interface ScheduleCleanModalProps {
   open: boolean;

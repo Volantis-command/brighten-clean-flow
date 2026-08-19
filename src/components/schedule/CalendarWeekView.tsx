@@ -17,7 +17,21 @@ interface CalendarWeekViewProps {
   onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
 }
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 6); // 6am-6pm
+const DAY_START = 6;      // 6am
+const DAY_END_MIN = 18;   // normally draw through to 6pm
+
+// Same reason as the day view: a fixed 6am-6pm grid clipped long jobs off the
+// bottom, so a full-day clean looked wrong or vanished. Stretch to the latest
+// finish in the week, and only when something actually runs late.
+function buildHours(jobs: { scheduled_time: string | null; estimated_duration: number | null }[]) {
+  let end = DAY_END_MIN;
+  for (const j of jobs) {
+    const finish = parseTime(j.scheduled_time) + getDurationHours(j.estimated_duration);
+    if (finish > end) end = Math.ceil(finish);
+  }
+  end = Math.min(end, 24);
+  return Array.from({ length: end - DAY_START + 1 }, (_, i) => i + DAY_START);
+}
 const HOUR_HEIGHT = 64; // px per hour row
 
 function parseTime(time: string | null): number {
@@ -131,6 +145,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
+  const HOURS = useMemo(() => buildHours(Object.values(jobsByDay).flat()), [jobsByDay]);
   const totalHeight = HOURS.length * HOUR_HEIGHT;
   const firstHour = HOURS[0];
 
