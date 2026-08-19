@@ -130,9 +130,23 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
       if (error) throw error;
       if (!data?.job_id) throw new Error('Could not create the clean — check the address on the lead and try again.');
       await supabase.from('quote_requests').update({ status: 'accepted' } as any).eq('id', lead.id);
+
+      // Booking someone in makes them a client, so say so in the data rather
+      // than relying on the Clients page inferring it from their jobs. That
+      // inference works, but only once a second query has caught up, so the
+      // person can appear to be missing in the meantime.
+      if (data?.client_profile_id) {
+        await supabase.from('profiles')
+          .update({ lead_stage: 'active' } as any)
+          .eq('id', data.client_profile_id);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['lead-scheduled-job'] });
       queryClient.invalidateQueries({ queryKey: ['quote-requests-leads'] });
-      toast.success(`Approved — ${nm}'s clean is in your Schedule. Now assign a cleaner.`);
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] });
+      queryClient.invalidateQueries({ queryKey: ['client-lead-stages'] });
+      queryClient.invalidateQueries({ queryKey: ['property-ids-with-jobs'] });
+      toast.success(`Approved, ${nm}'s clean is in your Schedule and she's now in Clients. Assign a cleaner next.`);
     } catch (e: any) {
       toast.error(e.message || 'Could not approve the booking');
     } finally {
@@ -159,7 +173,7 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
   const handleAddClient = async () => {
     setAddingClient(true);
     try {
-      const { error } = await supabase.functions.invoke('link-intake-to-profile', {
+      const { data, error } = await supabase.functions.invoke('link-intake-to-profile', {
         body: {
           first_name: lead.first_name, last_name: lead.last_name,
           full_name: name, phone: lead.phone || null, email: lead.email || null,
@@ -169,6 +183,29 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
         },
       });
       if (error) throw error;
+
+      // The profile now exists, but the Clients page splits people into
+      // Active clients and Leads, and it decides using profiles.lead_stage:
+      //   active = lead_stage 'active', OR they already have a clean booked.
+      // Creating the profile sets neither, so pressing "Add to Clients" used
+      // to drop them into the LEADS tab, which is where they already were.
+      // The toast said "added to Clients" and nothing appeared to change.
+      // Mark them active explicitly, which is exactly what the "Move to
+      // Active" button on the Clients page does.
+      const profileId = (data as any)?.client_profile_id;
+      if (profileId) {
+        const { error: stageErr } = await supabase
+          .from('profiles')
+          .update({ lead_stage: 'active' } as any)
+          .eq('id', profileId);
+        if (stageErr) throw new Error(`Added, but could not move to Active: ${stageErr.message}`);
+      }
+
+      // Refresh the Clients page so she is there the moment you switch tabs.
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] });
+      queryClient.invalidateQueries({ queryKey: ['client-lead-stages'] });
+      queryClient.invalidateQueries({ queryKey: ['property-ids-with-jobs'] });
+
       toast.success(`${name} added to Clients`);
     } catch (e: any) {
       toast.error(e.message || 'Could not add to clients');
