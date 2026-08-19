@@ -266,7 +266,12 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
 
           <div className="space-y-2">
             <p className="font-bold text-muted-foreground uppercase text-xs tracking-wide">Property & clean</p>
-            {lead.address && <div className="flex items-start gap-2"><MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span className="text-foreground">{lead.address}</span></div>}
+            {lead.address
+              ? <div className="flex items-start gap-2"><MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" /><span className="text-foreground">{lead.address}</span></div>
+              /* Say it out loud rather than just omitting the line. A missing
+                 address is the thing that stops you scheduling, so it should
+                 look like a job to do, not like nothing. */
+              : <div className="flex items-start gap-2"><MapPin className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" /><span className="text-amber-600 font-semibold">No address on file — ask when you call</span></div>}
             <div className="flex items-center gap-2"><Home className="w-4 h-4 text-primary" /><span className="text-foreground">{lead.bedrooms || '?'} bed · {lead.bathrooms || '?'} bath</span></div>
             {lead.clean_type && <div className="flex items-center gap-2"><Wrench className="w-4 h-4 text-primary" /><span className="text-foreground font-semibold">{lead.clean_type}</span></div>}
             {lead.total_inc_gst != null && <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /><span className="text-foreground font-bold">Quoted ${Math.round(Number(lead.total_inc_gst))} inc GST</span></div>}

@@ -131,8 +131,8 @@ export default function InstantQuotePage() {
   // Step 1 — text them a code. The price stays hidden until they prove they
   // hold the phone, which stops made-up leads and competitors price-fishing.
   const sendCode = async () => {
-    if (!fullName.trim() || !phone.trim() || !email.trim()) {
-      toast.error("Name, mobile and email are needed to see your quote");
+    if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim()) {
+      toast.error("Name, mobile, email and property address are needed to see your quote");
       return;
     }
     setRevealing(true);
@@ -174,6 +174,7 @@ export default function InstantQuotePage() {
         phone: phone.trim(),
         email: email.trim(),
         clean_type: cleanType,
+        address: address.trim(),
         bedrooms: type.beds,
         bathrooms: type.baths,
         estimated_hours: quote.hours,
@@ -517,6 +518,7 @@ export default function InstantQuotePage() {
                         <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
                         <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
                         <Field label="Email *" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
+                        <Field label="Property address *" value={address} onChange={setAddress} placeholder="123 Ocean Ave, Surfers Paradise QLD" />
                       </div>
                       <button onClick={sendCode} disabled={revealing}
                         style={{ width: "100%", marginTop: 14, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: revealing ? 0.7 : 1 }}>
