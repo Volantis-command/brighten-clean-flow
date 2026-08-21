@@ -137,37 +137,74 @@ Deno.serve(async (req: Request) => {
     const day = await suggestDay(supabase);
     const what = property_size ? `${property_size} ${clean_type || "clean"}` : (clean_type || "clean");
 
-    // Warm, specific, ONE clear action. The discount and price are stated
-    // exactly as recorded on the lead — Jess never improvises a number.
-    const msg =
-      `Hi ${name}, ${cfg.name} here from Brightly Cleaning 👋 Thanks for grabbing a price — your ${what} came to $${price}.\n\n` +
-      (cfg.discount > 0
-        ? `I'd love to get you in for a first clean, so I'll take $${cfg.discount} off — $${after} to see how we work.\n\n`
-        : `I'd love to get you booked in for your first clean.\n\n`) +
-      (day
-        ? `We've got ${day} morning free — want me to hold it for you? Reply YES and I'll lock it in.`
-        : `What day suits you this week? Reply and I'll see what I can do.`);
+    // The words belong to BJ, not to this file. He edits them in Settings and
+    // they take effect immediately, with no deploy. We fall back to a plain
+    // version only if the row is missing, so a customer never gets silence
+    // because a template was deleted.
+    const { data: tpl } = await supabase
+      .from("message_templates")
+      .select("body, active")
+      .eq("key", "lead_first_touch")
+      .maybeSingle();
+
+    if (tpl && tpl.active === false) return json({ skipped: "first touch template is off" });
+
+    const tplBody = tpl?.body ||
+      "Hey {first_name}, Brendan here from Brightly Cleaning, really appreciate you " +
+      "checking us out. Do you have any questions about your quote? Or can we get you " +
+      "locked in for your clean?";
+
+    const vars: Record<string, string> = {
+      first_name: name,
+      price: `$${price}`,
+      property_size: property_size || "",
+      clean_type: clean_type || "clean",
+      day: day || "",
+    };
+
+    // A customer must never receive a literal "{first_name}", so any token we
+    // have no value for is stripped, then the gaps it leaves are tidied.
+    const msg = tplBody
+      .replace(/\{(\w+)\}/g, (_m: string, k: string) => vars[k] ?? "")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/ ([,.!?])/g, "$1")
+      .trim();
 
     // Preview mode: show exactly what would be sent, send nothing, record nothing.
     if (dry_run) return json({ preview: msg, discount: cfg.discount, day, to: phone });
 
     await sendSms(phone, msg);
 
-    // Record it on the lead so the office can see exactly what was promised —
-    // and so the discount actually follows through to the booking.
+    // Only reached when sendSms did NOT throw, so the ladder can never claim
+    // "contacted" for a text that failed to leave the building. Previously the
+    // first touch was recorded inside form_data, where no screen could see it,
+    // which is why a texted lead still read as untouched.
     if (lead_id) {
       const { data: lead } = await supabase
-        .from("quote_requests").select("form_data").eq("id", lead_id).maybeSingle();
+        .from("quote_requests").select("form_data, stage").eq("id", lead_id).maybeSingle();
+      const now = new Date().toISOString();
+
       await supabase.from("quote_requests").update({
+        stage: "contacted",
+        stage_changed_at: now,
+        last_contacted_at: now,
+        next_action_at: new Date(Date.now() + 24 * 36e5).toISOString(),
+        next_action_note: "No reply to first touch, follow up",
         form_data: {
           ...((lead?.form_data as any) || {}),
-          jess_first_touch_at: new Date().toISOString(),
-          jess_discount_offered: cfg.discount,
-          jess_price_after_discount: after,
-          jess_day_offered: day,
+          jess_first_touch_at: now,
           jess_message: msg,
         },
       } as any).eq("id", lead_id);
+
+      await supabase.from("lead_events").insert({
+        lead_id,
+        kind: "sms_out",
+        body: msg,
+        from_stage: (lead as any)?.stage ?? null,
+        to_stage: "contacted",
+        actor: "automation",
+      } as any);
     }
 
     return json({ sent: true, discount: cfg.discount, day });

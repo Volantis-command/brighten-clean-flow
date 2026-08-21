@@ -6,11 +6,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OPEN_STAGES, stageDef, type LeadStage } from '@/lib/leadPipeline';
 
 interface Props {
   lead: any;
   open: boolean;
   onClose: () => void;
+  /** Supplied by the pipeline board so a lead can be moved without leaving it. */
+  onMoveStage?: (lead: any, stage: LeadStage) => void;
 }
 
 function timeAgo(iso?: string) {
@@ -66,7 +69,7 @@ function stageInfo(lead: any) {
   }
 }
 
-export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
+export default function LeadDetailSlideOver({ lead, open, onClose, onMoveStage }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [addingClient, setAddingClient] = useState(false);
@@ -310,6 +313,26 @@ export default function LeadDetailSlideOver({ lead, open, onClose }: Props) {
               <Phone className="w-4 h-4" /> Call {lead.phone}
             </Button>
           )}
+          {onMoveStage && (
+            <div className="mb-1">
+              <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
+                Stage: {stageDef(lead.stage).label}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {OPEN_STAGES.filter(st => st.key !== lead.stage).map(st => (
+                  <button key={st.key} onClick={() => onMoveStage(lead, st.key)}
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary">
+                    {st.label}
+                  </button>
+                ))}
+                <button onClick={() => onMoveStage(lead, 'lost')}
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:border-destructive hover:text-destructive">
+                  Lost
+                </button>
+              </div>
+            </div>
+          )}
+
           <Button variant="outline" onClick={handleAddClient} disabled={addingClient} className="w-full h-12 font-bold gap-2">
             {addingClient ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Add to Clients
           </Button>

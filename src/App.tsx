@@ -27,6 +27,7 @@ const AirbnbQuotePage = lazy(() => import('./pages/AirbnbQuotePage'));
 const StaffPage = lazy(() => import('./pages/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ClientsPage = lazy(() => import('./pages/ClientsPage'));
+const LeadPipelinePage = lazy(() => import('./pages/LeadPipelinePage'));
 const QCAuditPage = lazy(() => import('./pages/QCAuditPage'));
 const FormDetailPage = lazy(() => import('./pages/FormDetailPage'));
 const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'));
@@ -250,6 +251,7 @@ function AppRoutes() {
         <Route path="/quoting" element={<Navigate to="/clients" replace />} />
         <Route path="/airbnb-quote" element={<ProtectedRoute allowedRoles={['admin']}><AirbnbQuotePage /></ProtectedRoute>} />
         <Route path="/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffPage /></ProtectedRoute>} />
+        <Route path="/leads" element={<LeadPipelinePage />} />
         <Route path="/clients" element={<ProtectedRoute allowedRoles={['admin']}><ClientsPage /></ProtectedRoute>} />
         <Route path="/clients/:id" element={<ProtectedRoute allowedRoles={['admin']}><ClientDetailPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />

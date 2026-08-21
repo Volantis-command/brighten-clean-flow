@@ -108,12 +108,33 @@ Deno.serve(async (req: Request) => {
     } else {
       const { data: leads } = await sb
         .from("quote_requests")
-        .select("id, first_name, last_name, clean_type, total_inc_gst, bedrooms, bathrooms, address, status, form_data")
+        .select("id, first_name, last_name, clean_type, total_inc_gst, bedrooms, bathrooms, address, status, stage, form_data")
         .or(`phone.eq.${phone},phone.ilike.%${last9}`)
         .order("created_at", { ascending: false }).limit(1);
       if (leads?.length) {
         const l = leads[0];
         who = { type: "lead", id: l.id, name: (l.first_name || "there").split(" ")[0], lead: l };
+
+        // They wrote back, so this lead now owes a human answer. Recorded here,
+        // at the moment we identify them, so the "needs reply" queue is correct
+        // even if the AI reply below fails or Anthropic is down. Someone
+        // reaching out must never fall silently into a gap.
+        const inAt = new Date().toISOString();
+        const keepStage = l.stage === "booked" || l.stage === "won" || l.stage === "lost";
+        await sb.from("quote_requests").update({
+          stage: keepStage ? l.stage : "in_conversation",
+          stage_changed_at: keepStage ? undefined : inAt,
+          needs_reply_at: inAt,
+        } as any).eq("id", l.id);
+
+        await sb.from("lead_events").insert({
+          lead_id: l.id,
+          kind: "sms_in",
+          body: message || null,
+          from_stage: l.stage ?? null,
+          to_stage: keepStage ? l.stage : "in_conversation",
+          actor: "customer",
+        } as any);
       }
     }
 
