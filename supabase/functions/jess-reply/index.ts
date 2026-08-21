@@ -65,6 +65,51 @@ async function log(sb: any, row: Record<string, unknown>) {
   try { await sb.from("sms_conversations").insert(row); } catch { /* table may not exist yet */ }
 }
 
+/**
+ * Pull the SOPs that actually relate to what they asked.
+ *
+ * Sending every SOP on every text would be slow and expensive, and would bury
+ * the useful line. So we score each document on how many meaningful words it
+ * shares with their message and take the best two, trimmed.
+ *
+ * This is deliberately simple word matching, not embeddings. It is good enough
+ * for "do you bring your own vacuum" or "what's your cancellation policy", and
+ * it has no extra moving parts to break.
+ */
+async function relevantSops(sb: any, message: string): Promise<string> {
+  try {
+    const { data: docs } = await sb
+      .from("sop_documents").select("sop_code, title, category, content").limit(100);
+    if (!docs?.length) return "";
+
+    const stop = new Set(["the","and","you","your","for","are","can","does","did","with","that","this","have","what","when","how","our","from","would","should","will","they","them","there","here","just","about","please","hi","hey"]);
+    const words = String(message).toLowerCase().match(/[a-z]{3,}/g) || [];
+    const terms = [...new Set(words)].filter(w => !stop.has(w));
+    if (!terms.length) return "";
+
+    const scored = docs.map((d: any) => {
+      const hay = `${d.title || ""} ${d.category || ""} ${d.content || ""}`.toLowerCase();
+      // Title matches count double: a document called "Linen" is a better
+      // answer to a linen question than one that mentions linen in passing.
+      const score = terms.reduce((n, t) =>
+        n + (hay.includes(t) ? 1 : 0) + ((d.title || "").toLowerCase().includes(t) ? 1 : 0), 0);
+      return { d, score };
+    }).filter((x: any) => x.score > 0)
+      .sort((a: any, b: any) => b.score - a.score)
+      .slice(0, 2);
+
+    if (!scored.length) return "";
+
+    return "\n\nFROM OUR SOPs (use these for policy and process questions, they are the source of truth):\n" +
+      scored.map((x: any) =>
+        `  [${x.d.sop_code || "SOP"}] ${x.d.title || ""}\n  ${String(x.d.content || "").replace(/\s+/g, " ").slice(0, 700)}`
+      ).join("\n\n");
+  } catch (e) {
+    console.error("relevantSops failed, continuing without them:", e);
+    return "";   // never let SOP lookup stop a customer getting a reply
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -156,21 +201,80 @@ Deno.serve(async (req: Request) => {
       const { data: cps } = await sb
         .from("client_properties").select("property_id").eq("client_id", who.id);
       const ids = (cps || []).map((c: any) => c.property_id);
-      let jobs: any[] = [];
+
+      // Jess used to be told only "existing client with 1 property" plus the
+      // property NAME. So when a client asked to book, she had to ask for their
+      // address, which we already hold. Insulting to a regular, and it makes
+      // her look like a stranger. She now gets the actual details.
+      //
+      // NOTE the deliberate omissions: lockbox_code, alarm_code, garage_code,
+      // access_code and wifi_password are NEVER loaded. A text thread is not a
+      // safe place for them, and a mistaken identity match must not be able to
+      // hand out the keys to someone's house.
+      let props: any[] = [];
       if (ids.length) {
+        const { data: pr } = await sb
+          .from("properties")
+          .select("property_name, address, suburb, bedrooms, bathrooms, client_type, " +
+                  "clean_frequency, preferred_days, preferred_time, linen_required, " +
+                  "default_price, price_turnover, locked_price_inc_gst, estimated_hours, " +
+                  "parking_instructions, pet_notes, special_instructions, access_method")
+          .in("id", ids);
+        props = pr || [];
+      }
+
+      let jobs: any[] = [];
+      let past: any[] = [];
+      if (ids.length) {
+        const today = new Date().toISOString().slice(0, 10);
         const { data: j } = await sb
           .from("jobs").select("scheduled_date, scheduled_time, status, properties(property_name)")
           .in("property_id", ids)
-          .gte("scheduled_date", new Date().toISOString().slice(0, 10))
+          .gte("scheduled_date", today)
           .order("scheduled_date").limit(5);
         jobs = j || [];
+        const { data: pj } = await sb
+          .from("jobs").select("scheduled_date, price_inc_gst, clean_type")
+          .in("property_id", ids)
+          .lt("scheduled_date", today)
+          .eq("status", "completed")
+          .order("scheduled_date", { ascending: false }).limit(3);
+        past = pj || [];
       }
+
+      const money = (v: any) => (v == null ? null : `$${Math.round(Number(v))}`);
+
       context =
-        `They are an EXISTING CLIENT with ${ids.length} property/properties.\n` +
+        `They are an EXISTING CLIENT with ${ids.length} property/properties.\n\n` +
+        (props.length
+          ? `THEIR PROPERTIES (use these, do NOT ask for details we already hold):\n` +
+            props.map((p: any) => {
+              const price = money(p.locked_price_inc_gst ?? p.price_turnover ?? p.default_price);
+              const bits = [
+                `  ${p.property_name || "Property"}: ${p.address || "no address on file"}${p.suburb ? ", " + p.suburb : ""}`,
+                `    ${p.bedrooms ?? "?"} bed, ${p.bathrooms ?? "?"} bath` +
+                  (p.client_type ? `, ${p.client_type}` : "") +
+                  (p.estimated_hours ? `, usually ${p.estimated_hours}h` : ""),
+                price ? `    Their agreed price: ${price} inc GST` : null,
+                p.clean_frequency ? `    Frequency: ${p.clean_frequency}` : null,
+                (p.preferred_days || p.preferred_time)
+                  ? `    Usually prefers: ${[p.preferred_days, p.preferred_time].filter(Boolean).join(" ")}` : null,
+                p.linen_required != null ? `    Linen: ${p.linen_required ? "we supply it" : "they supply it"}` : null,
+                p.parking_instructions ? `    Parking: ${p.parking_instructions}` : null,
+                p.pet_notes ? `    Pets: ${p.pet_notes}` : null,
+                p.special_instructions ? `    Special instructions: ${p.special_instructions}` : null,
+              ].filter(Boolean);
+              return bits.join("\n");
+            }).join("\n") + "\n"
+          : "") +
         (jobs.length
-          ? `Upcoming cleans:\n` + jobs.map((j: any) =>
+          ? `\nUpcoming cleans:\n` + jobs.map((j: any) =>
               `  ${j.scheduled_date}${j.scheduled_time ? " " + String(j.scheduled_time).slice(0, 5) : ""} at ${j.properties?.property_name || "their property"} (${j.status})`).join("\n")
-          : `No upcoming cleans booked.`);
+          : `\nNo upcoming cleans booked.`) +
+        (past.length
+          ? `\n\nRecent completed cleans:\n` + past.map((j: any) =>
+              `  ${j.scheduled_date}${j.clean_type ? " " + j.clean_type : ""}${j.price_inc_gst ? " " + money(j.price_inc_gst) : ""}`).join("\n")
+          : "");
     } else if (who.type === "staff") {
       const { data: jobs } = await sb
         .from("jobs").select("scheduled_date, scheduled_time, status, properties(property_name)")
@@ -200,6 +304,9 @@ Deno.serve(async (req: Request) => {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
+    // Policy answers should come from BJ's SOPs, not from the model's guess.
+    const sopContext = await relevantSops(sb, String(message));
+
     const system =
 `You are Jess, who works at Brightly Cleaning on the Gold Coast, Australia. You reply to customers by SMS.
 
@@ -225,7 +332,11 @@ Airbnb and short stay turnovers, plus standard home cleans, on the Gold Coast. T
 
 WHO YOU ARE TEXTING
 ${who.name} (${who.type}).
-${context}
+${context}${sopContext}
+
+USING WHAT YOU KNOW
+- If their address, price, bed and bath count or preferences are listed above, USE them. Never ask for something we already hold, it makes us look like we do not know them.
+- Never read out an access code, lockbox code, alarm code, garage code or wifi password over SMS, even to the client. Say Brendan will confirm it separately.
 
 Reply with JSON only: {"reply":"your SMS text","needs_human":true|false,"reason":"short note for Brendan if needs_human"}`;
 
