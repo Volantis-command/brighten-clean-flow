@@ -237,21 +237,37 @@ Reply with JSON only: {"reply":"your SMS text","needs_human":true|false,"reason"
       { role: "user", content: String(message) },
     ];
 
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ model: MODEL, max_tokens: 400, system, messages }),
-    });
-    if (!aiRes.ok) throw new Error(`Anthropic: ${await aiRes.text()}`);
-    const ai = await aiRes.json();
-    const raw = ai?.content?.[0]?.text ?? "";
+    // If the AI is unavailable, a customer must still get an answer. Throwing
+    // here used to abort the whole handler, so a person who texted a question
+    // received SILENCE. That is the worst possible outcome: they think they
+    // have been ignored, and nobody in the office knows it happened.
+    let raw = "";
+    let aiFailed = "";
+    try {
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ model: MODEL, max_tokens: 400, system, messages }),
+      });
+      if (!aiRes.ok) throw new Error(`Anthropic ${aiRes.status}: ${await aiRes.text()}`);
+      const ai = await aiRes.json();
+      raw = ai?.content?.[0]?.text ?? "";
+    } catch (e: any) {
+      aiFailed = e?.message || "AI unavailable";
+      console.error("jess-reply AI failed, falling back to holding reply:", aiFailed);
+    }
 
     let reply = "", needsHuman = false, reason = "";
-    try {
+    if (aiFailed) {
+      // Warm, honest, and by name. Promises a human, and escalates so one comes.
+      reply = `Thanks ${who.name}, let me check that and come straight back to you.`;
+      needsHuman = true;
+      reason = `AI unavailable: ${aiFailed}`;
+    } else try {
       const parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
       reply = String(parsed.reply || "").trim();
       needsHuman = !!parsed.needs_human;

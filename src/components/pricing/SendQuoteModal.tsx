@@ -68,6 +68,29 @@ export default function SendQuoteModal({ open, onClose, quote, onSent }: Props) 
 
       if (res.error) throw res.error;
 
+      // The SMS has now actually gone. Only at this point is it honest to say
+      // we have contacted them. The status writes above happen before the send
+      // and are kept only so older screens keep working; the pipeline stage is
+      // stamped here, after success, so "Contacted" always means a message
+      // really left the building.
+      const sentAt = new Date().toISOString();
+      const stagePatch = {
+        stage: 'quoted',
+        stage_changed_at: sentAt,
+        last_contacted_at: sentAt,
+        next_action_at: new Date(Date.now() + 3 * 24 * 36e5).toISOString(),
+        next_action_note: 'No response to the quote, chase it',
+      };
+      if (quote.lead_id) {
+        await (supabase as any).from('quote_requests').update(stagePatch).eq('id', quote.lead_id);
+        await (supabase as any).from('lead_events').insert({
+          lead_id: quote.lead_id, kind: 'sms_out', body: `Quote link sent: ${quoteUrl}`,
+          to_stage: 'quoted', actor: 'admin',
+        });
+      } else if (clientPhone) {
+        await (supabase as any).from('quote_requests').update(stagePatch).eq('phone', clientPhone);
+      }
+
       // 3. Create admin notification for tracking
       if (user?.id) {
         await (await import('@/lib/alerts')).createAlertForUser(user.id, {
