@@ -119,3 +119,6 @@ verify_jwt = true
 # (Project Settings → Auth → "JWT expiry" / "Refresh token TTL"),
 # not in this file. Local Supabase reads this; hosted Supabase
 # reads dashboard settings.
+
+[functions.twilio-status]
+verify_jwt = false

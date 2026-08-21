@@ -45,22 +45,34 @@ Deno.serve(async (req: Request) => {
     const from = Deno.env.get("TWILIO_PHONE_NUMBER");
     if (!sid || !token || !from) return json({ error: "Twilio is not configured" }, 500);
 
+    // StatusCallback is the important part. Twilio answering this request only
+    // means QUEUED, never delivered. It will call us back as the message moves
+    // to sent, delivered, undelivered or failed, and twilio-status records it.
+    const params = new URLSearchParams({ To: to, From: from, Body: String(body) });
+    params.set("StatusCallback", `${Deno.env.get("SUPABASE_URL")}/functions/v1/twilio-status`);
+
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ To: to, From: from, Body: String(body) }),
+      body: params,
     });
 
-    // Nothing below runs unless Twilio accepted it, so the timeline can never
-    // show a message that was not actually sent.
-    if (!res.ok) return json({ error: `Twilio rejected it: ${await res.text()}` }, 502);
+    const twilioBody = await res.json().catch(() => ({} as any));
+    if (!res.ok) {
+      // Twilio's own words, not a generic failure. Error 21211 is a bad number,
+      // 21608 an unverified number on a trial account, and so on.
+      const msg = twilioBody?.message || JSON.stringify(twilioBody) || "unknown";
+      return json({ error: `Twilio rejected it: ${msg}`, code: twilioBody?.code ?? null }, 502);
+    }
 
     const now = new Date().toISOString();
     await sb.from("lead_events").insert({
       lead_id, kind: "sms_out", body: String(body), actor: "admin",
+      twilio_sid: twilioBody?.sid ?? null,
+      delivery_status: twilioBody?.status ?? "queued",
     } as any);
 
     // Answering them clears the red flag. If they were only "contacted", a real
@@ -71,7 +83,7 @@ Deno.serve(async (req: Request) => {
       ...(lead.stage === "new" ? { stage: "contacted", stage_changed_at: now } : {}),
     } as any).eq("id", lead_id);
 
-    return json({ sent: true, to });
+    return json({ sent: true, to, sid: twilioBody?.sid ?? null, status: twilioBody?.status ?? "queued" });
   } catch (err: any) {
     console.error("send-lead-sms:", err);
     return json({ error: err?.message || "Could not send" }, 500);

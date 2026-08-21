@@ -12,7 +12,24 @@ import { Loader2, Send, MessageSquare } from 'lucide-react';
 
 interface Ev {
   id: string; kind: string; body: string | null; actor: string | null; created_at: string;
+  delivery_status?: string | null; error_code?: string | null;
 }
+
+// Twilio's words, in English. "queued" and "sent" both mean it has left us but
+// has NOT been confirmed on their handset, so neither is allowed to read as
+// success.
+const deliveryLabel = (s: string) => ({
+  queued: 'sending...',
+  accepted: 'sending...',
+  sending: 'sending...',
+  sent: 'sent, not yet confirmed',
+  delivered: 'delivered',
+  undelivered: 'DID NOT ARRIVE',
+  failed: 'FAILED TO SEND',
+}[s] || s);
+
+const failed = (e: { kind: string; delivery_status?: string | null }) =>
+  e.kind === 'sms_out' && (e.delivery_status === 'failed' || e.delivery_status === 'undelivered');
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -26,7 +43,7 @@ export default function LeadConversation({ leadId, leadName }: { leadId: string;
     queryKey: ['lead-events', leadId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from('lead_events').select('id, kind, body, actor, created_at')
+        .from('lead_events').select('id, kind, body, actor, created_at, delivery_status, error_code')
         .eq('lead_id', leadId)
         .in('kind', ['sms_in', 'sms_out'])
         .order('created_at', { ascending: true });
@@ -72,10 +89,13 @@ export default function LeadConversation({ leadId, leadName }: { leadId: string;
           return (
             <div key={e.id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
               <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${
-                inbound ? 'bg-muted text-foreground' : 'bg-primary text-primary-foreground'}`}>
+                inbound ? 'bg-muted text-foreground'
+                : failed(e) ? 'bg-destructive text-destructive-foreground'
+                : 'bg-primary text-primary-foreground'}`}>
                 <p className="whitespace-pre-wrap text-sm leading-snug">{e.body}</p>
                 <p className={`mt-1 text-[10px] ${inbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
                   {inbound ? leadName || 'Them' : e.actor === 'admin' ? 'You' : 'Jess'} · {when(e.created_at)}
+                  {!inbound && e.delivery_status && ` · ${deliveryLabel(e.delivery_status)}`}
                 </p>
               </div>
             </div>
