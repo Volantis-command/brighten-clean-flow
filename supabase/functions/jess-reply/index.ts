@@ -293,6 +293,21 @@ Reply with JSON only: {"reply":"your SMS text","needs_human":true|false,"reason"
 
     await sendSms(phone, reply);
 
+    // Record the outbound side on the lead itself. The older log() writes to
+    // sms_conversations, which was never created in production, so it silently
+    // does nothing. lead_events exists, so the thread is actually readable.
+    if (who.type === "lead" && who.id) {
+      try {
+        await sb.from("lead_events").insert({
+          lead_id: who.id, kind: "sms_out", body: reply,
+          actor: needsHuman ? "jess_holding" : "jess",
+        } as any);
+        await sb.from("quote_requests").update({
+          last_contacted_at: new Date().toISOString(),
+        } as any).eq("id", who.id);
+      } catch (e) { console.error("lead_events out log failed:", e); }
+    }
+
     await log(sb, {
       phone, direction: "out", body: reply, sender_type: "jess",
       profile_id: who.type === "lead" ? null : (who.id ?? null),
