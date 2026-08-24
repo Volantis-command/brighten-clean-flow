@@ -131,6 +131,13 @@ export default function AirbnbQuotePage() {
   const [typeIdx, setTypeIdx] = useState(2);
   const [rooms, setRooms] = useState<string[]>(Array(4).fill("1 Queen"));
   const [labourOverride, setLabourOverride] = useState(String(TYPES[2].labour));
+  // Residential admin controls. The property size gives a sensible starting
+  // point, but a real job is not always the standard shape: a hoarded 1 bed can
+  // take longer than a tidy 3 bed. These let BJ quote what the job actually is.
+  const [resiRate, setResiRate] = useState(String(RESIDENTIAL_HOURLY));
+  // A typed final price wins over hours x rate. Entered in whatever the price
+  // is currently displayed as (inc or ex GST), so what you type is what they see.
+  const [priceOverride, setPriceOverride] = useState("");
   const [gp, setGp] = useState(0.35);
   // GST display follows who's buying, and switching mode resets it:
   //   Residential  → households, so the headline price is INC GST
@@ -211,7 +218,17 @@ export default function AirbnbQuotePage() {
   const consumablesTotal = rates.consumables * type.baths;
   const cost            = labourCost + linenTotal + consumablesTotal;
   // Airbnb: cost / (1 - GP). Residential: flat property-size hours × $70/hr sell.
-  const sell         = mode === 'airbnb' ? cost / (1 - gp) : type.labour * RESIDENTIAL_HOURLY;
+  // Residential now honours the edited hours and rate, not the fixed figures
+  // from the property size, which is what made this screen read-only.
+  const resiRateNum  = resiRate === "" ? RESIDENTIAL_HOURLY : Number(resiRate) || 0;
+  const resiHours    = mode === 'residential'
+    ? (labourOverride === "" ? type.labour : Number(labourOverride) || 0)
+    : type.labour;
+  const baseSell     = mode === 'airbnb' ? cost / (1 - gp) : resiHours * resiRateNum;
+  // An override is typed in the units currently on screen, so convert back to
+  // ex GST for storage. Everything downstream still works in ex GST.
+  const overrideNum  = priceOverride === "" ? null : (Number(priceOverride) || 0);
+  const sell         = overrideNum === null ? baseSell : (incGst ? overrideNum / 1.1 : overrideNum);
   const gpDollars    = sell - cost;
   const markup       = cost > 0 ? (sell - cost) / cost : 0;
   const display      = incGst ? sell * 1.1 : sell;
@@ -225,6 +242,8 @@ export default function AirbnbQuotePage() {
     setTypeIdx(2);
     setRooms(Array(4).fill("1 Queen"));
     setLabourOverride(String(TYPES[2].labour));
+    setResiRate(String(RESIDENTIAL_HOURLY));
+    setPriceOverride("");
     setGp(0.35);
     setIncGst(false);
   };
@@ -234,7 +253,7 @@ export default function AirbnbQuotePage() {
     setSending(true);
     try {
       const cleanType = mode === 'airbnb' ? 'Airbnb Turnover' : 'Standard Clean';
-      const quoteHours = mode === 'airbnb' ? labourHrs : type.labour;
+      const quoteHours = mode === 'airbnb' ? labourHrs : resiHours;
       const { data, error } = await supabase.functions.invoke('create-airbnb-quote-and-send', {
         body: {
           client_name: sendName.trim(),
@@ -374,7 +393,9 @@ export default function AirbnbQuotePage() {
                   </>
                 ) : (
                   <div style={{ color: MUTED, fontSize: 11, marginTop: 8 }}>
-                    {type.labour}h × ${RESIDENTIAL_HOURLY}/hr
+                    {overrideNum !== null
+                      ? "Custom price set"
+                      : `${resiHours}h × $${resiRateNum}/hr`}
                   </div>
                 )}
               </div>
@@ -411,11 +432,71 @@ export default function AirbnbQuotePage() {
             </div>
           </Section>
 
-          {mode === 'residential' && (
-            <div style={{ marginTop: -4, marginBottom: 18, textAlign: "center", fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
-              Standard residential clean, charged at ${RESIDENTIAL_HOURLY}/hr.
-            </div>
-          )}
+          {mode === 'residential' && (() => {
+            // Admin overrides. The property size sets a starting point, these
+            // let the quote match the actual job: a hoarded 1 bed can take
+            // longer than a tidy 3 bed, and some jobs are simply a fixed price.
+            const fieldStyle: React.CSSProperties = {
+              width: "100%", background: BG, border: `1px solid ${BORDER}`, borderRadius: 10,
+              color: TEXT, fontSize: 16, fontWeight: 700, padding: "10px 12px",
+              outline: "none", textAlign: "center",
+            };
+            const labelStyle: React.CSSProperties = {
+              fontSize: 10, color: MUTED, fontWeight: 700, textTransform: "uppercase",
+              letterSpacing: "0.06em", marginBottom: 5, display: "block", textAlign: "center",
+            };
+            const stepHours = (delta: number) => {
+              const cur = labourOverride === "" ? type.labour : Number(labourOverride) || 0;
+              setLabourOverride(String(Math.max(0.5, Math.round((cur + delta) * 4) / 4)));
+            };
+            return (
+              <div style={{ marginTop: -4, marginBottom: 18 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={labelStyle}>Hours on site</label>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => stepHours(-0.5)} aria-label="Less time"
+                        style={{ ...fieldStyle, width: 42, cursor: "pointer", padding: "10px 0" }}>-</button>
+                      <input inputMode="decimal" value={labourOverride} style={fieldStyle}
+                        onChange={(e) => setLabourOverride(e.target.value.replace(/[^\d.]/g, ""))}
+                        placeholder={String(type.labour)} />
+                      <button onClick={() => stepHours(0.5)} aria-label="More time"
+                        style={{ ...fieldStyle, width: 42, cursor: "pointer", padding: "10px 0" }}>+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Rate per hour</label>
+                    <input inputMode="decimal" value={resiRate} style={fieldStyle}
+                      onChange={(e) => setResiRate(e.target.value.replace(/[^\d.]/g, ""))}
+                      placeholder={String(RESIDENTIAL_HOURLY)} />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <label style={labelStyle}>
+                    Or set the price directly ({incGst ? "inc" : "ex"} GST)
+                  </label>
+                  <input inputMode="decimal" value={priceOverride} style={fieldStyle}
+                    onChange={(e) => setPriceOverride(e.target.value.replace(/[^\d.]/g, ""))}
+                    placeholder="Leave blank to use hours x rate" />
+                </div>
+
+                <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: MUTED, lineHeight: 1.6 }}>
+                  {overrideNum !== null ? (
+                    <>
+                      Fixed price of {fmt(overrideNum)} {incGst ? "inc" : "ex"} GST, hours and rate ignored.{" "}
+                      <button onClick={() => setPriceOverride("")}
+                        style={{ background: "none", border: "none", color: GREEN, fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 11 }}>
+                        Clear
+                      </button>
+                    </>
+                  ) : (
+                    <>Charged at {resiHours}h x ${resiRateNum}/hr. Tap the GST chip by the price to switch inc or ex.</>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {mode === 'airbnb' && (<>
           {/* ---- 2. BED CONFIG ---- */}
