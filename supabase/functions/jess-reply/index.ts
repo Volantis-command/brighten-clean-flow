@@ -294,11 +294,32 @@ Deno.serve(async (req: Request) => {
     // ── 3. CONVERSATION SO FAR ───────────────────────────────────────────────
     let history: any[] = [];
     try {
-      const { data: h } = await sb
+      const { data: h, error: hErr } = await sb
         .from("sms_conversations").select("direction, body")
         .eq("phone", phone).order("created_at", { ascending: false }).limit(HISTORY_LIMIT);
+      if (hErr) throw hErr;
       history = (h || []).reverse();
-    } catch { /* table may not exist yet */ }
+    } catch (e) {
+      // Do NOT swallow this. An empty history is why she repeats herself, so a
+      // failure here has to be loud in the logs.
+      console.error("sms_conversations history unavailable:", e);
+    }
+
+    // Belt and braces: if that yielded nothing but this IS a lead, rebuild the
+    // thread from lead_events, which records both directions. Without a history
+    // every reply is written as if it were the first, which is exactly how she
+    // ended up quoting the same price five times in one conversation.
+    if (!history.length && who.type === "lead" && who.id) {
+      try {
+        const { data: ev } = await sb
+          .from("lead_events").select("kind, body")
+          .eq("lead_id", who.id).in("kind", ["sms_in", "sms_out"])
+          .order("created_at", { ascending: false }).limit(HISTORY_LIMIT);
+        history = (ev || []).reverse().map((e: any) => ({
+          direction: e.kind === "sms_in" ? "in" : "out", body: e.body,
+        }));
+      } catch (e) { console.error("lead_events history fallback failed:", e); }
+    }
 
     // ── 4. ASK CLAUDE ────────────────────────────────────────────────────────
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
@@ -317,6 +338,26 @@ HOW YOU WRITE
 - No corporate phrases. Never say "reply YES". Ask a normal question instead.
 - Don't sign off with your name every time. You already said who you are.
 
+NEVER REPEAT YOURSELF. THIS IS THE MOST IMPORTANT RULE.
+- Read the conversation above before you write. If you have already said something, DO NOT say it again, not even worded differently.
+- You have already told them the price if it appears above. Never state it a second time. Never restate their bedrooms, bathrooms, address or clean type once you have said them.
+- Rewording the same point is still repeating. "It's $116" and "the quote is $116 total" are the same sentence.
+- Do not re-pitch. If you have already asked whether they want to book, do not ask again. Wait for them to answer.
+- If they ask the same question twice, that means your last answer did not land. Answer the actual question properly, or hand it over. Do not send the same reply again.
+
+ANSWER THE QUESTION THEY ASKED
+- If they ask what is included, list what is included. Do not answer with the price.
+- If you cannot answer specifically, say so and hand over. Never fill the gap with a vague list or a sales line.
+- Never invent detail. If you are not certain a task is included, do not claim it.
+
+WHEN YOU DO NOT KNOW, STOP TALKING
+- Say one short line: you will get Brendan to come back to them. Then say NOTHING else.
+- No apology, no filler, no summary of what you already said, and no follow-up question. Just leave it there and set needs_human to true.
+- Handing over is a complete reply on its own. Do not attach a booking ask to it.
+
+WHO YOU ARE
+- You are Jess, always. Never say you are Brendan or write as him. If they think you are Brendan, correct it once, lightly, and move on. Do not explain it again later.
+
 WHAT YOU MUST NEVER DO
 - Never invent, change, discount or negotiate a price. Only ever repeat the exact figure on their quote below. If they push for a better price, say you'll check with Brendan.
 - Never confirm a booking as locked in. You can offer to HOLD a time. Brendan confirms it.
@@ -325,7 +366,7 @@ WHAT YOU MUST NEVER DO
 - Never give an opinion on a complaint, refund, damage or anything legal. Hand it to Brendan.
 
 WHEN TO HAND OVER
-If they want a different price, are unhappy, mention damage or a refund, or you genuinely don't know, do NOT guess. Reply warmly saying you'll get Brendan onto it, and set needs_human to true.
+If they want a different price, are unhappy, mention damage or a refund, ask for a detailed breakdown you do not have, ask twice for the same thing, ask to speak to a person, or you genuinely don't know: hand over. One line, warm, then stop. Set needs_human to true.
 
 ABOUT BRIGHTLY
 Airbnb and short stay turnovers, plus standard home cleans, on the Gold Coast. Turnovers include linen and consumables. Photo report after every clean. Phone 0418 878 707.
