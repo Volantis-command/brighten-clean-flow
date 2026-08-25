@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import { Bed, ChevronDown, Camera, Clock, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import SlotPicker from "@/components/booking/SlotPicker";
 import { toast } from "sonner";
 import {
   TYPES, BED_CONFIGS, airbnbQuote, residentialQuote, type QuoteResult,
@@ -84,7 +85,9 @@ export default function InstantQuotePage() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
-  const [preferredTime, setPreferredTime] = useState("11:00");
+  const [preferredTime, setPreferredTime] = useState("");
+  // Blocks submission when a chosen day has nothing free.
+  const [dayHasSlots, setDayHasSlots] = useState(true);
   // airbnb-only property details
   const [accessMethod, setAccessMethod] = useState("Lockbox");
   const [accessCode, setAccessCode] = useState("");
@@ -235,6 +238,10 @@ export default function InstantQuotePage() {
   const submit = async () => {
     if (!fullName.trim() || !phone.trim() || !address.trim()) {
       toast.error("Name, mobile and property address are required");
+      return;
+    }
+    if (mode === "residential" && preferredDate && !preferredTime) {
+      toast.error(dayHasSlots ? "Pick a time that suits you" : "Nothing free that day, try another date");
       return;
     }
     if (mode === "residential" && !preferredDate) {
@@ -582,12 +589,26 @@ export default function InstantQuotePage() {
                   <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
                   <Field label="Email" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
                   <Field label="Property address *" value={address} onChange={setAddress} placeholder="123 Ocean Ave, Surfers Paradise QLD" />
-                  {mode === "residential" && (
+                  {mode === "residential" && (<>
                     <div style={{ display: "flex", gap: 12 }}>
                       <div style={{ flex: 1 }}><Field label="Preferred date *" value={preferredDate} onChange={setPreferredDate} type="date" min={new Date().toISOString().split("T")[0]} /></div>
-                      <div style={{ flex: 1 }}><Field label="Time" value={preferredTime} onChange={setPreferredTime} type="time" /></div>
                     </div>
-                  )}
+
+                    {preferredDate && (
+                      <div style={{ marginTop: 14 }}>
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                          Pick a time *
+                        </div>
+                        <SlotPicker
+                          date={preferredDate}
+                          durationMinutes={Math.max(60, Math.round((quote.hours || 2) * 60))}
+                          value={preferredTime}
+                          onChange={setPreferredTime}
+                          onAvailabilityChange={setDayHasSlots}
+                        />
+                      </div>
+                    )}
+                  </>)}
                 </div>
               </Section>
 
