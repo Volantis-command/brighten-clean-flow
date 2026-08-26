@@ -24,6 +24,7 @@ import {
   Sparkles,
   Star,
   UserRound,
+  CalendarClock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DAYS_OF_WEEK } from '@/lib/staffOnboarding';
@@ -188,6 +189,25 @@ export default function CleanerProfilePage() {
           </div>
         </div>
       </section>
+
+      {/* Availability sits above everything else on purpose. It is the one thing
+          a cleaner must keep current, because clients are only offered times
+          somebody is actually free for. */}
+      <button
+        onClick={() => navigate('/availability')}
+        className="mb-5 flex w-full items-center gap-4 rounded-3xl border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary sm:p-6"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+          <CalendarClock className="h-6 w-6 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold text-foreground">My availability</p>
+          <p className="text-sm text-muted-foreground">
+            Set the days and hours you can work, and mark any day you are off. Clients can only book times you are free.
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      </button>
 
       <Tabs defaultValue="details" className="space-y-5">
         <TabsList className="grid h-auto grid-cols-2 gap-1 rounded-2xl bg-muted p-1 sm:grid-cols-4">

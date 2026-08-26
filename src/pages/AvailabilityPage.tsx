@@ -31,7 +31,9 @@ const pretty = (d: Date) =>
 export default function AvailabilityPage() {
   const { user, role } = useAuth() as any;
   const qc = useQueryClient();
-  const isAdmin = role === 'admin';
+  // Admins and head cleaners manage the whole roster. Everyone else can only
+  // edit their own hours, and the database enforces that too, not just the UI.
+  const canManageAll = role === 'admin' || role === 'head_cleaner';
   const [who, setWho] = useState<string>('');
 
   // STAFF ONLY. This list was every profile in the database, which is 75
@@ -41,7 +43,7 @@ export default function AvailabilityPage() {
   const { data: people = [] } = useQuery({
     queryKey: ['availability-staff'],
     queryFn: async () => {
-      if (!isAdmin) return [];
+      if (!canManageAll) return [];
       const { data: roles, error: rErr } = await supabase
         .from('user_roles').select('user_id, role')
         .in('role', ['admin', 'head_cleaner', 'cleaner'] as any);
@@ -63,7 +65,7 @@ export default function AvailabilityPage() {
 
       return (profs || []).map((p: any) => ({ ...p, role: roleOf.get(p.id) }));
     },
-    enabled: isAdmin,
+    enabled: canManageAll,
   });
 
   useEffect(() => { if (!who && user?.id) setWho(user.id); }, [user?.id, who]);
@@ -150,7 +152,7 @@ export default function AvailabilityPage() {
         </p>
       </div>
 
-      {isAdmin && people.length > 0 && (
+      {canManageAll && people.length > 0 && (
         <select value={who} onChange={(e) => setWho(e.target.value)}
           className="w-full rounded-xl border border-border bg-card px-3 py-2.5 font-semibold text-foreground">
           {people.map((p: any) => (
