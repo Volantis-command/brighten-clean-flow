@@ -315,7 +315,7 @@ export default function LeadDetailSlideOver({ lead, open, onClose, onMoveStage }
             </Button>
           )}
           {/* The conversation, right where you decide what to do next. */}
-          <LeadConversation leadId={lead.id} leadName={lead.first_name || ''} />
+          <LeadConversation leadId={lead.id} leadName={lead.first_name || ''} phone={lead.phone} />
 
           {onMoveStage && (
             <div className="mb-1">

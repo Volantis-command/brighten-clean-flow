@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Calendar, Bot, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X, Flame } from 'lucide-react';
+import { LayoutDashboard, Calendar, Bot, Users, Settings, UserCircle, User, ClipboardList, Inbox, Sparkles, ClipboardCheck, MapPin, DollarSign, Package, LayoutGrid, X, Flame, CalendarClock } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAlertsData } from '@/hooks/useAlertsData';
 import { Logo } from '@/components/Logo';
@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
   { label: 'Leads', path: '/leads', icon: Flame, roles: ['admin'] },
   { label: 'Clients', path: '/clients', icon: UserCircle, roles: ['admin'] },
   { label: 'Staff', path: '/staff', icon: Users, roles: ['admin'] },
+  { label: 'Availability', path: '/availability', icon: CalendarClock, roles: ['admin', 'head_cleaner', 'cleaner'] },
   { label: 'Timesheets', path: '/timesheets', icon: ClipboardList, roles: ['admin'] },
   { label: 'Financials', path: '/financials', icon: DollarSign, roles: ['admin'] },
   { label: 'Linen', path: '/linen', icon: Package, roles: ['admin'] },

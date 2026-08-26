@@ -46,6 +46,7 @@ const TimesheetsPage = lazy(() => import('./pages/TimesheetsPage'));
 const StaffOnboardingPage = lazy(() => import('./pages/StaffOnboardingPage'));
 const CleanerOnboardingPage = lazy(() => import('./pages/CleanerOnboardingPage'));
 const CleanerAvailabilityPage = lazy(() => import('./pages/CleanerAvailabilityPage'));
+const AvailabilityPage = lazy(() => import('./pages/AvailabilityPage'));
 const MyBrightlyScorePage = lazy(() => import('./pages/MyBrightlyScorePage'));
 const MyPaySummaryPage = lazy(() => import('./pages/MyPaySummaryPage'));
 const HeadCleanerQCPage = lazy(() => import('./pages/HeadCleanerQCPage'));
@@ -279,7 +280,8 @@ function AppRoutes() {
         <Route path="/clean/:jobId/done" element={<JobCompleteDonePage />} />
         <Route path="/jobs/:jobId/audit" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><JobAuditPage /></ProtectedRoute>} />
         {/* cleaner-onboarding moved to public routes for token access */}
-        <Route path="/availability" element={<CleanerAvailabilityPage />} />
+        <Route path="/availability" element={<AvailabilityPage />} />
+        <Route path="/availability-old" element={<CleanerAvailabilityPage />} />
         <Route path="/my-score" element={<MyBrightlyScorePage />} />
         <Route path="/my-pay" element={<MyPaySummaryPage />} />
         <Route path="/qc" element={<ProtectedRoute allowedRoles={['admin', 'head_cleaner']}><HeadCleanerQCPage /></ProtectedRoute>} />
