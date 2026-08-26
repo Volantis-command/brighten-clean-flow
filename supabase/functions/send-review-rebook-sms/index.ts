@@ -117,18 +117,38 @@ Deno.serve(async (req) => {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('phone, full_name')
+          .select('phone, full_name, sms_opt_out')
           .eq('id', clientProps[0].client_id)
           .single();
         if (!profile?.phone) continue;
 
         const firstName = (profile.full_name || property.client_name || 'there').split(' ')[0];
-        const message = `Hi ${firstName}, how was your Brightly clean? Reply 1-5 to rate us ⭐`;
+        // Nobody who has asked us to stop gets another one. Lynn had to ask a
+        // human, because there was no way for the system to know.
+        if ((profile as any).sms_opt_out) {
+          await supabase.from('jobs')
+            .update({ feedback_rating_sms_sent_at: now.toISOString() }).eq('id', job.id);
+          results.push({ job_id: job.id, type: 'rating', status: 'skipped', reason: 'opted_out' });
+          continue;
+        }
+
+        const message =
+          `Hi ${firstName}, how was your Brightly clean? Reply 1-5 to rate us. Reply STOP to opt out.`;
 
         const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
         if (smsResult.success) {
-          await supabase.from('jobs').update({ feedback_rating_sms_sent_at: now.toISOString() }).eq('id', job.id);
-          results.push({ job_id: job.id, type: 'rating', status: 'sent' });
+          // STAMP FIRST, and check it worked. This write is the ONLY thing
+          // stopping a repeat. It was unchecked, and 15 completed jobs ended up
+          // with no stamp, leaving them permanently eligible to be sent again.
+          // A failure here has to be loud, because the customer pays for it.
+          const { error: stampErr } = await supabase.from('jobs')
+            .update({ feedback_rating_sms_sent_at: now.toISOString() }).eq('id', job.id);
+          if (stampErr) {
+            console.error(`RATING RESEND RISK: sent to job ${job.id} but could not stamp it:`, stampErr);
+            results.push({ job_id: job.id, type: 'rating', status: 'sent_unstamped', error: stampErr.message });
+          } else {
+            results.push({ job_id: job.id, type: 'rating', status: 'sent' });
+          }
         } else {
           results.push({ job_id: job.id, type: 'rating', status: 'failed', error: smsResult.error });
         }
@@ -170,10 +190,19 @@ Deno.serve(async (req) => {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('phone, full_name')
+          .select('phone, full_name, sms_opt_out')
           .eq('id', clientProps[0].client_id)
           .single();
         if (!profile?.phone) continue;
+
+        // Same rule for the rebook nudge. Opting out means opting out of the
+        // marketing, not just the rating.
+        if ((profile as any).sms_opt_out) {
+          await supabase.from('jobs')
+            .update({ rebook_sms_sent_at: now.toISOString() }).eq('id', job.id);
+          results.push({ job_id: job.id, type: 'rebook', status: 'skipped', reason: 'opted_out' });
+          continue;
+        }
 
         const firstName = (profile.full_name || property.client_name || 'there').split(' ')[0];
         const portalToken = clientProps[0].portal_token || '';
@@ -182,8 +211,10 @@ Deno.serve(async (req) => {
 
         const smsResult = await sendTwilioSms(formatAuPhone(profile.phone), message);
         if (smsResult.success) {
-          await supabase.from('jobs').update({ rebook_sms_sent_at: now.toISOString() }).eq('id', job.id);
-          results.push({ job_id: job.id, type: 'rebook', status: 'sent' });
+          const { error: stampErr } = await supabase.from('jobs')
+            .update({ rebook_sms_sent_at: now.toISOString() }).eq('id', job.id);
+          if (stampErr) console.error(`REBOOK RESEND RISK: sent for job ${job.id} but could not stamp it:`, stampErr);
+          results.push({ job_id: job.id, type: 'rebook', status: stampErr ? 'sent_unstamped' : 'sent' });
         } else {
           results.push({ job_id: job.id, type: 'rebook', status: 'failed', error: smsResult.error });
         }

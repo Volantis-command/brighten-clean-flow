@@ -332,6 +332,33 @@ Deno.serve(async (req) => {
       isStaffMember = (staffRoles || []).length > 0;
     }
 
+    // ─── 1.4 STOP: the highest priority keyword there is ───
+    //
+    // Lynn asked us three times to stop sending rating requests and could not,
+    // because nothing in the system could record that. Honoured before any
+    // other matching, and it stops marketing and feedback texts only.
+    // Messages about a clean she has actually booked still go out, because
+    // silence about tomorrow's appointment would be worse.
+    if (['STOP', 'STOPALL', 'UNSUBSCRIBE', 'END', 'QUIT', 'OPTOUT', 'OPT OUT'].includes(body.trim())) {
+      const { error: optErr } = await supabase.from('profiles')
+        .update({
+          sms_opt_out: true,
+          sms_opt_out_at: new Date().toISOString(),
+          sms_opt_out_reason: 'Replied STOP',
+        })
+        .or(matchingProfileIds.length
+          ? `id.in.(${matchingProfileIds.join(',')})`
+          : `phone.eq.${from}`);
+
+      if (optErr) {
+        // If we cannot record it, do NOT tell them we have. Better they hear
+        // that a human will handle it than be told yes and keep getting texts.
+        console.error('STOP could not be recorded:', optErr);
+        return twimlResponse("Sorry, something went wrong stopping those. Brendan will sort it, you won't get another.");
+      }
+      return twimlResponse("Done, you won't get any more texts from us. If you ever need a clean, just call 0418 878 707.");
+    }
+
     // ─── 1.5 Check for feedback rating reply (1-5) ───
     const ratingNum = parseInt(body, 10);
     if (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) {
