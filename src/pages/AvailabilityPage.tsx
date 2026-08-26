@@ -34,14 +34,34 @@ export default function AvailabilityPage() {
   const isAdmin = role === 'admin';
   const [who, setWho] = useState<string>('');
 
-  // Everyone who could hold hours. Admins pick from this; a cleaner is locked
-  // to themselves.
+  // STAFF ONLY. This list was every profile in the database, which is 75
+  // clients. Clients do not have availability, they are the ones booking. The
+  // people whose hours decide what can be booked are admins, head cleaners and
+  // cleaners, so that is exactly who appears here.
   const { data: people = [] } = useQuery({
-    queryKey: ['availability-people'],
+    queryKey: ['availability-staff'],
     queryFn: async () => {
       if (!isAdmin) return [];
-      const { data } = await supabase.from('profiles').select('id, full_name').order('full_name');
-      return data || [];
+      const { data: roles, error: rErr } = await supabase
+        .from('user_roles').select('user_id, role')
+        .in('role', ['admin', 'head_cleaner', 'cleaner'] as any);
+      if (rErr) throw rErr;
+
+      const ids = [...new Set((roles || []).map((r: any) => r.user_id))];
+      if (!ids.length) return [];
+
+      const roleOf = new Map<string, string>();
+      for (const r of (roles || []) as any[]) {
+        // Show the most specific role if someone holds more than one.
+        const better = r.role === 'cleaner' || r.role === 'head_cleaner';
+        if (!roleOf.has(r.user_id) || better) roleOf.set(r.user_id, r.role);
+      }
+
+      const { data: profs, error: pErr } = await supabase
+        .from('profiles').select('id, full_name').in('id', ids).order('full_name');
+      if (pErr) throw pErr;
+
+      return (profs || []).map((p: any) => ({ ...p, role: roleOf.get(p.id) }));
     },
     enabled: isAdmin,
   });
@@ -126,14 +146,18 @@ export default function AvailabilityPage() {
       <div>
         <h1 className="text-2xl font-black text-primary">Availability</h1>
         <p className="text-sm text-muted-foreground">
-          Clients can only book times someone is available for. No hours means never offered.
+          Staff only. A client can book a time when someone here is available and not already on a job. Nobody available means nothing to book.
         </p>
       </div>
 
       {isAdmin && people.length > 0 && (
         <select value={who} onChange={(e) => setWho(e.target.value)}
           className="w-full rounded-xl border border-border bg-card px-3 py-2.5 font-semibold text-foreground">
-          {people.map((p: any) => <option key={p.id} value={p.id}>{p.full_name || 'Unnamed'}</option>)}
+          {people.map((p: any) => (
+            <option key={p.id} value={p.id}>
+              {p.full_name || 'Unnamed'}{p.role ? ` (${String(p.role).replace('_', ' ')})` : ''}
+            </option>
+          ))}
         </select>
       )}
 
