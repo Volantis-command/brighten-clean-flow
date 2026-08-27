@@ -65,7 +65,9 @@ Deno.serve(async (req) => {
     const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
     // ─── FEEDBACK RATING SMS (daily 9am AEST — jobs completed YESTERDAY) ───
-    {
+    // Switchable, exactly like the rebook nudge below. It had no switch, so the
+    // only way to stop it was a code change, which is why Lynn kept getting it.
+    if (notifMap['send_rating_sms'] !== false) {
       let query = supabase
         .from('jobs')
         .select('id, scheduled_date, property_id, clock_off, audit_rating, cleaner_1_id, cleaner_2_id, properties(property_name, client_name)')

@@ -41,3 +41,10 @@ UPDATE public.jobs
 -- ── 3. A place to see who has opted out ────────────────────────────────────
 CREATE INDEX IF NOT EXISTS profiles_sms_opt_out_idx
   ON public.profiles (sms_opt_out) WHERE sms_opt_out = true;
+
+-- ── Turn the rating request off for everyone ───────────────────────────────
+-- BJ's call: nobody receives it for now. A setting, not a code change, so it
+-- can be turned back on without a deploy. The rebook nudge is untouched.
+INSERT INTO public.notification_settings (key, enabled)
+VALUES ('send_rating_sms', false)
+ON CONFLICT (key) DO UPDATE SET enabled = false;
