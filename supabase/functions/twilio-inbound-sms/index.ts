@@ -64,6 +64,7 @@ async function parseIncoming(req: Request) {
       from: ((formData.get('From') as string) || '').trim(),
       body: original.toUpperCase(),   // uppercased for keyword matching
       rawBody: original,              // original case, for Jess to read naturally
+      sid: ((formData.get('MessageSid') as string) || '').trim(),
     };
   }
 
@@ -74,6 +75,7 @@ async function parseIncoming(req: Request) {
     from: (params.get('From') || '').trim(),
     body: original.toUpperCase(),
     rawBody: original,
+    sid: (params.get('MessageSid') || '').trim(),
   };
 }
 
@@ -117,7 +119,7 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
 
     if (isManualFollowUp) {
       // No booking link for Airbnb or Commercial — admin follows up manually
-      await sendTwilioSms(from, `Thanks ${firstName}! 🎉 We've received your acceptance. One of our team will be in touch shortly to confirm your first booking.\n\nQuestions? 0418 878 707\n— Brightly Cleaning 🌿`);
+      await sendTwilioSms(from, `Thanks ${firstName}! 🎉 We've received your acceptance. One of our team will be in touch shortly to confirm your first booking.\n\nQuestions? 0418 878 707\nBrightly Cleaning 🌿`);
     } else {
       let bookingLink = APP_URL;
       const { data: allQr } = await supabase
@@ -168,7 +170,7 @@ async function handleQuoteReply(supabase: any, from: string, body: string, varia
       }
     }
 
-    await sendTwilioSms(from, `No worries! If you change your mind, we're here. — Brightly 🌿`);
+    await sendTwilioSms(from, `No worries! If you change your mind, we're here.\nBrightly 🌿`);
 
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
     for (const admin of (admins || [])) {
@@ -259,12 +261,12 @@ async function handleFeedbackRating(supabase: any, from: string, body: string, m
     const googleUrl = appSettings?.value || '';
 
     if (googleUrl) {
-      await sendTwilioSms(from, `Thank you ${firstName}! 🌟 We're so glad you're happy. If you have a moment, a Google review would mean the world to us: ${googleUrl}\n\n— Brightly Cleaning`);
+      await sendTwilioSms(from, `Thank you ${firstName}! 🌟 We're so glad you're happy. If you have a moment, a Google review would mean the world to us: ${googleUrl}\n\nBrightly Cleaning`);
     } else {
-      await sendTwilioSms(from, `Thank you ${firstName}! 🌟 We're so glad you're happy with your clean.\n\n— Brightly Cleaning`);
+      await sendTwilioSms(from, `Thank you ${firstName}! 🌟 We're so glad you're happy with your clean.\n\nBrightly Cleaning`);
     }
   } else {
-    await sendTwilioSms(from, `Thanks for the feedback. Our manager will be in touch shortly.\n\n— Brightly Cleaning`);
+    await sendTwilioSms(from, `Thanks for the feedback. Our manager will be in touch shortly.\n\nBrightly Cleaning`);
 
     // Create admin alert
     const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
@@ -289,7 +291,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { from, body, rawBody } = await parseIncoming(req);
+    const { from, body, rawBody, sid } = await parseIncoming(req);
 
     console.log(`[twilio-inbound-sms v5] From: "${from}"`);
     console.log(`[twilio-inbound-sms v5] Body: "${body}"`);
@@ -300,6 +302,28 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    // Log the message BEFORE any of the branching below. Everything under here
+    // forks a dozen ways (staff YES/NO, client rebook, linen, Jess), and only
+    // the Jess branch ever recorded anything. So a customer replying "YES" to a
+    // booking left no trace of having said anything at all.
+    //
+    // Twilio's SID is the dedupe key, which is what stops the five-minute
+    // sync-twilio-messages sweep from logging this same message a second time.
+    try {
+      let e164 = digitsOnly(from);
+      if (e164.startsWith('0')) e164 = '61' + e164.slice(1);
+      await supabase.from('sms_conversations').insert({
+        phone: '+' + e164,
+        direction: 'in',
+        body: rawBody,
+        sender_type: 'unknown',   // resolved on read; identity lives on profiles
+        twilio_sid: sid || null,
+      } as any);
+    } catch (e) {
+      // Never let the log stop the reply. But say so, loudly.
+      console.error('[twilio-inbound-sms] could not log inbound message:', e);
+    }
 
     const variants = phoneVariants(from);
     const normalizedIncoming = normalizePhone(from);

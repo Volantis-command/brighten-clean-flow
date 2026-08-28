@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OPEN_STAGES, stageDef, type LeadStage } from '@/lib/leadPipeline';
-import LeadConversation from '@/components/clients/LeadConversation';
+import MessageThread from '@/components/messaging/MessageThread';
 
 interface Props {
   lead: any;
@@ -315,7 +315,7 @@ export default function LeadDetailSlideOver({ lead, open, onClose, onMoveStage }
             </Button>
           )}
           {/* The conversation, right where you decide what to do next. */}
-          <LeadConversation leadId={lead.id} leadName={lead.first_name || ''} phone={lead.phone} />
+          <MessageThread leadId={lead.id} name={lead.first_name || ''} phone={lead.phone} />
 
           {onMoveStage && (
             <div className="mb-1">

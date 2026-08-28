@@ -40,3 +40,4 @@ AGENTS.md
 ios/App/Pods/
 ios/App/App/public/
 ios/App/build/
+deno.lock

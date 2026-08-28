@@ -122,3 +122,6 @@ verify_jwt = true
 
 [functions.twilio-status]
 verify_jwt = false
+
+[functions.sync-twilio-messages]
+verify_jwt = false

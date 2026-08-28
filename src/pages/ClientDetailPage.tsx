@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import MessageThread from '@/components/messaging/MessageThread';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Star, Check, X, Send, Loader2, MessageSquare, CalendarPlus, BedDouble, Bath, Plus } from 'lucide-react';
@@ -203,19 +204,6 @@ function useClientRequests(clientId: string) {
   });
 }
 
-function useClientMessages(clientId: string) {
-  const parsed = stripPseudoPrefix(clientId);
-  return useQuery({
-    queryKey: ['client-messages', clientId],
-    queryFn: async () => {
-      if (parsed.type !== 'profile') return [];
-      const { data } = await supabase.from('client_messages').select('*').eq('client_id', parsed.realId).order('sent_at', { ascending: true });
-      return data || [];
-    },
-    enabled: !!clientId,
-  });
-}
-
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -227,7 +215,6 @@ export default function ClientDetailPage() {
   const { data: jobs = [] } = useClientJobs(propertyIds, data?.profile?.full_name || null);
   const { data: feedback = [] } = useClientFeedback(propertyIds);
   const { data: requests = [] } = useClientRequests(id!);
-  const { data: messages = [] } = useClientMessages(id!);
 
   const [notes, setNotes] = useState('');
   const [notesLoaded, setNotesLoaded] = useState(false);
@@ -236,7 +223,6 @@ export default function ClientDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [schedulePropertyId, setSchedulePropertyId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
 
   if (data?.profile && !notesLoaded) {
@@ -257,20 +243,6 @@ export default function ClientDetailPage() {
     },
     onSuccess: () => { toast.success('Request updated'); queryClient.invalidateQueries({ queryKey: ['client-requests', id] }); },
     onError: (e: Error) => toast.error(e.message),
-  });
-
-  const sendReplyMutation = useMutation({
-    mutationFn: async () => {
-      const parsed = stripPseudoPrefix(id!);
-      if (!replyText.trim() || parsed.type !== 'profile') return;
-      const { error } = await supabase.from('client_messages').insert({ client_id: parsed.realId, message: replyText.trim(), direction: 'outbound' });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setReplyText('');
-      queryClient.invalidateQueries({ queryKey: ['client-messages', id] });
-      toast.success('Reply sent');
-    },
   });
 
   if (isLoading || !data) {
@@ -303,7 +275,7 @@ export default function ClientDetailPage() {
     setSendingPortalLink(true);
     try {
       const baseUrl = getAppBaseUrl();
-      const msg = `Hi ${profile?.full_name?.split(' ')[0] || 'there'}, view your Brightly clean history here: ${baseUrl}/client-portal — Your team at Brightly`;
+      const msg = `Hi ${profile?.full_name?.split(' ')[0] || 'there'}, view your Brightly clean history here: ${baseUrl}/client-portal\n\nYour team at Brightly`;
       await sendJobSms({ to: profile.phone, message: msg });
       toast.success('Portal login link sent via SMS');
     } catch (err: any) {
@@ -649,34 +621,16 @@ export default function ClientDetailPage() {
         </TabsContent>
 
         {/* MESSAGES */}
+        {/* This tab used to render client_messages and offer a reply box that
+            inserted a row, said "Reply sent", and sent no text. MessageThread
+            reads the real SMS log and actually sends. */}
         <TabsContent value="messages" className="mt-4">
-          <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
-            {messages.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">No messages yet.</p>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {messages.map((m: any) => (
-                  <div key={m.id} className={`flex ${m.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm ${m.direction === 'outbound' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}>
-                      <p>{m.message}</p>
-                      <p className={`text-[10px] mt-1 ${m.direction === 'outbound' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
-                        {m.sent_at ? format(new Date(m.sent_at), 'dd MMM, HH:mm') : ''}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {isRealProfile && (
-              <div className="flex gap-2">
-                <Input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Type a reply..."
-                  onKeyDown={e => e.key === 'Enter' && !sendReplyMutation.isPending && replyText.trim() && sendReplyMutation.mutate()} />
-                <Button onClick={() => sendReplyMutation.mutate()} disabled={!replyText.trim() || sendReplyMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+          <MessageThread
+            phone={profile?.phone}
+            name={profile?.full_name?.split(' ')[0] || null}
+            profileId={isRealProfile ? parsed.realId : null}
+            title="Text messages"
+          />
         </TabsContent>
       </Tabs>
 

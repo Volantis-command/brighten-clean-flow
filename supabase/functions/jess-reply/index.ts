@@ -437,11 +437,9 @@ Reply with JSON only: {"reply":"your SMS text","needs_human":true|false,"reason"
     if (dry_run) return json({ who: who.type, name: who.name, reply, needs_human: needsHuman, reason });
 
     // ── 5. REPLY, LOG, ESCALATE ──────────────────────────────────────────────
-    await log(sb, {
-      phone, direction: "in", body: String(message),
-      sender_type: who.type, profile_id: who.type === "lead" ? null : (who.id ?? null),
-      lead_id: who.type === "lead" ? who.id : null,
-    });
+    // The inbound message is logged by twilio-inbound-sms, which sees every
+    // incoming text rather than only the ones that reach Jess. Logging it here
+    // too would double it up in the thread.
 
     await sendSms(phone, reply);
 

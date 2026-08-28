@@ -21,6 +21,12 @@ Deno.serve(async (req: Request) => {
       await sb.from("lead_events")
         .update({ delivery_status: status, error_code: errorCode || null } as any)
         .eq("twilio_sid", sid);
+
+      // Same update against the message thread, which is what the Messages tab
+      // on a client and the chat box on a lead both read.
+      await sb.from("sms_conversations")
+        .update({ delivery_status: status, error_code: errorCode || null } as any)
+        .eq("twilio_sid", sid);
       console.log(`twilio-status: ${sid} -> ${status}${errorCode ? ` (error ${errorCode})` : ""}`);
     }
 
