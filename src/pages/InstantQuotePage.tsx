@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
-import { Bed, ChevronDown, Camera, Clock, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
+import { Bed, ChevronDown, Camera, Clock, Loader2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import brightlyWordmark from "@/assets/brightly-wordmark-cream.png";
+import brightlyWordmarkInk from "@/assets/brightly-wordmark-ink.png";
 import { supabase } from "@/integrations/supabase/client";
 import SlotPicker from "@/components/booking/SlotPicker";
 import { toast } from "sonner";
@@ -8,15 +10,24 @@ import {
 } from "@/lib/airbnbQuotePricing";
 
 /* ── Brand tokens (match the admin Airbnb Quote calculator) ── */
-const BG = "#0B0F17";
-const CARD = "#131920";
-const GREEN = "#4ADE80";
-const YELLOW = "#FEDB00";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
-const BORDER = "rgba(74,222,128,0.18)";
+// Palette lifted from the live marketing site's own CSS variables, so the quote
+// page and brightly.cleaning are the same brand rather than two designs:
+//   --primary 170 70% 15%   deep green
+//   --accent  52 100% 50%   yellow
+//   --background 30 20% 99% cream
+// The page used to be near-black with a bright mint green, which looked nothing
+// like the site people arrive from.
+const BG = "#FBFAF7";              // cream page
+const CARD = "#FFFFFF";            // white cards on cream
+const GREEN = "#0B3D2E";           // deep brand green, used for text and fills
+const YELLOW = "#FFE500";          // the accent, and the primary button
+const TEXT = "#0B3D2E";            // deep green type, as on the site
+const MUTED = "#3F7466";           // muted green, matches --muted-foreground
+const BORDER = "rgba(11,61,46,0.14)";
+const HEADER_BG = "#0B3D2E";       // the site's green bar
+const ON_DARK = "#FBFAF7";         // text on the green bar
 
-// Client Airbnb margin — 30% for now (admin default is 35%).
+// Client Airbnb margin, 30% for now (admin default is 35%).
 const AIRBNB_CLIENT_GP = 0.30;
 
 const fmt = (n: number) =>
@@ -95,8 +106,9 @@ export default function InstantQuotePage() {
   const [parking, setParking] = useState("Street parking");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
 
-  // Lead gate — the price stays hidden until they give name + mobile + email.
+  // Lead gate. The price stays hidden until they give name + mobile + email.
   const [unlocked, setUnlocked] = useState(false);
   const [gateStep, setGateStep] = useState<"details" | "code">("details");
   const [smsCode, setSmsCode] = useState("");
@@ -106,7 +118,7 @@ export default function InstantQuotePage() {
 
   const cleanType = mode === "airbnb" ? "Airbnb / Short-Stay Turnover" : "Standard Clean";
 
-  // "I have a question — call me": capture the intent so the admin phones them
+  // "I have a question, call me": capture the intent so the admin phones them
   // instead of waiting for a booking that isn't coming.
   const requestInfo = async () => {
     setSubmitting(true);
@@ -125,13 +137,13 @@ export default function InstantQuotePage() {
       setPhase("done");
       window.scrollTo(0, 0);
     } catch (err: any) {
-      toast.error(err.message || "Something went wrong — call 0418 878 707");
+      toast.error(err.message || "Something went wrong. Call us on 0418 878 707");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Step 1 — text them a code. The price stays hidden until they prove they
+  // Step 1, text them a code. The price stays hidden until they prove they
   // hold the phone, which stops made-up leads and competitors price-fishing.
   const sendCode = async () => {
     if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim()) {
@@ -146,15 +158,15 @@ export default function InstantQuotePage() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       setGateStep("code");
-      toast.success("Code sent — check your phone.");
+      toast.success("Code sent. Check your phone.");
     } catch (err: any) {
-      toast.error(err.message || "Couldn't send the code — try again");
+      toast.error(err.message || "Couldn't send the code. Try again");
     } finally {
       setRevealing(false);
     }
   };
 
-  // Step 2 — verify the code, then capture the lead and show the price.
+  // Step 2, verify the code, then capture the lead and show the price.
   const revealPrice = async () => {
     if (!smsCode.trim()) {
       toast.error("Enter the code we sent you");
@@ -201,7 +213,7 @@ export default function InstantQuotePage() {
       setUnlocked(true);
 
       // Jess texts them straight away, while they're still looking at the price.
-      // Speed to lead is the whole game — this fires within a second or two of
+      // Speed to lead is the whole game, so this fires within a second or two of
       // the reveal. Non-blocking: a texting hiccup must never hide their quote.
       supabase.functions.invoke("jess-first-touch", {
         body: {
@@ -229,7 +241,7 @@ export default function InstantQuotePage() {
         },
       }).catch(() => {});
     } catch (err: any) {
-      toast.error(err.message || "Couldn't load your quote — try again");
+      toast.error(err.message || "Couldn't load your quote. Try again");
     } finally {
       setRevealing(false);
     }
@@ -297,7 +309,7 @@ export default function InstantQuotePage() {
       if (error) throw error;
 
       // Instantly set them up as a client + create the property (onboarding state)
-      // + link to their portal — same mechanism the other intake forms use.
+      // + link to their portal, the same mechanism the other intake forms use.
       // Admin then cleans it up and flips the property live. Non-blocking.
       const bedConfigStr = mode === "airbnb"
         ? rooms.slice(0, type.beds).map((c, i) => `Bedroom ${i + 1}: ${c}`).join(", ")
@@ -326,7 +338,7 @@ export default function InstantQuotePage() {
             tea_coffee_kit: consumablesIncluded,
           } : {
             // Residential: DON'T silently create the clean. Onboard the client +
-            // property, but the booking waits in Leads for the admin to Approve —
+            // property, but the booking waits in Leads for the admin to Approve,
             // approval creates the clean on the client's chosen date (pending a
             // cleaner). Their requested date/time is stored on the lead.
             create_job: false,
@@ -343,7 +355,7 @@ export default function InstantQuotePage() {
         },
       }).catch((e) => console.error("link-intake-to-profile failed (non-blocking):", e));
 
-      // Admin heads-up — tells you the intent so you know how to act. Non-blocking.
+      // Admin heads-up. Tells you the intent so you know how to act. Non-blocking.
       supabase.functions.invoke("send-quote-notification", {
         body: {
           type: "lead_captured",
@@ -370,7 +382,7 @@ export default function InstantQuotePage() {
       setPhase("done");
       window.scrollTo(0, 0);
     } catch (err: any) {
-      toast.error(err.message || "Something went wrong — please call 0418 878 707");
+      toast.error(err.message || "Something went wrong. Please call us on 0418 878 707");
     } finally {
       setSubmitting(false);
     }
@@ -380,7 +392,7 @@ export default function InstantQuotePage() {
   if (phase === "done") {
     return (
       <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
-        <div style={{ width: 30, height: 30, borderRadius: 9, background: `linear-gradient(135deg, ${GREEN}, ${YELLOW})`, marginBottom: 28 }} />
+        <img src={brightlyWordmarkInk} alt="Brightly" style={{ height: 30, width: "auto", marginBottom: 28 }} />
         <div style={{ width: 80, height: 80, borderRadius: "50%", background: `${GREEN}22`, border: `2px solid ${GREEN}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 22 }}>
           <CheckCircle2 size={40} color={GREEN} />
         </div>
@@ -396,13 +408,16 @@ export default function InstantQuotePage() {
             ? <>We've got your quote of <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel} and one of the team will call you on {phone} shortly to answer your questions.</>
             : <>Your {type.name} {mode === "airbnb" ? "turnover" : "clean"} is <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel}.
               {mode === "residential"
-                ? ` Your ${preferredDate} slot is locked in — we'll text you on ${phone} to confirm your cleaner.`
-                : " We've got your property details — we'll set everything up and text you to lock in your turnover."}</>}
+                ? ` Your ${preferredDate} slot is locked in. We'll text you on ${phone} to confirm your cleaner.`
+                : " We've got your property details. We'll set everything up and text you to lock in your turnover."}</>}
         </p>
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "16px 28px", color: MUTED, fontSize: 14 }}>
           <p style={{ fontWeight: 700, color: TEXT, margin: "0 0 2px" }}>Questions?</p>
-          <p style={{ margin: 0 }}>Call us on <span style={{ color: YELLOW }}>0418 878 707</span></p>
+          <p style={{ margin: 0 }}>Call us on <a href="tel:0418878707" style={{ color: GREEN, fontWeight: 700, textDecoration: "none" }}>0418 878 707</a></p>
         </div>
+        <a href="https://brightly.cleaning" style={{ marginTop: 22, display: "inline-flex", alignItems: "center", gap: 6, color: MUTED, fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}>
+          <ArrowLeft size={15} /> Back to brightly.cleaning
+        </a>
       </div>
     );
   }
@@ -412,37 +427,48 @@ export default function InstantQuotePage() {
       <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: 120 }}>
 
         {/* ── Sticky hero ── */}
-        <div style={{ position: "sticky", top: 0, zIndex: 30, background: BG, borderBottomLeftRadius: 22, borderBottomRightRadius: 22, borderBottom: `1px solid ${BORDER}` }}>
-          <div style={{ padding: "16px 20px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${GREEN}, ${YELLOW})` }} />
-              <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em" }}>Instant Quote</span>
+        <div style={{ position: "sticky", top: 0, zIndex: 30, background: HEADER_BG, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 }}>
+          <div style={{ padding: "14px 20px 18px" }}>
+            {/* The real wordmark and a way back to the site. There was no way
+                out of this page except the browser's back button. */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <a href="https://brightly.cleaning" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: ON_DARK, fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                <ArrowLeft size={16} /> Back
+              </a>
+              <img src={brightlyWordmark} alt="Brightly" style={{ height: 26, width: "auto" }} />
+              <span style={{ width: 52 }} />
+            </div>
+            <div style={{ textAlign: "center", marginTop: 10, color: ON_DARK, fontWeight: 800, fontSize: 17, letterSpacing: "-0.02em" }}>
+              Instant Quote
             </div>
 
             {/* Mode toggle */}
-            <div style={{ display: "flex", gap: 6, marginTop: 14, background: CARD, borderRadius: 12, padding: 4, border: `1px solid ${BORDER}` }}>
+            <div style={{ display: "flex", gap: 6, marginTop: 14, background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: 4 }}>
               {([["airbnb", "Airbnb / Short-Stay"], ["residential", "Residential"]] as [Mode, string][]).map(([m, label]) => {
                 const active = mode === m;
                 return (
                   <button key={m} onClick={() => setMode(m)}
                     style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
-                      background: active ? GREEN : "transparent", color: active ? "#000" : MUTED, transition: "all .15s" }}>
+                      background: active ? YELLOW : "transparent", color: active ? GREEN : "rgba(255,255,255,0.75)", transition: "all .15s" }}>
                     {label}
                   </button>
                 );
               })}
             </div>
 
-            <div style={{ marginTop: 14 }}>
-              <div style={{ color: MUTED, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            {/* This block sits on the green bar, so it takes the on-dark colours.
+                Using the page's deep-green text here made the whole price
+                invisible against the header. */}
+            <div style={{ marginTop: 14, color: ON_DARK }}>
+              <div style={{ color: "rgba(251,250,247,0.7)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 {type.name} · {mode === "airbnb" ? "Turnover" : "Standard clean"}
               </div>
               <div style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
                 {unlocked
-                  ? <>{fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: MUTED }}>{gstLabel}</span></>
+                  ? <>{fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(251,250,247,0.7)" }}>{gstLabel}</span></>
                   : <span style={{ letterSpacing: "0.04em" }}>$<span style={{ opacity: 0.55 }}>•••</span></span>}
               </div>
-              <div style={{ height: 3, width: 92, marginTop: 8, borderRadius: 3, background: `linear-gradient(90deg, ${GREEN}, ${YELLOW})` }} />
+              <div style={{ height: 3, width: 92, marginTop: 8, borderRadius: 3, background: YELLOW }} />
             </div>
           </div>
         </div>
@@ -468,7 +494,7 @@ export default function InstantQuotePage() {
                     const active = i === typeIdx;
                     return (
                       <button key={t.name} onClick={() => setTypeIdx(i)}
-                        style={{ border: `1.5px solid ${active ? GREEN : BORDER}`, background: active ? GREEN : CARD, color: active ? "#000" : TEXT,
+                        style={{ border: `1.5px solid ${active ? GREEN : BORDER}`, background: active ? GREEN : CARD, color: active ? ON_DARK : TEXT,
                           borderRadius: 12, padding: "9px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}>
                         {t.beds}<span style={{ opacity: 0.6 }}>bd</span> · {t.baths}<span style={{ opacity: 0.6 }}>ba</span>
                       </button>
@@ -523,7 +549,7 @@ export default function InstantQuotePage() {
                     <>
                       <div style={{ fontSize: 16.5, fontWeight: 800, marginBottom: 4 }}>See your instant price 👇</div>
                       <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 14px", lineHeight: 1.5 }}>
-                        Pop in your details and we'll text you a quick code to unlock your quote — takes 20 seconds.
+                        Pop in your details and we'll text you a quick code to unlock your quote. Takes 20 seconds.
                       </p>
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
@@ -532,7 +558,7 @@ export default function InstantQuotePage() {
                         <Field label="Property address *" value={address} onChange={setAddress} placeholder="123 Ocean Ave, Surfers Paradise QLD" />
                       </div>
                       <button onClick={sendCode} disabled={revealing}
-                        style={{ width: "100%", marginTop: 14, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: revealing ? 0.7 : 1 }}>
+                        style={{ width: "100%", marginTop: 14, padding: "14px", borderRadius: 14, background: YELLOW, color: GREEN, fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: revealing ? 0.7 : 1 }}>
                         {revealing && <Loader2 size={18} className="animate-spin" />}
                         Text me my code
                       </button>
@@ -555,7 +581,7 @@ export default function InstantQuotePage() {
                         style={{ width: "100%", border: `1.5px solid ${BORDER}`, borderRadius: 12, padding: "16px 14px", fontSize: 26, fontWeight: 800, letterSpacing: "0.3em", textAlign: "center", color: TEXT, fontFamily: "inherit", background: BG, outline: "none" }}
                       />
                       <button onClick={revealPrice} disabled={revealing || smsCode.length < 4}
-                        style={{ width: "100%", marginTop: 12, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: (revealing || smsCode.length < 4) ? 0.6 : 1 }}>
+                        style={{ width: "100%", marginTop: 12, padding: "14px", borderRadius: 14, background: YELLOW, color: GREEN, fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: (revealing || smsCode.length < 4) ? 0.6 : 1 }}>
                         {revealing && <Loader2 size={18} className="animate-spin" />}
                         Show my price
                       </button>
@@ -578,7 +604,7 @@ export default function InstantQuotePage() {
                 <div style={{ marginTop: 18, textAlign: "center" }}>
                   <button onClick={requestInfo} disabled={submitting}
                     style={{ background: "transparent", border: "none", color: MUTED, fontSize: 13.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, opacity: submitting ? 0.6 : 1 }}>
-                    Not ready to book? I've got a question — call me
+                    Not ready to book? I've got a question, call me
                   </button>
                 </div>
               )}
@@ -589,10 +615,30 @@ export default function InstantQuotePage() {
             <>
               <Section n="1" label={mode === "residential" ? "Book your clean" : "Your details"}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
-                  <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
-                  <Field label="Email" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
-                  <Field label="Property address *" value={address} onChange={setAddress} placeholder="123 Ocean Ave, Surfers Paradise QLD" />
+                  {/* We already collected and SMS-verified all of this to unlock the
+                      price. Asking for it a second time made people think the first
+                      step had failed. Show it back instead, with a way to correct it. */}
+                  {!editingDetails ? (
+                    <div style={{ background: "rgba(11,61,46,0.04)", border: `1px solid ${BORDER}`, borderRadius: 14, padding: "12px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Booking as</div>
+                          <div style={{ fontWeight: 700, fontSize: 15, marginTop: 3 }}>{fullName}</div>
+                          <div style={{ fontSize: 13, color: MUTED, marginTop: 2 }}>{phone}{email ? ` · ${email}` : ""}</div>
+                          <div style={{ fontSize: 13, color: MUTED, marginTop: 2, wordBreak: "break-word" }}>{address}</div>
+                        </div>
+                        <button type="button" onClick={() => setEditingDetails(true)}
+                          style={{ flexShrink: 0, background: "transparent", border: "none", color: GREEN, fontSize: 13, fontWeight: 700, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                          Change
+                        </button>
+                      </div>
+                    </div>
+                  ) : (<>
+                    <Field label="Full name *" value={fullName} onChange={setFullName} placeholder="Jane Smith" />
+                    <Field label="Mobile *" value={phone} onChange={setPhone} placeholder="0412 345 678" type="tel" />
+                    <Field label="Email" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
+                    <Field label="Property address *" value={address} onChange={setAddress} placeholder="123 Ocean Ave, Surfers Paradise QLD" />
+                  </>)}
                   {mode === "residential" && (<>
                     <div style={{ display: "flex", gap: 12 }}>
                       <div style={{ flex: 1 }}><Field label="Preferred date *" value={preferredDate} onChange={setPreferredDate} type="date" min={new Date().toISOString().split("T")[0]} /></div>
@@ -600,7 +646,7 @@ export default function InstantQuotePage() {
 
                     {preferredDate && (
                       <div style={{ marginTop: 14 }}>
-                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
                           Pick a time *
                         </div>
                         <SlotPicker
@@ -637,7 +683,7 @@ export default function InstantQuotePage() {
       </div>
 
       {/* ── Sticky action bar ── */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, background: "rgba(8,12,18,0.94)", backdropFilter: "blur(10px)", borderTop: `1px solid ${BORDER}`, padding: "12px 16px" }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, background: "rgba(251,250,247,0.96)", backdropFilter: "blur(10px)", borderTop: `1px solid ${BORDER}`, boxShadow: "0 -6px 24px rgba(11,61,46,0.06)", padding: "12px 16px" }}>
         <div style={{ maxWidth: 520, margin: "0 auto", display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</div>
@@ -646,12 +692,12 @@ export default function InstantQuotePage() {
           {phase === "quote" ? (
             !unlocked ? (
               <button onClick={() => { const el = document.getElementById("reveal-gate"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
-                style={{ flex: 1, padding: "14px", borderRadius: 14, background: CARD, border: `1px solid ${BORDER}`, color: TEXT, fontWeight: 800, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                style={{ flex: 1, padding: "14px", borderRadius: 14, background: GREEN, border: "none", color: ON_DARK, fontWeight: 800, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 See my instant price
               </button>
             ) : (
             <button onClick={() => { setPhase("book"); window.scrollTo(0, 0); }}
-              style={{ flex: 1, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: `0 0 24px ${GREEN}44` }}>
+              style={{ flex: 1, padding: "14px", borderRadius: 14, background: YELLOW, color: GREEN, fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(11,61,46,0.12)" }}>
               {mode === "residential" ? "Book this clean" : "Accept & continue"} <ArrowRight size={17} />
             </button>
             )
@@ -659,7 +705,7 @@ export default function InstantQuotePage() {
             <div style={{ flex: 1, display: "flex", gap: 8 }}>
               <button onClick={() => { setPhase("quote"); }} style={{ padding: "14px 16px", borderRadius: 14, background: CARD, border: `1px solid ${BORDER}`, color: TEXT, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Back</button>
               <button onClick={submit} disabled={submitting}
-                style={{ flex: 1, padding: "14px", borderRadius: 14, background: `linear-gradient(135deg, ${GREEN}, #22c55e)`, color: "#000", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: submitting ? 0.7 : 1 }}>
+                style={{ flex: 1, padding: "14px", borderRadius: 14, background: YELLOW, color: GREEN, fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: submitting ? 0.7 : 1 }}>
                 {submitting && <Loader2 size={18} className="animate-spin" />}
                 {mode === "residential" ? "Confirm my booking" : "Request my turnover"}
               </button>
@@ -676,7 +722,7 @@ function Section({ n, label, children }: { n: string; label: string; children: R
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-        <span style={{ width: 22, height: 22, borderRadius: 7, background: GREEN, color: "#000", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</span>
+        <span style={{ width: 22, height: 22, borderRadius: 7, background: GREEN, color: ON_DARK, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</span>
         <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: MUTED }}>{label}</span>
       </div>
       {children}
@@ -692,7 +738,7 @@ function ToggleRow({ label, sub, value, onChange }: { label: string; sub?: strin
         <div style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{label}</div>
         {sub && <div style={{ fontSize: 11.5, color: MUTED, marginTop: 2 }}>{sub}</div>}
       </div>
-      <div style={{ width: 46, height: 27, borderRadius: 20, background: value ? GREEN : "rgba(255,255,255,0.12)", position: "relative", flexShrink: 0, transition: "background .15s" }}>
+      <div style={{ width: 46, height: 27, borderRadius: 20, background: value ? GREEN : "rgba(11,61,46,0.15)", position: "relative", flexShrink: 0, transition: "background .15s" }}>
         <div style={{ position: "absolute", top: 3, left: value ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
       </div>
     </button>
