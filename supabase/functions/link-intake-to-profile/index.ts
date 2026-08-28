@@ -475,6 +475,11 @@ Deno.serve(async (req: Request) => {
         scheduled_date: body.scheduled_date,
         scheduled_time: body.scheduled_time || null,
         status: 'pending_cleaner',
+        // A booking the CLIENT asked for waits for BJ. One he creates himself,
+        // or approves from a lead, is approved by definition. The caller says
+        // which, and the default is approved so nothing existing changes.
+        approval_status: body.needs_approval ? 'pending' : 'approved',
+        approval_requested_at: body.needs_approval ? new Date().toISOString() : null,
         source: 'instant_quote',
         frequency: 'one-off',
         client_name: fullName,

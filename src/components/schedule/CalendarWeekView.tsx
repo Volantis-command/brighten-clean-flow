@@ -283,6 +283,10 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const statusBorder = isPending ? 'hsl(45 93% 45%)' : isPaid ? 'hsl(142 60% 28%)' : isSent ? 'hsl(270 55% 42%)' : isDraft ? 'hsl(28 85% 45%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
                   const statusText = isPending ? '#422006' : '#fff';
 
+                  // Awaiting BJ's approval. Orange and dashed, because yellow
+                  // already means 'needs a cleaner' on 205 jobs.
+                  const awaitingApproval = (job as any).approval_status === 'pending';
+
                   return (
                     <div
                       key={job.id}
@@ -295,8 +299,10 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         height,
                         left: `calc(${leftPct}% + ${GAP}px)`,
                         width: `calc(${colWidthPct}% - ${GAP * 2}px)`,
-                        backgroundColor: statusBg,
-                        borderLeft: `3px solid ${statusBorder}`,
+                        backgroundColor: awaitingApproval ? 'hsl(24 95% 53%)' : statusBg,
+                        borderLeft: `3px ${awaitingApproval ? 'dashed' : 'solid'} ${awaitingApproval ? 'hsl(24 95% 35%)' : statusBorder}`,
+                        outline: awaitingApproval ? '2px dashed hsl(24 95% 35%)' : undefined,
+                        outlineOffset: awaitingApproval ? '-3px' : undefined,
                       }}
                     >
                       <div className="px-2 py-1 h-full flex flex-col justify-start overflow-hidden">

@@ -173,6 +173,9 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
               const bgColor = isPending ? 'hsl(45 93% 58%)' : isInvoiced ? 'hsl(270 55% 58%)' : isComplete ? 'hsl(220 9% 70%)' : isInProgress ? 'hsl(217 91% 60%)' : isCancelled ? 'hsl(0 72% 51%)' : 'hsl(160 84% 39%)';
               const borderColor = isPending ? 'hsl(45 93% 45%)' : isInvoiced ? 'hsl(270 55% 42%)' : isComplete ? 'hsl(220 9% 55%)' : isInProgress ? 'hsl(217 91% 48%)' : isCancelled ? 'hsl(0 72% 41%)' : 'hsl(160 84% 30%)';
               const textColor = isPending ? '#422006' : '#fff';
+              // Awaiting BJ's approval. Deliberately orange and dashed: yellow already
+              // means 'needs a cleaner' on 205 jobs, so amber would vanish into it.
+              const awaitingApproval = (job as any).approval_status === 'pending';
 
               return (
                 <div
@@ -184,8 +187,10 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                   style={{
                     top: Math.max(top, 0),
                     height,
-                    backgroundColor: bgColor,
-                    borderLeft: `4px solid ${borderColor}`,
+                    backgroundColor: awaitingApproval ? 'hsl(24 95% 53%)' : bgColor,
+                    borderLeft: `4px ${awaitingApproval ? 'dashed' : 'solid'} ${awaitingApproval ? 'hsl(24 95% 35%)' : borderColor}`,
+                    outline: awaitingApproval ? '2px dashed hsl(24 95% 35%)' : undefined,
+                    outlineOffset: awaitingApproval ? '-3px' : undefined,
                   }}
                 >
                   <div className="px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">

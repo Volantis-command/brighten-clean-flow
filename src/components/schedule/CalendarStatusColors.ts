@@ -119,3 +119,36 @@ export function getAcceptanceIcon(status: string) {
     default: return '📵';
   }
 }
+
+/**
+ * A client-requested booking that BJ has not agreed to yet.
+ *
+ * Deliberately NOT yellow. Yellow already means "waiting on a cleaner" and 205
+ * jobs are sitting in it, so an amber card would disappear into the crowd. This
+ * is orange with a dashed edge, which reads as provisional at a glance and is
+ * the only dashed thing on the calendar.
+ */
+export const PENDING_APPROVAL_COLORS = {
+  bg: 'bg-orange-100',
+  text: 'text-orange-900',
+  dot: 'bg-orange-500',
+  border: 'border-l-orange-500',
+  label: 'Needs approval',
+  /** Applied on top of the usual card classes. */
+  extra: 'ring-2 ring-orange-500 ring-dashed border-dashed',
+};
+
+/**
+ * Use this instead of reading STATUS_COLORS directly. Approval outranks status:
+ * a clean nobody has agreed to should not be showing as confirmed just because
+ * a cleaner happens to be attached.
+ */
+export function jobVisual(job: { status?: string | null; approval_status?: string | null }) {
+  if (job?.approval_status && job.approval_status !== 'approved') {
+    return {
+      ...PENDING_APPROVAL_COLORS,
+      label: job.approval_status === 'change_requested' ? 'Asked to rebook' : 'Needs approval',
+    };
+  }
+  return STATUS_COLORS[job?.status || ''] || STATUS_COLORS.pending_cleaner;
+}

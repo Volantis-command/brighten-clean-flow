@@ -332,6 +332,10 @@ export default function InstantQuotePage() {
             create_job: false,
             scheduled_date: preferredDate,
             scheduled_time: preferredTime || null,
+            // The client is REQUESTING a time, not confirming one. This puts it on
+            // the calendar as pending, which also holds the slot so nobody else can
+            // take it while BJ decides.
+            needs_approval: true,
             price_inc_gst: Math.round(quote.sellIncGst * 100) / 100,
             price_ex_gst: Math.round(quote.sellExGst * 100) / 100,
             estimated_hours: quote.hours,

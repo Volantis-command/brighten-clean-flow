@@ -68,6 +68,38 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
     }
   };
 
+  // ── Approving a client's booking request ──
+  const [approving, setApproving] = useState<null | 'approve' | 'request_change'>(null);
+  const needsApproval = (job as any).approval_status === 'pending';
+
+  const decide = async (action: 'approve' | 'request_change') => {
+    setApproving(action);
+    try {
+      const { data, error } = await supabase.functions.invoke('booking-approval', {
+        body: { job_id: job.id, action },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      // Say plainly whether the CLIENT was actually told. The decision is
+      // recorded either way, but silence to the customer is the failure that
+      // matters, so it must never look like success.
+      if ((data as any)?.texted) {
+        toast.success(action === 'approve'
+          ? 'Approved, and they have been texted'
+          : 'Slot released, and they have been asked to pick another time');
+      } else {
+        toast.warning(`${action === 'approve' ? 'Approved' : 'Slot released'}, but the text did NOT send: ${(data as any)?.sms_error || 'unknown'}. Ring them.`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not do that');
+    } finally {
+      setApproving(null);
+    }
+  };
+
   const sc = getStatusColor(job.status);
   const cleaners = [
     job.cleaner_1_id ? { id: job.cleaner_1_id, name: nameMap[job.cleaner_1_id] || 'Unknown' } : null,
@@ -248,6 +280,27 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
               </div>
             )}
           </div>
+
+          {/* A client asked for this time. Nothing is agreed until BJ says so. */}
+          {needsApproval && (
+            <div className="rounded-2xl border-2 border-dashed border-orange-500 bg-orange-50 p-4 dark:bg-orange-950/30">
+              <p className="font-black text-orange-900 dark:text-orange-200">The client asked for this time</p>
+              <p className="mt-1 text-sm text-orange-800 dark:text-orange-300">
+                It is holding the slot so nobody else can take it. Approve to confirm and text them,
+                or ask them to pick another time, which frees the slot straight away.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button onClick={() => decide('approve')} disabled={!!approving}
+                  className="flex-1 bg-emerald-600 font-bold hover:bg-emerald-700">
+                  {approving === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Approve & confirm'}
+                </Button>
+                <Button onClick={() => decide('request_change')} disabled={!!approving}
+                  variant="outline" className="flex-1 border-orange-400 font-bold text-orange-800">
+                  {approving === 'request_change' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ask for another time'}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Status */}
           <div className="space-y-2">

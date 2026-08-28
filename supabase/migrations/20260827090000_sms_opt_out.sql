@@ -48,3 +48,11 @@ CREATE INDEX IF NOT EXISTS profiles_sms_opt_out_idx
 INSERT INTO public.notification_settings (key, enabled)
 VALUES ('send_rating_sms', false)
 ON CONFLICT (key) DO UPDATE SET enabled = false;
+
+-- ── And the rebook nudge ───────────────────────────────────────────────────
+-- BJ's call, same day: nobody gets the "ready to book your next one?" text
+-- either. Both are marketing to people who did not ask for it. Operational
+-- messages about a booked clean are untouched.
+INSERT INTO public.notification_settings (key, enabled)
+VALUES ('send_rebook_sms', false)
+ON CONFLICT (key) DO UPDATE SET enabled = false;
