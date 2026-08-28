@@ -73,7 +73,7 @@ export default function SlotPicker({ date, durationMinutes, value, onChange, onA
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-3 text-sm text-white/60">
+      <div className="flex items-center gap-2 py-3 text-sm text-[#3F7466]">
         <Loader2 className="h-4 w-4 animate-spin" /> Checking what's free...
       </div>
     );
@@ -85,10 +85,10 @@ export default function SlotPicker({ date, durationMinutes, value, onChange, onA
 
   if (!slots.length) {
     return (
-      <div className="rounded-xl border border-white/15 bg-white/5 p-4 text-center">
-        <CalendarX className="mx-auto mb-2 h-5 w-5 text-white/40" />
-        <p className="text-sm font-semibold text-white/80">Nothing free that day</p>
-        <p className="mt-1 text-xs text-white/50">Try another date, we fill up fast.</p>
+      <div className="rounded-xl border border-[#0B3D2E]/15 bg-white p-4 text-center">
+        <CalendarX className="mx-auto mb-2 h-5 w-5 text-[#3F7466]" />
+        <p className="text-sm font-semibold text-[#0B3D2E]">Nothing free that day</p>
+        <p className="mt-1 text-xs text-[#3F7466]">Try another date, we fill up fast.</p>
       </div>
     );
   }
@@ -105,8 +105,8 @@ export default function SlotPicker({ date, durationMinutes, value, onChange, onA
               onClick={() => onChange(t)}
               className={`rounded-xl border py-2.5 text-sm font-bold transition-colors ${
                 active
-                  ? 'border-[#4ADE80] bg-[#4ADE80] text-black'
-                  : 'border-white/15 bg-white/5 text-white/80 hover:border-[#4ADE80]/60'
+                  ? 'border-[#0B3D2E] bg-[#0B3D2E] text-[#FBFAF7]'
+                  : 'border-[#0B3D2E]/15 bg-white text-[#0B3D2E] hover:border-[#0B3D2E]/50'
               }`}
             >
               {pretty(t)}
@@ -114,7 +114,7 @@ export default function SlotPicker({ date, durationMinutes, value, onChange, onA
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-white/45">
+      <p className="mt-2 text-xs text-[#3F7466]">
         These are the times we can actually get to you, allowing travel between jobs.
       </p>
     </div>
