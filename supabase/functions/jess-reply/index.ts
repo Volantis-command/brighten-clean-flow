@@ -134,6 +134,24 @@ Deno.serve(async (req: Request) => {
 
     let who: any = { type: "unknown", name: "there" };
 
+    // Their most recent quote, looked up for EVERYONE before we decide who they
+    // are.
+    //
+    // This used to be inside the lead branch only, and the lead branch was
+    // never reached if the number matched a profile. So the two people most
+    // likely to ask "how much was my quote?", an existing client who just
+    // filled the form in again, and Brendan testing it from his own phone,
+    // were the exact two Jess could not answer. She knew their properties and
+    // their bookings and had no idea a quote existed.
+    const { data: quotes } = await sb
+      .from("quote_requests")
+      .select("id, first_name, last_name, clean_type, total_inc_gst, total_ex_gst, " +
+              "bedrooms, bathrooms, address, status, stage, estimated_hours, " +
+              "addons, form_data, created_at")
+      .or(`phone.eq.${phone},phone.ilike.%${last9}`)
+      .order("created_at", { ascending: false }).limit(1);
+    const latestQuote: any = quotes?.[0] ?? null;
+
     const { data: profiles } = await sb
       .from("profiles").select("id, full_name, email, phone")
       .or(`phone.eq.${phone},phone.ilike.%${last9}`);
@@ -151,13 +169,8 @@ Deno.serve(async (req: Request) => {
         name: (p.full_name || "there").split(" ")[0],
       };
     } else {
-      const { data: leads } = await sb
-        .from("quote_requests")
-        .select("id, first_name, last_name, clean_type, total_inc_gst, bedrooms, bathrooms, address, status, stage, form_data")
-        .or(`phone.eq.${phone},phone.ilike.%${last9}`)
-        .order("created_at", { ascending: false }).limit(1);
-      if (leads?.length) {
-        const l = leads[0];
+      if (latestQuote) {
+        const l = latestQuote;
         who = { type: "lead", id: l.id, name: (l.first_name || "there").split(" ")[0], lead: l };
 
         // They wrote back, so this lead now owes a human answer. Recorded here,
@@ -289,6 +302,33 @@ Deno.serve(async (req: Request) => {
           : `No upcoming cleans assigned to them.`);
     } else {
       context = `We have no record of this number. Be friendly, find out what they need, and offer to have Brendan call.`;
+    }
+
+    // The quote, bolted on for everyone who is not already being described AS a
+    // lead. A client who quotes a second property, or Brendan testing from his
+    // own phone, both land here. Without this Jess answers "how much was my
+    // quote" with a guess or an apology, which is the single thing she was
+    // asked to be able to do.
+    if (latestQuote && who.type !== "lead") {
+      const q = latestQuote;
+      const fd = q.form_data || {};
+      const price = Math.round(Number(q.total_inc_gst || 0));
+      const when = q.created_at ? new Date(q.created_at).toLocaleDateString("en-AU", {
+        day: "numeric", month: "long", timeZone: "Australia/Brisbane",
+      }) : null;
+
+      context +=
+        `\n\nTHEY ALSO HAVE A QUOTE ON FILE${when ? ` from ${when}` : ""}:\n` +
+        `  $${price} inc GST for a ${q.bedrooms ?? "?"} bed ${q.bathrooms ?? "?"} bath ${q.clean_type || "clean"}` +
+        (q.estimated_hours ? `, about ${q.estimated_hours} hours` : "") + `.\n` +
+        (q.address ? `  Address on the quote: ${q.address}\n` : "") +
+        (q.addons?.linen_required != null
+          ? `  Linen: ${q.addons.linen_required ? "included" : "not included"}\n` : "") +
+        (fd.jess_discount_offered
+          ? `  A $${fd.jess_discount_offered} first-clean discount was offered, making it $${fd.jess_price_after_discount}.\n`
+          : "") +
+        `  Quote status: ${q.stage || q.status}.\n` +
+        `  If they ask what their quote was, this is the number. Do not guess and do not recalculate it.`;
     }
 
     // ── 3. CONVERSATION SO FAR ───────────────────────────────────────────────
