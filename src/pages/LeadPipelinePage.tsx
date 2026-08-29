@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { OPEN_STAGES, STAGES, stageDef, isRotting, ageLabel, leadName, type LeadStage } from '@/lib/leadPipeline';
+import { OPEN_STAGES, STAGES, stageDef, isRotting, ageLabel, arrivedLabel, isBrandNew, leadName, type LeadStage } from '@/lib/leadPipeline';
 import LeadDetailSlideOver from '@/components/clients/LeadDetailSlideOver';
 import { AlertCircle, Flame, MessageSquare, Loader2 } from 'lucide-react';
 
@@ -128,6 +128,11 @@ export default function LeadPipelinePage() {
                       className={`w-full px-3 py-2.5 text-left hover:bg-muted/50 ${rot ? 'bg-rose-50 dark:bg-rose-950/20' : ''}`}>
                       <div className="flex items-center gap-2">
                         <span className="truncate font-bold text-sm text-foreground">{leadName(l) || l.phone || 'Unknown'}</span>
+                        {isBrandNew(l.created_at) && (
+                          <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-foreground">
+                            New
+                          </span>
+                        )}
                         {rot && <Flame className="h-3.5 w-3.5 text-rose-500 shrink-0" aria-label="Sitting too long" />}
                         {price != null && <span className="ml-auto text-sm font-bold text-primary shrink-0">${Math.round(Number(price))}</span>}
                       </div>
@@ -135,8 +140,16 @@ export default function LeadPipelinePage() {
                         {l.bedrooms || '?'}bd · {l.bathrooms || '?'}ba
                         {l.address ? ` · ${l.address}` : ' · no address'}
                       </p>
+                      {/* Arrival first, because that is the question being asked of
+                          this board: who just came in? Time-in-stage second. */}
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Arrived {arrivedLabel(l.created_at)}
+                      </p>
                       <p className={`mt-0.5 text-[11px] font-semibold ${rot ? 'text-rose-600' : 'text-muted-foreground'}`}>
-                        {ageLabel(l.stage_changed_at || l.created_at)} in {s.label.toLowerCase()}
+                        {/* A lead in New has never moved, so its time in stage is
+                            simply its age. Reading stage_changed_at there repeats
+                            the migration's timestamp for every card. */}
+                        {ageLabel(s.key === 'new' ? l.created_at : (l.stage_changed_at || l.created_at))} in {s.label.toLowerCase()}
                       </p>
                     </button>
                   );

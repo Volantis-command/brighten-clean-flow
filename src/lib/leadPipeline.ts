@@ -67,6 +67,30 @@ export function ageLabel(iso?: string | null): string {
 }
 
 /**
+ * "Fri 29 Aug, 9:14am" — when they actually landed.
+ *
+ * The board only ever showed time-in-stage, which turned out to be useless:
+ * adding stage_changed_at with DEFAULT now() stamped every pre-existing lead
+ * with the migration's own timestamp, so 37 leads that arrived weeks apart all
+ * read "8 days in new" and there was no way to tell who had just come in.
+ * The arrival time is a fact about the lead and cannot drift like that.
+ */
+export function arrivedLabel(iso?: string | null): string {
+  if (!iso) return 'arrival time unknown';
+  return new Date(iso).toLocaleString('en-AU', {
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: 'numeric', minute: '2-digit',
+    timeZone: 'Australia/Brisbane',
+  }).replace(',', '');
+}
+
+/** Landed in the last 24 hours, so it earns a badge on the board. */
+export function isBrandNew(iso?: string | null): boolean {
+  if (!iso) return false;
+  return Date.now() - new Date(iso).getTime() < 24 * 36e5;
+}
+
+/**
  * Fill {first_name} style placeholders. Anything we have no value for is
  * removed rather than left as literal braces, because a customer must never
  * receive "Hey {first_name}".
