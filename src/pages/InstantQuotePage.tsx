@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
-import { Bed, ChevronDown, Camera, Clock, Loader2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Bed, ChevronDown, Camera, Clock, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Info } from "lucide-react";
 import brightlyWordmark from "@/assets/brightly-wordmark-cream.png";
 import brightlyWordmarkInk from "@/assets/brightly-wordmark-ink.png";
 import { supabase } from "@/integrations/supabase/client";
 import SlotPicker from "@/components/booking/SlotPicker";
 import { toast } from "sonner";
 import {
-  TYPES, BED_CONFIGS, airbnbQuote, residentialQuote, type QuoteResult,
+  TYPES, BED_CONFIGS, airbnbQuote, residentialQuote, deepCleanQuote, type QuoteResult,
 } from "@/lib/airbnbQuotePricing";
 
 /* ── Brand tokens (match the admin Airbnb Quote calculator) ── */
@@ -54,7 +54,7 @@ function useCountUp(target: number, ms = 380) {
   return val;
 }
 
-type Mode = "airbnb" | "residential";
+type Mode = "airbnb" | "residential" | "deep";
 
 export default function InstantQuotePage() {
   const [phase, setPhase] = useState<"quote" | "book" | "done">("quote");
@@ -77,6 +77,7 @@ export default function InstantQuotePage() {
   }, [type.beds]);
 
   const quote: QuoteResult = useMemo(() => {
+    if (mode === "deep") return deepCleanQuote(typeIdx);
     if (mode === "residential") return residentialQuote(typeIdx);
     return airbnbQuote({ typeIdx, rooms, labourHrs: type.labour, linenIncluded, consumablesIncluded, gp: AIRBNB_CLIENT_GP });
   }, [mode, typeIdx, rooms, type.labour, linenIncluded, consumablesIncluded]);
@@ -85,6 +86,7 @@ export default function InstantQuotePage() {
   const showExGst = mode === "airbnb";
   const price = showExGst ? quote.sellExGst : quote.sellIncGst;
   const gstLabel = showExGst ? "ex GST" : "inc GST";
+  const serviceWord = mode === "airbnb" ? "Turnover" : mode === "deep" ? "Deep clean" : "Standard clean";
   const animated = useCountUp(price);
 
   const setRoom = (i: number, val: string) =>
@@ -108,6 +110,19 @@ export default function InstantQuotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
 
+  // The green hero was eating half the screen on a phone, so the part people
+  // actually have to fill in was a letterbox. Once they have scrolled past it
+  // they have already picked their service and seen the price headline, so the
+  // hero collapses to a slim bar that keeps the price visible and hands the
+  // rest of the screen back to the form.
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 60);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Lead gate. The price stays hidden until they give name + mobile + email.
   const [unlocked, setUnlocked] = useState(false);
   const [gateStep, setGateStep] = useState<"details" | "code">("details");
@@ -116,7 +131,7 @@ export default function InstantQuotePage() {
   const [revealing, setRevealing] = useState(false);
   const [outcome, setOutcome] = useState<"booked" | "info" | null>(null);
 
-  const cleanType = mode === "airbnb" ? "Airbnb / Short-Stay Turnover" : "Standard Clean";
+  const cleanType = mode === "airbnb" ? "Airbnb / Short-Stay Turnover" : mode === "deep" ? "Deep Clean" : "Standard Clean";
 
   // "I have a question, call me": capture the intent so the admin phones them
   // instead of waiting for a booking that isn't coming.
@@ -252,11 +267,11 @@ export default function InstantQuotePage() {
       toast.error("Name, mobile and property address are required");
       return;
     }
-    if (mode === "residential" && preferredDate && !preferredTime) {
+    if (mode !== "airbnb" && preferredDate && !preferredTime) {
       toast.error(dayHasSlots ? "Pick a time that suits you" : "Nothing free that day, try another date");
       return;
     }
-    if (mode === "residential" && !preferredDate) {
+    if (mode !== "airbnb" && !preferredDate) {
       toast.error("Please pick a preferred date");
       return;
     }
@@ -359,7 +374,7 @@ export default function InstantQuotePage() {
       supabase.functions.invoke("send-quote-notification", {
         body: {
           type: "lead_captured",
-          intent: mode === "residential" ? "book_resi" : "book_airbnb",
+          intent: mode === "airbnb" ? "book_airbnb" : mode === "deep" ? "book_deep" : "book_resi",
           lead_id: leadId,
           mode,
           client_name: fullName.trim(),
@@ -368,7 +383,7 @@ export default function InstantQuotePage() {
           clean_type: cleanType,
           quoted: Math.round(quote.sellIncGst),
           address: address.trim(),
-          when: mode === "residential" ? `${preferredDate}${preferredTime ? " " + preferredTime : ""}` : null,
+          when: mode !== "airbnb" ? `${preferredDate}${preferredTime ? " " + preferredTime : ""}` : null,
         },
       }).catch(() => {});
 
@@ -399,15 +414,15 @@ export default function InstantQuotePage() {
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: "0 0 12px" }}>
           {outcome === "info"
             ? "We'll call you shortly"
-            : mode === "residential"
+            : mode !== "airbnb"
               ? "You're booked in!"
               : "Quote accepted"}
         </h1>
         <p style={{ color: MUTED, maxWidth: 380, fontSize: 15, lineHeight: 1.6, margin: "0 0 24px" }}>
           {outcome === "info"
             ? <>We've got your quote of <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel} and one of the team will call you on {phone} shortly to answer your questions.</>
-            : <>Your {type.name} {mode === "airbnb" ? "turnover" : "clean"} is <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel}.
-              {mode === "residential"
+            : <>Your {type.name} {mode === "airbnb" ? "turnover" : mode === "deep" ? "deep clean" : "clean"} is <b style={{ color: TEXT }}>{fmt(price)}</b> {gstLabel}.
+              {mode !== "airbnb"
                 ? ` Your ${preferredDate} slot is locked in. We'll text you on ${phone} to confirm your cleaner.`
                 : " We've got your property details. We'll set everything up and text you to lock in your turnover."}</>}
         </p>
@@ -427,8 +442,11 @@ export default function InstantQuotePage() {
       <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: 120 }}>
 
         {/* ── Sticky hero ── */}
-        <div style={{ position: "sticky", top: 0, zIndex: 30, background: HEADER_BG, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 }}>
-          <div style={{ padding: "14px 20px 18px" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 30, background: HEADER_BG,
+                      borderBottomLeftRadius: compact ? 16 : 22, borderBottomRightRadius: compact ? 16 : 22,
+                      boxShadow: compact ? "0 6px 20px rgba(11,61,46,0.18)" : "none",
+                      transition: "border-radius .2s ease, box-shadow .2s ease" }}>
+          <div style={{ padding: compact ? "8px 18px 10px" : "12px 18px 14px", transition: "padding .2s ease" }}>
             {/* The real wordmark and a way back to the site. There was no way
                 out of this page except the browser's back button. */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -438,17 +456,23 @@ export default function InstantQuotePage() {
               <img src={brightlyWordmark} alt="Brightly" style={{ height: 26, width: "auto" }} />
               <span style={{ width: 52 }} />
             </div>
-            <div style={{ textAlign: "center", marginTop: 10, color: ON_DARK, fontWeight: 800, fontSize: 17, letterSpacing: "-0.02em" }}>
+            <div style={{ textAlign: "center", color: ON_DARK, fontWeight: 800, letterSpacing: "-0.02em",
+                          overflow: "hidden", transition: "all .2s ease",
+                          marginTop: compact ? 0 : 6, fontSize: compact ? 0 : 15,
+                          height: compact ? 0 : 20, opacity: compact ? 0 : 1 }}>
               Instant Quote
             </div>
 
             {/* Mode toggle */}
-            <div style={{ display: "flex", gap: 6, marginTop: 14, background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: 4 }}>
-              {([["airbnb", "Airbnb / Short-Stay"], ["residential", "Residential"]] as [Mode, string][]).map(([m, label]) => {
+            <div style={{ display: "flex", gap: 6, background: "rgba(255,255,255,0.12)", borderRadius: 12,
+                          overflow: "hidden", transition: "all .2s ease",
+                          marginTop: compact ? 0 : 12, padding: compact ? 0 : 4,
+                          height: compact ? 0 : 40, opacity: compact ? 0 : 1 }}>
+              {([["airbnb", "Airbnb"], ["residential", "Residential"], ["deep", "Deep Clean"]] as [Mode, string][]).map(([m, label]) => {
                 const active = mode === m;
                 return (
                   <button key={m} onClick={() => setMode(m)}
-                    style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
+                    style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap",
                       background: active ? YELLOW : "transparent", color: active ? GREEN : "rgba(255,255,255,0.75)", transition: "all .15s" }}>
                     {label}
                   </button>
@@ -459,16 +483,25 @@ export default function InstantQuotePage() {
             {/* This block sits on the green bar, so it takes the on-dark colours.
                 Using the page's deep-green text here made the whole price
                 invisible against the header. */}
-            <div style={{ marginTop: 14, color: ON_DARK }}>
-              <div style={{ color: "rgba(251,250,247,0.7)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                {type.name} · {mode === "airbnb" ? "Turnover" : "Standard clean"}
+            <div style={{ marginTop: compact ? 6 : 10, color: ON_DARK,
+                          display: compact ? "flex" : "block", alignItems: "baseline", gap: 8,
+                          transition: "margin .2s ease" }}>
+              <div style={{ color: "rgba(251,250,247,0.7)", fontWeight: 600, textTransform: "uppercase",
+                            letterSpacing: "0.08em", whiteSpace: "nowrap",
+                            fontSize: compact ? 10 : 11, transition: "font-size .2s ease" }}>
+                {type.name} · {serviceWord}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+              <div style={{ fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.03em",
+                            fontVariantNumeric: "tabular-nums", marginLeft: compact ? "auto" : 0,
+                            fontSize: compact ? 20 : 40, marginTop: compact ? 0 : 2,
+                            transition: "font-size .2s ease" }}>
                 {unlocked
-                  ? <>{fmt(animated)} <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(251,250,247,0.7)" }}>{gstLabel}</span></>
+                  ? <>{fmt(animated)} <span style={{ fontSize: compact ? 11 : 14, fontWeight: 600, color: "rgba(251,250,247,0.7)" }}>{gstLabel}</span></>
                   : <span style={{ letterSpacing: "0.04em" }}>$<span style={{ opacity: 0.55 }}>•••</span></span>}
               </div>
-              <div style={{ height: 3, width: 92, marginTop: 8, borderRadius: 3, background: YELLOW }} />
+              <div style={{ height: 3, width: 92, borderRadius: 3, background: YELLOW,
+                            overflow: "hidden", transition: "all .2s ease",
+                            marginTop: compact ? 0 : 8, opacity: compact ? 0 : 1 }} />
             </div>
           </div>
         </div>
@@ -478,7 +511,9 @@ export default function InstantQuotePage() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
             {(mode === "airbnb"
               ? [[Camera, "Photo report every clean"], [Clock, "24hr turnaround"]]
-              : [[Clock, "24hr turnaround"]]
+              : mode === "deep"
+                ? [[Sparkles, "Ovens, tracks & grout"], [Clock, `${quote.hours} hour clean`]]
+                : [[Clock, "24hr turnaround"]]
             ).map(([Icon, t]: any) => (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, color: MUTED }}>
                 <Icon size={14} color={GREEN} /> {t}
@@ -502,6 +537,36 @@ export default function InstantQuotePage() {
                   })}
                 </div>
               </Section>
+
+              {mode === "deep" && (
+                <Section n="2" label="What a deep clean covers">
+                  <div style={{ fontSize: 13.5, lineHeight: 1.65, color: MUTED }}>
+                    Everything in a standard clean, plus the things that only get done
+                    once or twice a year: inside the oven and rangehood, window tracks
+                    and sills, skirtings and door frames, tile and grout scrubbing,
+                    inside empty cupboards, light fittings and fans, and behind and
+                    under what we can safely move.
+                  </div>
+
+                  {/* Bond cleans are a different job with a different standard and a
+                      real-estate agent signing off on it. Saying so here, before they
+                      book, is cheaper than saying it on the doorstep. */}
+                  <div style={{ display: "flex", gap: 10, marginTop: 14, padding: "12px 14px", borderRadius: 14,
+                                background: "rgba(11,61,46,0.05)", border: `1px solid ${BORDER}` }}>
+                    <Info size={17} color={GREEN} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div style={{ fontSize: 13, lineHeight: 1.55 }}>
+                      <b>We do not do bond or end of lease cleans.</b>
+                      <span style={{ color: MUTED }}> A deep clean is not a bond clean and
+                      is not guaranteed to pass a real estate exit inspection.</span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12, fontSize: 12.5, color: MUTED }}>
+                    Priced at $85 per hour. Your {type.name.toLowerCase()} is quoted at{" "}
+                    <b style={{ color: TEXT }}>{quote.hours} hours</b>.
+                  </div>
+                </Section>
+              )}
 
               {mode === "airbnb" && (
                 <>
@@ -540,7 +605,9 @@ export default function InstantQuotePage() {
               <div style={{ marginTop: 6, textAlign: "center", fontSize: 11, color: MUTED, lineHeight: 1.6 }}>
                 {mode === "airbnb"
                   ? "Includes full turnover clean" + (linenIncluded ? ", linen" : "") + (consumablesIncluded ? " & consumables." : ".")
-                  : "Standard residential clean, charged at $70/hr."}
+                  : mode === "deep"
+                    ? `Deep clean, charged at $85/hr. Quoted at ${quote.hours} hours.`
+                    : "Standard residential clean, charged at $70/hr."}
               </div>
 
               {!unlocked && (
@@ -613,7 +680,7 @@ export default function InstantQuotePage() {
 
           {phase === "book" && (
             <>
-              <Section n="1" label={mode === "residential" ? "Book your clean" : "Your details"}>
+              <Section n="1" label={mode !== "airbnb" ? "Book your clean" : "Your details"}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* We already collected and SMS-verified all of this to unlock the
                       price. Asking for it a second time made people think the first
@@ -639,7 +706,7 @@ export default function InstantQuotePage() {
                     <Field label="Email" value={email} onChange={setEmail} placeholder="jane@example.com" type="email" />
                     <Field label="Property address *" value={address} onChange={setAddress} placeholder="123 Ocean Ave, Surfers Paradise QLD" />
                   </>)}
-                  {mode === "residential" && (<>
+                  {mode !== "airbnb" && (<>
                     <div style={{ display: "flex", gap: 12 }}>
                       <div style={{ flex: 1 }}><Field label="Preferred date *" value={preferredDate} onChange={setPreferredDate} type="date" min={new Date().toISOString().split("T")[0]} /></div>
                     </div>
@@ -675,7 +742,7 @@ export default function InstantQuotePage() {
               )}
 
               <div style={{ textAlign: "center", fontSize: 11.5, color: MUTED, marginTop: 4 }}>
-                No payment now. We confirm {mode === "residential" ? "your slot" : "your cleaner"} and text you to lock it in.
+                No payment now. We confirm {mode !== "airbnb" ? "your slot" : "your cleaner"} and text you to lock it in.
               </div>
             </>
           )}
@@ -698,7 +765,7 @@ export default function InstantQuotePage() {
             ) : (
             <button onClick={() => { setPhase("book"); window.scrollTo(0, 0); }}
               style={{ flex: 1, padding: "14px", borderRadius: 14, background: YELLOW, color: GREEN, fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(11,61,46,0.12)" }}>
-              {mode === "residential" ? "Book this clean" : "Accept & continue"} <ArrowRight size={17} />
+              {mode !== "airbnb" ? "Book this clean" : "Accept & continue"} <ArrowRight size={17} />
             </button>
             )
           ) : (
@@ -707,7 +774,7 @@ export default function InstantQuotePage() {
               <button onClick={submit} disabled={submitting}
                 style={{ flex: 1, padding: "14px", borderRadius: 14, background: YELLOW, color: GREEN, fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: submitting ? 0.7 : 1 }}>
                 {submitting && <Loader2 size={18} className="animate-spin" />}
-                {mode === "residential" ? "Confirm my booking" : "Request my turnover"}
+                {mode !== "airbnb" ? "Confirm my booking" : "Request my turnover"}
               </button>
             </div>
           )}

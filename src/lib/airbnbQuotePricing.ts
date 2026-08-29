@@ -125,6 +125,48 @@ export function airbnbQuote(input: AirbnbQuoteInput, rates: Rates = DEFAULT_RATE
   return { sellExGst, sellIncGst: sellExGst * 1.1, hours: input.labourHrs };
 }
 
+/**
+ * Deep clean hours.
+ *
+ * A deep clean is not a turnover with more elbow grease. It is ovens, tracks,
+ * skirtings, inside cupboards, tiles and grout, so the hours are roughly triple
+ * a standard clean and they scale differently.
+ *
+ * Bathrooms are weighted heavier than bedrooms on purpose: industry guidance is
+ * consistent that bathroom count drives deep-clean time more than bedroom
+ * count, because a bedroom is mostly surfaces while a bathroom is grout,
+ * screens and fittings.
+ *
+ * Anchored on 4 hours for a 1 bed 1 bath, which is Brendan's own number and sits
+ * at the top of the 2 to 4 hour range published for a single experienced
+ * cleaner. Brightly does the thorough version, so the top of the range is right.
+ */
+export const DEEP_BASE_HOURS = 4;      // 1 bed 1 bath
+export const DEEP_PER_BEDROOM = 1.0;   // each bedroom beyond the first
+export const DEEP_PER_BATHROOM = 1.5;  // each bathroom beyond the first
+
+export function deepCleanHours(typeIdx: number): number {
+  const t = TYPES[typeIdx];
+  return DEEP_BASE_HOURS
+    + Math.max(0, t.beds - 1) * DEEP_PER_BEDROOM
+    + Math.max(0, t.baths - 1) * DEEP_PER_BATHROOM;
+}
+
+/**
+ * Deep clean quote. Hourly, like residential, but at the deep-clean rate.
+ *
+ * NOTE the rate is EX GST, matching RESIDENTIAL_HOURLY above. The page shows
+ * consumers the inc-GST figure, so a 4 hour clean displays as $374, not $340.
+ * If the $85 was meant to be the inc-GST price, divide this constant by 1.1.
+ */
+export const DEEP_CLEAN_HOURLY = 85;
+
+export function deepCleanQuote(typeIdx: number, hourly: number = DEEP_CLEAN_HOURLY): QuoteResult {
+  const hours = deepCleanHours(typeIdx);
+  const sellExGst = hours * hourly;
+  return { sellExGst, sellIncGst: sellExGst * 1.1, hours };
+}
+
 /** Residential quote — flat client hourly rate × hours. No linen / consumables / GP maths. */
 export function residentialQuote(typeIdx: number, hourly: number = RESIDENTIAL_HOURLY): QuoteResult {
   const type = TYPES[typeIdx];
