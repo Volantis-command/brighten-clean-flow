@@ -102,6 +102,35 @@ const TYPES = [
 // (Matches the client Instant Quote tool exactly: no linen, no consumables, no GP.)
 const RESIDENTIAL_HOURLY = 70;
 
+// Deep clean — same shape as residential, different rate and far more hours.
+// A deep clean is ovens, tracks, skirtings, grout and inside cupboards, so it
+// runs about triple a standard clean and it scales differently: bathrooms are
+// weighted heavier than bedrooms, because a bedroom is mostly surfaces while a
+// bathroom is grout, screens and fittings.
+//
+// These three numbers are the same ones the client Instant Quote uses. Change
+// them in both places or the admin builder will quote a different price to the
+// one the customer was shown.
+const DEEP_CLEAN_HOURLY = 85;
+const DEEP_BASE_HOURS = 4;      // 1 bed 1 bath
+const DEEP_PER_BEDROOM = 1.0;
+const DEEP_PER_BATHROOM = 1.5;
+
+function deepCleanHours(idx: number): number {
+  const t = TYPES[idx];
+  return DEEP_BASE_HOURS
+    + Math.max(0, t.beds - 1) * DEEP_PER_BEDROOM
+    + Math.max(0, t.baths - 1) * DEEP_PER_BATHROOM;
+}
+
+type QuoteMode = 'airbnb' | 'residential' | 'deep';
+
+/** Hours and rate a mode starts from, before the admin edits them. */
+function defaultsFor(mode: QuoteMode, idx: number) {
+  if (mode === 'deep') return { hours: deepCleanHours(idx), rate: DEEP_CLEAN_HOURLY };
+  return { hours: TYPES[idx].labour, rate: RESIDENTIAL_HOURLY };
+}
+
 const fmt = (n: number) =>
   "$" + (isFinite(n) ? n : 0).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -146,7 +175,7 @@ export default function AirbnbQuotePage() {
   const [incGst, setIncGst] = useState(false);
   const [showRates, setShowRates] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
-  const [mode, setMode] = useState<'airbnb' | 'residential'>('airbnb');
+  const [mode, setMode] = useState<QuoteMode>('airbnb');
 
   // Send to client
   const [showSend, setShowSend] = useState(false);
@@ -171,7 +200,7 @@ export default function AirbnbQuotePage() {
       while (next.length < type.beds) next.push("1 Queen");
       return next.slice(0, type.beds);
     });
-    setLabourOverride(String(TYPES[typeIdx].labour));
+    setLabourOverride(String(defaultsFor(mode, typeIdx).hours));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeIdx]);
 
@@ -220,10 +249,13 @@ export default function AirbnbQuotePage() {
   // Airbnb: cost / (1 - GP). Residential: flat property-size hours × $70/hr sell.
   // Residential now honours the edited hours and rate, not the fixed figures
   // from the property size, which is what made this screen read-only.
-  const resiRateNum  = resiRate === "" ? RESIDENTIAL_HOURLY : Number(resiRate) || 0;
-  const resiHours    = mode === 'residential'
-    ? (labourOverride === "" ? type.labour : Number(labourOverride) || 0)
+  const modeDefaults = defaultsFor(mode, typeIdx);
+  const resiRateNum  = resiRate === "" ? modeDefaults.rate : Number(resiRate) || 0;
+  const resiHours    = mode !== 'airbnb'
+    ? (labourOverride === "" ? modeDefaults.hours : Number(labourOverride) || 0)
     : type.labour;
+  // Airbnb is cost / (1 - GP). Residential and deep are both hours x rate, they
+  // only differ in what those two numbers start at.
   const baseSell     = mode === 'airbnb' ? cost / (1 - gp) : resiHours * resiRateNum;
   // An override is typed in the units currently on screen, so convert back to
   // ex GST for storage. Everything downstream still works in ex GST.
@@ -252,7 +284,7 @@ export default function AirbnbQuotePage() {
     if (!sendName.trim() || !sendPhone.trim()) return;
     setSending(true);
     try {
-      const cleanType = mode === 'airbnb' ? 'Airbnb Turnover' : 'Standard Clean';
+      const cleanType = mode === 'airbnb' ? 'Airbnb Turnover' : mode === 'deep' ? 'Deep Clean' : 'Standard Clean';
       const quoteHours = mode === 'airbnb' ? labourHrs : resiHours;
       const { data, error } = await supabase.functions.invoke('create-airbnb-quote-and-send', {
         body: {
@@ -356,11 +388,22 @@ export default function AirbnbQuotePage() {
 
             {/* Mode toggle — Airbnb (linen/config) vs Residential (hours-based) */}
             <div style={{ display: "flex", gap: 6, marginTop: 14, background: CARD, borderRadius: 12, padding: 4, border: `1px solid ${BORDER}` }}>
-              {([["airbnb", "Airbnb / Short-Stay"], ["residential", "Residential"]] as ['airbnb' | 'residential', string][]).map(([m, label]) => {
+              {([["airbnb", "Airbnb"], ["residential", "Residential"], ["deep", "Deep Clean"]] as [QuoteMode, string][]).map(([m, label]) => {
                 const active = mode === m;
                 return (
-                  <button key={m} onClick={() => { setMode(m); setIncGst(m === 'residential'); }}
-                    style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: active ? GREEN : "transparent", color: active ? "#000" : MUTED, transition: "all .15s" }}>
+                  <button key={m} onClick={() => {
+                      setMode(m);
+                      // Airbnb hosts are GST registered and claim it back, so they
+                      // see ex GST. Households see the number they actually pay.
+                      setIncGst(m !== 'airbnb');
+                      // Re-seed hours and rate for the mode, otherwise switching
+                      // to deep would quote 2.25 hours at $70.
+                      const d = defaultsFor(m, typeIdx);
+                      setLabourOverride(String(d.hours));
+                      setResiRate(String(d.rate));
+                      setPriceOverride("");
+                    }}
+                    style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", background: active ? GREEN : "transparent", color: active ? "#000" : MUTED, transition: "all .15s" }}>
                     {label}
                   </button>
                 );
@@ -370,7 +413,7 @@ export default function AirbnbQuotePage() {
             <div style={{ marginTop: 14, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
               <div>
                 <div style={{ color: MUTED, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  {mode === 'airbnb' ? `${type.name} · Turnover` : `${type.name} · Standard clean`}
+                  {mode === 'airbnb' ? `${type.name} · Turnover` : mode === 'deep' ? `${type.name} · Deep clean` : `${type.name} · Standard clean`}
                 </div>
                 <div style={{ color: TEXT, fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
                   {fmt(animated)}
@@ -432,7 +475,7 @@ export default function AirbnbQuotePage() {
             </div>
           </Section>
 
-          {mode === 'residential' && (() => {
+          {mode !== 'airbnb' && (() => {
             // Admin overrides. The property size sets a starting point, these
             // let the quote match the actual job: a hoarded 1 bed can take
             // longer than a tidy 3 bed, and some jobs are simply a fixed price.
@@ -446,7 +489,7 @@ export default function AirbnbQuotePage() {
               letterSpacing: "0.06em", marginBottom: 5, display: "block", textAlign: "center",
             };
             const stepHours = (delta: number) => {
-              const cur = labourOverride === "" ? type.labour : Number(labourOverride) || 0;
+              const cur = labourOverride === "" ? modeDefaults.hours : Number(labourOverride) || 0;
               setLabourOverride(String(Math.max(0.5, Math.round((cur + delta) * 4) / 4)));
             };
             return (
@@ -468,7 +511,7 @@ export default function AirbnbQuotePage() {
                     <label style={labelStyle}>Rate per hour</label>
                     <input inputMode="decimal" value={resiRate} style={fieldStyle}
                       onChange={(e) => setResiRate(e.target.value.replace(/[^\d.]/g, ""))}
-                      placeholder={String(RESIDENTIAL_HOURLY)} />
+                      placeholder={String(modeDefaults.rate)} />
                   </div>
                 </div>
 
