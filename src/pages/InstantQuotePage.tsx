@@ -56,9 +56,20 @@ function useCountUp(target: number, ms = 380) {
 
 type Mode = "airbnb" | "residential" | "deep";
 
+// The marketing site sends people here from three different pages, and they
+// should land on the tab they asked for rather than having to find it.
+//   /instant-quote?service=residential
+//   /instant-quote?service=deep
+// Anything else, including no parameter at all, stays on Airbnb as before.
+function modeFromUrl(): Mode {
+  if (typeof window === "undefined") return "airbnb";
+  const asked = new URLSearchParams(window.location.search).get("service");
+  return asked === "residential" || asked === "deep" ? asked : "airbnb";
+}
+
 export default function InstantQuotePage() {
   const [phase, setPhase] = useState<"quote" | "book" | "done">("quote");
-  const [mode, setMode] = useState<Mode>("airbnb");
+  const [mode, setMode] = useState<Mode>(modeFromUrl);
 
   // shared property config
   const [typeIdx, setTypeIdx] = useState(2); // 2 bed 2 bath
