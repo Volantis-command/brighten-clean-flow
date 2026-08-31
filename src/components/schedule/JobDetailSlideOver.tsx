@@ -199,9 +199,15 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const handleCreateXeroInvoice = async () => {
     setCreatingXeroInvoice(true);
     try {
-      const { data, error } = await supabase.functions.invoke('xero-auto-invoice-job', {
-        body: { job_id: job.id },
-      });
+      // Without a ceiling the button can sit on "Creating…" forever if the call
+      // never comes back. 60s is well past the slowest real run, which is a
+      // token refresh plus Xero's 429 backoff.
+      const { data, error } = await Promise.race([
+        supabase.functions.invoke('xero-auto-invoice-job', { body: { job_id: job.id } }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timed out after 60s. Check Xero before retrying, in case the invoice was created.')), 60_000)
+        ),
+      ]) as { data: any; error: any };
       if (error) {
         // Supabase wraps 5xx into a generic FunctionsHttpError — extract the
         // actual message from the JSON body the function wrote.
@@ -210,12 +216,31 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
         throw new Error(msg);
       }
       if (data?.error) throw new Error(data.error);
-      toast.success(`Xero draft created — ${data?.invoice_number || 'check Xero'}`);
+
+      // The function returns success:true for jobs it deliberately declines to
+      // invoice — already invoiced, or a client on weekly batch invoicing. That
+      // was being reported as "Xero draft created" when nothing was created,
+      // which is why the button looked like it did nothing.
+      if (data?.skipped) {
+        const why = data.reason === 'weekly_invoice client'
+          ? 'This client is on weekly batch invoicing, so their cleans are invoiced together every Monday.'
+          : data.invoice_id
+            ? 'This job already has an invoice in Xero.'
+            : 'Xero declined to invoice this job.';
+        toast.warning(why, { duration: 8000 });
+        return;
+      }
+
+      if (!data?.invoice_number) {
+        throw new Error('Xero returned no invoice number, so nothing was created.');
+      }
+      toast.success(`Xero draft created: ${data.invoice_number}`);
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     } catch (e: any) {
-      toast.error(`Invoice failed: ${e.message}`);
+      toast.error(`Invoice failed: ${e.message}`, { duration: 10000 });
+    } finally {
+      setCreatingXeroInvoice(false);
     }
-    setCreatingXeroInvoice(false);
   };
 
   const handleResendSms = async () => {

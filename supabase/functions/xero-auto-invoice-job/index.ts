@@ -5,6 +5,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Xero rate-limits (HTTP 429) when too many calls arrive in a short window —
+// the per-clean auto-invoice easily bursts past the ~60/min limit when a
+// cleaner finishes several jobs back to back. Retry on 429/503, honouring the
+// Retry-After header (or exponential backoff), so transient limits self-heal
+// instead of failing the invoice with "Xero invoice creation failed [429]".
+async function xeroFetch(url: string, init: RequestInit, maxRetries = 4): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 && res.status !== 503) return res;
+    if (attempt >= maxRetries) return res; // give up — let the caller handle the non-ok
+    const retryAfter = Number(res.headers.get('Retry-After'));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : Math.min(1000 * 2 ** attempt, 8000); // 1s, 2s, 4s, 8s
+    console.log(`Xero ${res.status} — backing off ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+    await new Promise((r) => setTimeout(r, waitMs));
+    attempt++;
+  }
+}
+
 async function getValidToken(supabase: any) {
   const { data: tokens } = await supabase.from('xero_tokens').select('*').limit(1).single();
   if (!tokens) throw new Error('Xero not connected');
@@ -47,7 +68,7 @@ async function findOrCreateContact(
   email?: string | null
 ) {
   // Search by name first
-  const searchRes = await fetch(
+  const searchRes = await xeroFetch(
     `https://api.xero.com/api.xro/2.0/Contacts?where=Name=="${encodeURIComponent(name)}"`,
     {
       headers: {
@@ -64,7 +85,7 @@ async function findOrCreateContact(
     const existing = searchData.Contacts[0];
     // If we have an email and the existing contact doesn't, update it
     if (email && !existing.EmailAddress) {
-      await fetch(`https://api.xero.com/api.xro/2.0/Contacts/${existing.ContactID}`, {
+      await xeroFetch(`https://api.xero.com/api.xro/2.0/Contacts/${existing.ContactID}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -79,7 +100,7 @@ async function findOrCreateContact(
   }
 
   // Create
-  const createRes = await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
+  const createRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Contacts', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${access_token}`,
@@ -282,7 +303,7 @@ Deno.serve(async (req) => {
     if (contactId) invoiceBody.Contact = { ContactID: contactId };
 
     console.log('Creating Xero invoice with', lineItems.length, 'line items');
-    const invRes = await fetch('https://api.xero.com/api.xro/2.0/Invoices', {
+    const invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${access_token}`,
