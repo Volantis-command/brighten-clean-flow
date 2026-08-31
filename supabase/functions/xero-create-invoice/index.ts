@@ -47,19 +47,57 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // If only job_id was passed, hydrate contact/amount/description from the job
+    // If only job_id was passed, hydrate contact/amount/description from the job.
+    //
+    // The contact name is ALWAYS resolved here for a job, even when the caller
+    // sent one. Callers were passing `property.client_name || property.property_name`,
+    // so when a property had no client name the PROPERTY name went to Xero and
+    // created contacts like "Collingwood" and "Roy" instead of the business that
+    // actually gets the bill.
     let contact_email: string | null = null;
-    if (job_id && (!contact_name || amount === undefined || amount === null)) {
+    if (job_id) {
       const { data: job, error: jobErr } = await supabase
         .from('jobs')
-        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, properties:property_id(property_name, address, billing_email, client_name)')
+        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, properties:property_id(property_name, address, billing_email, client_name, business_name)')
         .eq('id', job_id)
         .single();
       if (jobErr || !job) {
         throw new Error(`Job lookup failed: ${jobErr?.message || 'not found'}`);
       }
       const prop: any = (job as any).properties || {};
-      contact_name = contact_name || prop.client_name || (job as any).client_name || prop.property_name || 'Client';
+
+      // The client record is the source of truth. It is the name shown on the
+      // Clients page and the one Brendan edits, so it is the one Xero must get.
+      let clientName: string | null = null;
+      if ((job as any).property_id) {
+        const { data: link } = await supabase
+          .from('client_properties')
+          .select('profiles:client_id(full_name, email)')
+          .eq('property_id', (job as any).property_id)
+          .limit(1)
+          .maybeSingle();
+        clientName = (link as any)?.profiles?.full_name?.trim() || null;
+        contact_email = (link as any)?.profiles?.email || null;
+      }
+
+      // Property name is deliberately NOT in this chain. A property is a place,
+      // not a payer, and using it is what caused the wrong contacts.
+      const resolved =
+        clientName ||
+        prop.business_name?.trim() ||
+        prop.client_name?.trim() ||
+        (job as any).client_name?.trim() ||
+        null;
+
+      if (!resolved) {
+        throw new Error(
+          'No client name found for this job. Open the property, link it to a client, ' +
+          'and try again. Refusing to invoice under the property name, which is how ' +
+          'stray Xero contacts get created.'
+        );
+      }
+      console.log(`xero contact resolved to "${resolved}" (from ${clientName ? 'client record' : prop.business_name ? 'property.business_name' : 'property.client_name'})`);
+      contact_name = resolved;
       const ex = Number((job as any).price_ex_gst || 0);
       const inc = Number((job as any).price_inc_gst || 0);
       const fallbackEx = ex > 0 ? ex : (inc > 0 ? +(inc / 1.1).toFixed(2) : 0);
@@ -67,17 +105,10 @@ Deno.serve(async (req) => {
       const dateLabel = (job as any).scheduled_date || '';
       description = description || `Cleaning service${prop.property_name ? ` — ${prop.property_name}` : ''}${dateLabel ? ` (${dateLabel})` : ''}`;
 
-      // Resolve client email: billing_email on property, else profiles via client_properties
-      contact_email = prop.billing_email || null;
-      if (!contact_email && (job as any).property_id) {
-        const { data: cpLink } = await supabase
-          .from('client_properties')
-          .select('profiles:client_id(email)')
-          .eq('property_id', (job as any).property_id)
-          .limit(1)
-          .maybeSingle();
-        contact_email = (cpLink as any)?.profiles?.email || null;
-      }
+      // Billing email on the property wins, since that is set deliberately for
+      // invoicing. Otherwise fall back to the client's own address, already
+      // fetched above.
+      contact_email = prop.billing_email || contact_email || null;
     }
 
     if (!contact_name) {

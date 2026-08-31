@@ -250,7 +250,6 @@ export default function JobDetailPage() {
           },
           body: JSON.stringify({
             job_id: job.id,
-            contact_name: property?.client_name || property?.property_name || 'Unknown Client',
             description,
             amount: jobPriceExGst,
             account_code: xeroMap[accountCodeKey] || '200',
@@ -904,7 +903,6 @@ export default function JobDetailPage() {
                       },
                       body: JSON.stringify({
                         job_id: jobId,
-                        contact_name: xeroProperty?.client_name || xeroProperty?.property_name || 'Client',
                         description,
                         amount: priceNum,
                         account_code: xeroMap['account_code_turnover'] || '200',
@@ -1009,7 +1007,6 @@ export default function JobDetailPage() {
                       },
                       body: JSON.stringify({
                         job_id: jobId,
-                        contact_name: xeroProperty?.client_name || xeroProperty?.property_name || 'Client',
                         description,
                         amount: job.price_ex_gst || 0,
                         account_code: xeroMap['account_code_turnover'] || '200',
