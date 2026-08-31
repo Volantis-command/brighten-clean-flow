@@ -411,7 +411,7 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
                   push('Special instructions', p?.special_instructions);
                   push('Host preferences', p?.host_preferences);
                   push('Focus areas', p?.focus_areas);
-                  push('Skip / don\u2019t clean', p?.skip_areas);
+                  push('Skip / don’t clean', p?.skip_areas);
                   push('Client preferences', p?.preferences_notes);
                   push('Product restrictions', p?.product_restrictions);
                   push('Pets', p?.pet_situation);

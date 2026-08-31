@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords don\u2019t match.');
+      setError('Passwords don’t match.');
       return;
     }
     setLoading(true);
@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
             )}
 
             <Button type="submit" variant="accent" size="lg" className="w-full" disabled={loading}>
-              {loading ? 'Saving\u2026' : 'Save and sign in'}
+              {loading ? 'Saving…' : 'Save and sign in'}
             </Button>
           </form>
         </div>

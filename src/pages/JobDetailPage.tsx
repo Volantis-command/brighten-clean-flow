@@ -629,7 +629,7 @@ export default function JobDetailPage() {
               if (property.host_preferences) blocks.push({ label: 'Host Preferences', body: property.host_preferences });
               if (property.special_instructions) blocks.push({ label: 'Special Instructions', body: property.special_instructions });
               if (property.focus_areas) blocks.push({ label: 'Focus Areas', body: property.focus_areas });
-              if (property.skip_areas) blocks.push({ label: 'Skip / Don\u2019t Clean', body: property.skip_areas });
+              if (property.skip_areas) blocks.push({ label: 'Skip / Don’t Clean', body: property.skip_areas });
               if (property.preferences_notes) blocks.push({ label: 'Client Preferences', body: property.preferences_notes });
               if (property.product_restrictions) blocks.push({ label: 'Product Restrictions', body: property.product_restrictions });
               if (property.pet_situation) blocks.push({ label: 'Pets', body: property.pet_situation });
@@ -1008,7 +1008,7 @@ export default function JobDetailPage() {
                       body: JSON.stringify({
                         job_id: jobId,
                         description,
-                        amount: job.price_ex_gst || 0,
+                        amount: job.price_ex_gst || undefined,
                         account_code: xeroMap['account_code_turnover'] || '200',
                         invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
                         due_days: xeroMap['due_days'] || '7',

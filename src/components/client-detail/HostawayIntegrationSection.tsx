@@ -210,7 +210,7 @@ export default function HostawayIntegrationSection({ clientId }: Props) {
 
   const handleDisconnect = async () => {
     if (!token) return;
-    if (!confirm('Disconnect Hostaway for this client? They\u2019ll need to re-enter credentials to reconnect.')) return;
+    if (!confirm('Disconnect Hostaway for this client? They’ll need to re-enter credentials to reconnect.')) return;
     const { error } = await supabase
       .from('hostaway_tokens' as any)
       .delete()

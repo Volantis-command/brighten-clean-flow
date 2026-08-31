@@ -65,7 +65,7 @@ export default function PropertyProfilePage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading\u2026</p></div>;
+    return <div className="flex items-center justify-center py-20"><p className="text-primary font-bold">Loading…</p></div>;
   }
 
   if (!property) {
@@ -193,7 +193,7 @@ export default function PropertyProfilePage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? 'Deleting\u2026' : 'Delete'}
+              {deleting ? 'Deleting…' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -540,7 +540,7 @@ function SOPSection({ propertyId, items, loading, onRefresh }: { propertyId: str
     onRefresh();
   };
 
-  if (loading) return <p className="text-muted-foreground text-sm">Loading SOP\u2026</p>;
+  if (loading) return <p className="text-muted-foreground text-sm">Loading SOP…</p>;
 
   return (
     <section>
@@ -566,7 +566,7 @@ function SOPSection({ propertyId, items, loading, onRefresh }: { propertyId: str
                     </div>
                   ))}
                   <div className="flex gap-2">
-                    <Input placeholder="New task\u2026" value={newTask[room] || ''} onChange={(e) => setNewTask(n => ({ ...n, [room]: e.target.value }))}
+                    <Input placeholder="New task…" value={newTask[room] || ''} onChange={(e) => setNewTask(n => ({ ...n, [room]: e.target.value }))}
                       className="h-10 rounded-lg text-sm flex-1"
                       onKeyDown={(e) => { if (e.key === 'Enter') addTask(room); }}
                     />
@@ -625,7 +625,7 @@ function RestockingSection({ propertyId, items, loading, isAirbnb, onRefresh }: 
     onRefresh();
   };
 
-  if (loading) return <p className="text-muted-foreground text-sm">Loading restocking\u2026</p>;
+  if (loading) return <p className="text-muted-foreground text-sm">Loading restocking…</p>;
 
   return (
     <section>
@@ -686,7 +686,7 @@ function WatchlistNotes({ propertyId, initialNotes }: { propertyId: string; init
       />
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{notes.length} / 500 characters</span>
-        {saving && <span className="text-xs text-primary font-semibold">Saving\u2026</span>}
+        {saving && <span className="text-xs text-primary font-semibold">Saving…</span>}
       </div>
     </div>
   );
@@ -770,7 +770,7 @@ function PropertyPriceCard({
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Ex GST ${displayEx.toFixed(2)} \u00b7 Inc GST ${displayInc.toFixed(2)}
+                  Ex GST ${displayEx.toFixed(2)} · Inc GST ${displayInc.toFixed(2)}
                 </p>
               </>
             ) : (
@@ -843,7 +843,7 @@ function PropertyPriceCard({
       )}
       <div className="flex gap-2 pt-1">
         <Button onClick={save} disabled={saving} className="flex-1 font-bold">
-          {saving ? 'Saving\u2026' : 'Save price'}
+          {saving ? 'Saving…' : 'Save price'}
         </Button>
         <Button
           variant="ghost"

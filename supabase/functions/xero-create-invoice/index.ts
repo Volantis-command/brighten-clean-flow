@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     if (job_id) {
       const { data: job, error: jobErr } = await supabase
         .from('jobs')
-        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, properties:property_id(property_name, address, billing_email, client_name, business_name)')
+        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, properties:property_id(property_name, address, billing_email, client_name, business_name, default_price, price_includes_gst)')
         .eq('id', job_id)
         .single();
       if (jobErr || !job) {
@@ -98,10 +98,33 @@ Deno.serve(async (req) => {
       }
       console.log(`xero contact resolved to "${resolved}" (from ${clientName ? 'client record' : prop.business_name ? 'property.business_name' : 'property.client_name'})`);
       contact_name = resolved;
+      // Price, in order of how specific it is to this particular clean.
+      //
+      // Jobs created from a recurring series were arriving with no price at all,
+      // so invoicing them failed outright even though the property had a default
+      // price sitting right there. The property default is now the third source
+      // rather than giving up.
       const ex = Number((job as any).price_ex_gst || 0);
       const inc = Number((job as any).price_inc_gst || 0);
-      const fallbackEx = ex > 0 ? ex : (inc > 0 ? +(inc / 1.1).toFixed(2) : 0);
-      if (amount === undefined || amount === null) amount = fallbackEx;
+      let fallbackEx = ex > 0 ? ex : (inc > 0 ? +(inc / 1.1).toFixed(2) : 0);
+      let priceSource = ex > 0 ? 'job.price_ex_gst' : inc > 0 ? 'job.price_inc_gst' : null;
+
+      if (fallbackEx <= 0) {
+        const dflt = Number(prop.default_price || 0);
+        if (dflt > 0) {
+          // price_includes_gst says whether that number is inc or ex. Xero wants
+          // ex GST, and getting this backwards would bill 10% wrong every time.
+          fallbackEx = prop.price_includes_gst ? +(dflt / 1.1).toFixed(2) : dflt;
+          priceSource = `property.default_price (${prop.price_includes_gst ? 'inc' : 'ex'} GST)`;
+        }
+      }
+      // A caller sending 0 means it had no price either, not that the clean is
+      // free. One of the buttons sends `job.price_ex_gst || 0`, which turned a
+      // missing price into a hard zero and skipped the fallback entirely.
+      if (amount === undefined || amount === null || !(Number(amount) > 0)) {
+        amount = fallbackEx;
+      }
+      console.log(`xero invoice amount ${amount} ex GST, from ${priceSource || 'nothing'}`);
       const dateLabel = (job as any).scheduled_date || '';
       description = description || `Cleaning service${prop.property_name ? ` — ${prop.property_name}` : ''}${dateLabel ? ` (${dateLabel})` : ''}`;
 
@@ -115,7 +138,10 @@ Deno.serve(async (req) => {
       throw new Error('contact_name is required (no client name found on job/property)');
     }
     if (!amount || Number(amount) <= 0) {
-      throw new Error(`Invalid invoice amount: ${amount}. Job must have price_ex_gst or price_inc_gst set.`);
+      throw new Error(
+        'No price found for this job. Set a price on the job, or a default price ' +
+        'per clean on the property, then try again.'
+      );
     }
 
     console.log('Fetching Xero token...');
