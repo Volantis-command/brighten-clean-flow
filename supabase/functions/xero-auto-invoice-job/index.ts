@@ -17,6 +17,14 @@ async function xeroFetch(url: string, init: RequestInit, maxRetries = 4): Promis
     if (res.status !== 429 && res.status !== 503) return res;
     if (attempt >= maxRetries) return res; // give up — let the caller handle the non-ok
     const retryAfter = Number(res.headers.get('Retry-After'));
+    // A Retry-After of minutes-to-hours is Xero's DAILY quota, not the
+    // per-minute limit. Sleeping on it once held a request for 11 hours
+    // (1 Sep 2026), so past 30s we surface it instead of waiting it out.
+    if (Number.isFinite(retryAfter) && retryAfter > 30) {
+      const when = new Date(Date.now() + retryAfter * 1000)
+        .toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', timeZone: 'Australia/Brisbane' });
+      throw new Error(`Xero's daily API limit is used up. Invoicing works again about ${when}. Nothing is lost, retry then.`);
+    }
     const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
       ? retryAfter * 1000
       : Math.min(1000 * 2 ** attempt, 8000); // 1s, 2s, 4s, 8s

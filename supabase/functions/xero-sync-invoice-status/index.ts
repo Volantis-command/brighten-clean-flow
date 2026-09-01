@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       .from('jobs')
       .select('id, xero_invoice_id, xero_invoice_number, invoice_status, invoice_amount, properties(property_name)')
       .not('xero_invoice_id', 'is', null)
-      .neq('invoice_status', 'paid');
+      .not('invoice_status', 'in', '(paid,voided,none)');
 
     if (jobsErr) throw jobsErr;
     if (!jobs || jobs.length === 0) {
@@ -79,23 +79,30 @@ Deno.serve(async (req) => {
     let synced = 0;
     const errors: string[] = [];
 
+    // Fetch statuses in pages of 40 rather than one call per invoice.
+    const byId: Record<string, any> = {};
+    for (let i = 0; i < jobs.length; i += 40) {
+      const page = jobs.slice(i, i + 40);
+      const ids = page.map((j: any) => j.xero_invoice_id).join(',');
+      const res = await fetch(`https://api.xero.com/api.xro/2.0/Invoices?IDs=${ids}`, {
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'Xero-Tenant-Id': tenant_id,
+          'Accept': 'application/json',
+        },
+      });
+      if (!res.ok) {
+        errors.push(`Batch ${i / 40}: Xero API ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      for (const inv of data?.Invoices || []) byId[inv.InvoiceID] = inv;
+    }
+
     for (const job of jobs) {
       try {
-        const res = await fetch(`https://api.xero.com/api.xro/2.0/Invoices/${job.xero_invoice_id}`, {
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'Xero-Tenant-Id': tenant_id,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (!res.ok) {
-          errors.push(`Job ${job.id}: Xero API ${res.status}`);
-          continue;
-        }
-
-        const data = await res.json();
-        const invoice = data?.Invoices?.[0];
+        const invoice = byId[job.xero_invoice_id];
+        if (!invoice) continue; // not in Xero's response (deleted there)
         const xeroStatus = (invoice?.Status || '').toLowerCase();
         const newStatus = statusMap[xeroStatus] || xeroStatus;
 
