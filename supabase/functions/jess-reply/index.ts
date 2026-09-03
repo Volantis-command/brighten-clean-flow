@@ -505,26 +505,43 @@ Reply with JSON only: {"reply":"your SMS text","needs_human":true|false,"reason"
       escalated: needsHuman,
     });
 
-    // Anything she wouldn't answer goes to Brendan with the full picture.
-    if (needsHuman) {
+    // Brendan hears about EVERY exchange, not only the ones Jess gives up on.
+    // She answers unsupervised, so the owner needs to see each question and
+    // the answer she gave while there is still time to correct it. Escalations
+    // keep their urgent wording; ordinary answers arrive as an FYI with the
+    // full Q and A.
+    {
+      const q = String(message).slice(0, 140);
+      const a = String(reply).slice(0, 220);
       const { data: admins } = await sb
         .from("user_roles").select("user_id").eq("role", "admin");
-      for (const a of (admins || [])) {
+      const adminPhones = new Set<string>();
+      for (const adm of (admins || [])) {
         await sb.from("notifications").insert({
-          user_id: (a as any).user_id,
+          user_id: (adm as any).user_id,
           type: "sms",
-          title: `💬 ${who.name} needs you`,
-          message: `${who.name} (${phone}) asked: "${String(message).slice(0, 140)}". ${reason || "Jess handed it over."}`,
+          title: needsHuman ? `💬 ${who.name} needs you` : `💬 Jess answered ${who.name}`,
+          message: needsHuman
+            ? `${who.name} (${phone}) asked: "${q}". ${reason || "Jess handed it over."}`
+            : `${who.name} (${phone}) asked: "${q}". Jess replied: "${a}"`,
           link: who.type === "lead" ? `/clients?leadPhone=${encodeURIComponent(phone)}` : "/clients",
         });
         const { data: prof } = await sb
-          .from("profiles").select("phone").eq("id", (a as any).user_id).maybeSingle();
-        if (prof?.phone) {
-          try {
-            await sendSms(normalizePhone(prof.phone),
-              `Jess needs you. ${who.name} (${phone}) asked:\n"${String(message).slice(0, 140)}"\n\nReply to them on ${phone}`);
-          } catch { /* don't fail the customer reply over an admin alert */ }
-        }
+          .from("profiles").select("phone").eq("id", (adm as any).user_id).maybeSingle();
+        if (prof?.phone) adminPhones.add(normalizePhone(prof.phone));
+      }
+      // Alerts used to depend on the admin profile having a phone saved; a
+      // blank profile meant the owner silently heard nothing. Fall back to
+      // the business owner's number so that can never happen again.
+      if (adminPhones.size === 0) {
+        adminPhones.add(normalizePhone(Deno.env.get("JESS_NOTIFY_PHONE") || "0418878707"));
+      }
+      const alert = needsHuman
+        ? `Jess needs you. ${who.name} (${phone}) asked:\n"${q}"\n\nReply to them on ${phone}`
+        : `FYI from Jess. ${who.name} (${phone}) asked:\n"${q}"\n\nShe replied:\n"${a}"\n\nWrong or off? Text them on ${phone}`;
+      for (const ap of adminPhones) {
+        try { await sendSms(ap, alert); }
+        catch { /* don't fail the customer reply over an admin alert */ }
       }
     }
 
