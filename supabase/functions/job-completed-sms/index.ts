@@ -172,17 +172,11 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send completion SMS with next date
-      const formattedNext = formatDateNice(nextDateStr);
-      const message = `Hi ${firstName}, your clean is done! 🌿✨\n\nWe hope everything looks amazing.\n\nYour next clean is scheduled for ${formattedNext}. We'll be in touch to confirm.\n\n— Brightly Cleaning`;
-      const smsResult = await sendTwilioSms(formatAuPhone(clientProfile.phone), message);
-      results.push({ type: 'completion_sms', recurring: true, status: smsResult.success ? 'sent' : 'failed' });
-    } else {
-      // One-off: send completion SMS with rebook link
-      const rebookUrl = `${APP_URL}/client/${portalToken}/rebook`;
-      const message = `Hi ${firstName}, your clean is done! 🌿✨\n\nWe hope everything looks amazing.\n\nReady to book your next clean?\n\n👉 ${rebookUrl}\n\n— Brightly Cleaning`;
-      const smsResult = await sendTwilioSms(formatAuPhone(clientProfile.phone), message);
-      results.push({ type: 'completion_sms', recurring: false, status: smsResult.success ? 'sent' : 'failed' });
+      // No SMS. Brendan's call (7 Sep 2026): clients get no message after a
+      // clean. This function still owns creating the next recurring job
+      // above, which is why it runs at all; Airbnb hosts are messaged by
+      // guest-ready-sms, not here.
+      results.push({ type: 'completion_sms', status: 'disabled' });
     }
 
     return new Response(JSON.stringify({ success: true, results }), {

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { sendJobSms } from "@/lib/sendJobSms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -305,14 +304,6 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
     }
   }
 
-  function formatAuPhone(phone: string): string {
-    let cleaned = phone.replace(/[\s\-()]/g, "");
-    if (cleaned.startsWith("+61")) return cleaned;
-    if (cleaned.startsWith("61") && cleaned.length >= 11) return "+" + cleaned;
-    if (cleaned.startsWith("0")) return "+61" + cleaned.slice(1);
-    return "+61" + cleaned;
-  }
-
   async function confirmComplete() {
     setShowConfirm(false);
     setShowWarning(false);
@@ -339,8 +330,11 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
       return;
     }
 
-    // 3. Send completion SMS (fire-and-forget)
-    sendCompletionSms(timeStr).catch((err) => console.error("Completion SMS failed:", err));
+    // No completion SMS from here. Residential clients get no after-clean
+    // message at all (there is no photo report for their cleans, so the old
+    // text linked to an empty page). Airbnb hosts are texted by
+    // guest-ready-sms below, which was already firing, so the completion SMS
+    // was a second text for the same clean.
 
     // 4. Auto-raise Xero invoice (fire-and-forget — non-blocking)
     triggerJobAutoInvoice(job.id).catch((err) => console.error("Auto invoice failed:", err));
@@ -355,39 +349,6 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
     // 5. Notify parent
     onComplete({ ...job, status: "completed", check_out_time: checkOutIso, cleaner_notes: notes });
     toast.success("Job marked as complete!");
-  }
-
-  async function sendCompletionSms(timeStr: string) {
-    const { data: cpRows } = await supabase
-      .from("client_properties")
-      .select("client_id")
-      .eq("property_id", property?.id)
-      .limit(1);
-
-    const clientId = cpRows?.[0]?.client_id;
-    if (!clientId) return;
-
-    const { data: clientProfile } = await supabase
-      .from("profiles")
-      .select("full_name, phone")
-      .eq("id", clientId)
-      .maybeSingle();
-
-    if (!clientProfile?.phone) return;
-
-    const clientFirst = (clientProfile.full_name ?? "").split(" ")[0] || "there";
-    const cleanerFirst = (staff?.full_name ?? "").split(" ")[0] || "Your cleaner";
-    const propName = property?.property_name ?? "your property";
-    const { getAppBaseUrl } = await import('@/lib/appUrl');
-    const reportUrl = job.report_token
-      ? `${getAppBaseUrl()}/report/${job.report_token}`
-      : "";
-
-    const message = isAirbnb
-      ? `Hi ${clientFirst}, ${propName} is clean and guest-ready ✓ Finished ${timeStr}. Full report with photos: ${reportUrl}`
-      : `Hi ${clientFirst}, your Brightly clean is complete! ✓ ${cleanerFirst} finished at ${timeStr}. View your clean report: ${reportUrl}`;
-
-    await sendJobSms({ to: formatAuPhone(clientProfile.phone), message });
   }
 
   // --- Group checklist by room ---
