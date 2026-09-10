@@ -1,204 +1,349 @@
-import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfWeek, startOfMonth, startOfQuarter, differenceInDays } from 'date-fns';
-import { DollarSign, TrendingUp, FileText, ExternalLink } from 'lucide-react';
+import {
+  format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
+  addWeeks, subWeeks, addMonths, subMonths, differenceInDays,
+} from 'date-fns';
+import { toast } from 'sonner';
+import { AlertTriangle, ExternalLink, Loader2 } from 'lucide-react';
 
 const OVERDUE_DAYS = 7;
 
-function InvoiceBadge({ status, sentAt, xeroId }: { status: string | null; sentAt: string | null; xeroId: string | null }) {
-  const isOverdue = status === 'sent' && sentAt && differenceInDays(Date.now(), new Date(sentAt)) >= OVERDUE_DAYS;
+/** Jobs in these states are not real work and must never count as revenue. */
+const DEAD_JOB_STATUSES = ['cancelled'];
 
-  if (isOverdue) {
-    return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171' }}>OVERDUE</span>;
-  }
-  switch (status) {
-    case 'paid':
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(74,222,128,0.15)', color: '#4ADE80' }}>PAID</span>;
-    case 'sent':
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>SENT</span>;
-    case 'authorised':
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: '#FCD34D' }}>AUTHORISED</span>;
-    case 'draft':
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.08)', color: '#94A3B8' }}>DRAFT</span>;
-    case 'voided':
-    case 'void':
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: '#64748B' }}>VOID</span>;
-    default:
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: '#64748B' }}>NO INVOICE</span>;
-  }
+/** Raised but not settled. These are the ones Brendan chases. */
+const UNPAID_STATUSES = ['draft', 'sent', 'authorised', 'failed'];
+
+const fmt = (n: number) =>
+  n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
+
+const fmtExact = (n: number) =>
+  n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
+
+const d = (date: Date) => format(date, 'yyyy-MM-dd');
+
+/**
+ * One job's value, inc GST.
+ *
+ * price_inc_gst is the number the client agreed to, so it wins. Some older
+ * jobs only carry the ex GST figure, and treating those as zero quietly
+ * understated revenue, so they are grossed up rather than dropped.
+ * Returns null when the job genuinely has no price, which is what feeds the
+ * "missing a price" list rather than silently adding nothing.
+ */
+function jobValue(job: any): number | null {
+  const inc = Number(job.price_inc_gst) || 0;
+  if (inc > 0) return inc;
+  const ex = Number(job.price_ex_gst) || 0;
+  if (ex > 0) return Math.round(ex * 1.1 * 100) / 100;
+  return null;
+}
+
+type Period = { key: string; label: string; from: string; to: string; isFuture: boolean };
+
+function buildPeriods(now: Date): { weeks: Period[]; months: Period[] } {
+  // Monday to Sunday, matching the payroll week on the Timesheets page.
+  const wk = (offset: number, label: string): Period => {
+    const base = offset === 0 ? now : offset < 0 ? subWeeks(now, -offset) : addWeeks(now, offset);
+    return {
+      key: `week${offset}`,
+      label,
+      from: d(startOfWeek(base, { weekStartsOn: 1 })),
+      to: d(endOfWeek(base, { weekStartsOn: 1 })),
+      isFuture: offset > 0,
+    };
+  };
+  const mo = (offset: number, label: string): Period => {
+    const base = offset === 0 ? now : offset < 0 ? subMonths(now, -offset) : addMonths(now, offset);
+    return {
+      key: `month${offset}`,
+      label,
+      from: d(startOfMonth(base)),
+      to: d(endOfMonth(base)),
+      isFuture: offset > 0,
+    };
+  };
+  return {
+    weeks: [wk(-1, 'Last week'), wk(0, 'This week'), wk(1, 'Next week')],
+    months: [mo(-1, 'Last month'), mo(0, 'This month'), mo(1, 'Next month')],
+  };
+}
+
+function RevenueCard({ period, jobs }: { period: Period; jobs: any[] }) {
+  const inPeriod = jobs.filter(
+    (j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to,
+  );
+  let total = 0;
+  let unpriced = 0;
+  inPeriod.forEach((j) => {
+    const v = jobValue(j);
+    if (v === null) unpriced++;
+    else total += v;
+  });
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        {period.label}
+      </p>
+      <p className="mt-2 text-3xl font-extrabold text-primary">{fmt(total)}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {format(new Date(period.from + 'T00:00:00'), 'd MMM')} to{' '}
+        {format(new Date(period.to + 'T00:00:00'), 'd MMM')}
+        {' · '}
+        {inPeriod.length} {inPeriod.length === 1 ? 'job' : 'jobs'}
+        {period.isFuture ? ' booked' : ''}
+      </p>
+      {unpriced > 0 && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-amber-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {unpriced} with no price, not counted
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function FinancialsPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const now = new Date();
+  const { weeks, months } = buildPeriods(now);
+
+  // One window wide enough for every card, so the six figures always come from
+  // the same snapshot and cannot disagree with each other.
+  const rangeFrom = months[0].from < weeks[0].from ? months[0].from : weeks[0].from;
+  const rangeTo = months[2].to > weeks[2].to ? months[2].to : weeks[2].to;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['financials'],
+    queryKey: ['financials-v2', rangeFrom, rangeTo],
     queryFn: async () => {
-      const now = new Date();
-      const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-      const quarterStart = format(startOfQuarter(now), 'yyyy-MM-dd');
+      const [{ data: periodJobs, error: pErr }, { data: openInvoices, error: iErr }] =
+        await Promise.all([
+          supabase
+            .from('jobs')
+            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, properties(property_name)')
+            .gte('scheduled_date', rangeFrom)
+            .lte('scheduled_date', rangeTo)
+            .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`),
+          // Unpaid invoices are not limited to the period cards. An invoice
+          // from three months ago that never got paid is exactly the one worth
+          // seeing, so this query is deliberately unbounded by date.
+          supabase
+            .from('jobs')
+            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, invoice_status, invoice_amount, invoice_sent_at, xero_invoice_id, xero_invoice_number, properties(property_name)')
+            .in('invoice_status', UNPAID_STATUSES)
+            .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`)
+            .order('scheduled_date', { ascending: true }),
+        ]);
+      if (pErr) throw pErr;
+      if (iErr) throw iErr;
 
-      const [weekRes, monthRes, quarterRes, jobsRes, quotesRes] = await Promise.all([
-        supabase.from('jobs').select('price_inc_gst').eq('status', 'completed').gte('scheduled_date', weekStart),
-        supabase.from('jobs').select('price_inc_gst').eq('status', 'completed').gte('scheduled_date', monthStart),
-        supabase.from('jobs').select('price_inc_gst').eq('status', 'completed').gte('scheduled_date', quarterStart),
-        supabase.from('jobs')
-          .select('id, scheduled_date, price_inc_gst, invoice_status, invoice_amount, xero_invoice_id, xero_invoice_number, invoice_sent_at, invoice_raised_at, properties(property_name)')
-          .eq('status', 'completed')
-          .order('scheduled_date', { ascending: false })
-          .limit(50),
-        supabase.from('quotes').select('sell_price_inc_gst, discounted_price, status')
-          .in('status', ['quote_sent', 'draft']),
-      ]);
-
-      const sum = (rows: any[]) => rows.reduce((s, j) => s + (j.price_inc_gst || 0), 0);
-      const invSum = (rows: any[]) => rows.reduce((s, j) => s + (j.invoice_amount || j.price_inc_gst || 0), 0);
-
-      const jobs = jobsRes.data || [];
-
-      const draftJobs   = jobs.filter((j: any) => j.invoice_status === 'draft');
-      const sentJobs    = jobs.filter((j: any) => j.invoice_status === 'sent' && j.invoice_sent_at && differenceInDays(Date.now(), new Date(j.invoice_sent_at)) < OVERDUE_DAYS);
-      const overdueJobs = jobs.filter((j: any) => j.invoice_status === 'sent' && j.invoice_sent_at && differenceInDays(Date.now(), new Date(j.invoice_sent_at)) >= OVERDUE_DAYS);
-      const paidJobs    = jobs.filter((j: any) => j.invoice_status === 'paid');
-
-      const outstandingValue = (quotesRes.data || []).reduce((s: number, q: any) =>
-        s + (q.discounted_price || q.sell_price_inc_gst || 0), 0);
+      // Completed work with no price is money that will never be invoiced
+      // unless someone notices, so it gets its own list.
+      const missingPrice = (periodJobs || []).filter(
+        (j: any) => jobValue(j) === null && j.status === 'completed',
+      );
 
       return {
-        weekRevenue: sum(weekRes.data || []),
-        monthRevenue: sum(monthRes.data || []),
-        quarterRevenue: sum(quarterRes.data || []),
-        outstandingQuotes: outstandingValue,
-        outstandingCount: quotesRes.data?.length || 0,
-        recentJobs: jobs,
-        invoiceSummary: {
-          draft:   { count: draftJobs.length,   amount: invSum(draftJobs) },
-          sent:    { count: sentJobs.length,     amount: invSum(sentJobs) },
-          overdue: { count: overdueJobs.length,  amount: invSum(overdueJobs) },
-          paid:    { count: paidJobs.length,     amount: invSum(paidJobs) },
-        },
+        periodJobs: periodJobs || [],
+        openInvoices: openInvoices || [],
+        missingPrice,
       };
     },
   });
 
-  const fmt = (n: number) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const setStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'paid' | 'voided' }) => {
+      const patch =
+        status === 'paid'
+          ? { invoice_status: 'paid', invoice_paid_at: new Date().toISOString() }
+          : { invoice_status: 'voided' };
+      const { error } = await supabase.from('jobs').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onMutate: ({ id }) => setPendingId(id),
+    onSettled: () => setPendingId(null),
+    onSuccess: (_r, { status }) => {
+      toast.success(status === 'paid' ? 'Marked paid' : 'Marked void');
+      queryClient.invalidateQueries({ queryKey: ['financials-v2'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const statCards = [
-    { label: 'This Week', value: fmt(data?.weekRevenue || 0), icon: DollarSign },
-    { label: 'This Month', value: fmt(data?.monthRevenue || 0), icon: TrendingUp },
-    { label: 'This Quarter', value: fmt(data?.quarterRevenue || 0), icon: TrendingUp },
-    { label: `Outstanding Quotes (${data?.outstandingCount || 0})`, value: fmt(data?.outstandingQuotes || 0), icon: FileText },
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const inv = data?.invoiceSummary;
-  const invoiceCards = [
-    { label: 'Draft',            count: inv?.draft.count   || 0, amount: inv?.draft.amount   || 0, dotColor: '#94A3B8' },
-    { label: 'Sent — awaiting',  count: inv?.sent.count    || 0, amount: inv?.sent.amount    || 0, dotColor: '#60A5FA' },
-    { label: `Overdue ${OVERDUE_DAYS}+ days`, count: inv?.overdue.count || 0, amount: inv?.overdue.amount || 0, dotColor: '#F87171' },
-    { label: 'Paid',             count: inv?.paid.count    || 0, amount: inv?.paid.amount    || 0, dotColor: '#4ADE80' },
-  ];
+  const jobs = data?.periodJobs || [];
+  const openInvoices = data?.openInvoices || [];
+  const missingPrice = data?.missingPrice || [];
+
+  const outstanding = openInvoices.reduce(
+    (s: number, j: any) => s + (Number(j.invoice_amount) || jobValue(j) || 0),
+    0,
+  );
 
   return (
-    <div className="space-y-6 max-w-[900px] mx-auto">
-      <h1 className="text-2xl font-extrabold text-[#4ADE80]">Financials</h1>
+    <div className="space-y-8 p-4 md:p-6">
+      <h1 className="text-3xl font-extrabold text-primary">Financials</h1>
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Loading…</p>
-      ) : (
-        <>
-          {/* Revenue stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {statCards.map((card) => (
-              <div key={card.label} className="glass-card p-4 space-y-1.5">
-                <div className="flex items-center gap-2" style={{ color: '#4ADE80' }}>
-                  <card.icon className="h-5 w-5" />
+      <section>
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          By week
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {weeks.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} />)}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          By month
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {months.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} />)}
+        </div>
+      </section>
+
+      {/* ── Unpaid ─────────────────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-border bg-card">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-5 py-4">
+          <h2 className="text-lg font-bold text-primary">
+            Unpaid invoices ({openInvoices.length})
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {fmtExact(outstanding)} outstanding
+          </p>
+        </div>
+
+        {openInvoices.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Nothing outstanding.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {openInvoices.map((j: any) => {
+              const value = Number(j.invoice_amount) || jobValue(j);
+              const days = j.invoice_sent_at
+                ? differenceInDays(Date.now(), new Date(j.invoice_sent_at))
+                : null;
+              const overdue = j.invoice_status === 'sent' && days !== null && days >= OVERDUE_DAYS;
+              const busy = pendingId === j.id;
+
+              return (
+                <div key={j.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                  <button
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => navigate(`/jobs/${j.id}`)}
+                  >
+                    <p className="truncate font-semibold text-foreground">
+                      {j.properties?.property_name || 'Unknown property'}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {format(new Date(j.scheduled_date + 'T00:00:00'), 'd MMM yyyy')}
+                      {j.xero_invoice_number ? ` · ${j.xero_invoice_number}` : ''}
+                      {' · '}
+                      <span className={overdue ? 'font-bold text-red-400' : ''}>
+                        {overdue
+                          ? `overdue ${days} days`
+                          : (j.invoice_status || 'no invoice')}
+                      </span>
+                      {value === null && (
+                        <span className="font-bold text-amber-400"> · no price set</span>
+                      )}
+                    </p>
+                  </button>
+
+                  <p className="shrink-0 font-bold tabular-nums text-foreground">
+                    {value === null ? '—' : fmtExact(value)}
+                  </p>
+
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      disabled={busy}
+                      onClick={() => setStatus.mutate({ id: j.id, status: 'paid' })}
+                      className="rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/10 disabled:opacity-40"
+                    >
+                      {busy ? '...' : 'Paid'}
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() => setStatus.mutate({ id: j.id, status: 'voided' })}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
+                    >
+                      Void
+                    </button>
+                    {j.xero_invoice_id && (
+                      <a
+                        href={`https://go.xero.com/app/invoicing/edit/${j.xero_invoice_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center rounded-lg border border-border px-2 text-muted-foreground hover:bg-muted"
+                        title="Open in Xero"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <p className="text-2xl font-extrabold tabular-nums" style={{ color: '#F0FDF4' }}>{card.value}</p>
-                <p className="text-[11px] font-semibold uppercase" style={{ letterSpacing: '0.08em', color: '#86EFAC' }}>{card.label}</p>
-              </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          Paid and Void change Brightly only. Xero is the source of truth and syncs back
+          every 15 minutes, so use these for payments recorded outside Xero.
+        </p>
+      </section>
+
+      {/* ── Missing prices ─────────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-amber-500/30 bg-card">
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-amber-400">
+            <AlertTriangle className="h-4 w-4" />
+            Completed jobs with no price ({missingPrice.length})
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            These are missing from every figure above and cannot be invoiced until priced.
+          </p>
+        </div>
+        {missingPrice.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Every completed job in range has a price.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {missingPrice.map((j: any) => (
+              <button
+                key={j.id}
+                onClick={() => navigate(`/jobs/${j.id}`)}
+                className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-muted/40"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-foreground">
+                    {j.properties?.property_name || 'Unknown property'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(j.scheduled_date + 'T00:00:00'), 'd MMM yyyy')}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-bold text-primary">Set price</span>
+              </button>
             ))}
           </div>
-
-          {/* Invoice status summary */}
-          <div className="glass-card overflow-hidden">
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <h3 className="text-sm font-bold" style={{ color: '#FEDB00' }}>Invoice Status</h3>
-              <p className="text-[11px] mt-0.5" style={{ color: '#86EFAC' }}>Based on last 50 completed jobs</p>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-              {invoiceCards.map((card) => (
-                <div key={card.label} className="px-4 py-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: card.dotColor }} />
-                    <p className="text-[11px] font-semibold uppercase" style={{ letterSpacing: '0.07em', color: '#86EFAC' }}>{card.label}</p>
-                  </div>
-                  <p className="text-xl font-extrabold tabular-nums" style={{ color: '#F0FDF4' }}>{fmt(card.amount)}</p>
-                  <p className="text-xs" style={{ color: '#64748B' }}>{card.count} job{card.count !== 1 ? 's' : ''}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent completed jobs with invoice status */}
-          <div className="glass-card overflow-hidden">
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <h3 className="text-sm font-bold" style={{ color: '#FEDB00' }}>Recent Completed Jobs</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <th className="px-4 py-2 text-left text-xs font-bold" style={{ color: '#86EFAC' }}>Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold" style={{ color: '#86EFAC' }}>Property</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold" style={{ color: '#86EFAC' }}>Invoice</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold" style={{ color: '#86EFAC' }}>Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data?.recentJobs || []).map((j: any) => (
-                    <tr key={j.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td className="px-4 py-2 text-xs whitespace-nowrap" style={{ color: '#F0FDF4' }}>
-                        {j.scheduled_date ? format(new Date(j.scheduled_date + 'T00:00:00'), 'dd MMM yyyy') : '—'}
-                      </td>
-                      <td className="px-4 py-2 text-xs truncate max-w-[180px]" style={{ color: '#F0FDF4' }}>
-                        {(j as any).properties?.property_name || '—'}
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <InvoiceBadge status={j.invoice_status} sentAt={j.invoice_sent_at} xeroId={j.xero_invoice_id} />
-                          {j.xero_invoice_number && (
-                            <span className="text-[10px]" style={{ color: '#64748B' }}>#{j.xero_invoice_number}</span>
-                          )}
-                          {j.xero_invoice_id && (
-                            <a
-                              href={`https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=${j.xero_invoice_id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="opacity-40 hover:opacity-100 transition-opacity"
-                            >
-                              <ExternalLink className="h-3 w-3" style={{ color: '#86EFAC' }} />
-                            </a>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-xs text-right font-bold" style={{ color: '#F0FDF4' }}>
-                        {j.price_inc_gst ? fmt(j.price_inc_gst) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                  {(data?.recentJobs || []).length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-6 text-center text-xs" style={{ color: '#86EFAC' }}>No completed jobs yet</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+        )}
+      </section>
     </div>
   );
 }
