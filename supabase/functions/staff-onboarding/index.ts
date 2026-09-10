@@ -135,9 +135,18 @@ function publicRecord(record: JsonRecord) {
 function normaliseDate(value: unknown) {
   const text = String(value ?? "").trim();
   if (!text) return null;
-  const match = /^(?:(\d{4})-(\d{2})-(\d{2})|(\d{2})\/(\d{2})\/(\d{4}))$/.exec(text);
+  // Accepts a two digit year, matching isValidAustralianDate on the client.
+  // These two must agree: if the form accepts 01/12/26 and this does not, the
+  // date is silently stored as null and the cleaner is told nothing.
+  // 00-49 reads as 2000s, 50-99 as 1900s.
+  const match = /^(?:(\d{4})-(\d{2})-(\d{2})|(\d{2})\/(\d{2})\/(\d{2}|\d{4}))$/.exec(text);
   if (!match) return null;
-  const year = Number(match[1] ?? match[6]);
+  const rawYear = match[1] ?? match[6];
+  const year = Number(
+    rawYear.length === 2
+      ? (Number(rawYear) <= 49 ? 2000 + Number(rawYear) : 1900 + Number(rawYear))
+      : rawYear,
+  );
   const month = Number(match[2] ?? match[5]);
   const day = Number(match[3] ?? match[4]);
   if (year < 1900 || year > 2100) return null;

@@ -238,7 +238,10 @@ export default function StaffOnboardingPage() {
       if (!draft.public_liability_status) return 'Answer the public-liability question.';
       if (draft.id_document_type === 'drivers_licence' && !isValidAustralianDate(draft.drivers_licence_expiry)) return 'Enter the licence expiry as DD/MM/YYYY.';
       for (const key of ['profile_photo', 'photo_id']) if (!documents[key]) return `Upload your ${key.split('_').join(' ')}.`;
-      if (draft.public_liability_status === 'yes' && (!documents.public_liability || !isValidAustralianDate(draft.public_liability_expiry))) return 'Upload your public-liability certificate and enter its expiry as DD/MM/YYYY.';
+      if (draft.public_liability_status === 'yes') {
+        if (!documents.public_liability) return 'Upload your public-liability certificate.';
+        if (!isValidAustralianDate(draft.public_liability_expiry)) return 'Check the policy expiry date. Use DD/MM/YYYY, for example 01/12/2026.';
+      }
     }
     if (currentStep === 3) {
       if (!draft.available_days.length) return 'Select at least one day you can usually work.';

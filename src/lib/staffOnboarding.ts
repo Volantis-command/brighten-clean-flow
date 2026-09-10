@@ -290,10 +290,24 @@ export function formatAustralianDateInput(value: string) {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
+/**
+ * Expand a two digit year the way a person means it.
+ *
+ * People type 01/12/26 for a policy expiring in 2026, and the form used to
+ * reject that while blaming the file upload. 00-49 reads as 2000s, 50-99 as
+ * 1900s, which is right for both a policy expiry and a date of birth.
+ */
+export function expandTwoDigitYear(yearText: string): string {
+  if (yearText.length !== 2) return yearText;
+  const n = Number(yearText);
+  return String(n <= 49 ? 2000 + n : 1900 + n);
+}
+
 export function isValidAustralianDate(value: string) {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  const match = /^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/.exec(value);
   if (!match) return false;
-  const [, dayText, monthText, yearText] = match;
+  const [, dayText, monthText, rawYear] = match;
+  const yearText = expandTwoDigitYear(rawYear);
   const day = Number(dayText);
   const month = Number(monthText);
   const year = Number(yearText);

@@ -51,6 +51,18 @@ Deno.serve(async (req) => {
 
     // Helper to ensure onboarding record exists for a user
     async function ensureOnboarding(userId: string, name?: string, userEmail?: string) {
+      // The admin already typed the mobile into the invite, and it is on the
+      // profile by this point. Not seeding it made a new cleaner retype their
+      // own number on step 1, next to a name and email filled in for them.
+      // Reading it here rather than taking a parameter covers all three
+      // callers, including the ensure_onboarding action.
+      let seedPhone: string | null = null;
+      try {
+        const { data: prof } = await adminClient
+          .from("profiles").select("phone").eq("id", userId).maybeSingle();
+        seedPhone = (prof as any)?.phone || null;
+      } catch { /* seeding is a convenience, never block onboarding for it */ }
+
       const { data: existing, error: existingError } = await adminClient
         .from("staff_onboarding")
         .select("id, onboarding_token, submitted_at, token_expires_at")
@@ -65,6 +77,7 @@ Deno.serve(async (req) => {
             user_id: userId,
             full_name: name || null,
             email: userEmail || null,
+            phone: seedPhone,
             status: "pending",
             onboarding_version: "B-ABNB-HR-002-v1.0",
             token_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
