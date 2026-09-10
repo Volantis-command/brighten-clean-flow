@@ -1,4 +1,5 @@
 import React from 'react';
+import { isStaleChunkError, reloadForStaleChunk } from '@/lib/chunkRecovery';
 
 interface State {
   hasError: boolean;
@@ -9,10 +10,14 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   state: State = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error) {
+    // A stale chunk is not a crash, it is an out of date tab. Don't paint the
+    // scary screen for it; componentDidCatch reloads onto the new build.
+    if (isStaleChunkError(error)) return { hasError: false, error: null };
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    if (isStaleChunkError(error) && reloadForStaleChunk('render')) return;
     console.error('ErrorBoundary caught:', error, info.componentStack);
   }
 
