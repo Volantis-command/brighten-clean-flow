@@ -25,21 +25,51 @@ const fmtExact = (n: number) =>
 
 const d = (date: Date) => format(date, 'yyyy-MM-dd');
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 /**
- * One job's value, inc GST.
+ * What a job is worth, ex GST.
  *
- * price_inc_gst is the number the client agreed to, so it wins. Some older
- * jobs only carry the ex GST figure, and treating those as zero quietly
- * understated revenue, so they are grossed up rather than dropped.
- * Returns null when the job genuinely has no price, which is what feeds the
- * "missing a price" list rather than silently adding nothing.
+ * This deliberately mirrors the fallback chain in xero-auto-invoice-job, so
+ * the revenue shown here is the money that will actually be invoiced. Reading
+ * only the job row was wrong: Hostaway-synced and recurring jobs routinely
+ * carry no price of their own because the price lives on the property, and
+ * those were being reported as "no price" while invoicing billed them fine.
+ *
+ *   1. the job's own price
+ *   2. the linked quote's sell price
+ *   3. the property's turnover price (always ex GST)
+ *   4. the property's default price (inc or ex, per price_includes_gst)
+ *
+ * Returns null only when there is genuinely no price anywhere, which is the
+ * one case worth showing Brendan.
  */
-function jobValue(job: any): number | null {
-  const inc = Number(job.price_inc_gst) || 0;
-  if (inc > 0) return inc;
+function jobValueEx(job: any, quotePrices: Record<string, number>): number | null {
   const ex = Number(job.price_ex_gst) || 0;
-  if (ex > 0) return Math.round(ex * 1.1 * 100) / 100;
+  if (ex > 0) return ex;
+
+  const inc = Number(job.price_inc_gst) || 0;
+  if (inc > 0) return round2(inc / 1.1);
+
+  if (job.linked_quote_id) {
+    const q = quotePrices[job.linked_quote_id];
+    if (q > 0) return q;
+  }
+
+  const prop = job.properties || {};
+  const turnover = Number(prop.price_turnover) || 0;
+  if (turnover > 0) return turnover;
+
+  const dflt = Number(prop.default_price) || 0;
+  if (dflt > 0) return prop.price_includes_gst ? round2(dflt / 1.1) : dflt;
+
   return null;
+}
+
+/** Everything on this page is shown inc GST, which is how the prices are quoted. */
+function jobValueInc(job: any, quotePrices: Record<string, number>): number | null {
+  const ex = jobValueEx(job, quotePrices);
+  return ex === null ? null : round2(ex * 1.1);
 }
 
 type Period = { key: string; label: string; from: string; to: string; isFuture: boolean };
@@ -72,14 +102,14 @@ function buildPeriods(now: Date): { weeks: Period[]; months: Period[] } {
   };
 }
 
-function RevenueCard({ period, jobs }: { period: Period; jobs: any[] }) {
+function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[]; quotePrices: Record<string, number> }) {
   const inPeriod = jobs.filter(
     (j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to,
   );
   let total = 0;
   let unpriced = 0;
   inPeriod.forEach((j) => {
-    const v = jobValue(j);
+    const v = jobValueInc(j, quotePrices);
     if (v === null) unpriced++;
     else total += v;
   });
@@ -89,7 +119,9 @@ function RevenueCard({ period, jobs }: { period: Period; jobs: any[] }) {
       <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
         {period.label}
       </p>
-      <p className="mt-2 text-3xl font-extrabold text-primary">{fmt(total)}</p>
+      <p className="mt-2 text-3xl font-extrabold text-primary">
+        {fmt(total)} <span className="text-xs font-bold text-muted-foreground">inc GST</span>
+      </p>
       <p className="mt-1 text-xs text-muted-foreground">
         {format(new Date(period.from + 'T00:00:00'), 'd MMM')} to{' '}
         {format(new Date(period.to + 'T00:00:00'), 'd MMM')}
@@ -128,7 +160,7 @@ export default function FinancialsPage() {
         await Promise.all([
           supabase
             .from('jobs')
-            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, properties(property_name)')
+            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, linked_quote_id, properties(property_name, default_price, price_includes_gst, price_turnover)')
             .gte('scheduled_date', rangeFrom)
             .lte('scheduled_date', rangeTo)
             .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`),
@@ -137,7 +169,7 @@ export default function FinancialsPage() {
           // seeing, so this query is deliberately unbounded by date.
           supabase
             .from('jobs')
-            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, invoice_status, invoice_amount, invoice_sent_at, xero_invoice_id, xero_invoice_number, properties(property_name)')
+            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, linked_quote_id, invoice_status, invoice_amount, invoice_sent_at, xero_invoice_id, xero_invoice_number, properties(property_name, default_price, price_includes_gst, price_turnover)')
             .in('invoice_status', UNPAID_STATUSES)
             .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`)
             .order('scheduled_date', { ascending: true }),
@@ -145,15 +177,35 @@ export default function FinancialsPage() {
       if (pErr) throw pErr;
       if (iErr) throw iErr;
 
+      // Only look up quotes for jobs that actually need one, which is usually
+      // none of them. Skipping this when the chain already resolved keeps the
+      // page to two queries in the common case.
+      const needQuote = [...(periodJobs || []), ...(openInvoices || [])]
+        .filter((j: any) => j.linked_quote_id && jobValueEx(j, {}) === null)
+        .map((j: any) => j.linked_quote_id);
+
+      const quotePrices: Record<string, number> = {};
+      if (needQuote.length) {
+        const { data: quotes } = await supabase
+          .from('quotes')
+          .select('id, sell_price_ex_gst')
+          .in('id', [...new Set(needQuote)]);
+        (quotes || []).forEach((q: any) => {
+          const v = Number(q.sell_price_ex_gst) || 0;
+          if (v > 0) quotePrices[q.id] = v;
+        });
+      }
+
       // Completed work with no price is money that will never be invoiced
       // unless someone notices, so it gets its own list.
       const missingPrice = (periodJobs || []).filter(
-        (j: any) => jobValue(j) === null && j.status === 'completed',
+        (j: any) => jobValueInc(j, quotePrices) === null && j.status === 'completed',
       );
 
       return {
         periodJobs: periodJobs || [],
         openInvoices: openInvoices || [],
+        quotePrices,
         missingPrice,
       };
     },
@@ -187,10 +239,11 @@ export default function FinancialsPage() {
 
   const jobs = data?.periodJobs || [];
   const openInvoices = data?.openInvoices || [];
+  const quotePrices = data?.quotePrices || {};
   const missingPrice = data?.missingPrice || [];
 
   const outstanding = openInvoices.reduce(
-    (s: number, j: any) => s + (Number(j.invoice_amount) || jobValue(j) || 0),
+    (s: number, j: any) => s + (Number(j.invoice_amount) || jobValueInc(j, quotePrices) || 0),
     0,
   );
 
@@ -203,7 +256,7 @@ export default function FinancialsPage() {
           By week
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {weeks.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} />)}
+          {weeks.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} quotePrices={quotePrices} />)}
         </div>
       </section>
 
@@ -212,7 +265,7 @@ export default function FinancialsPage() {
           By month
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {months.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} />)}
+          {months.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} quotePrices={quotePrices} />)}
         </div>
       </section>
 
@@ -234,7 +287,7 @@ export default function FinancialsPage() {
         ) : (
           <div className="divide-y divide-border">
             {openInvoices.map((j: any) => {
-              const value = Number(j.invoice_amount) || jobValue(j);
+              const value = Number(j.invoice_amount) || jobValueInc(j, quotePrices);
               const days = j.invoice_sent_at
                 ? differenceInDays(Date.now(), new Date(j.invoice_sent_at))
                 : null;
