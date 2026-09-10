@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { isRequirementComplete, PRESTART_REQUIREMENTS } from '@/lib/staffOnboarding';
+import { isRequirementComplete, PRESTART_REQUIREMENTS, PRESTART_SOURCE_HINT } from '@/lib/staffOnboarding';
 
 interface Props { staffId: string; staffName: string }
 type TrainingRecord = Record<string, any>;
@@ -83,8 +83,36 @@ export function StaffOnboardingSection({ staffId, staffName }: Props) {
       <div className="grid gap-2 sm:grid-cols-2">
         {PRESTART_REQUIREMENTS.map((item) => {
           const checked = isRequirementComplete(requirements[item.key]);
-          const adminControlled = item.owner === 'admin';
-          return <label key={item.key} className={`flex min-h-14 items-start gap-3 rounded-xl border p-3 ${checked ? 'border-primary/30 bg-primary/5' : 'border-border'} ${adminControlled ? 'cursor-pointer' : 'cursor-default'}`}><Checkbox checked={checked} disabled={!adminControlled || adminUpdate.isPending} onCheckedChange={(value) => adminUpdate.mutate({ prestart_requirements: { [item.key]: { completed: value === true } } })} className="mt-0.5 h-5 w-5" /><span className="min-w-0"><span className="block text-sm font-semibold">{item.label}</span><span className="text-[11px] text-muted-foreground">{adminControlled ? 'Verified by Brightly' : 'From cleaner submission'}</span></span></label>;
+          // Most admin items are DERIVED: admin_update recalculates them from
+          // the training record and overwrites whatever was ticked, so the
+          // checkbox looked broken. Only the ones with no derivation rule are
+          // genuinely clickable; the rest now say what fills them.
+          const hint = PRESTART_SOURCE_HINT[item.key];
+          const clickable = item.owner === 'admin' && !hint;
+          const derived = item.owner === 'admin' && Boolean(hint);
+          return (
+            <label
+              key={item.key}
+              className={`flex min-h-14 items-start gap-3 rounded-xl border p-3 ${checked ? 'border-primary/30 bg-primary/5' : 'border-border'} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
+            >
+              <Checkbox
+                checked={checked}
+                disabled={!clickable || adminUpdate.isPending}
+                onCheckedChange={(value) => clickable && adminUpdate.mutate({ prestart_requirements: { [item.key]: { completed: value === true } } })}
+                className="mt-0.5 h-5 w-5"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{item.label}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {derived && !checked
+                    ? hint
+                    : item.owner === 'admin'
+                      ? 'Verified by Brightly'
+                      : 'From cleaner submission'}
+                </span>
+              </span>
+            </label>
+          );
         })}
       </div>
     </section>

@@ -105,9 +105,14 @@ export function StaffPayRatesSection({ staffId, staffName }: Props) {
       </div>
 
       {rateType === 'hourly' ? (
-        <div>
-          <Label>Hourly Rate ($)</Label>
-          <Input type="number" step="0.50" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="30.00" />
+        // The hourly rate is NOT edited here any more. There were three boxes
+        // on this page holding three different numbers, and this one was not
+        // the one Timesheets pays from. One rate, one place: Pay & Employment
+        // above, which writes profiles.hourly_rate.
+        <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          The hourly rate is set in <span className="font-bold text-foreground">Pay &amp; Employment</span> above.
+          That single figure is what Timesheets and Payroll pay from. Per-job rates below are
+          only used when this cleaner is on per-job pay.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

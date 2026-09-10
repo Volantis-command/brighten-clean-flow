@@ -24,7 +24,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { edgeErrorMessage } from '@/lib/edgeError';
+import { edgeErrorMessage, edgeErrorBody } from '@/lib/edgeError';
+import { describeApprovalRefusal } from '@/lib/staffOnboarding';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
 
@@ -214,7 +215,7 @@ export default function StaffPage() {
       queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
       setEditMember(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message, { duration: 12000 }),
   });
 
   const removeMutation = useMutation({
@@ -292,7 +293,14 @@ export default function StaffPage() {
       const { data, error } = await supabase.functions.invoke('staff-onboarding', {
         body: { action: 'approve_deployment', staff_id: userId },
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message);
+      // The server refuses with a precise reason and a list of what is
+      // missing. Throwing error.message replaced all of that with "non-2xx
+      // status code", which told Brendan nothing about what to go and do.
+      if (error) {
+        const body = await edgeErrorBody(error);
+        throw new Error(body ? describeApprovalRefusal(body) : await edgeErrorMessage(error));
+      }
+      if (data?.error) throw new Error(describeApprovalRefusal(data));
     },
     onSuccess: () => {
       toast.success('Cleaner approved for deployment!');
@@ -774,7 +782,11 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
   });
 
   // Hourly rate and pay
-  const hourlyRate = (staffProfile as any)?.hourly_rate || 45;
+  // No invented fallback. Showing 45 for an unset rate is how Brendan ended up
+  // looking at a rate he never chose, on a page that also pays from it.
+  const hourlyRateRaw = (staffProfile as any)?.hourly_rate;
+  const hourlyRate = Number(hourlyRateRaw) || 0;
+  const hourlyRateSet = hourlyRateRaw !== null && hourlyRateRaw !== undefined && Number(hourlyRateRaw) > 0;
 
   // Current pay period hours (this fortnight)
   const now = new Date();
@@ -989,7 +1001,9 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
               </div>
               <div>
                 <span className="text-xs text-muted-foreground">Hourly Rate</span>
-                <p className="font-bold text-lg text-foreground">${hourlyRate}/hr</p>
+                <p className={`font-bold text-lg ${hourlyRateSet ? 'text-foreground' : 'text-amber-400'}`}>
+                  {hourlyRateSet ? `$${hourlyRate}/hr` : 'Not set'}
+                </p>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground">Estimated Pay</span>

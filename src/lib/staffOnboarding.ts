@@ -355,3 +355,42 @@ export function isRequirementComplete(value: unknown) {
   }
   return false;
 }
+
+/**
+ * What actually fills each admin requirement.
+ *
+ * These tiles are not clickable and never were: the tick is derived from the
+ * Induction & training record below them. Without saying so, an admin sees a
+ * checkbox that ignores them. Used for the hint on each tile and to explain a
+ * refused deployment approval.
+ */
+export const PRESTART_SOURCE_HINT: Record<string, string> = {
+  id_verified: 'Ticked when an admin verifies the uploaded photo ID.',
+  brightly_app_tested: 'Fill in the Brightly test-job date below.',
+  kit_issued: 'Fill in the Kit issued date below.',
+  welcome_induction_completed: 'Fill in the Welcome induction date and the Induction facilitator below.',
+  verbal_knowledge_check_completed: 'Fill in the Verbal knowledge check date below.',
+  shadow_clean_1_completed: 'Shadow Clean 1 needs a date, a supervisor, and Debrief completed ticked.',
+  shadow_clean_2_completed: 'Shadow Clean 2 needs a date, a supervisor, and Debrief completed ticked.',
+  shadow_clean_2_qc_passed: 'Enter a Shadow Clean 2 QC score of 80 or more.',
+};
+
+const PRESTART_LABELS: Record<string, string> = Object.fromEntries(
+  PRESTART_REQUIREMENTS.map((r) => [r.key, r.label]),
+);
+
+/**
+ * Turn a refusal from the staff-onboarding function into something an admin
+ * can act on. The server returns { error, missing: [key, ...] }; showing only
+ * the error left Brendan with "Pre-start requirements are incomplete" and no
+ * idea which ones.
+ */
+export function describeApprovalRefusal(body: any): string {
+  const base = String(body?.error || 'Could not approve for deployment.');
+  const missing: string[] = Array.isArray(body?.missing) ? body.missing : [];
+  if (!missing.length) return base;
+  const named = missing.map((k) => PRESTART_LABELS[k] || k);
+  const shown = named.slice(0, 6).join(', ');
+  const more = named.length > 6 ? `, and ${named.length - 6} more` : '';
+  return `${base}: ${shown}${more}.`;
+}

@@ -108,7 +108,11 @@ export default function PayrollTab() {
     }
 
     // Hourly
-    const rate = pr?.hourly_rate || cleanerMap[cleanerId]?.hourly_rate || 0;
+    // profiles.hourly_rate is the single source of truth, because that is what
+    // the Timesheets page pays from. Preferring staff_pay_rates.hourly_rate
+    // here meant Payroll and Timesheets could quote different money for the
+    // same hours. Per-job rates above still come from staff_pay_rates.
+    const rate = Number(cleanerMap[cleanerId]?.hourly_rate) || 0;
     return (d.totalMinutes / 60) * rate;
   };
 

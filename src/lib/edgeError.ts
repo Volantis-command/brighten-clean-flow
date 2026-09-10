@@ -39,3 +39,14 @@ export async function edgeErrorMessage(error: unknown): Promise<string> {
     return fallback;
   }
 }
+
+/** The function's JSON body, so structured fields like `missing` survive. */
+export async function edgeErrorBody(error: unknown): Promise<any | null> {
+  try {
+    const ctx = (error as any)?.context;
+    if (!ctx || typeof ctx.clone !== 'function') return null;
+    return await ctx.clone().json().catch(() => null);
+  } catch {
+    return null;
+  }
+}
