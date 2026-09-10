@@ -24,6 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UserPlus, Pencil, Trash2, Phone, Mail, Loader2, ArrowLeft, Key, Link2, Copy, CheckCircle2, Clock, Calendar, FileCheck, DollarSign, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { edgeErrorMessage } from '@/lib/edgeError';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner';
 
@@ -119,7 +120,9 @@ export default function StaffPage() {
 
   const invokeFn = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('invite-staff', { body });
-    if (error) throw error;
+    // The function's 409s explain exactly what to change. Rethrowing the raw
+    // error replaced them with "non-2xx status code" and left the admin stuck.
+    if (error) throw new Error(await edgeErrorMessage(error));
     if (data?.error) throw new Error(data.error);
     return data;
   };

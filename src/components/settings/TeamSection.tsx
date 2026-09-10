@@ -12,6 +12,7 @@ import { UserPlus, Pencil, Loader2, Mail, Phone, Link2, Copy, Users } from 'luci
 import { toast } from 'sonner';
 import { getAppBaseUrl } from '@/lib/appUrl';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { edgeErrorMessage } from '@/lib/edgeError';
 
 type AppRole = 'admin' | 'head_cleaner' | 'cleaner' | 'client';
 
@@ -124,7 +125,7 @@ export default function TeamSection() {
 
   const invokeFn = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('invite-staff', { body });
-    if (error) throw error;
+    if (error) throw new Error(await edgeErrorMessage(error));
     if (data?.error) throw new Error(data.error);
     return data;
   };

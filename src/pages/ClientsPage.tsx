@@ -18,6 +18,7 @@ import LeadsTab from '@/components/clients/LeadsTab';
 import SavedQuotesList from '@/components/pricing/SavedQuotesList';
 import SendQuoteLinkModal from '@/components/dashboard/SendQuoteLinkModal';
 import { getAppBaseUrl } from '@/lib/appUrl';
+import { edgeErrorMessage } from '@/lib/edgeError';
 
 interface ClientMember {
   id: string;
@@ -302,7 +303,7 @@ export default function ClientsPage() {
       const { data, error } = await supabase.functions.invoke('invite-staff', {
         body: { action: 'create_user', email: createEmail, role: 'client', full_name: createName, phone: createPhone, password: autoPassword },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error));
       if (data?.error) throw new Error(data.error);
       if (createPropertyIds.length && data?.user_id) {
         const inserts = createPropertyIds.map(pid => ({ client_id: data.user_id, property_id: pid }));
