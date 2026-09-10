@@ -216,10 +216,17 @@ Deno.serve(async (req) => {
         await adminClient.from("user_roles").insert({ user_id: newUserId, role });
       }
 
-      if (phone || full_name) {
-        const updates: Record<string, string> = {};
-        if (phone) updates.phone = phone;
-        if (full_name) updates.full_name = full_name;
+      // The Clients page splits people into Active clients and Leads using
+      // profiles.lead_stage: active means lead_stage 'active', or they already
+      // have a clean booked. A hand-added client has neither, so every client
+      // created from an "Add Client" button landed in the LEADS tab and had to
+      // be moved across by hand. Somebody an admin typed in deliberately is a
+      // client, so say so at creation.
+      const updates: Record<string, string> = {};
+      if (phone) updates.phone = phone;
+      if (full_name) updates.full_name = full_name;
+      if (role === "client") updates.lead_stage = "active";
+      if (Object.keys(updates).length > 0) {
         await adminClient.from("profiles").update(updates).eq("id", newUserId);
       }
 
@@ -447,9 +454,11 @@ Deno.serve(async (req) => {
       if (full_name) profileUpdates.full_name = full_name;
       if (phone) profileUpdates.phone = phone;
       if (email) profileUpdates.email = email;
-      if (Object.keys(profileUpdates).length > 0) {
-        await adminClient.from("profiles").update(profileUpdates).eq("id", newId);
-      }
+      // Same reason as the create_user path above: created against a property,
+      // so they are a client, not a lead. An EXISTING profile is deliberately
+      // left alone here, so this never reclassifies someone already triaged.
+      profileUpdates.lead_stage = "active";
+      await adminClient.from("profiles").update(profileUpdates).eq("id", newId);
 
       return new Response(
         JSON.stringify({ success: true, user_id: newId, existing: false }),
