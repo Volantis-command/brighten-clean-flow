@@ -247,6 +247,54 @@ function validateSubmission(payload: JsonRecord, manifest: JsonRecord) {
   return null;
 }
 
+/**
+ * Shadow Clean 2 passes only with a score of 80 or more AND, when it was rated,
+ * an outcome of Pass. An 8/10 marked "needs more work" is not a pass. Manual
+ * entries from before ratings existed carry no outcome and are judged on score.
+ */
+function shadowQcPassed(training: JsonRecord) {
+  const sc2 = (training?.shadow_clean_2 ?? {}) as JsonRecord;
+  return Number(sc2.qc_score ?? 0) >= 80 && (!sc2.outcome || sc2.outcome === "pass");
+}
+
+/** Recalculate the training-derived pre-start items from a training record. */
+function deriveRequirements(current: JsonRecord, training: JsonRecord, callerId: string, now: string) {
+  const next: JsonRecord = { ...current };
+  const derived: Record<string, boolean> = {
+    welcome_induction_completed: Boolean(training.welcome_induction_date && training.induction_facilitator),
+    verbal_knowledge_check_completed: Boolean(training.verbal_check_date),
+    brightly_app_tested: Boolean(training.brightly_test_date),
+    kit_issued: Boolean(training.kit_issued_date),
+    shadow_clean_1_completed: Boolean(
+      training.shadow_clean_1?.date
+      && training.shadow_clean_1?.supervisor
+      && training.shadow_clean_1?.debrief_completed
+    ),
+    shadow_clean_2_completed: Boolean(
+      training.shadow_clean_2?.date
+      && training.shadow_clean_2?.supervisor
+      && training.shadow_clean_2?.debrief_completed
+    ),
+  };
+  for (const [key, completed] of Object.entries(derived)) {
+    next[key] = {
+      ...(next[key] ?? {}),
+      completed,
+      source: "training_record",
+      updated_at: now,
+      updated_by: callerId,
+    };
+  }
+  next.shadow_clean_2_qc_passed = {
+    ...(next.shadow_clean_2_qc_passed ?? {}),
+    completed: shadowQcPassed(training),
+    score: Number(training?.shadow_clean_2?.qc_score ?? 0),
+    updated_at: now,
+    updated_by: callerId,
+  };
+  return next;
+}
+
 function pathFromLegacyUrl(value: string | undefined) {
   if (!value) return null;
   const decoded = decodeURIComponent(value);
@@ -284,6 +332,214 @@ Deno.serve(async (req) => {
       const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
       return isAdmin ? user : null;
     };
+
+    // Shadow cleans are run by whoever supervises them: an admin or a head
+    // cleaner. Everything else in this function stays admin only.
+    const requireLead = async () => {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return null;
+      const client = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return null;
+      const [{ data: isAdmin }, { data: isHead }] = await Promise.all([
+        admin.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+        admin.rpc("has_role", { _user_id: user.id, _role: "head_cleaner" }),
+      ]);
+      return isAdmin || isHead ? user : null;
+    };
+
+    if (["shadow_add", "shadow_rate", "shadow_cancel"].includes(action)) {
+      const caller = await requireLead();
+      if (!caller) return json({ error: "Only an admin or head cleaner can manage shadow cleans" }, 403);
+      const now = new Date().toISOString();
+
+      // Rebuild a trainee's Shadow Clean 1 and 2 from their rated sessions, then
+      // re-derive the pre-start checklist, so the training record, the tiles and
+      // the deployment gate always move together.
+      //   - A Fail never fills a slot; it stays in the history only.
+      //   - Shadow Clean 1 is the earliest Pass or Needs more work.
+      //   - Shadow Clean 2 is the latest one after that, so a redo replaces a
+      //     weaker attempt.
+      const recompute = async (traineeId: string) => {
+        const { data: record, error: recordError } = await admin
+          .from("staff_onboarding")
+          .select("id, training_record, prestart_requirements, submitted_at, deployment_status")
+          .eq("user_id", traineeId)
+          .maybeSingle();
+        if (recordError) throw recordError;
+        if (!record) return null;
+
+        const { data: rated, error: ratedError } = await admin
+          .from("staff_shadow_cleans")
+          .select("id, scheduled_date, rating, outcome, notes, supervisor_name")
+          .eq("trainee_id", traineeId)
+          .eq("status", "rated")
+          .order("scheduled_date", { ascending: true })
+          .order("rated_at", { ascending: true });
+        if (ratedError) throw ratedError;
+
+        const filling = (rated ?? []).filter((r: JsonRecord) => r.outcome === "pass" || r.outcome === "needs_more_work");
+        const toSlot = (r: JsonRecord) => ({
+          date: r.scheduled_date,
+          supervisor: r.supervisor_name || "Brightly",
+          debrief_completed: true,
+          notes: r.notes ?? "",
+          rating_10: r.rating,
+          outcome: r.outcome,
+          qc_score: Number(r.rating) * 10,
+          source: "shadow_session",
+          session_id: r.id,
+        });
+
+        const training: JsonRecord = { ...(record.training_record ?? {}) };
+        const slots: Array<[string, JsonRecord | undefined]> = [
+          ["shadow_clean_1", filling[0]],
+          ["shadow_clean_2", filling.length > 1 ? filling[filling.length - 1] : undefined],
+        ];
+        for (const [key, session] of slots) {
+          if (session) training[key] = toSlot(session);
+          // Clear a slot this system filled whose session was since cancelled or
+          // re-rated a Fail. A slot typed in by hand is left alone.
+          else if ((training[key] as JsonRecord | undefined)?.source === "shadow_session") delete training[key];
+        }
+        training.updated_at = now;
+        training.updated_by = caller.id;
+
+        const requirements = deriveRequirements((record.prestart_requirements ?? {}) as JsonRecord, training, caller.id, now);
+        const { error: saveError } = await admin
+          .from("staff_onboarding")
+          .update({
+            training_record: training,
+            prestart_requirements: requirements,
+            // Never pull an approved cleaner back into training.
+            deployment_status: record.deployment_status === "approved"
+              ? "approved"
+              : record.submitted_at ? "training" : record.deployment_status,
+            updated_at: now,
+          })
+          .eq("id", record.id);
+        if (saveError) throw saveError;
+        return { training_record: training, prestart_requirements: requirements };
+      };
+
+      if (action === "shadow_add") {
+        const traineeId = String(body.trainee_id ?? "");
+        const jobId = String(body.job_id ?? "");
+        if (!UUID_PATTERN.test(traineeId) || !UUID_PATTERN.test(jobId)) {
+          return json({ error: "Choose a cleaner and a job" }, 400);
+        }
+        const { data: job, error: jobError } = await admin
+          .from("jobs")
+          .select("id, scheduled_date, scheduled_time, status, cleaner_1_id, cleaner_2_id, properties(property_name, address, suburb)")
+          .eq("id", jobId)
+          .maybeSingle();
+        if (jobError) throw jobError;
+        if (!job) return json({ error: "That job no longer exists" }, 404);
+        if (["cancelled", "completed"].includes(String(job.status))) {
+          return json({ error: `That job is already ${job.status}. Pick an upcoming one.` }, 409);
+        }
+        if (!job.cleaner_1_id) {
+          return json({ error: "Assign Cleaner 1 to this job first. They supervise the shadow clean." }, 409);
+        }
+        if (job.cleaner_1_id === traineeId || job.cleaner_2_id === traineeId) {
+          return json({ error: "That cleaner is already working this job, so it can't be their shadow clean." }, 409);
+        }
+        const { data: onboarding } = await admin
+          .from("staff_onboarding").select("id, director_approved").eq("user_id", traineeId).maybeSingle();
+        if (!onboarding) return json({ error: "That cleaner has no onboarding record. Invite them from Staff first." }, 409);
+        if (onboarding.director_approved) return json({ error: "That cleaner is already approved for deployment." }, 409);
+
+        const { data: existing } = await admin
+          .from("staff_shadow_cleans").select("id")
+          .eq("job_id", jobId).eq("trainee_id", traineeId).neq("status", "cancelled")
+          .maybeSingle();
+        if (existing) return json({ error: "That cleaner is already shadowing this job." }, 409);
+
+        const { data: people } = await admin
+          .from("profiles").select("id, full_name, phone").in("id", [traineeId, job.cleaner_1_id]);
+        const trainee = ((people ?? []).find((p: JsonRecord) => p.id === traineeId) ?? {}) as JsonRecord;
+        const supervisor = ((people ?? []).find((p: JsonRecord) => p.id === job.cleaner_1_id) ?? {}) as JsonRecord;
+        const property = ((job as JsonRecord).properties ?? {}) as JsonRecord;
+        const address = [property.address, property.suburb].filter(Boolean).join(", ");
+
+        const { data: created, error: insertError } = await admin
+          .from("staff_shadow_cleans")
+          .insert({
+            trainee_id: traineeId,
+            trainee_name: trainee.full_name ?? null,
+            supervisor_id: job.cleaner_1_id,
+            supervisor_name: supervisor.full_name ?? null,
+            job_id: jobId,
+            scheduled_date: job.scheduled_date,
+            scheduled_time: job.scheduled_time ? String(job.scheduled_time) : null,
+            property_name: property.property_name ?? null,
+            property_address: address || null,
+            status: "scheduled",
+            created_by: caller.id,
+          })
+          .select("id")
+          .single();
+        if (insertError) throw insertError;
+
+        return json({
+          success: true,
+          session_id: created.id,
+          trainee: { id: traineeId, name: trainee.full_name ?? "", phone: trainee.phone ?? null },
+          supervisor: { id: job.cleaner_1_id, name: supervisor.full_name ?? "" },
+          job: {
+            scheduled_date: job.scheduled_date,
+            scheduled_time: job.scheduled_time,
+            property_name: property.property_name ?? null,
+            property_address: address || null,
+          },
+        });
+      }
+
+      const sessionId = String(body.session_id ?? "");
+      if (!UUID_PATTERN.test(sessionId)) return json({ error: "Shadow clean not found" }, 400);
+      const { data: session, error: sessionError } = await admin
+        .from("staff_shadow_cleans").select("id, trainee_id, status").eq("id", sessionId).maybeSingle();
+      if (sessionError) throw sessionError;
+      if (!session) return json({ error: "Shadow clean not found" }, 404);
+
+      if (action === "shadow_rate") {
+        const rating = Number(body.rating);
+        const outcome = String(body.outcome ?? "");
+        if (!Number.isInteger(rating) || rating < 0 || rating > 10) {
+          return json({ error: "The score must be a whole number from 0 to 10" }, 400);
+        }
+        if (!["pass", "needs_more_work", "fail"].includes(outcome)) {
+          return json({ error: "Choose Pass, Needs more work or Fail" }, 400);
+        }
+        if (session.status === "cancelled") return json({ error: "That shadow clean was cancelled, so it can't be rated" }, 409);
+        const { error: rateError } = await admin
+          .from("staff_shadow_cleans")
+          .update({
+            status: "rated",
+            rating,
+            outcome,
+            notes: String(body.notes ?? "").trim().slice(0, 2000) || null,
+            rated_at: now,
+            rated_by: caller.id,
+            updated_at: now,
+          })
+          .eq("id", sessionId);
+        if (rateError) throw rateError;
+        return json({ success: true, ...(await recompute(session.trainee_id)) });
+      }
+
+      if (action === "shadow_cancel") {
+        if (session.status === "rated") return json({ error: "That shadow clean is already rated. Edit the rating instead." }, 409);
+        const { error: cancelError } = await admin
+          .from("staff_shadow_cleans")
+          .update({ status: "cancelled", updated_at: now })
+          .eq("id", sessionId);
+        if (cancelError) throw cancelError;
+        return json({ success: true, ...(await recompute(session.trainee_id)) });
+      }
+    }
 
     if (["admin_update", "document_url", "approve_deployment"].includes(action)) {
       const caller = await requireAdmin();
@@ -331,58 +587,25 @@ Deno.serve(async (req) => {
           updated_at: now,
           updated_by: caller.id,
         };
-        const score = Number(training?.shadow_clean_2?.qc_score ?? 0);
-        const derivedRequirements: Record<string, boolean> = {
-          welcome_induction_completed: Boolean(training.welcome_induction_date && training.induction_facilitator),
-          verbal_knowledge_check_completed: Boolean(training.verbal_check_date),
-          brightly_app_tested: Boolean(training.brightly_test_date),
-          kit_issued: Boolean(training.kit_issued_date),
-          shadow_clean_1_completed: Boolean(
-            training.shadow_clean_1?.date
-            && training.shadow_clean_1?.supervisor
-            && training.shadow_clean_1?.debrief_completed
-          ),
-          shadow_clean_2_completed: Boolean(
-            training.shadow_clean_2?.date
-            && training.shadow_clean_2?.supervisor
-            && training.shadow_clean_2?.debrief_completed
-          ),
-        };
-        for (const [key, completed] of Object.entries(derivedRequirements)) {
-          nextRequirements[key] = {
-            ...(nextRequirements[key] ?? {}),
-            completed,
-            source: "training_record",
-            updated_at: now,
-            updated_by: caller.id,
-          };
-        }
-        nextRequirements.shadow_clean_2_qc_passed = {
-          ...(nextRequirements.shadow_clean_2_qc_passed ?? {}),
-          completed: score >= 80,
-          score,
-          updated_at: now,
-          updated_by: caller.id,
-        };
+        const finalRequirements = deriveRequirements(nextRequirements, training, caller.id, now);
         const { error: updateError } = await admin
           .from("staff_onboarding")
           .update({
-            prestart_requirements: nextRequirements,
+            prestart_requirements: finalRequirements,
             training_record: training,
             deployment_status: record.submitted_at ? "training" : record.deployment_status,
             updated_at: now,
           })
           .eq("id", record.id);
         if (updateError) throw updateError;
-        return json({ success: true, prestart_requirements: nextRequirements, training_record: training });
+        return json({ success: true, prestart_requirements: finalRequirements, training_record: training });
       }
 
       const requirements = (record.prestart_requirements ?? {}) as JsonRecord;
       const missing = PRESTART_KEYS.filter((key) => !complete(requirements[key]));
-      const qcScore = Number((record.training_record ?? {})?.shadow_clean_2?.qc_score ?? 0);
       if (!record.submitted_at) return json({ error: "The cleaner has not submitted onboarding" }, 409);
       if (missing.length > 0) return json({ error: "Pre-start requirements are incomplete", missing }, 409);
-      if (qcScore < 80) return json({ error: "Shadow Clean 2 QC score must be at least 80%" }, 409);
+      if (!shadowQcPassed((record.training_record ?? {}) as JsonRecord)) return json({ error: "Shadow Clean 2 needs a Pass and a rating of 8/10 or more" }, 409);
       const now = new Date().toISOString();
       const { error: approveError } = await admin
         .from("staff_onboarding")

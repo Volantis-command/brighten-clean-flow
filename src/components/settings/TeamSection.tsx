@@ -115,6 +115,7 @@ export default function TeamSection() {
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
   const [createRole, setCreateRole] = useState<AppRole>('cleaner');
+  const [createRate, setCreateRate] = useState('');
   const [createPassword, setCreatePassword] = useState('');
 
   // Edit form
@@ -132,14 +133,14 @@ export default function TeamSection() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword }),
+      invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword, hourly_rate: createRole !== 'client' && createRate ? Number(createRate) : null }),
     onSuccess: () => {
       toast.success(createRole === 'client' ? 'Client account created!' : 'Staff account created!');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
       queryClient.invalidateQueries({ queryKey: ['client-list'] });
       queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
       setCreateOpen(false);
-      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreateRole('cleaner');
+      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreateRate(''); setCreatePassword(''); setCreateRole('cleaner');
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -295,12 +296,19 @@ export default function TeamSection() {
                 </SelectContent>
               </Select>
             </div>
+            {createRole !== 'client' && (
+              <div>
+                <Label>Hourly rate ($){['cleaner', 'head_cleaner'].includes(createRole) ? ' *' : ''}</Label>
+                <Input type="number" inputMode="decimal" min="0" step="0.50" value={createRate} onChange={(e) => setCreateRate(e.target.value)} placeholder="e.g. 35" />
+                <p className="mt-1 text-xs text-muted-foreground">What Timesheets and Payroll pay them. You can change it later on their Pay tab.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || (['cleaner', 'head_cleaner'].includes(createRole) && !(Number(createRate) > 0)) || createMutation.isPending}
               className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}

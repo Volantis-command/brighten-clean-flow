@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, email, role, full_name, phone, user_id, password } = await req.json();
+    const { action, email, role, full_name, phone, user_id, password, hourly_rate } = await req.json();
 
     // Helper to ensure onboarding record exists for a user
     async function ensureOnboarding(userId: string, name?: string, userEmail?: string) {
@@ -235,10 +235,17 @@ Deno.serve(async (req) => {
       // created from an "Add Client" button landed in the LEADS tab and had to
       // be moved across by hand. Somebody an admin typed in deliberately is a
       // client, so say so at creation.
-      const updates: Record<string, string> = {};
+      const updates: Record<string, string | number> = {};
       if (phone) updates.phone = phone;
       if (full_name) updates.full_name = full_name;
       if (role === "client") updates.lead_stage = "active";
+      // Set the pay rate at creation for staff. profiles.hourly_rate is the one
+      // figure Timesheets and Payroll pay from; leaving it blank is how a new
+      // cleaner ended up showing a rate nobody chose.
+      const rate = Number(hourly_rate);
+      if (role !== "client" && Number.isFinite(rate) && rate > 0 && rate <= 500) {
+        updates.hourly_rate = Math.round(rate * 100) / 100;
+      }
       if (Object.keys(updates).length > 0) {
         await adminClient.from("profiles").update(updates).eq("id", newUserId);
       }

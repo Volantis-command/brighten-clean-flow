@@ -370,9 +370,9 @@ export const PRESTART_SOURCE_HINT: Record<string, string> = {
   kit_issued: 'Fill in the Kit issued date below.',
   welcome_induction_completed: 'Fill in the Welcome induction date and the Induction facilitator below.',
   verbal_knowledge_check_completed: 'Fill in the Verbal knowledge check date below.',
-  shadow_clean_1_completed: 'Shadow Clean 1 needs a date, a supervisor, and Debrief completed ticked.',
-  shadow_clean_2_completed: 'Shadow Clean 2 needs a date, a supervisor, and Debrief completed ticked.',
-  shadow_clean_2_qc_passed: 'Enter a Shadow Clean 2 QC score of 80 or more.',
+  shadow_clean_1_completed: 'Book and rate a shadow clean under Shadow cleans, or fill in Shadow Clean 1 below.',
+  shadow_clean_2_completed: 'Needs a second rated shadow clean (Pass or Needs more work).',
+  shadow_clean_2_qc_passed: 'Shadow Clean 2 needs a Pass and a rating of 8/10 or more.',
 };
 
 const PRESTART_LABELS: Record<string, string> = Object.fromEntries(

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, addDays, startOfDay } from 'date-fns';
-import { MapPin, Clock, ChevronRight, Loader2, Check, X } from 'lucide-react';
+import { MapPin, Clock, ChevronRight, Loader2, Check, X, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -140,6 +140,25 @@ export default function MyJobsPage() {
           .filter(Boolean)
           .map((id: string) => ({ id, name: profileMap[id] || '?' })),
       }));
+    },
+  });
+
+  // Shadow cleans this person is booked on as a trainee. The job's details are
+  // stored on the booking, so a trainee sees where and when without needing
+  // permission to read the job itself.
+  const { data: myShadowCleans = [] } = useQuery({
+    queryKey: ['shadow-cleans', 'mine', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('staff_shadow_cleans' as any)
+        .select('id, scheduled_date, scheduled_time, property_name, property_address, supervisor_name')
+        .eq('trainee_id', user!.id)
+        .eq('status', 'scheduled')
+        .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
+        .order('scheduled_date', { ascending: true });
+      if (error) throw error;
+      return (data as any[]) || [];
     },
   });
 
@@ -289,6 +308,31 @@ export default function MyJobsPage() {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {myShadowCleans.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" /> Your shadow cleans
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Training cleans alongside an experienced cleaner.</p>
+          </div>
+          {myShadowCleans.map((s: any) => (
+            <div key={s.id} className="bg-card rounded-2xl border border-primary/30 p-4 space-y-1">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                {format(parseISO(s.scheduled_date), 'EEE, d MMM')}{s.scheduled_time ? ` · ${String(s.scheduled_time).slice(0, 5)}` : ''}
+              </p>
+              <p className="font-bold text-foreground text-base">{s.property_name || 'Clean'}</p>
+              {s.property_address && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" /> {s.property_address}
+                </p>
+              )}
+              <p className="text-xs font-semibold text-primary">With {s.supervisor_name || 'your supervisor'}</p>
+            </div>
+          ))}
         </div>
       )}
 

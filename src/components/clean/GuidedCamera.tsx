@@ -27,15 +27,13 @@ interface Props {
   onBack?: () => void;
   saving?: boolean;
   /**
-   * Airbnb only: the admin's reference photos for this room. Shown over the
-   * viewfinder so the cleaner sets the room up to match before the final shot.
-   * Non-blocking by design: the shutter always works, the confirm is recorded.
+   * Airbnb only: the admin's reference photos for this room. A small thumbnail
+   * over the viewfinder the cleaner can open to see how the room should look.
+   * Purely a glance: nothing to tap before shooting, nothing recorded.
    */
   reference?: {
     roomTitle: string;
     photos: { id: string; url: string; caption: string | null }[];
-    confirmed: boolean;
-    onConfirm: () => void;
     onViewAll?: () => void;
   };
 }
@@ -49,8 +47,7 @@ export default function GuidedCamera({
   const [denied, setDenied] = useState(false);
   const [pending, setPending] = useState<{ blob: Blob; url: string } | null>(null);
   const [working, setWorking] = useState(false);
-  // Reopen the reference after it has been confirmed.
-  const [peek, setPeek] = useState(false);
+  const [refOpen, setRefOpen] = useState(false);
 
   const start = useCallback(async () => {
     setDenied(false);
@@ -157,10 +154,17 @@ export default function GuidedCamera({
         )}
 
         {reference && reference.photos.length > 0 && !pending && (
-          !reference.confirmed || peek ? (
-            <div className="absolute inset-x-3 top-3 z-10 rounded-2xl bg-black/80 p-3 backdrop-blur">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#45C2C8]">Reference</p>
-              <p className="mt-0.5 text-sm font-bold text-white">Set {reference.roomTitle} up exactly like this</p>
+          refOpen ? (
+            <div className="absolute inset-x-3 top-3 z-10 rounded-2xl bg-black/85 p-3 backdrop-blur">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#45C2C8]">How it should look</p>
+                  <p className="mt-0.5 text-sm font-bold text-white">{reference.roomTitle}</p>
+                </div>
+                <button onClick={() => setRefOpen(false)} className="shrink-0 rounded-full p-1 text-white/70" aria-label="Close reference">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
               <div className="mt-2 flex gap-2 overflow-x-auto">
                 {reference.photos.map(p => (
                   <img key={p.id} src={p.url} alt={p.caption || reference.roomTitle}
@@ -170,23 +174,19 @@ export default function GuidedCamera({
               {reference.photos.find(p => p.caption)?.caption && (
                 <p className="mt-2 text-xs text-white/80">{reference.photos.find(p => p.caption)?.caption}</p>
               )}
-              <div className="mt-3 flex gap-2">
-                {reference.onViewAll && (
-                  <button onClick={reference.onViewAll}
-                    className="h-11 flex-1 rounded-xl border border-white/25 text-sm font-bold text-white">
-                    See bigger
-                  </button>
-                )}
-                <button onClick={() => { reference.onConfirm(); setPeek(false); }}
-                  className="flex h-11 flex-[1.4] items-center justify-center gap-1.5 rounded-xl bg-[#45C2C8] text-sm font-extrabold text-black">
-                  <Check className="w-4 h-4" /> {reference.confirmed ? 'Got it' : 'Room matches'}
+              {reference.onViewAll && (
+                <button onClick={reference.onViewAll}
+                  className="mt-3 h-10 w-full rounded-xl border border-white/25 text-sm font-bold text-white">
+                  See bigger
                 </button>
-              </div>
+              )}
             </div>
           ) : (
-            <button onClick={() => setPeek(true)}
-              className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-[#45C2C8]">
-              <Check className="w-3.5 h-3.5" /> Matches reference · view
+            <button onClick={() => setRefOpen(true)}
+              className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-xl bg-black/70 p-1 pr-3"
+              aria-label="Show how this room should look">
+              <img src={reference.photos[0].url} alt="" className="h-11 w-11 rounded-lg object-cover" />
+              <span className="text-xs font-bold text-[#45C2C8]">How it should look</span>
             </button>
           )
         )}

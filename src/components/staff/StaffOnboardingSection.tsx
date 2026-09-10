@@ -17,14 +17,33 @@ import { isRequirementComplete, PRESTART_REQUIREMENTS, PRESTART_SOURCE_HINT } fr
 interface Props { staffId: string; staffName: string }
 type TrainingRecord = Record<string, any>;
 
+const OUTCOME_TEXT: Record<string, string> = { pass: 'Pass', needs_more_work: 'Needs more work', fail: 'Fail' };
+
 function TrainingClean({ number, value, onChange }: { number: 1 | 2; value: Record<string, any>; onChange: (next: Record<string, any>) => void }) {
-  return <div className="rounded-2xl border p-4"><h4 className="font-bold">Shadow Clean {number}</h4><div className="mt-4 grid gap-4 sm:grid-cols-2">
-    <div><Label className="text-xs">Date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={value.date || ''} onChange={(e) => onChange({ ...value, date: e.target.value })} /></div>
-    <div><Label className="text-xs">Supervisor</Label><Input className="mt-1 h-10 rounded-xl" value={value.supervisor || ''} onChange={(e) => onChange({ ...value, supervisor: e.target.value })} /></div>
-    {number === 2 && <div><Label className="text-xs">QC score (%)</Label><Input type="number" min="0" max="100" className="mt-1 h-10 rounded-xl" value={value.qc_score ?? ''} onChange={(e) => onChange({ ...value, qc_score: e.target.value === '' ? '' : Number(e.target.value) })} /></div>}
-    <div className={number === 1 ? 'sm:col-span-2' : ''}><Label className="text-xs">Debrief completed</Label><label className="mt-2 flex min-h-10 items-center gap-2"><Checkbox checked={Boolean(value.debrief_completed)} onCheckedChange={(checked) => onChange({ ...value, debrief_completed: checked === true })} /><span className="text-sm">Yes</span></label></div>
-    <div className="sm:col-span-2"><Label className="text-xs">Coach notes / improvement actions</Label><Textarea className="mt-1 min-h-20 rounded-xl" value={value.notes || ''} onChange={(e) => onChange({ ...value, notes: e.target.value })} /></div>
-  </div></div>;
+  // Filled by a rated shadow clean: shown, not edited here, so it can't drift
+  // from the rating. Re-rate the shadow clean to change it.
+  const fromSession = value?.source === 'shadow_session';
+  const rating = value.rating_10 ?? (value.qc_score !== undefined && value.qc_score !== '' && value.qc_score !== null ? Math.round(Number(value.qc_score) / 10) : '');
+  return <div className="rounded-2xl border p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h4 className="font-bold">Shadow Clean {number}</h4>
+      {fromSession && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">From a rated shadow clean · {value.rating_10}/10 · {OUTCOME_TEXT[value.outcome] ?? value.outcome}</span>}
+    </div>
+    {fromSession && <p className="mt-2 text-xs text-muted-foreground">Filled in automatically. To change it, edit the rating under Shadow cleans above.</p>}
+    <fieldset disabled={fromSession} className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div><Label className="text-xs">Date</Label><Input type="date" className="mt-1 h-10 rounded-xl" value={value.date || ''} onChange={(e) => onChange({ ...value, date: e.target.value })} /></div>
+      <div><Label className="text-xs">Supervisor</Label><Input className="mt-1 h-10 rounded-xl" value={value.supervisor || ''} onChange={(e) => onChange({ ...value, supervisor: e.target.value })} /></div>
+      <div><Label className="text-xs">Rating (out of 10)</Label><Input type="number" min="0" max="10" step="1" className="mt-1 h-10 rounded-xl" value={rating} onChange={(e) => {
+        const r = e.target.value === '' ? '' : Math.max(0, Math.min(10, Math.round(Number(e.target.value))));
+        onChange({ ...value, rating_10: r, qc_score: r === '' ? '' : Number(r) * 10 });
+      }} /></div>
+      <div><Label className="text-xs">Outcome</Label><select className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm" value={value.outcome || ''} onChange={(e) => onChange({ ...value, outcome: e.target.value || undefined })}>
+        <option value="">Select…</option><option value="pass">Pass</option><option value="needs_more_work">Needs more work</option><option value="fail">Fail</option>
+      </select></div>
+      <div className="sm:col-span-2"><Label className="text-xs">Debrief completed</Label><label className="mt-2 flex min-h-10 items-center gap-2"><Checkbox checked={Boolean(value.debrief_completed)} onCheckedChange={(checked) => onChange({ ...value, debrief_completed: checked === true })} /><span className="text-sm">Yes</span></label></div>
+      <div className="sm:col-span-2"><Label className="text-xs">Coach notes / improvement actions</Label><Textarea className="mt-1 min-h-20 rounded-xl" value={value.notes || ''} onChange={(e) => onChange({ ...value, notes: e.target.value })} /></div>
+    </fieldset>
+  </div>;
 }
 
 export function StaffOnboardingSection({ staffId, staffName }: Props) {

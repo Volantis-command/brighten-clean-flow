@@ -30,9 +30,9 @@ import { enqueuePhoto, pendingPhotos, countPending, removePhoto, bumpAttempts, c
 import SignaturePad from '@/components/clean-workflow/SignaturePad';
 import { buildChecklist, type ChecklistArea, type ChecklistItem } from '@/lib/cleanChecklist';
 import { sendJobSms } from '@/lib/sendJobSms';
-import { useAuth } from '@/contexts/AuthContext';
 import RoomReferenceSheet from '@/components/clean/RoomReferenceSheet';
-import { fetchRooms, isAirbnbProperty, recordReferenceCheck } from '@/lib/propertyRooms';
+import { fetchRooms, isAirbnbProperty } from '@/lib/propertyRooms';
+import { needsPhotoReport } from '@/lib/cleanType';
 
 type Answer = 'yes' | 'no' | 'na';
 interface CheckAnswer { answer: Answer; note?: string; at: string }
@@ -81,10 +81,19 @@ export default function GuidedCompletionPage() {
     queryFn: async () => {
       const { data: job } = await supabase
         .from('jobs')
-        .select('id, property_id, scheduled_date, status, cleaner_1_id, cleaner_2_id, clock_on, properties(*)')
+        .select('id, property_id, scheduled_date, status, cleaner_1_id, cleaner_2_id, clock_on, notes, linked_quote_id, properties(*)')
         .eq('id', jobId!)
         .single();
       const property: any = (job as any)?.properties ?? null;
+      let quote: any = null;
+      if ((job as any)?.linked_quote_id) {
+        const { data: q } = await supabase
+          .from('quotes' as any)
+          .select('clean_type, service_type')
+          .eq('id', (job as any).linked_quote_id)
+          .maybeSingle();
+        quote = q ?? null;
+      }
       let overrides: any[] = [];
       if (property?.id) {
         const { data: ov } = await supabase
@@ -93,7 +102,7 @@ export default function GuidedCompletionPage() {
           .eq('property_id', property.id);
         overrides = (ov as any[]) || [];
       }
-      return { job, property, overrides };
+      return { job, property, overrides, quote };
     },
     enabled: !!jobId,
   });
@@ -103,6 +112,15 @@ export default function GuidedCompletionPage() {
     const type = (data.property as any)?.clean_standard || (data.job as any)?.clean_type || 'Airbnb Turnover';
     return buildChecklist(data.property, type, data.overrides as any);
   }, [data]);
+
+  // Photo reporting is for Airbnb turnovers only. The clean workflow never sends
+  // a residential or deep clean here; this stops a direct link to the guided
+  // form from putting one through it.
+  useEffect(() => {
+    if (data?.property && !needsPhotoReport(data.property, data.job, (data as any).quote)) {
+      navigate(`/clean/${jobId}`, { replace: true });
+    }
+  }, [data, jobId, navigate]);
 
   /* ── Restore a draft (dropped signal, app closed, phone locked) ── */
   useEffect(() => {
@@ -215,7 +233,6 @@ export default function GuidedCompletionPage() {
   /* ── Room reference photos (Airbnb only) ──
      The admin's "how it should look" photos, keyed by the same area id as this
      checklist, so each room's reference lands on that room's camera step. */
-  const { user } = useAuth();
   const airbnb = isAirbnbProperty(data?.property);
   const propertyId = (data?.property as any)?.id as string | undefined;
   const { data: refRooms = [] } = useQuery({
@@ -224,16 +241,7 @@ export default function GuidedCompletionPage() {
     queryFn: () => fetchRooms(propertyId!),
   });
   const refByArea = useMemo(() => new Map(refRooms.map(r => [r.area_id, r])), [refRooms]);
-  const [refConfirmed, setRefConfirmed] = useState<Set<string>>(new Set());
   const [referenceOpen, setReferenceOpen] = useState(false);
-
-  const confirmReference = useCallback((areaId: string) => {
-    setRefConfirmed(prev => new Set(prev).add(areaId));
-    const room = refByArea.get(areaId);
-    if (!jobId || !user?.id || !room) return;
-    // Recorded, never blocking: a failed write must not stop someone finishing a clean.
-    recordReferenceCheck(jobId, areaId, user.id, room.photos.map(p => p.id)).catch(() => {});
-  }, [jobId, user?.id, refByArea]);
 
   /* ── Progress across every required item in the whole clean ── */
   const progress = useMemo(() => {
@@ -375,7 +383,6 @@ export default function GuidedCompletionPage() {
       // these the clean finishes but nobody is told and it never gets invoiced,
       // which is a far worse failure than a missing photo. All non-blocking:
       // a hiccup in an SMS must not make the cleaner think the clean failed.
-      try { await sendJobSms({ job_id: jobId }); } catch { /* non-blocking */ }
       try {
         await supabase.functions.invoke('job-completed-sms', { body: { job_id: jobId } });
       } catch { /* non-blocking */ }
@@ -440,8 +447,6 @@ export default function GuidedCompletionPage() {
           reference={areaRef && areaRef.photos.length > 0 ? {
             roomTitle: area.title,
             photos: areaRef.photos.map(p => ({ id: p.id, url: p.public_url, caption: p.caption })),
-            confirmed: refConfirmed.has(area.id),
-            onConfirm: () => confirmReference(area.id),
             onViewAll: () => setReferenceOpen(true),
           } : undefined}
         />

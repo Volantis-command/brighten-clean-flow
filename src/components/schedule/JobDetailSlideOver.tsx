@@ -15,6 +15,7 @@ import { useCleanersList } from '@/hooks/useCleanersList';
 import { syncJobAssignment } from '@/lib/jobAssignment';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
+import JobShadowSection from '@/components/schedule/JobShadowSection';
 
 interface JobDetailSlideOverProps {
   job: ScheduleJob | null;
@@ -47,6 +48,10 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [togglingInvoiceSent, setTogglingInvoiceSent] = useState(false);
   const [creatingXeroInvoice, setCreatingXeroInvoice] = useState(false);
   const { data: cleanersList = [] } = useCleanersList();
+  // Must sit above the early return below. A hook after it runs only when a job
+  // is set, so opening the panel changed the hook count between renders, which
+  // is React error #310 (the 9 Aug black-screen crash).
+  const [approving, setApproving] = useState<null | 'approve' | 'request_change'>(null);
 
   if (!job) return null;
 
@@ -69,7 +74,6 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   };
 
   // ── Approving a client's booking request ──
-  const [approving, setApproving] = useState<null | 'approve' | 'request_change'>(null);
   const needsApproval = (job as any).approval_status === 'pending';
 
   const decide = async (action: 'approve' | 'request_change') => {
@@ -548,6 +552,16 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
               <p className="text-[10px] text-muted-foreground">Changing cleaners sends a fresh acceptance offer via SMS.</p>
             </div>
           </div>
+
+          <JobShadowSection
+            job={{
+              id: job.id,
+              scheduled_date: job.scheduled_date,
+              status: job.status,
+              cleaner_1_id: job.cleaner_1_id ?? null,
+              cleaner_2_id: job.cleaner_2_id ?? null,
+            }}
+          />
 
           {/* Notes */}
           {job.notes && (

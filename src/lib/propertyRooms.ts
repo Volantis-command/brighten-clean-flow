@@ -2,7 +2,7 @@
 // Airbnb room reference library — shared client helpers.
 //
 // Admin or head cleaner photographs how every room should be left. Cleaners see
-// it on site and confirm against it at the end of the clean.
+// it on site, and as a thumbnail on each room of the end-of-clean flow.
 //
 // Rooms are keyed by area_id, which matches the area ids built by
 // buildChecklist() in cleanChecklist.ts. That shared key is the whole trick:
@@ -212,24 +212,4 @@ export async function deleteParkedRoom(room: RoomWithPhotos): Promise<void> {
   if (room.photos.length) throw new Error('Move or delete this room\'s photos first.');
   const { error } = await supabase.from('property_rooms' as any).delete().eq('id', room.id);
   if (error) throw new Error(`Could not delete the room: ${error.message}`);
-}
-
-/** Record that the cleaner checked this room against its reference. */
-export async function recordReferenceCheck(
-  jobId: string,
-  areaId: string,
-  userId: string,
-  referencePhotoIds: string[],
-): Promise<void> {
-  const { error } = await supabase.from('job_room_reference_checks' as any).upsert(
-    {
-      job_id: jobId,
-      area_id: areaId,
-      user_id: userId,
-      reference_photo_ids: referencePhotoIds,
-      confirmed_at: new Date().toISOString(),
-    } as any,
-    { onConflict: 'job_id,area_id' },
-  );
-  if (error) throw new Error(error.message);
 }

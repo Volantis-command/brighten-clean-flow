@@ -30,6 +30,8 @@ import { ActiveClockBanner } from '@/components/ActiveClockBanner';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
 import GuidedCompletionPage from '@/pages/GuidedCompletionPage';
 import RoomReferenceSheet from '@/components/clean/RoomReferenceSheet';
+import ResidentialFinish from '@/components/clean-workflow/ResidentialFinish';
+import { needsPhotoReport } from '@/lib/cleanType';
 import { isAirbnbProperty } from '@/lib/propertyRooms';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -65,6 +67,7 @@ export default function CleanWorkflowPage() {
   // we transition to the photo wizard instead of immediately completing.
   const [showPhotoWizard, setShowPhotoWizard] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState(false);
+  const [showResidentialFinish, setShowResidentialFinish] = useState(false);
   // Access info panel — start collapsed (cleaner can tap to reveal at the door)
   const [accessOpen, setAccessOpen] = useState(false);
 
@@ -112,6 +115,20 @@ export default function CleanWorkflowPage() {
 
   // Current cleaner's profile for the ActiveJobView
   const currentProfile = profiles.find(p => p.id === user?.id) || { id: user?.id || '', full_name: 'Cleaner' };
+
+  // Deep cleans are recorded on the linked quote as well as in the job notes.
+  const { data: linkedQuote = null } = useQuery({
+    queryKey: ['clean-workflow-quote', (job as any)?.linked_quote_id],
+    enabled: !!(job as any)?.linked_quote_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('quotes' as any)
+        .select('clean_type, service_type')
+        .eq('id', (job as any).linked_quote_id)
+        .maybeSingle();
+      return (data as any) ?? null;
+    },
+  });
 
   const refreshJob = useCallback(async () => {
     await refetch();
@@ -212,6 +229,23 @@ export default function CleanWorkflowPage() {
 
   const property = job.properties as any;
   const view = resolveView(job);
+
+  // Residential and deep cleans finish here, not in the photo report. Checked
+  // BEFORE the done state: the job is already marked complete by this point,
+  // so a background refetch would otherwise swap this screen for the done view
+  // mid-answer.
+  if (showResidentialFinish) {
+    return (
+      <ResidentialFinish
+        job={job}
+        property={property}
+        onDone={async () => {
+          setShowResidentialFinish(false);
+          await refreshJob();
+        }}
+      />
+    );
+  }
 
   // ── Done state ──
   // Job is completed. If the cleaner never clocked off (time entry still open),
@@ -426,8 +460,10 @@ export default function CleanWorkflowPage() {
           staff={currentProfile}
           property={property}
           onComplete={() => {
-            // Don't immediately complete — transition to photo wizard
-            setShowPhotoWizard(true);
+            // Airbnb turnovers finish with the guided photo report. Residential
+            // and deep cleans take no photos: one question, then clock off.
+            if (needsPhotoReport(property, job, linkedQuote)) setShowPhotoWizard(true);
+            else setShowResidentialFinish(true);
           }}
         />
       </div>

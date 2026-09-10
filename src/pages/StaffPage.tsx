@@ -11,6 +11,7 @@ import { StaffPaySection } from '@/components/staff/StaffPaySection';
 import { StaffPayRatesSection } from '@/components/staff/StaffPayRatesSection';
 import { StaffPerformanceSection, useStaffPerformanceBadges } from '@/components/staff/StaffPerformanceSection';
 import { StaffOnboardingSection, useStaffOnboardingStatuses, useCleanerActiveStatus } from '@/components/staff/StaffOnboardingSection';
+import ShadowCleansPanel from '@/components/staff/ShadowCleansPanel';
 import CleanerScorecard from '@/components/staff/CleanerScorecard';
 import StaffOnboardingDataView from '@/components/staff/StaffOnboardingDataView';
 import { Button } from '@/components/ui/button';
@@ -103,6 +104,7 @@ export default function StaffPage() {
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
   const [createRole, setCreateRole] = useState<AppRole>('cleaner');
+  const [createRate, setCreateRate] = useState('');
   const [createPassword, setCreatePassword] = useState('');
 
   // Invite form
@@ -110,6 +112,7 @@ export default function StaffPage() {
   const [invName, setInvName] = useState('');
   const [invPhone, setInvPhone] = useState('');
   const [invRole, setInvRole] = useState<AppRole>('cleaner');
+  const [invRate, setInvRate] = useState('');
 
   // Edit form
   const [editName, setEditName] = useState('');
@@ -130,13 +133,13 @@ export default function StaffPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword }),
+      invokeFn({ action: 'create_user', email: createEmail, role: createRole, full_name: createName, phone: createPhone, password: createPassword, hourly_rate: createRate ? Number(createRate) : null }),
     onSuccess: () => {
       toast.success('Staff account created!');
       queryClient.invalidateQueries({ queryKey: ['staff-list'] });
       queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
       setCreateOpen(false);
-      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreatePassword(''); setCreateRole('cleaner');
+      setCreateEmail(''); setCreateName(''); setCreatePhone(''); setCreateRate(''); setCreatePassword(''); setCreateRole('cleaner');
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -152,6 +155,7 @@ export default function StaffPage() {
         full_name: invName,
         phone: invPhone,
         password: randomPwd,
+        hourly_rate: invRate ? Number(invRate) : null,
       });
       const userId = data?.user_id;
       if (!userId) throw new Error('Failed to create user');
@@ -188,7 +192,7 @@ export default function StaffPage() {
       queryClient.invalidateQueries({ queryKey: ['cleaners-list'] });
       queryClient.invalidateQueries({ queryKey: ['staff-onboarding-statuses'] });
       setInviteOpen(false);
-      setInvEmail(''); setInvName(''); setInvPhone(''); setInvRole('cleaner');
+      setInvEmail(''); setInvName(''); setInvPhone(''); setInvRate(''); setInvRole('cleaner');
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -494,12 +498,17 @@ export default function StaffPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Hourly rate ($){['cleaner', 'head_cleaner'].includes(createRole) ? ' *' : ''}</Label>
+              <Input type="number" inputMode="decimal" min="0" step="0.50" value={createRate} onChange={(e) => setCreateRate(e.target.value)} placeholder="e.g. 35" />
+              <p className="mt-1 text-xs text-muted-foreground">What Timesheets and Payroll pay them. You can change it later on their Pay tab.</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || createMutation.isPending}
+              disabled={!createEmail || !createName || !createPassword || createPassword.length < 6 || (['cleaner', 'head_cleaner'].includes(createRole) && !(Number(createRate) > 0)) || createMutation.isPending}
               className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -540,10 +549,15 @@ export default function StaffPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Hourly rate ($){['cleaner', 'head_cleaner'].includes(invRole) ? ' *' : ''}</Label>
+              <Input type="number" inputMode="decimal" min="0" step="0.50" value={invRate} onChange={(e) => setInvRate(e.target.value)} placeholder="e.g. 35" />
+              <p className="mt-1 text-xs text-muted-foreground">What Timesheets and Payroll pay them. You can change it later on their Pay tab.</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={() => inviteMutation.mutate()} disabled={!invEmail || !invName || !invPhone.trim() || inviteMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2">
+            <Button onClick={() => inviteMutation.mutate()} disabled={!invEmail || !invName || !invPhone.trim() || (['cleaner', 'head_cleaner'].includes(invRole) && !(Number(invRate) > 0)) || inviteMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold gap-2">
               {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Invite
             </Button>
@@ -915,6 +929,7 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
 
         {/* INDUCTIONS TAB */}
         <TabsContent value="inductions" className="space-y-4 mt-4">
+          <ShadowCleansPanel traineeId={staff.id} traineeName={staffName} />
           <StaffOnboardingSection staffId={staff.id} staffName={staffName} />
           {sops.length > 0 && (
             <div className="bg-card rounded-2xl shadow-md p-5">
