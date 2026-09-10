@@ -17,6 +17,7 @@ import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
 import PropertyPassportSection from '@/components/property/PropertyPassportSection';
 import PendingChangesPanel from '@/components/property/PendingChangesPanel';
 import PropertyHeroPhotoUploader from '@/components/property/PropertyHeroPhotoUploader';
+import RoomLibrarySection from '@/components/property/RoomLibrarySection';
 import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import { toast } from 'sonner';
@@ -395,6 +396,8 @@ function SOPTab({ property }: { property: any }) {
       )}
       {/* Linen requirements — shown for all properties, editable inline */}
       <LinenRequirementsCard property={property} />
+      {/* Airbnb only; renders nothing for any other property. */}
+      <RoomLibrarySection property={property} />
       <SOPSection propertyId={property.id} items={sopItems} loading={sopLoading} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['sop-items', property.id] })} />
       <RestockingSection propertyId={property.id} items={restockItems} loading={restockLoading} isAirbnb={isAirbnb} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['restock-items', property.id] })} />
     </div>

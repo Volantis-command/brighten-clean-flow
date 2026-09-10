@@ -23,13 +23,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Loader2, ArrowRight, Check, X, MinusCircle, Camera, Sparkles,
-  CircleCheck, Trash2, PenLine, CloudOff, ShieldCheck, CheckCheck,
+  CircleCheck, Trash2, PenLine, CloudOff, ShieldCheck, CheckCheck, Images,
 } from 'lucide-react';
 import GuidedCamera from '@/components/clean/GuidedCamera';
 import { enqueuePhoto, pendingPhotos, countPending, removePhoto, bumpAttempts, clearJob } from '@/lib/photoQueue';
 import SignaturePad from '@/components/clean-workflow/SignaturePad';
 import { buildChecklist, type ChecklistArea, type ChecklistItem } from '@/lib/cleanChecklist';
 import { sendJobSms } from '@/lib/sendJobSms';
+import { useAuth } from '@/contexts/AuthContext';
+import RoomReferenceSheet from '@/components/clean/RoomReferenceSheet';
+import { fetchRooms, isAirbnbProperty, recordReferenceCheck } from '@/lib/propertyRooms';
 
 type Answer = 'yes' | 'no' | 'na';
 interface CheckAnswer { answer: Answer; note?: string; at: string }
@@ -209,6 +212,29 @@ export default function GuidedCompletionPage() {
     [area, excluded],
   );
 
+  /* ── Room reference photos (Airbnb only) ──
+     The admin's "how it should look" photos, keyed by the same area id as this
+     checklist, so each room's reference lands on that room's camera step. */
+  const { user } = useAuth();
+  const airbnb = isAirbnbProperty(data?.property);
+  const propertyId = (data?.property as any)?.id as string | undefined;
+  const { data: refRooms = [] } = useQuery({
+    queryKey: ['property-rooms-view', propertyId],
+    enabled: airbnb && !!propertyId,
+    queryFn: () => fetchRooms(propertyId!),
+  });
+  const refByArea = useMemo(() => new Map(refRooms.map(r => [r.area_id, r])), [refRooms]);
+  const [refConfirmed, setRefConfirmed] = useState<Set<string>>(new Set());
+  const [referenceOpen, setReferenceOpen] = useState(false);
+
+  const confirmReference = useCallback((areaId: string) => {
+    setRefConfirmed(prev => new Set(prev).add(areaId));
+    const room = refByArea.get(areaId);
+    if (!jobId || !user?.id || !room) return;
+    // Recorded, never blocking: a failed write must not stop someone finishing a clean.
+    recordReferenceCheck(jobId, areaId, user.id, room.photos.map(p => p.id)).catch(() => {});
+  }, [jobId, user?.id, refByArea]);
+
   /* ── Progress across every required item in the whole clean ── */
   const progress = useMemo(() => {
     const all = areas.flatMap(a => a.items.filter(i => i.required).map(i => ({ a: a.id, i })));
@@ -379,25 +405,54 @@ export default function GuidedCompletionPage() {
 
   const propName = (data?.property as any)?.property_name || 'this property';
 
-  // Camera takes over the whole screen
+  const areaRef = airbnb && area ? refByArea.get(area.id) : undefined;
+  const referenceSheet = airbnb && propertyId ? (
+    <RoomReferenceSheet
+      propertyId={propertyId}
+      open={referenceOpen}
+      onOpenChange={setReferenceOpen}
+      initialAreaId={area?.id}
+    />
+  ) : null;
+  const referenceLink = areaRef && areaRef.photos.length > 0 ? (
+    <button
+      onClick={() => setReferenceOpen(true)}
+      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 px-4 py-3 text-sm font-bold text-primary hover:bg-primary/10"
+    >
+      <Images className="w-4 h-4" /> How {area?.title} should look
+    </button>
+  ) : null;
+
+    // Camera takes over the whole screen
   if (phase === 'photos' && area) {
     const item = livePhotos[itemIdx];
     if (!item) { startArea(); return null; }
     return (
-      <GuidedCamera
-        prompt={item.label}
-        subtitle={`${area.title} · photo ${itemIdx + 1} of ${livePhotos.length}`}
-        canRemove={!item.core}
-        saving={saving}
-        onCapture={(blob) => uploadPhoto(item, blob)}
-        onNotPresent={() => setConfirmRemove(item)}
-        onBack={() => setPhase('handoff')}
-      />
+      <>
+        <GuidedCamera
+          prompt={item.label}
+          subtitle={`${area.title} · photo ${itemIdx + 1} of ${livePhotos.length}`}
+          canRemove={!item.core}
+          saving={saving}
+          onCapture={(blob) => uploadPhoto(item, blob)}
+          onNotPresent={() => setConfirmRemove(item)}
+          onBack={() => setPhase('handoff')}
+          reference={areaRef && areaRef.photos.length > 0 ? {
+            roomTitle: area.title,
+            photos: areaRef.photos.map(p => ({ id: p.id, url: p.public_url, caption: p.caption })),
+            confirmed: refConfirmed.has(area.id),
+            onConfirm: () => confirmReference(area.id),
+            onViewAll: () => setReferenceOpen(true),
+          } : undefined}
+        />
+        {referenceSheet}
+      </>
     );
   }
 
   return (
     <div className="min-h-screen bg-background pb-28">
+      {referenceSheet}
       {/* Progress */}
       <div className="sticky top-0 z-30 bg-background/90 backdrop-blur px-5 pt-4 pb-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
@@ -458,6 +513,7 @@ export default function GuidedCompletionPage() {
             <p className="text-sm text-muted-foreground">
               {livePhotos.length} photo{livePhotos.length === 1 ? '' : 's'} · {liveChecks.length} quick question{liveChecks.length === 1 ? '' : 's'}
             </p>
+            {referenceLink}
             <Big onClick={startArea}>
               <Camera className="w-5 h-5" /> Start {area.title}
             </Big>
@@ -520,6 +576,7 @@ export default function GuidedCompletionPage() {
                 );
               })}
             </div>
+            {referenceLink}
             <Big onClick={nextArea}>
               {areaIdx + 1 < areas.length ? <>Looks good — next room <ArrowRight className="w-5 h-5" /></> : <>Looks good — sign off <PenLine className="w-5 h-5" /></>}
             </Big>

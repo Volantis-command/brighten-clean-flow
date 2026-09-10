@@ -18,7 +18,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Key, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Key, ChevronDown, ChevronUp, Images } from 'lucide-react';
 import { getCurrentPosition, haversineDistance } from '@/lib/geo';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -29,6 +29,8 @@ import ClockedOnBanner from '@/components/clean-workflow/ClockedOnBanner';
 import { ActiveClockBanner } from '@/components/ActiveClockBanner';
 import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
 import GuidedCompletionPage from '@/pages/GuidedCompletionPage';
+import RoomReferenceSheet from '@/components/clean/RoomReferenceSheet';
+import { isAirbnbProperty } from '@/lib/propertyRooms';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -62,6 +64,7 @@ export default function CleanWorkflowPage() {
   // Manual override: when cleaner taps "COMPLETE JOB" on the active view,
   // we transition to the photo wizard instead of immediately completing.
   const [showPhotoWizard, setShowPhotoWizard] = useState(false);
+  const [referenceOpen, setReferenceOpen] = useState(false);
   // Access info panel — start collapsed (cleaner can tap to reveal at the door)
   const [accessOpen, setAccessOpen] = useState(false);
 
@@ -348,6 +351,15 @@ export default function CleanWorkflowPage() {
         >
           ⚠️ Report Damage / Issue
         </button>
+        {isAirbnbProperty(property) && (
+          <button
+            onClick={() => setReferenceOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-primary/10 px-3 py-2 rounded-xl transition-colors"
+          >
+            <Images className="h-4 w-4" />
+            How it should look
+          </button>
+        )}
         <span className="text-xs text-muted-foreground">
           {property?.bedrooms ? `${property.bedrooms} bed` : null}
           {property?.bedrooms && property?.bathrooms ? ' · ' : null}
@@ -419,6 +431,14 @@ export default function CleanWorkflowPage() {
           }}
         />
       </div>
+
+      {isAirbnbProperty(property) && property?.id && (
+        <RoomReferenceSheet
+          propertyId={property.id}
+          open={referenceOpen}
+          onOpenChange={setReferenceOpen}
+        />
+      )}
     </div>
   );
 }
