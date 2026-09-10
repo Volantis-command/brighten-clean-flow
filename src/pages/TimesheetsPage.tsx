@@ -49,8 +49,14 @@ export default function TimesheetsPage() {
       let query = supabase
         .from('time_entries' as any)
         .select('*, jobs(scheduled_date, properties(property_name), notes, status)')
-        .gte('clock_in_time', `${periodStart}T00:00:00`)
-        .lte('clock_in_time', `${periodEnd}T23:59:59`)
+        // clock_in_time is TIMESTAMPTZ, so a bare "2026-09-06T23:59:59" is read
+        // as UTC and the pay week silently slid 10 hours: a Monday 7am start
+        // was counted in the PREVIOUS week's pay run, and the following Monday
+        // morning appeared inside this one. Pin both ends to Brisbane time so
+        // the window is a true Monday-to-Sunday local week. Queensland has no
+        // daylight saving, so the +10:00 offset holds all year.
+        .gte('clock_in_time', `${periodStart}T00:00:00+10:00`)
+        .lte('clock_in_time', `${periodEnd}T23:59:59.999+10:00`)
         .order('clock_in_time', { ascending: true });
       if (selectedCleaner !== 'all') {
         query = query.eq('user_id', selectedCleaner);

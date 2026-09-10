@@ -24,6 +24,8 @@ interface ClientMember {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  /** Null for rows synthesised from a property or quote request, which have no profile. */
+  created_at: string | null;
   linked_properties: { property_id: string; property_name: string; portal_token: string | null }[];
 }
 
@@ -64,7 +66,7 @@ function useClientsList(currentUserId?: string) {
 
       // Get profiles for linked clients
       const { data: linkedProfiles } = linkedClientIds.length
-        ? await supabase.from('profiles').select('id, full_name, email, phone').in('id', linkedClientIds)
+        ? await supabase.from('profiles').select('id, full_name, email, phone, created_at').in('id', linkedClientIds)
         : { data: [] };
 
       // Also get client role users
@@ -72,7 +74,7 @@ function useClientsList(currentUserId?: string) {
       const clientRoleIds = (clientRoles || []).map(r => r.user_id);
       const additionalIds = clientRoleIds.filter(id => !linkedClientIds.includes(id));
       const { data: additionalProfiles } = additionalIds.length
-        ? await supabase.from('profiles').select('id, full_name, email, phone').in('id', additionalIds)
+        ? await supabase.from('profiles').select('id, full_name, email, phone, created_at').in('id', additionalIds)
         : { data: [] };
 
       const allProfiles = [...(linkedProfiles || []), ...(additionalProfiles || [])];
@@ -88,6 +90,7 @@ function useClientsList(currentUserId?: string) {
           full_name: profile.full_name,
           email: profile.email,
           phone: profile.phone,
+          created_at: (profile as any).created_at ?? null,
           linked_properties: links.map(l => ({
             property_id: l.property_id,
             property_name: propertyNameMap.get(l.property_id) || 'Unknown',
@@ -120,6 +123,7 @@ function useClientsList(currentUserId?: string) {
             full_name: property.client_name,
             email: property.billing_email,
             phone: property.client_phone,
+            created_at: null,
             linked_properties: [{
               property_id: property.id,
               property_name: property.property_name,
@@ -152,6 +156,7 @@ function useClientsList(currentUserId?: string) {
             full_name: [qr.first_name, qr.last_name].filter(Boolean).join(' ') || null,
             email: qr.email,
             phone: qr.phone,
+            created_at: null,
             linked_properties: [],
           });
         }
@@ -233,8 +238,32 @@ export default function ClientsPage() {
   });
   const hasCleans = (c: any) => (c.linked_properties || []).some((lp: any) => cleanedPropertyIds.has(lp.property_id));
   const isActiveClient = (c: any) => leadStages[c.id] === 'active' || (hasCleans(c) && leadStages[c.id] !== 'lead');
-  const activeClients = filteredClients.filter(isActiveClient);
-  const leadClients = filteredClients.filter((c: any) => !isActiveClient(c));
+  const getClientDisplayName = (client: ClientMember) => {
+    const name = client.full_name?.trim();
+    return name ? name : (client.email || '—');
+  };
+
+  // Both lists came out in whatever order the queries happened to return, which
+  // on the Clients tab meant hunting for a name in an unsorted wall of cards.
+  // Clients read alphabetically (you know the name, you want to find it), leads
+  // read newest first (you don't know the name, you want the ones just in).
+  const byName = (a: any, b: any) =>
+    getClientDisplayName(a).localeCompare(getClientDisplayName(b), 'en-AU', { sensitivity: 'base' });
+
+  const activeClients = filteredClients.filter(isActiveClient).sort(byName);
+
+  const leadClients = filteredClients
+    .filter((c: any) => !isActiveClient(c))
+    .sort((a: any, b: any) => {
+      // Rows built from a property or quote request have no signup timestamp.
+      // They sort after the real ones rather than jumping to the top.
+      if (a.created_at && b.created_at) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (a.created_at) return -1;
+      if (b.created_at) return 1;
+      return byName(a, b);
+    });
 
   const setLeadStageMutation = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: 'active' | 'lead' }) => {
@@ -402,10 +431,6 @@ export default function ClientsPage() {
     setCreatePropertyIds(prev => prev.includes(propId) ? prev.filter(id => id !== propId) : [...prev, propId]);
   };
 
-  const getClientDisplayName = (client: ClientMember) => {
-    const name = client.full_name?.trim();
-    return name ? name : (client.email || '—');
-  };
 
 
   const deleteMutation = useMutation({
