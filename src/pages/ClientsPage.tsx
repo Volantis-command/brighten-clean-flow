@@ -19,6 +19,7 @@ import SavedQuotesList from '@/components/pricing/SavedQuotesList';
 import SendQuoteLinkModal from '@/components/dashboard/SendQuoteLinkModal';
 import { getAppBaseUrl } from '@/lib/appUrl';
 import { edgeErrorMessage } from '@/lib/edgeError';
+import { deleteClient as deleteClientRecord } from '@/lib/deleteClient';
 
 interface ClientMember {
   id: string;
@@ -435,67 +436,9 @@ export default function ClientsPage() {
 
 
   const deleteMutation = useMutation({
-    mutationFn: async (c: ClientMember) => {
-      const isRealUser = !c.id.startsWith('property-') && !c.id.startsWith('qr-');
-      const clientId = c.id;
-
-      // Pseudo-clients come from two places (see useClientsList above):
-      //   - `property-<propId>` — a property row that has client_name/email/phone
-      //      set but no linked profile.
-      //   - `qr-<quoteRequestId>` — an accepted/submitted lead with no profile yet.
-      //
-      // Previously the `qr-*` branch was a silent no-op that still showed
-      // "Client deleted" — the row stayed visible on refresh. Fixed here:
-      // each pseudo-client now has a concrete delete action + error check.
-      if (!isRealUser) {
-        if (c.id.startsWith('property-')) {
-          for (const lp of c.linked_properties) {
-            const { error } = await supabase
-              .from('properties')
-              .update({ client_name: null, billing_email: null, client_phone: null })
-              .eq('id', lp.property_id);
-            if (error) throw new Error(`Failed to clear property client info: ${error.message}`);
-          }
-          return;
-        }
-
-        if (c.id.startsWith('qr-')) {
-          const qrId = c.id.replace(/^qr-/, '');
-          const { error } = await supabase.from('quote_requests').delete().eq('id', qrId);
-          if (error) throw new Error(`Failed to delete lead: ${error.message}`);
-          return;
-        }
-
-        // Unknown pseudo-client format — fail loud so we don't lie about success.
-        throw new Error(`Cannot delete: unrecognised client record (${c.id})`);
-      }
-
-      // 1. Delete client_properties links
-      const { error: cpErr } = await supabase.from('client_properties').delete().eq('client_id', clientId);
-      if (cpErr) throw new Error(`Failed to remove property links: ${cpErr.message}`);
-
-      // 2. Delete client_comms
-      await supabase.from('client_comms').delete().eq('client_id', clientId);
-
-      // 3. Delete client_messages
-      await supabase.from('client_messages').delete().eq('client_id', clientId);
-
-      // 4. Delete clean_requests
-      await supabase.from('clean_requests').delete().eq('client_id', clientId);
-
-      // 5. Delete job_feedback
-      await supabase.from('job_feedback').delete().eq('client_id', clientId);
-
-      // 6. Delete notifications
-      await supabase.from('notifications').delete().eq('user_id', clientId);
-
-      // 7. Delete user_roles
-      await supabase.from('user_roles').delete().eq('user_id', clientId);
-
-      // 8. Delete profile
-      const { error: profileErr } = await supabase.from('profiles').delete().eq('id', clientId);
-      if (profileErr) throw new Error(`Failed to delete client profile: ${profileErr.message}`);
-    },
+    // Shared with the client detail page so both delete the same way, with
+    // the same staff-account guard. See src/lib/deleteClient.ts.
+    mutationFn: (c: ClientMember) => deleteClientRecord(c),
     onSuccess: () => {
       toast.success('Client deleted');
       setDeleteClient(null);

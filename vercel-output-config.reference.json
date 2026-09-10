@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "routes": [
+    { "src": "/edge/(.*)", "dest": "https://ueomxjsqvmbjfufjauhe.supabase.co/functions/v1/$1" },
+    { "handle": "filesystem" },
+    { "src": "/assets/(.*)", "status": 404 },
+    { "src": "/.*", "dest": "/index.html" }
+  ]
+}

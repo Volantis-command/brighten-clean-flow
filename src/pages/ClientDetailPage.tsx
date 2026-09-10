@@ -23,6 +23,8 @@ import HostawayIntegrationSection from '@/components/client-detail/HostawayInteg
 import EditClientDialog from '@/components/client-detail/EditClientDialog';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import ClientCommsLog from '@/components/client-detail/ClientCommsLog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { deleteClient } from '@/lib/deleteClient';
 
 /** Strip synthetic prefixes used for pseudo-clients */
 function stripPseudoPrefix(id: string) {
@@ -207,6 +209,19 @@ function useClientRequests(clientId: string) {
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Same deletion path as the Clients list, including the guard that refuses
+  // to remove anyone holding a staff role.
+  const removeClient = useMutation({
+    mutationFn: () => deleteClient({ id: id!, linked_properties: [] }),
+    onSuccess: () => {
+      toast.success('Client deleted');
+      setConfirmDelete(false);
+      navigate('/clients');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const queryClient = useQueryClient();
   const { data, isLoading } = useClientDetail(id!);
   const propertyIds = (data?.properties || []).map((p: any) => p.id);
@@ -302,8 +317,32 @@ export default function ClientDetailPage() {
         phone={profile?.phone}
         onBack={() => navigate('/clients')}
         onEdit={() => setEditOpen(true)}
+        onDelete={() => setConfirmDelete(true)}
         onScheduleClean={() => openBookClean()}
       />
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes {profile?.full_name || 'this client'}, their property links,
+              messages, feedback and portal access. Their completed jobs stay in the
+              schedule and in Xero. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => removeClient.mutate()}
+              disabled={removeClient.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removeClient.isPending ? 'Deleting...' : 'Delete client'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ScheduleCleanModal
         open={scheduleOpen}
