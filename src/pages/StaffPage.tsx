@@ -795,6 +795,22 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
     },
   });
 
+  // Shadow cleans are paid, but a trainee isn't assigned to the job, so the
+  // jobs above never include those hours. They're time entries linked to the
+  // trainee's shadow cleans; an edited entry (manual_hours) wins.
+  const { data: shadowEntries = [] } = useQuery({
+    queryKey: ['staff-shadow-hours', staff.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('staff_shadow_cleans' as any)
+        .select('scheduled_date, time_entries:time_entry_id(total_minutes, manual_hours)')
+        .eq('trainee_id', staff.id)
+        .neq('status', 'cancelled')
+        .not('time_entry_id', 'is', null);
+      return (data as any[]) || [];
+    },
+  });
+
   // Hourly rate and pay
   // No invented fallback. Showing 45 for an unset rate is how Brendan ended up
   // looking at a rate he never chose, on a page that also pays from it.
@@ -813,7 +829,13 @@ function StaffDetailView({ staff, isAdmin, onBack, onboardingStatuses, getOnboar
     }
     return sum;
   }, 0);
-  const payPeriodHours = (payPeriodMinutes / 60).toFixed(1);
+  const shadowPeriodMinutes = shadowEntries
+    .filter((s: any) => new Date(s.scheduled_date + 'T00:00:00') >= twoWeeksAgo)
+    .reduce((sum: number, s: any) => {
+      const e = s.time_entries;
+      return sum + (e?.manual_hours != null ? Number(e.manual_hours) * 60 : Number(e?.total_minutes || 0));
+    }, 0);
+  const payPeriodHours = ((payPeriodMinutes + shadowPeriodMinutes) / 60).toFixed(1);
   const estimatedPay = (parseFloat(payPeriodHours) * hourlyRate).toFixed(2);
 
   return (

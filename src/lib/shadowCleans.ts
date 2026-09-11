@@ -213,7 +213,7 @@ export async function addShadowClean(traineeId: string, jobId: string): Promise<
   try {
     await sendJobSms({
       to: trainee.phone,
-      message: `Hi ${first}, you're booked for a shadow clean with ${supervisor} on ${when}${where ? `, ${where}` : ''}. It's part of your Brightly training. Any questions, call 0418 878 707.`,
+      message: `Hi ${first}, you're booked for a shadow clean with ${supervisor} on ${when}${where ? `, ${where}` : ''}. It's a paid training clean at your usual hourly rate, and your hours log automatically when the clean finishes. Any questions, call 0418 878 707.`,
     });
     return { smsSent: true };
   } catch {

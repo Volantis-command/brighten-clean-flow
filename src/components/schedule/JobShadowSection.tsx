@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import { GraduationCap, Loader2, Star, X } from 'lucide-react';
 import ShadowCleanRatingDialog from '@/components/staff/ShadowCleanRatingDialog';
@@ -32,7 +32,11 @@ export default function JobShadowSection({
     queryKey: ['shadow-cleans', 'job', job.id],
     queryFn: () => fetchJobSessions(job.id),
   });
-  const canBook = !['cancelled', 'completed'].includes(job.status) && !!job.cleaner_1_id;
+  // Bookable before the clean, or up to 14 days after it: Jess often adds the
+  // trainee once it's done. Hours for a finished clean are logged straight away.
+  const recentEnough = job.scheduled_date >= format(subDays(new Date(), 14), 'yyyy-MM-dd');
+  const open = job.status !== 'cancelled' && (job.status !== 'completed' || recentEnough);
+  const canBook = open && !!job.cleaner_1_id;
   const { data: trainees = [], isLoading: loadingTrainees } = useQuery({
     queryKey: ['shadow-trainees'],
     enabled: canBook,
@@ -141,7 +145,7 @@ export default function JobShadowSection({
           </div>
         )
       )}
-      {!job.cleaner_1_id && !['cancelled', 'completed'].includes(job.status) && (
+      {!job.cleaner_1_id && open && (
         <p className="text-xs text-muted-foreground">Assign Cleaner 1 first. They supervise the shadow clean.</p>
       )}
 

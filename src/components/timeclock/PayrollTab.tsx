@@ -50,6 +50,24 @@ export default function PayrollTab() {
     },
   });
 
+  // Shadow cleans are paid, but the trainee isn't assigned to the job, so the
+  // jobs query above never sees their hours. Their time is logged as a time
+  // entry when the supervisor clocks off; pull those in for the same period.
+  // An edited entry (manual_hours on Timesheets) wins over the logged minutes.
+  const { data: shadowHours = [] } = useQuery({
+    queryKey: ['payroll-shadow-hours', periodStart, periodEnd],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('staff_shadow_cleans' as any)
+        .select('trainee_id, scheduled_date, time_entries:time_entry_id(total_minutes, manual_hours)')
+        .neq('status', 'cancelled')
+        .not('time_entry_id', 'is', null)
+        .gte('scheduled_date', periodStart)
+        .lte('scheduled_date', periodEnd);
+      return (data as any[]) || [];
+    },
+  });
+
   const payRateMap = useMemo(() => {
     const m: Record<string, any> = {};
     payRates.forEach((r: any) => { m[r.staff_id] = r; });
@@ -64,7 +82,7 @@ export default function PayrollTab() {
 
   // Build payroll per cleaner
   const payrollData = useMemo(() => {
-    const data: Record<string, { jobCount: number; totalMinutes: number; jobsByType: Record<string, number> }> = {};
+    const data: Record<string, { jobCount: number; totalMinutes: number; jobsByType: Record<string, number>; shadowMinutes?: number }> = {};
 
     jobs.forEach((job: any) => {
       const ids: string[] = [];
@@ -90,8 +108,21 @@ export default function PayrollTab() {
       });
     });
 
+    shadowHours.forEach((s: any) => {
+      const entry = s.time_entries;
+      const minutes = entry?.manual_hours != null
+        ? Math.round(Number(entry.manual_hours) * 60)
+        : Number(entry?.total_minutes || 0);
+      if (!minutes) return;
+      const id = s.trainee_id;
+      if (!data[id]) data[id] = { jobCount: 0, totalMinutes: 0, jobsByType: {} };
+      data[id].jobCount++;
+      data[id].totalMinutes += minutes;
+      data[id].shadowMinutes = (data[id].shadowMinutes || 0) + minutes;
+    });
+
     return data;
-  }, [jobs]);
+  }, [jobs, shadowHours]);
 
   const calculatePay = (cleanerId: string) => {
     const pr = payRateMap[cleanerId];
@@ -104,6 +135,8 @@ export default function PayrollTab() {
       total += (d.jobsByType['deep'] || 0) * (pr.deep_rate || 120);
       total += (d.jobsByType['airbnb'] || 0) * (pr.airbnb_rate || 75);
       total += (d.jobsByType['commercial'] || 0) * (pr.commercial_rate || 90);
+      // A shadow clean has no job type to pay per job, so it's paid by the hour.
+      total += ((d.shadowMinutes || 0) / 60) * (Number(cleanerMap[cleanerId]?.hourly_rate) || 0);
       return total;
     }
 

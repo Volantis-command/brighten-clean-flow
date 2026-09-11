@@ -437,8 +437,15 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (jobError) throw jobError;
         if (!job) return json({ error: "That job no longer exists" }, 404);
-        if (["cancelled", "completed"].includes(String(job.status))) {
-          return json({ error: `That job is already ${job.status}. Pick an upcoming one.` }, 409);
+        if (String(job.status) === "cancelled") {
+          return json({ error: "That job was cancelled. Pick another one." }, 409);
+        }
+        // Jess often adds the trainee once the clean is done, and a residential
+        // job is marked completed the moment the cleaner taps Complete. Allow a
+        // recent finished clean so the trainee still gets paid for it.
+        const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        if (String(job.status) === "completed" && String(job.scheduled_date) < cutoff) {
+          return json({ error: "That clean was more than 14 days ago. Add their hours on Timesheets instead." }, 409);
         }
         if (!job.cleaner_1_id) {
           return json({ error: "Assign Cleaner 1 to this job first. They supervise the shadow clean." }, 409);
@@ -483,6 +490,12 @@ Deno.serve(async (req) => {
           .single();
         if (insertError) throw insertError;
 
+        // Shadow cleans are paid. A clean that has already finished logs the
+        // trainee's hours now; an upcoming one logs them when the supervisor
+        // clocks off (trigger on jobs). Never blocks the booking.
+        const { error: hoursError } = await admin.rpc("log_shadow_clean_hours", { p_job_id: jobId });
+        if (hoursError) console.error("log_shadow_clean_hours:", hoursError.message);
+
         return json({
           success: true,
           session_id: created.id,
@@ -500,7 +513,7 @@ Deno.serve(async (req) => {
       const sessionId = String(body.session_id ?? "");
       if (!UUID_PATTERN.test(sessionId)) return json({ error: "Shadow clean not found" }, 400);
       const { data: session, error: sessionError } = await admin
-        .from("staff_shadow_cleans").select("id, trainee_id, status").eq("id", sessionId).maybeSingle();
+        .from("staff_shadow_cleans").select("id, trainee_id, status, time_entry_id").eq("id", sessionId).maybeSingle();
       if (sessionError) throw sessionError;
       if (!session) return json({ error: "Shadow clean not found" }, 404);
 
@@ -532,6 +545,19 @@ Deno.serve(async (req) => {
 
       if (action === "shadow_cancel") {
         if (session.status === "rated") return json({ error: "That shadow clean is already rated. Edit the rating instead." }, 409);
+        // They didn't do the clean, so they shouldn't be paid for it. Approved
+        // hours are left alone: that's a payroll decision, made on Timesheets.
+        if (session.time_entry_id) {
+          const { data: entry } = await admin
+            .from("time_entries").select("id, approved").eq("id", session.time_entry_id).maybeSingle();
+          if (entry?.approved) {
+            return json({ error: "Their hours for this clean are already approved on Timesheets, so it can't be cancelled here. Edit their hours on Timesheets instead." }, 409);
+          }
+          if (entry) {
+            const { error: entryError } = await admin.from("time_entries").delete().eq("id", entry.id);
+            if (entryError) throw entryError;
+          }
+        }
         const { error: cancelError } = await admin
           .from("staff_shadow_cleans")
           .update({ status: "cancelled", updated_at: now })

@@ -38,9 +38,10 @@ export default function MyPaySummaryPage() {
     },
   });
 
-  const hourlyRate = (profile as any)?.hourly_rate
-    ? Number((profile as any).hourly_rate)
-    : 30;
+  // No invented rate. This used to fall back to $30, so a cleaner with no rate
+  // saved saw pay the office never agreed to.
+  const rateSet = Number((profile as any)?.hourly_rate) > 0;
+  const hourlyRate = rateSet ? Number((profile as any).hourly_rate) : 0;
 
   const summary = useMemo(() => {
     const totalMinutes = entries.reduce((acc, e) => {
@@ -100,7 +101,9 @@ export default function MyPaySummaryPage() {
             </p>
             <p className="text-5xl font-extrabold mt-2">${summary.gross.toFixed(2)}</p>
             <p className="text-xs text-primary-foreground/70 mt-3">
-              {summary.totalHours.toFixed(2)} hrs × ${hourlyRate.toFixed(2)}/hr
+              {rateSet
+                ? `${summary.totalHours.toFixed(2)} hrs × $${hourlyRate.toFixed(2)}/hr`
+                : `${summary.totalHours.toFixed(2)} hrs · hourly rate not set yet, ask the office`}
             </p>
           </div>
 
@@ -162,7 +165,7 @@ export default function MyPaySummaryPage() {
                         </p>
                         {hrs > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            ${(hrs * hourlyRate).toFixed(2)}
+                            {rateSet ? `$${(hrs * hourlyRate).toFixed(2)}` : '—'}
                           </p>
                         )}
                       </div>
