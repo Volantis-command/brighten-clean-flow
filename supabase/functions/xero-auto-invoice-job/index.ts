@@ -193,12 +193,12 @@ Deno.serve(async (req) => {
     if (property.id) {
       const { data: cpLink } = await supabase
         .from('client_properties')
-        .select('profiles:client_id(full_name, weekly_invoice)')
+        .select('profiles:client_id(full_name, invoice_name, weekly_invoice)')
         .eq('property_id', property.id)
         .limit(1)
         .maybeSingle();
       const weeklyInvoice = (cpLink as any)?.profiles?.weekly_invoice === true;
-      clientProfileName = (cpLink as any)?.profiles?.full_name || null;
+      clientProfileName = (cpLink as any)?.profiles?.invoice_name?.trim() || (cpLink as any)?.profiles?.full_name || null;
       if (weeklyInvoice) {
         console.log('Client uses weekly invoicing — skipping per-job auto-invoice for job', job_id);
         return new Response(

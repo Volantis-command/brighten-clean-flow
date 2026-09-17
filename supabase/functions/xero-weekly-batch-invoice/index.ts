@@ -27,6 +27,42 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Retry Xero calls on 429/503 (rate limit), honouring Retry-After / backoff.
+async function xeroFetch(url: string, init: RequestInit, maxRetries = 4): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 && res.status !== 503) return res;
+    if (attempt >= maxRetries) return res;
+    const retryAfter = Number(res.headers.get('Retry-After'));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : Math.min(1000 * 2 ** attempt, 8000);
+    await new Promise((r) => setTimeout(r, waitMs));
+    attempt++;
+  }
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "2026-07-14" → "14 Jul". */
+function fmtDate(iso: string): string {
+  const parts = String(iso).split('-');
+  if (parts.length !== 3) return String(iso);
+  return `${Number(parts[2])} ${MONTHS[Number(parts[1]) - 1] || ''}`.trim();
+}
+
+/** Pull the guest name out of a job's notes when there's no guest_name column value.
+ *  Handles "Hostaway turnover — NAME", "Guest: NAME", etc. */
+function guestFromNotes(notes: string | null): string {
+  if (!notes) return '';
+  const first = notes.split('\n')[0].trim();
+  let m = first.match(/(?:turnover|clean)\s+[—-]\s+(.+)$/i);
+  if (m) return m[1].trim();
+  m = first.match(/guest:\s*(.+)$/i);
+  if (m) return m[1].trim();
+  return '';
+}
+
 async function getValidToken(supabase: any) {
   const { data: tokens } = await supabase.from('xero_tokens').select('*').limit(1).single();
   if (!tokens) throw new Error('Xero not connected');
@@ -70,7 +106,7 @@ async function resolveXeroContact(
     'Accept': 'application/json',
   };
 
-  const searchRes = await fetch(
+  const searchRes = await xeroFetch(
     `https://api.xero.com/api.xro/2.0/Contacts?where=Name=="${encodeURIComponent(name)}"`,
     { headers },
   );
@@ -81,7 +117,7 @@ async function resolveXeroContact(
     const contactId = contact.ContactID;
     // Patch email if missing
     if (email && !contact.EmailAddress) {
-      await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
+      await xeroFetch('https://api.xero.com/api.xro/2.0/Contacts', {
         method: 'POST',
         headers,
         body: JSON.stringify({ Contacts: [{ ContactID: contactId, EmailAddress: email }] }),
@@ -92,7 +128,7 @@ async function resolveXeroContact(
 
   const newContact: any = { Name: name };
   if (email) newContact.EmailAddress = email;
-  const createRes = await fetch('https://api.xero.com/api.xro/2.0/Contacts', {
+  const createRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Contacts', {
     method: 'POST',
     headers,
     body: JSON.stringify({ Contacts: [newContact] }),
@@ -101,20 +137,25 @@ async function resolveXeroContact(
   return createData?.Contacts?.[0]?.ContactID || null;
 }
 
-/** Previous Mon–Sun relative to `today` (YYYY-MM-DD strings). */
-function lastWeekRange(today = new Date()): { from: string; to: string } {
-  // Day of week: 0=Sun, 1=Mon … 6=Sat
-  const dow = today.getDay();
-  // Days since last Monday: if today is Mon (1) → 7 days back, Sun (0) → 6 days back, etc.
+/** Previous Mon–Sun in Gold Coast time (AEST, UTC+10, no DST), as YYYY-MM-DD.
+ *  The Monday cron fires at 20:00 UTC Sunday (= 06:00 Monday AEST), so the raw
+ *  UTC clock still reads "Sunday" when it runs. We shift into AEST wall-clock
+ *  first and use UTC accessors on that shifted value, so day-of-week and the
+ *  resulting date strings reflect the Gold Coast week — not UTC. */
+function lastWeekRange(now = new Date()): { from: string; to: string } {
+  const AEST_OFFSET_MS = 10 * 60 * 60 * 1000;
+  const aest = new Date(now.getTime() + AEST_OFFSET_MS);
+  // Day of week in AEST: 0=Sun, 1=Mon … 6=Sat
+  const dow = aest.getUTCDay();
   const daysSinceLastMon = dow === 0 ? 6 : dow - 1;
-  const thisMonday = new Date(today);
-  thisMonday.setDate(today.getDate() - daysSinceLastMon);
+  const thisMonday = new Date(aest);
+  thisMonday.setUTCDate(aest.getUTCDate() - daysSinceLastMon);
 
   const lastMonday = new Date(thisMonday);
-  lastMonday.setDate(thisMonday.getDate() - 7);
+  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
 
   const lastSunday = new Date(thisMonday);
-  lastSunday.setDate(thisMonday.getDate() - 1);
+  lastSunday.setUTCDate(thisMonday.getUTCDate() - 1);
 
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   return { from: fmt(lastMonday), to: fmt(lastSunday) };
@@ -141,7 +182,7 @@ Deno.serve(async (req) => {
 
   try {
     // 1. Find all weekly-invoice clients (or just the one passed in body)
-    let clientQuery = supabase.from('profiles').select('id, full_name, email').eq('weekly_invoice', true);
+    let clientQuery = supabase.from('profiles').select('id, full_name, invoice_name, email').eq('weekly_invoice', true);
     if (body.client_id) clientQuery = clientQuery.eq('id', body.client_id);
     const { data: clients, error: clientErr } = await clientQuery;
     if (clientErr) throw clientErr;
@@ -171,7 +212,7 @@ Deno.serve(async (req) => {
         // 3. Find uninvoiced completed jobs in the date range
         const { data: jobs, error: jobsErr } = await supabase
           .from('jobs')
-          .select('id, scheduled_date, price_ex_gst, price_inc_gst, properties:property_id(property_name, billing_email)')
+          .select('id, scheduled_date, price_ex_gst, price_inc_gst, guest_name, notes, properties:property_id(property_name, billing_email)')
           .eq('status', 'completed')
           .is('xero_invoice_id', null)
           .in('property_id', propertyIds)
@@ -190,8 +231,13 @@ Deno.serve(async (req) => {
           const prop: any = job.properties || {};
           const ex = Number(job.price_ex_gst) || Number(job.price_inc_gst) / 1.1 || 0;
           totalEx += ex;
+          // BnB Hub's requested line format: Date — Property — Guest name.
+          const guest = (job.guest_name || guestFromNotes(job.notes) || '').trim();
+          const description = [fmtDate(job.scheduled_date), prop.property_name || 'Property', guest]
+            .filter(Boolean)
+            .join(' — ');
           return {
-            Description: `${prop.property_name || 'Property'} — ${job.scheduled_date}`,
+            Description: description,
             Quantity: 1,
             UnitAmount: ex.toFixed(2),
             AccountCode: '200',
@@ -207,7 +253,7 @@ Deno.serve(async (req) => {
         // 5. Resolve/create Xero contact
         const billingEmail = (jobs[0] as any)?.properties?.billing_email || client.email || null;
         const contactId = await resolveXeroContact(
-          client.full_name || 'Client',
+          client.invoice_name?.trim() || client.full_name || 'Client',
           billingEmail,
           access_token,
           tenant_id,
@@ -234,7 +280,7 @@ Deno.serve(async (req) => {
         };
         if (contactId) invoiceBody.Contact = { ContactID: contactId };
 
-        const invRes = await fetch('https://api.xero.com/api.xro/2.0/Invoices', {
+        const invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${access_token}`,

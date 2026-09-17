@@ -235,6 +235,9 @@ export default function ClientDetailPage() {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [weeklyInvoice, setWeeklyInvoice] = useState(false);
   const [weeklyInvoiceLoaded, setWeeklyInvoiceLoaded] = useState(false);
+  const [invoiceName, setInvoiceName] = useState('');
+  const [invoiceNameLoaded, setInvoiceNameLoaded] = useState(false);
+  const [savingInvoiceName, setSavingInvoiceName] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [schedulePropertyId, setSchedulePropertyId] = useState<string | null>(null);
@@ -243,6 +246,10 @@ export default function ClientDetailPage() {
   if (data?.profile && !notesLoaded) {
     setNotes((data.profile as any).internal_notes || '');
     setNotesLoaded(true);
+  }
+  if (data?.profile && !invoiceNameLoaded) {
+    setInvoiceName((data.profile as any).invoice_name || '');
+    setInvoiceNameLoaded(true);
   }
   if (data?.profile && !weeklyInvoiceLoaded) {
     setWeeklyInvoice(!!(data.profile as any).weekly_invoice);
@@ -466,6 +473,36 @@ export default function ClientDetailPage() {
             <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
               <div>
                 <h3 className="font-bold text-foreground mb-3">Billing</h3>
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-foreground">Invoice name</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    The company Xero bills, if it's different from the client name. Staff still see the client name. Leave blank to invoice under {profile?.full_name || 'the client name'}.
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      value={invoiceName}
+                      onChange={e => setInvoiceName(e.target.value)}
+                      placeholder="e.g. Morayfield Projects Pty Ltd"
+                      className="rounded-xl"
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={savingInvoiceName || invoiceName.trim() === ((profile as any)?.invoice_name || '')}
+                      onClick={async () => {
+                        setSavingInvoiceName(true);
+                        const value = invoiceName.trim().replace(/\s+/g, ' ') || null;
+                        const { error } = await supabase.from('profiles').update({ invoice_name: value } as any).eq('id', parsed.realId);
+                        setSavingInvoiceName(false);
+                        if (error) { toast.error(`Could not save the invoice name: ${error.message}`); return; }
+                        setInvoiceName(value || '');
+                        toast.success(value ? `Invoices now go to ${value}` : 'Invoices go to the client name again');
+                        refreshAll();
+                      }}
+                    >
+                      {savingInvoiceName ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">Weekly invoice (Monday)</p>

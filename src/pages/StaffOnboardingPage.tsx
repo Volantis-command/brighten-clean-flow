@@ -117,6 +117,11 @@ function AustralianDateField({ label, value, onChange, required, autoComplete }:
   );
 }
 
+/** Names compare without case or doubled-up spaces. */
+const tidyName = (value: string | null | undefined) => String(value ?? '').trim().replace(/\s+/g, ' ');
+const sameName = (a: string | null | undefined, b: string | null | undefined) =>
+  tidyName(a).toLowerCase() === tidyName(b).toLowerCase();
+
 export default function StaffOnboardingPage() {
   const { token = '' } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
@@ -255,7 +260,7 @@ export default function StaffOnboardingPage() {
     }
     if (currentStep === 7) {
       if (!draft.declaration_accurate || !draft.declaration_compliance) return 'Accept both final declarations.';
-      if (draft.digital_signature.trim().toLowerCase() !== draft.full_name.trim().toLowerCase()) return 'Your digital signature must match your full legal name.';
+      if (!sameName(draft.digital_signature, draft.full_name)) return `Your signature must match the legal name from step 1: "${tidyName(draft.full_name) || 'blank'}". Tap the button under the signature to fix it.`;
       if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) return 'Use a password of 8+ characters with at least one letter and number.';
       if (password !== passwordConfirm) return 'The passwords do not match.';
     }
@@ -565,6 +570,16 @@ export default function StaffOnboardingPage() {
               <ChoiceCard checked={draft.declaration_accurate} onChange={(value) => set('declaration_accurate', value)} title="I confirm every detail and document I provided is accurate, current and belongs to me" />
               <ChoiceCard checked={draft.declaration_compliance} onChange={(value) => set('declaration_compliance', value)} title="I agree to follow the SOP, conduct, privacy, communication, WHS and ongoing-training requirements I acknowledged" />
               <Field label="Digital signature — type your full legal name" required><Input className="h-12 rounded-xl text-lg" value={draft.digital_signature} onChange={(e) => set('digital_signature', e.target.value)} /></Field>
+              {/* Staff are often invited with a first name only, which then pre-fills
+                  step 1. Show what the signature is checked against and fix it in one tap. */}
+              {tidyName(draft.digital_signature) && !sameName(draft.digital_signature, draft.full_name) && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                  <p>This doesn't match the legal name from step 1: <span className="font-bold">{tidyName(draft.full_name) || 'blank'}</span></p>
+                  <button type="button" onClick={() => set('full_name', tidyName(draft.digital_signature))} className="mt-2 font-bold text-primary underline underline-offset-2">
+                    Use "{tidyName(draft.digital_signature)}" as my full legal name
+                  </button>
+                </div>
+              )}
               <div className="border-t pt-5"><h2 className="font-bold">Create your Brightly password</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">At least 8 characters with a letter and number.</p><div className="mt-4 grid gap-5 sm:grid-cols-2"><Field label="Password" required><Input className="h-11 rounded-xl" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field><Field label="Confirm password" required><Input className="h-11 rounded-xl" type="password" autoComplete="new-password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} /></Field></div></div>
             </div>
           )}

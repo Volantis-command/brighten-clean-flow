@@ -72,11 +72,13 @@ Deno.serve(async (req) => {
       if ((job as any).property_id) {
         const { data: link } = await supabase
           .from('client_properties')
-          .select('profiles:client_id(full_name, email)')
+          .select('profiles:client_id(full_name, invoice_name, email)')
           .eq('property_id', (job as any).property_id)
           .limit(1)
           .maybeSingle();
-        clientName = (link as any)?.profiles?.full_name?.trim() || null;
+        // Invoice name wins when set: the company that pays can differ from the
+        // name staff know the client by.
+        clientName = (link as any)?.profiles?.invoice_name?.trim() || (link as any)?.profiles?.full_name?.trim() || null;
         contact_email = (link as any)?.profiles?.email || null;
       }
 

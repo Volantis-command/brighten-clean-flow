@@ -241,7 +241,8 @@ function validateSubmission(payload: JsonRecord, manifest: JsonRecord) {
   if (!payload.declaration_accurate || !payload.declaration_compliance) {
     return "Both final declarations must be accepted";
   }
-  if (String(payload.digital_signature).trim().toLowerCase() !== String(payload.full_name).trim().toLowerCase()) {
+  const tidy = (v: unknown) => String(v ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  if (tidy(payload.digital_signature) !== tidy(payload.full_name)) {
     return "Digital signature must match the full legal name";
   }
   return null;
