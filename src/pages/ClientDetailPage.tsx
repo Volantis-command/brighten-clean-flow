@@ -238,6 +238,9 @@ export default function ClientDetailPage() {
   const [invoiceName, setInvoiceName] = useState('');
   const [invoiceNameLoaded, setInvoiceNameLoaded] = useState(false);
   const [savingInvoiceName, setSavingInvoiceName] = useState(false);
+  const [weekEndsOn, setWeekEndsOn] = useState(0);
+  const [dueDays, setDueDays] = useState('7');
+  const [invoiceCycleLoaded, setInvoiceCycleLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [schedulePropertyId, setSchedulePropertyId] = useState<string | null>(null);
@@ -250,6 +253,12 @@ export default function ClientDetailPage() {
   if (data?.profile && !invoiceNameLoaded) {
     setInvoiceName((data.profile as any).invoice_name || '');
     setInvoiceNameLoaded(true);
+  }
+  if (data?.profile && !invoiceCycleLoaded) {
+    const p = data.profile as any;
+    setWeekEndsOn(Number.isInteger(p.invoice_week_ends_on) ? p.invoice_week_ends_on : 0);
+    setDueDays(String(Number.isInteger(p.invoice_due_days) ? p.invoice_due_days : 7));
+    setInvoiceCycleLoaded(true);
   }
   if (data?.profile && !weeklyInvoiceLoaded) {
     setWeeklyInvoice(!!(data.profile as any).weekly_invoice);
@@ -505,9 +514,9 @@ export default function ClientDetailPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Weekly invoice (Monday)</p>
+                    <p className="text-sm font-medium text-foreground">Weekly invoice</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      All cleans Mon–Sun batched onto one invoice each Monday. Disables per-job auto-invoicing.
+                      One draft invoice a week with every clean on it, raised at 9pm on the invoice day. No per-clean invoices.
                     </p>
                   </div>
                   <button
@@ -536,6 +545,49 @@ export default function ClientDetailPage() {
                   </button>
                 </div>
               </div>
+
+              {weeklyInvoice && (() => {
+                const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const saveCycle = async (patch: Record<string, number>) => {
+                  const { error } = await supabase.from('profiles').update(patch as any).eq('id', parsed.realId);
+                  if (error) { toast.error(`Could not save: ${error.message}`); return; }
+                  toast.success('Invoice settings saved');
+                  refreshAll();
+                };
+                return (
+                  <div className="-mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-sm">
+                      <span className="font-medium text-foreground">Invoice day</span>
+                      <select
+                        value={weekEndsOn}
+                        onChange={e => { const v = Number(e.target.value); setWeekEndsOn(v); saveCycle({ invoice_week_ends_on: v }); }}
+                        className="mt-1 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+                      >
+                        {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
+                      </select>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Covers {DAYS[(weekEndsOn + 1) % 7]} to {DAYS[weekEndsOn]}.
+                      </span>
+                    </label>
+                    <label className="text-sm">
+                      <span className="font-medium text-foreground">Due after (days)</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={90}
+                        value={dueDays}
+                        onChange={e => setDueDays(e.target.value)}
+                        onBlur={() => {
+                          const n = Math.round(Number(dueDays));
+                          if (!Number.isFinite(n) || n < 0 || n > 90) { toast.error('Due days must be 0 to 90'); return; }
+                          saveCycle({ invoice_due_days: n });
+                        }}
+                        className="mt-1 h-10 rounded-xl"
+                      />
+                    </label>
+                  </div>
+                );
+              })()}
 
               <div className="border-t border-border pt-4">
                 <h3 className="font-bold text-foreground mb-2">Internal Notes</h3>

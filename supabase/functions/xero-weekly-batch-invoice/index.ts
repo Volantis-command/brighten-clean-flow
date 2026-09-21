@@ -1,12 +1,17 @@
 // xero-weekly-batch-invoice
 //
-// Runs every Monday (via pg_cron) and creates one consolidated Xero invoice
-// per client that has weekly_invoice = true on their profile.
+// Runs every evening at 9pm Gold Coast time (pg_cron) and creates one DRAFT
+// Xero invoice per weekly client whose invoice day is today. Each client picks
+// the day their week ends (profiles.invoice_week_ends_on, 0=Sun … 6=Sat,
+// default Sunday). Kingscliff Holiday Homes: week Wed to Tue, invoiced Tuesday
+// night, due next day (BJ, 21 Sep 2026).
 //
-// Invoice covers: completed, uninvoiced jobs scheduled Mon–Sun of the
-// previous calendar week (relative to when the function runs).
+// Invoice covers the 7 days ending today: completed, uninvoiced cleans. When
+// profiles.weekly_invoice_from is set, a completed clean from an earlier week
+// that was missed (finished late) is swept onto this invoice too, but nothing
+// before that date is ever touched.
 //
-// Each job becomes one line item: "[Property Name] — [Date]"
+// Each job becomes one line item: "[Date] — [Property] — [Guest]"
 //
 // After creating the invoice, all included jobs are stamped with:
 //   invoice_status = 'draft'
@@ -138,29 +143,15 @@ async function resolveXeroContact(
   return createData?.Contacts?.[0]?.ContactID || null;
 }
 
-/** Previous Mon–Sun in Gold Coast time (AEST, UTC+10, no DST), as YYYY-MM-DD.
- *  The Monday cron fires at 20:00 UTC Sunday (= 06:00 Monday AEST), so the raw
- *  UTC clock still reads "Sunday" when it runs. We shift into AEST wall-clock
- *  first and use UTC accessors on that shifted value, so day-of-week and the
- *  resulting date strings reflect the Gold Coast week — not UTC. */
-function lastWeekRange(now = new Date()): { from: string; to: string } {
-  const AEST_OFFSET_MS = 10 * 60 * 60 * 1000;
-  const aest = new Date(now.getTime() + AEST_OFFSET_MS);
-  // Day of week in AEST: 0=Sun, 1=Mon … 6=Sat
-  const dow = aest.getUTCDay();
-  const daysSinceLastMon = dow === 0 ? 6 : dow - 1;
-  const thisMonday = new Date(aest);
-  thisMonday.setUTCDate(aest.getUTCDate() - daysSinceLastMon);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const lastMonday = new Date(thisMonday);
-  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
-
-  const lastSunday = new Date(thisMonday);
-  lastSunday.setUTCDate(thisMonday.getUTCDate() - 1);
-
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: fmt(lastMonday), to: fmt(lastSunday) };
+/** Today's calendar date on the Gold Coast (AEST, UTC+10, no DST), as a UTC-midnight Date. */
+function goldCoastToday(now = new Date()): Date {
+  const aest = new Date(now.getTime() + 10 * 60 * 60 * 1000);
+  return new Date(Date.UTC(aest.getUTCFullYear(), aest.getUTCMonth(), aest.getUTCDate()));
 }
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (d: Date, n: number) => new Date(d.getTime() + n * DAY_MS);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -174,16 +165,15 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty body is fine */ }
 
-  // Date range — override from body for manual/backfill runs
-  const { from: defaultFrom, to: defaultTo } = lastWeekRange();
-  const dateFrom: string = body.date_from || defaultFrom;
-  const dateTo: string   = body.date_to   || defaultTo;
-
-  console.log(`Weekly batch invoice run — period: ${dateFrom} to ${dateTo}`);
+  // A manual run passes { client_id, date_from, date_to } and bypasses the
+  // invoice-day check.
+  const manual = Boolean(body.date_from && body.date_to);
+  const today = goldCoastToday();
+  console.log(`Weekly invoice run ${ymd(today)} (${manual ? `manual ${body.date_from} to ${body.date_to}` : 'scheduled'})`);
 
   try {
     // 1. Find all weekly-invoice clients (or just the one passed in body)
-    let clientQuery = supabase.from('profiles').select('id, full_name, invoice_name, email').eq('weekly_invoice', true);
+    let clientQuery = supabase.from('profiles').select('id, full_name, invoice_name, email, invoice_week_ends_on, weekly_invoice_from, invoice_due_days').eq('weekly_invoice', true);
     if (body.client_id) clientQuery = clientQuery.eq('id', body.client_id);
     const { data: clients, error: clientErr } = await clientQuery;
     if (clientErr) throw clientErr;
@@ -199,6 +189,18 @@ Deno.serve(async (req) => {
 
     for (const client of clients) {
       try {
+        // The client's week and whether today is their invoice day.
+        const endsOn = Number.isInteger(client.invoice_week_ends_on) ? client.invoice_week_ends_on : 0;
+        if (!manual && today.getUTCDay() !== endsOn) continue;
+        const dateTo: string = manual ? body.date_to : ymd(today);
+        const dateFrom: string = manual ? body.date_from : ymd(addDays(today, -6));
+        // Late finishers from earlier weeks, never before the client's start date.
+        const sweepFrom: string = manual ? dateFrom : (client.weekly_invoice_from || dateFrom);
+        if (sweepFrom > dateTo) {
+          results.push({ client_id: client.id, client_name: client.full_name, skipped: true, reason: `Weekly invoicing starts ${sweepFrom}` });
+          continue;
+        }
+
         // 2. Get all property IDs for this client
         const { data: cpLinks } = await supabase
           .from('client_properties')
@@ -217,7 +219,7 @@ Deno.serve(async (req) => {
           .eq('status', 'completed')
           .is('xero_invoice_id', null)
           .in('property_id', propertyIds)
-          .gte('scheduled_date', dateFrom)
+          .gte('scheduled_date', sweepFrom)
           .lte('scheduled_date', dateTo)
           .order('scheduled_date', { ascending: true });
         if (jobsErr) throw jobsErr;
@@ -262,16 +264,15 @@ Deno.serve(async (req) => {
 
         // 6. Create the consolidated invoice
         let invoiceNumber = await nextInvoiceNumber(supabase);
-        const today = new Date();
-        const dueDate = new Date(today);
-        dueDate.setDate(today.getDate() + 7);
+        const dueDays = Number.isInteger(client.invoice_due_days) && client.invoice_due_days >= 0 ? client.invoice_due_days : 7;
+        const dueDate = addDays(today, dueDays);
 
         const invoiceBody: any = {
           Type: 'ACCREC',
           InvoiceNumber: invoiceNumber,
-          Reference: `Week of ${dateFrom}`,
-          Date: today.toISOString().slice(0, 10),
-          DueDate: dueDate.toISOString().slice(0, 10),
+          Reference: `Week ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`,
+          Date: ymd(today),
+          DueDate: ymd(dueDate),
           Status: 'DRAFT',
           CurrencyCode: 'AUD',
           LineAmountTypes: 'Exclusive',
