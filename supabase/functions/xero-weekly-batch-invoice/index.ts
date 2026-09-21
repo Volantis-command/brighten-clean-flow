@@ -20,6 +20,7 @@
 // to re-run for a specific client / custom date range.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isDuplicateInvoiceNumber, nextInvoiceNumber } from '../_shared/invoicing.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -260,9 +261,7 @@ Deno.serve(async (req) => {
         );
 
         // 6. Create the consolidated invoice
-        const prefix = 'BCL-';
-        const timestamp = Date.now().toString(36).toUpperCase();
-        const invoiceNumber = `${prefix}${new Date().getFullYear()}-${timestamp}`;
+        let invoiceNumber = await nextInvoiceNumber(supabase);
         const today = new Date();
         const dueDate = new Date(today);
         dueDate.setDate(today.getDate() + 7);
@@ -280,17 +279,28 @@ Deno.serve(async (req) => {
         };
         if (contactId) invoiceBody.Contact = { ContactID: contactId };
 
-        const invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'Xero-Tenant-Id': tenant_id,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({ Invoices: [invoiceBody] }),
-        });
-        const invText = await invRes.text();
+        // A number typed into Xero by hand can collide. Take the next one and retry.
+        let invRes!: Response;
+        let invText = '';
+        for (let attempt = 0; ; attempt++) {
+          invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${access_token}`,
+              'Xero-Tenant-Id': tenant_id,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ Invoices: [invoiceBody] }),
+          });
+          invText = await invRes.text();
+          if (attempt < 5 && isDuplicateInvoiceNumber(invRes.status, invText)) {
+            invoiceNumber = await nextInvoiceNumber(supabase);
+            invoiceBody.InvoiceNumber = invoiceNumber;
+            continue;
+          }
+          break;
+        }
         if (!invRes.ok) throw new Error(`Xero invoice creation failed [${invRes.status}]: ${invText}`);
 
         const invData = JSON.parse(invText);

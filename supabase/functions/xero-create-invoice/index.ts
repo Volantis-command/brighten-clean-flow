@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { billingClient, isDuplicateInvoiceNumber, nextInvoiceNumber } from '../_shared/invoicing.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
     if (job_id) {
       const { data: job, error: jobErr } = await supabase
         .from('jobs')
-        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, properties:property_id(property_name, address, billing_email, client_name, business_name, default_price, price_includes_gst)')
+        .select('id, scheduled_date, price_ex_gst, price_inc_gst, client_name, property_id, xero_invoice_id, xero_invoice_number, properties:property_id(property_name, address, billing_email, client_name, business_name, default_price, price_includes_gst)')
         .eq('id', job_id)
         .single();
       if (jobErr || !job) {
@@ -68,18 +69,25 @@ Deno.serve(async (req) => {
 
       // The client record is the source of truth. It is the name shown on the
       // Clients page and the one Brendan edits, so it is the one Xero must get.
-      let clientName: string | null = null;
-      if ((job as any).property_id) {
-        const { data: link } = await supabase
-          .from('client_properties')
-          .select('profiles:client_id(full_name, invoice_name, email)')
-          .eq('property_id', (job as any).property_id)
-          .limit(1)
-          .maybeSingle();
-        // Invoice name wins when set: the company that pays can differ from the
-        // name staff know the client by.
-        clientName = (link as any)?.profiles?.invoice_name?.trim() || (link as any)?.profiles?.full_name?.trim() || null;
-        contact_email = (link as any)?.profiles?.email || null;
+      // Never invoice a clean twice.
+      if ((job as any).xero_invoice_id) {
+        return new Response(JSON.stringify({
+          success: true, skipped: true, reason: 'already invoiced',
+          invoice_id: (job as any).xero_invoice_id, invoice_number: (job as any).xero_invoice_number,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Invoice name wins when set: the company that pays can differ from the
+      // name staff know the client by.
+      const client = await billingClient(supabase, (job as any).property_id);
+      const clientName: string | null = client?.name || null;
+      contact_email = client?.email || null;
+
+      // Weekly clients get one invoice every Monday for the week's cleans.
+      if (client?.weekly) {
+        return new Response(JSON.stringify({
+          success: true, skipped: true, reason: 'weekly_invoice client',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Property name is deliberately NOT in this chain. A property is a place,
@@ -195,10 +203,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Generate invoice number
-    const prefix = invoice_prefix || 'BCL-';
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const invoiceNumber = `${prefix}${new Date().getFullYear()}-${timestamp}`;
+    // Every path shares one INV number sequence. invoice_prefix from older
+    // callers is ignored on purpose.
+    void invoice_prefix;
+    let invoiceNumber = await nextInvoiceNumber(supabase);
 
     const today = new Date();
     const dueDate = new Date(today);
@@ -231,18 +239,30 @@ Deno.serve(async (req) => {
 
     console.log('Creating invoice in Xero:', JSON.stringify(invoiceBody));
 
-    const invRes = await fetch('https://api.xero.com/api.xro/2.0/Invoices', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${access_token}`,
-        'Xero-Tenant-Id': tenant_id,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ Invoices: [invoiceBody] }),
-    });
-
-    const responseText = await invRes.text();
+    // A number typed into Xero by hand can collide. Take the next one and retry.
+    let invRes!: Response;
+    let responseText = '';
+    for (let attempt = 0; ; attempt++) {
+      invRes = await fetch('https://api.xero.com/api.xro/2.0/Invoices', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'Xero-Tenant-Id': tenant_id,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ Invoices: [invoiceBody] }),
+      });
+      responseText = await invRes.text();
+      if (attempt < 5 && isDuplicateInvoiceNumber(invRes.status, responseText)) {
+        console.log(`Invoice number ${invoiceNumber} already used in Xero, taking the next one`);
+        invoiceNumber = await nextInvoiceNumber(supabase);
+        invoiceBody.InvoiceNumber = invoiceNumber;
+        invoiceBody.Reference = invoiceNumber;
+        continue;
+      }
+      break;
+    }
     console.log('Xero API response status:', invRes.status, 'body:', responseText);
 
     if (!invRes.ok) {
@@ -260,6 +280,8 @@ Deno.serve(async (req) => {
         xero_invoice_number: invoiceNumber,
         invoice_status: 'draft',
         invoice_amount: unitAmount,
+        invoice_error: null,
+        invoice_raised_at: new Date().toISOString(),
       }).eq('id', job_id);
     }
 

@@ -253,14 +253,19 @@ export default function JobDetailPage() {
             description,
             amount: jobPriceExGst,
             account_code: xeroMap[accountCodeKey] || '200',
-            invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
             due_days: xeroMap['due_days'] || '7',
           }),
         }
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      toast.success(`Invoice ${data.invoice_number} created in Xero`);
+      if (data.skipped) {
+        toast.info(data.reason === 'weekly_invoice client'
+          ? "This client is on weekly invoicing. The clean goes on Monday's invoice."
+          : `Already invoiced${data.invoice_number ? ` (${data.invoice_number})` : ''}.`);
+      } else {
+        toast.success(`Invoice ${data.invoice_number} created in Xero`);
+      }
       queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
     } catch (err: any) {
       toast.error('Failed to create invoice: ' + err.message);
@@ -890,29 +895,9 @@ export default function JobDetailPage() {
                       toast.error(`⚠️ Cleaner SMS failed: ${err.message}`);
                     }
                   }
+                  // No invoice here: the draft is raised when the clean is completed.
 
-                  // Push Xero invoice
-                  try {
-                    const xeroProperty = job.properties as any;
-                    const description = `${job.notes?.split(' — ')[0] || 'Clean'} — ${xeroProperty?.property_name || 'Property'} — ${xeroProperty?.suburb || ''} — ${job.scheduled_date}`;
-                    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-create-invoice`, {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        job_id: jobId,
-                        description,
-                        amount: priceNum,
-                        account_code: xeroMap['account_code_turnover'] || '200',
-                        invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
-                        due_days: xeroMap['due_days'] || '7',
-                      }),
-                    });
-                  } catch { /* Xero optional */ }
-
-                  toast.success('Job scheduled, client notified, Xero invoice created ✓');
+                  toast.success('Job scheduled, client notified ✓');
                   queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
                   queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
                   queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });
@@ -994,29 +979,9 @@ export default function JobDetailPage() {
                       toast.error(`⚠️ Cleaner SMS failed: ${err.message}`);
                     }
                   }
+                  // No invoice here: the draft is raised when the clean is completed.
 
-                  // Push Xero invoice
-                  try {
-                    const xeroProperty = job.properties as any;
-                    const description = `${job.notes?.split('\n')[0] || 'Clean'} — ${xeroProperty?.property_name || 'Property'} — ${xeroProperty?.suburb || ''} — ${confirmDate}`;
-                    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/xero-create-invoice`, {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        job_id: jobId,
-                        description,
-                        amount: job.price_ex_gst || undefined,
-                        account_code: xeroMap['account_code_turnover'] || '200',
-                        invoice_prefix: xeroMap['invoice_prefix'] || 'BCL-',
-                        due_days: xeroMap['due_days'] || '7',
-                      }),
-                    });
-                  } catch { /* Xero optional */ }
-
-                  toast.success('Booking confirmed! Client & cleaner notified, Xero invoice created ✓');
+                  toast.success('Booking confirmed! Client & cleaner notified ✓');
                   queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
                   queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
                   queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] });

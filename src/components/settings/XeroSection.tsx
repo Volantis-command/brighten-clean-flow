@@ -36,7 +36,6 @@ export default function XeroSection() {
   const [accountDeep, setAccountDeep] = useState('201');
   const [accountAirbnb, setAccountAirbnb] = useState('202');
   const [accountCommercial, setAccountCommercial] = useState('203');
-  const [invoicePrefix, setInvoicePrefix] = useState('BCL-');
 
   // Connection status
   const { data: status, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
@@ -89,7 +88,6 @@ export default function XeroSection() {
     if (map.xero_account_deep) setAccountDeep(map.xero_account_deep);
     if (map.xero_account_airbnb) setAccountAirbnb(map.xero_account_airbnb);
     if (map.xero_account_commercial) setAccountCommercial(map.xero_account_commercial);
-    if (map.xero_invoice_prefix) setInvoicePrefix(map.xero_invoice_prefix);
   }, [settings]);
 
   const handleConnect = async () => {
@@ -138,7 +136,6 @@ export default function XeroSection() {
         { key: 'xero_account_deep', value: accountDeep },
         { key: 'xero_account_airbnb', value: accountAirbnb },
         { key: 'xero_account_commercial', value: accountCommercial },
-        { key: 'xero_invoice_prefix', value: invoicePrefix },
       ];
 
       for (const { key, value } of updates) {
@@ -284,12 +281,9 @@ export default function XeroSection() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 items-center">
-            <div>
-              <Label className="text-sm font-medium">Invoice prefix</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Prefix for invoice numbers (e.g. BCL-)</p>
-            </div>
-            <Input value={invoicePrefix} onChange={(e) => setInvoicePrefix(e.target.value)} className="h-9" />
+          <div>
+            <Label className="text-sm font-medium">Invoice numbers</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">Every invoice is numbered in one sequence: INV-1058, INV-1059 and so on.</p>
           </div>
         </CardContent>
       </Card>

@@ -188,23 +188,12 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
       }
 
       if (hasPrice && jobData?.id) {
-        // Fire client SMS, Xero draft invoice in parallel.
-        // Cleaner notification + acceptance rows are handled by syncJobAssignment below.
-        const promises: Promise<any>[] = [];
-
-        promises.push(
-          supabase.functions.invoke('send-client-booking-sms', { body: { job_id: jobData.id } }).catch(e => {
-            toast.error(`⚠️ Client SMS failed: ${e.message}`);
-          })
-        );
-
-        promises.push(
-          supabase.functions.invoke('xero-create-invoice', { body: { job_id: jobData.id } }).catch(e => {
-            toast.error(`⚠️ Xero invoice failed: ${e.message}`);
-          })
-        );
-
-        await Promise.allSettled(promises);
+        // Client SMS now. No invoice here: the draft is raised when the clean
+        // is completed. Cleaner notification + acceptance rows are handled by
+        // syncJobAssignment below.
+        await supabase.functions.invoke('send-client-booking-sms', { body: { job_id: jobData.id } }).catch(e => {
+          toast.error(`⚠️ Client SMS failed: ${e.message}`);
+        });
 
         // Run cleaner assignment sync (acceptance rows, alerts, SMS) if a cleaner was picked.
         if (cleanerId) {

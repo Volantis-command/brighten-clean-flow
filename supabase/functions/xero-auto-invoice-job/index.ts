@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { billingClient, isDuplicateInvoiceNumber, nextInvoiceNumber } from '../_shared/invoicing.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -191,15 +192,9 @@ Deno.serve(async (req) => {
     const property: any = job.properties || {};
     let clientProfileName: string | null = null;
     if (property.id) {
-      const { data: cpLink } = await supabase
-        .from('client_properties')
-        .select('profiles:client_id(full_name, invoice_name, weekly_invoice)')
-        .eq('property_id', property.id)
-        .limit(1)
-        .maybeSingle();
-      const weeklyInvoice = (cpLink as any)?.profiles?.weekly_invoice === true;
-      clientProfileName = (cpLink as any)?.profiles?.invoice_name?.trim() || (cpLink as any)?.profiles?.full_name || null;
-      if (weeklyInvoice) {
+      const client = await billingClient(supabase, property.id);
+      clientProfileName = client?.name || null;
+      if (client?.weekly) {
         console.log('Client uses weekly invoicing — skipping per-job auto-invoice for job', job_id);
         return new Response(
           JSON.stringify({ success: true, skipped: true, reason: 'weekly_invoice client' }),
@@ -278,19 +273,7 @@ Deno.serve(async (req) => {
       contactEmail
     );
 
-    // Generate sequential invoice number starting at INV-1000
-    const { data: lastInvoice } = await supabase
-      .from('jobs')
-      .select('xero_invoice_number')
-      .like('xero_invoice_number', 'INV-%')
-      .order('xero_invoice_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const lastNum = lastInvoice?.xero_invoice_number
-      ? parseInt(lastInvoice.xero_invoice_number.replace('INV-', ''), 10)
-      : 999;
-    const nextNum = isNaN(lastNum) ? 1000 : lastNum + 1;
-    const invoiceNumber = `INV-${nextNum}`;
+    let invoiceNumber = await nextInvoiceNumber(supabase);
 
     const today = new Date();
     const dueDate = new Date(today);
@@ -311,18 +294,29 @@ Deno.serve(async (req) => {
     if (contactId) invoiceBody.Contact = { ContactID: contactId };
 
     console.log('Creating Xero invoice with', lineItems.length, 'line items');
-    const invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        'Xero-Tenant-Id': tenant_id,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ Invoices: [invoiceBody] }),
-    });
-
-    const responseText = await invRes.text();
+    // A number typed into Xero by hand can collide. Take the next one and retry.
+    let invRes!: Response;
+    let responseText = '';
+    for (let attempt = 0; ; attempt++) {
+      invRes = await xeroFetch('https://api.xero.com/api.xro/2.0/Invoices', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          'Xero-Tenant-Id': tenant_id,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ Invoices: [invoiceBody] }),
+      });
+      responseText = await invRes.text();
+      if (attempt < 5 && isDuplicateInvoiceNumber(invRes.status, responseText)) {
+        console.log(`Invoice number ${invoiceNumber} already used in Xero, taking the next one`);
+        invoiceNumber = await nextInvoiceNumber(supabase);
+        invoiceBody.InvoiceNumber = invoiceNumber;
+        continue;
+      }
+      break;
+    }
     console.log('Xero response:', invRes.status);
 
     if (!invRes.ok) {
