@@ -283,7 +283,7 @@ export default function XeroSection() {
 
           <div>
             <Label className="text-sm font-medium">Invoice numbers</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Every invoice is numbered in one sequence: INV-1058, INV-1059 and so on.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Every invoice is numbered in one sequence: 1058, 1059 and so on.</p>
           </div>
         </CardContent>
       </Card>
