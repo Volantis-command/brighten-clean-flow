@@ -171,10 +171,25 @@ function periodHours(period: Period, jobs: any[], entriesByJob: Record<string, a
   return { clocked: round2(clocked), booked: round2(booked), total: round2(clocked + booked), jobCount, byCleaner };
 }
 
-function HoursCard({ period, jobs, entriesByJob }: { period: Period; jobs: any[]; entriesByJob: Record<string, any[]> }) {
+function HoursCard({ period, jobs, entriesByJob, quotePrices }: {
+  period: Period; jobs: any[]; entriesByJob: Record<string, any[]>; quotePrices: Record<string, number>;
+}) {
   const { clocked, booked, total, jobCount } = periodHours(period, jobs, entriesByJob);
   const pct = Math.min(100, Math.round((total / WEEKLY_HOURS_TARGET) * 100));
   const short = round2(WEEKLY_HOURS_TARGET - total);
+
+  // What the week earns per cleaner hour. Hours with no price on the job drag
+  // this down, which is the point: unpriced work still costs wages.
+  const inPeriod = jobs.filter((j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to);
+  let revenue = 0;
+  let unpricedHours = 0;
+  inPeriod.forEach((j) => {
+    const v = jobValueInc(j, quotePrices);
+    const { hours } = jobHours(j, entriesByJob[j.id] || []);
+    if (v === null) unpricedHours += hours;
+    else revenue += v;
+  });
+  const perHour = total > 0 ? revenue / total : 0;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
@@ -206,6 +221,16 @@ function HoursCard({ period, jobs, entriesByJob }: { period: Period; jobs: any[]
           ? <span className="text-amber-400">{fmtHours(short)} short of target</span>
           : <span className="text-primary">Target hit{short < 0 ? `, ${fmtHours(-short)} over` : ''}</span>}
       </p>
+      {total > 0 && (
+        <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
+          <span className="font-bold text-foreground">{fmtExact(perHour)}</span> per cleaner hour
+          {unpricedHours > 0 && (
+            <span className="block text-amber-400">
+              {fmtHours(unpricedHours)} of that has no price on the job
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
 }
@@ -436,7 +461,7 @@ export default function FinancialsPage() {
           Clocked time is used once a clean is done, booked hours before that.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {weeks.map((p) => <HoursCard key={p.key} period={p} jobs={jobs} entriesByJob={entriesByJob} />)}
+          {weeks.map((p) => <HoursCard key={p.key} period={p} jobs={jobs} entriesByJob={entriesByJob} quotePrices={quotePrices} />)}
         </div>
 
         <div className="mt-4 rounded-2xl border border-border bg-card">
