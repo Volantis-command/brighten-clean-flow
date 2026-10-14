@@ -9,6 +9,15 @@
 import { addDays, format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface TimeOffRow {
+  id: string;
+  user_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+}
+
 export interface TimeOff {
   id: string;
   user_id: string;
@@ -35,6 +44,33 @@ export function timeOffLabel(leave: { start_date: string; end_date: string }): s
 
 export function isOnDate(leave: { start_date: string; end_date: string }, date: string): boolean {
   return leave.start_date <= date && leave.end_date >= date;
+}
+
+/** Who is off at any point between two dates. Used by the calendar. */
+export async function fetchTimeOffRange(from: string, to: string): Promise<TimeOffRow[]> {
+  const { data, error } = await supabase
+    .from('staff_leave')
+    .select('id, user_id, start_date, end_date, reason')
+    .lte('start_date', to)
+    .gte('end_date', from)
+    .order('start_date', { ascending: true });
+  if (error) throw new Error(`Could not load time off: ${error.message}`);
+
+  const rows = ((data as any[]) || []);
+  if (!rows.length) return [];
+
+  const { data: people } = await supabase
+    .from('profiles').select('id, full_name').in('id', [...new Set(rows.map((r) => r.user_id))]);
+  const names = new Map(((people as any[]) || []).map((p) => [p.id, p.full_name || 'Unnamed cleaner']));
+
+  return rows.map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    name: names.get(r.user_id) || 'Unnamed cleaner',
+    start_date: r.start_date,
+    end_date: r.end_date,
+    reason: r.reason,
+  }));
 }
 
 /** Everyone off between today and `days` ahead, soonest first. */

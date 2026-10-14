@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Repeat } from 'lucide-react';
 import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
 import { CalendarDayView } from '@/components/schedule/CalendarDayView';
+import { useTimeOffByDate } from '@/hooks/useTimeOff';
 import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
 import { CalendarMonthView } from '@/components/schedule/CalendarMonthView';
 import { CalendarAgendaView } from '@/components/schedule/CalendarAgendaView';
@@ -40,6 +41,9 @@ export default function SchedulePage() {
     return (saved as CalendarView) || 'week';
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
+  // Time off for every date any view can show from here: the month grid spills
+  // into the neighbouring months and the agenda runs 14 days out.
+  const timeOffByDate = useTimeOffByDate(subDays(selectedDate, 45), addDays(selectedDate, 60));
   const [selectedJob, setSelectedJob] = useState<ScheduleJob | null>(null);
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
@@ -293,6 +297,7 @@ export default function SchedulePage() {
                 nameMap={nameMap}
                 onJobClick={handleJobClick}
                 onAddJob={(date) => handleAddJob(date)}
+                timeOffByDate={timeOffByDate}
               />
             )}
             {view === 'day' && (
@@ -304,6 +309,7 @@ export default function SchedulePage() {
                 onJobClick={handleJobClick}
                 onAddJob={handleAddJob}
                 onJobDrop={handleJobDrop}
+                timeOffByDate={timeOffByDate}
               />
             )}
             {view === 'week' && (
@@ -316,6 +322,7 @@ export default function SchedulePage() {
                 onDateClick={handleDateClick}
                 onAddJob={handleAddJob}
                 onJobDrop={handleJobDrop}
+                timeOffByDate={timeOffByDate}
               />
             )}
             {view === 'month' && (
@@ -327,6 +334,7 @@ export default function SchedulePage() {
                 onDateClick={handleDateClick}
                 onAddJob={(date) => handleAddJob(date)}
                 onJobDrop={(job, newDate) => handleJobDrop(job, newDate)}
+                timeOffByDate={timeOffByDate}
               />
             )}
           </>

@@ -3,6 +3,7 @@ import { addDays, format, isToday } from 'date-fns';
 import { AlertTriangle, CalendarPlus, CheckCircle2, Clock3, MapPin, Sparkles, UserRound } from 'lucide-react';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
+import type { DayOff } from '@/hooks/useTimeOff';
 
 interface CalendarAgendaViewProps {
   date: Date;
@@ -10,6 +11,7 @@ interface CalendarAgendaViewProps {
   nameMap: Record<string, string>;
   onJobClick: (job: ScheduleJob) => void;
   onAddJob: (date: Date) => void;
+  timeOffByDate?: Record<string, DayOff[]>;
 }
 
 const ACTIVE_STATUSES = new Set(['pending_cleaner', 'awaiting_cleaner_acceptance', 'scheduled', 'confirmed', 'in_progress', 'completed', 'pending_suggestion']);
@@ -23,7 +25,7 @@ function statusMeta(status: string) {
   return { label: 'Scheduled', icon: Clock3, className: 'text-primary bg-primary/10 border-primary/25' };
 }
 
-export function CalendarAgendaView({ date, jobs, nameMap, onJobClick, onAddJob }: CalendarAgendaViewProps) {
+export function CalendarAgendaView({ date, jobs, nameMap, onJobClick, onAddJob, timeOffByDate }: CalendarAgendaViewProps) {
   const days = useMemo(() => Array.from({ length: 14 }, (_, index) => addDays(date, index)), [date]);
   const jobsByDate = useMemo(() => {
     const grouped: Record<string, ScheduleJob[]> = {};
@@ -45,6 +47,11 @@ export function CalendarAgendaView({ date, jobs, nameMap, onJobClick, onAddJob }
               <div>
                 <p className="text-sm font-extrabold text-foreground">{isToday(day) ? 'Today' : format(day, 'EEEE')}</p>
                 <p className="text-xs text-muted-foreground">{format(day, 'd MMMM')} · {dayJobs.length} clean{dayJobs.length === 1 ? '' : 's'}</p>
+                {(timeOffByDate?.[dateKey]?.length ?? 0) > 0 && (
+                  <p className="text-xs font-bold text-amber-500">
+                    {timeOffByDate![dateKey].map((o) => o.first).join(', ')} off
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -57,7 +64,7 @@ export function CalendarAgendaView({ date, jobs, nameMap, onJobClick, onAddJob }
             </div>
 
             {dayJobs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">No cleans scheduled.</div>
+              <div className={`rounded-2xl border border-dashed px-4 py-5 text-sm text-muted-foreground ${(timeOffByDate?.[dateKey]?.length ?? 0) > 0 ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'border-border'}`}>No cleans scheduled.</div>
             ) : (
               <div className="space-y-2">
                 {dayJobs.map((job) => {

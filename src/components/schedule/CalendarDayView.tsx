@@ -4,6 +4,8 @@ import { getCleanerColor, getCleanerName } from './cleanerColors';
 import { Plus } from 'lucide-react';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
+import type { DayOff } from '@/hooks/useTimeOff';
+import { TimeOffNote } from './TimeOffChips';
 
 interface CalendarDayViewProps {
   date: Date;
@@ -13,6 +15,7 @@ interface CalendarDayViewProps {
   onJobClick: (job: ScheduleJob) => void;
   onAddJob?: (date: Date, hour?: number) => void;
   onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
+  timeOffByDate?: Record<string, DayOff[]>;
 }
 
 const DAY_START = 6;          // 6am, the earliest a turnover realistically starts
@@ -52,7 +55,7 @@ function formatHour(hour: number): string {
   return `${hour - 12} PM`;
 }
 
-export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onAddJob, onJobDrop }: CalendarDayViewProps) {
+export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onAddJob, onJobDrop, timeOffByDate }: CalendarDayViewProps) {
   const dayJobs = useMemo(
     () => jobs.filter(j => isSameDay(new Date(j.scheduled_date + 'T00:00:00'), date)),
     [jobs, date]
@@ -96,6 +99,7 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
         <p className="text-sm text-muted-foreground">
           {dayJobs.length} job{dayJobs.length !== 1 ? 's' : ''} scheduled
         </p>
+        <TimeOffNote off={timeOffByDate?.[format(date, 'yyyy-MM-dd')]} />
       </div>
 
       {/* Time grid */}

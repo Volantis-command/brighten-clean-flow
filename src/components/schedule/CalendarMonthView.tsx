@@ -4,6 +4,8 @@ import { getCleanerColor } from './cleanerColors';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabelShort } from '@/lib/jobLabel';
+import type { DayOff } from '@/hooks/useTimeOff';
+import { TimeOffChips } from './TimeOffChips';
 
 interface CalendarMonthViewProps {
   date: Date;
@@ -13,9 +15,10 @@ interface CalendarMonthViewProps {
   onDateClick: (date: Date) => void;
   onAddJob?: (date: Date) => void;
   onJobDrop?: (job: ScheduleJob, newDate: string) => void;
+  timeOffByDate?: Record<string, DayOff[]>;
 }
 
-export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick, onAddJob, onJobDrop }: CalendarMonthViewProps) {
+export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick, onAddJob, onJobDrop, timeOffByDate }: CalendarMonthViewProps) {
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -86,7 +89,8 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                 className={cn(
                   'min-h-[80px] md:min-h-[100px] p-1.5 border-r border-border/50 last:border-r-0 text-left transition-colors group/cell',
                   !inMonth && 'opacity-30',
-                  today && 'bg-primary/5'
+                  today && 'bg-primary/5',
+                  (timeOffByDate?.[key]?.length ?? 0) > 0 && 'bg-amber-500/[0.06]'
                 )}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, key)}
@@ -101,6 +105,7 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                 >
                   {format(day, 'd')}
                 </button>
+                <TimeOffChips off={timeOffByDate?.[key]} className="mb-1" />
 
                 <div className="space-y-0.5">
                   {dayJobs.slice(0, maxPills).map(job => {

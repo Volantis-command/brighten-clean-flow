@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
+import type { DayOff } from '@/hooks/useTimeOff';
+import { TimeOffChips } from './TimeOffChips';
 
 interface CalendarWeekViewProps {
   date: Date;
@@ -15,6 +17,8 @@ interface CalendarWeekViewProps {
   onDateClick: (date: Date) => void;
   onAddJob?: (date: Date, hour?: number) => void;
   onJobDrop?: (job: ScheduleJob, newDate: string, newTime?: string) => void;
+  /** Who is off, by date. The day is marked so nobody books into it. */
+  timeOffByDate?: Record<string, DayOff[]>;
 }
 
 const DAY_START = 6;      // 6am
@@ -101,7 +105,7 @@ function formatHour(hour: number): string {
   return `${hour - 12} PM`;
 }
 
-export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onDateClick, onAddJob, onJobDrop }: CalendarWeekViewProps) {
+export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobClick, onDateClick, onAddJob, onJobDrop, timeOffByDate }: CalendarWeekViewProps) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -174,6 +178,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
               )}>
                 {format(day, 'd')}
               </span>
+              <TimeOffChips off={timeOffByDate?.[format(day, 'yyyy-MM-dd')]} />
             </button>
           );
         })}
@@ -208,7 +213,10 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                 key={key}
                 className={cn(
                   'relative border-r border-border last:border-r-0',
-                  today && 'bg-primary/[0.03]'
+                  today && 'bg-primary/[0.03]',
+                  // Somebody is away: the whole column is tinted, so a gap in
+                  // the week reads as "nobody to book" at a glance.
+                  (timeOffByDate?.[key]?.length ?? 0) > 0 && 'bg-amber-500/[0.06]'
                 )}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, key)}

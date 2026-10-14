@@ -2,7 +2,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { DesktopSidebar, MobileNav } from '@/components/Navigation';
 import { TopBar } from '@/components/TopBar';
 import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
-import TimeOffBar from '@/components/TimeOffBar';
 
 export default function AppLayout() {
   const { data: activeEntry } = useActiveTimeEntry();
@@ -20,8 +19,6 @@ export default function AppLayout() {
       <div className="flex-1 min-w-0 w-full max-w-full flex flex-col min-h-screen">
         <TopBar />
         <main className={`min-w-0 w-full max-w-full flex-1 p-4 md:p-6 ${inCleanWorkflow ? '' : 'pb-24 md:pb-6'} overflow-x-clip overflow-y-auto`}>
-          {/* Who is away, on every page. Hides itself when nobody is. */}
-          {!inCleanWorkflow && <TimeOffBar />}
           <Outlet />
         </main>
         {!inCleanWorkflow && <MobileNav />}
