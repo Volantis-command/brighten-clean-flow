@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2, CalendarOff, Clock, Check } from 'lucide-react';
+import TimeOffSection from '@/components/staff/TimeOffSection';
 
 const DAYS = [
   { i: 1, label: 'Monday' }, { i: 2, label: 'Tuesday' }, { i: 3, label: 'Wednesday' },
@@ -162,6 +163,9 @@ export default function AvailabilityPage() {
           ))}
         </select>
       )}
+
+      {/* ── Time off ── */}
+      <TimeOffSection userId={who} canEdit={canManageAll || who === user?.id} />
 
       {/* ── Normal week ── */}
       <div className="rounded-2xl border border-border bg-card">
