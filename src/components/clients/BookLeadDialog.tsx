@@ -11,11 +11,14 @@
 
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { addDays, format } from 'date-fns';
+import { addDays, format, parseISO, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
-import { CalendarCheck, Loader2 } from 'lucide-react';
+import { CalendarCheck, CalendarIcon, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
@@ -57,11 +60,12 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
   const { data: cleaners = [] } = useCleanersList();
   const price = useMemo(() => quotedPrice(lead), [lead]);
 
-  const [date, setDate] = useState(() => lead?.preferred_date || format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+  const [date, setDate] = useState<Date>(() => (lead?.preferred_date ? parseISO(lead.preferred_date) : addDays(startOfDay(new Date()), 1)));
   const [time, setTime] = useState(() => (lead?.preferred_time ? String(lead.preferred_time).slice(0, 5) : '09:00'));
   const [hours, setHours] = useState(() => String(quotedHours(lead)));
   const [priceInc, setPriceInc] = useState(() => (price.inc != null ? String(price.inc) : ''));
   const [cleanerId, setCleanerId] = useState('');
+  const [cleaner2Id, setCleaner2Id] = useState('');
   const [textClient, setTextClient] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -73,6 +77,7 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
     const incN = Number(priceInc);
     const hoursN = Number(hours);
     if (!date) { toast.error('Pick a date for the clean.'); return; }
+    const dateStr = format(date, 'yyyy-MM-dd');
     if (!(incN > 0)) { toast.error('Put a price on the clean before booking it.'); return; }
     if (!(hoursN > 0)) { toast.error('How long is the clean? Put the hours in.'); return; }
 
@@ -86,7 +91,7 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
           bedrooms: lead.bedrooms || null, bathrooms: lead.bathrooms || null,
           clean_type: lead.clean_type || 'Standard Clean',
           create_job: true,
-          scheduled_date: date,
+          scheduled_date: dateStr,
           scheduled_time: time || null,
           price_inc_gst: incN,
           price_ex_gst: Math.round((incN / 1.1) * 100) / 100,
@@ -111,14 +116,20 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
       if (cleanerId) {
         const { error: assignErr } = await supabase
           .from('jobs')
-          .update({ cleaner_1_id: cleanerId, status: 'awaiting_cleaner_acceptance' } as any)
+          .update({
+            cleaner_1_id: cleanerId,
+            cleaner_2_id: cleaner2Id || null,
+            status: 'awaiting_cleaner_acceptance',
+          } as any)
           .eq('id', jobId);
         if (assignErr) {
           cleanerNote = `Booked, but the cleaner was not assigned: ${assignErr.message}`;
         } else {
           try {
             await syncJobAssignment(jobId, { sendSms: true });
-            cleanerNote = 'The cleaner has been texted to accept it.';
+            cleanerNote = cleaner2Id
+              ? 'Both cleaners have been texted to accept it.'
+              : 'The cleaner has been texted to accept it.';
           } catch (e: any) {
             cleanerNote = `Booked and assigned, but the text failed: ${e.message}`;
           }
@@ -137,7 +148,7 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
       });
 
       toast.success(
-        `${name} is booked for ${format(new Date(date + 'T00:00:00'), 'EEE d MMM')}${time ? ` at ${time}` : ''}. ${cleanerNote}`,
+        `${name} is booked for ${format(date, 'EEE d MMM')}${time ? ` at ${time}` : ''}. ${cleanerNote}`,
         { duration: 8000 },
       );
       onBooked?.(jobId);
@@ -168,17 +179,56 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
             <p className="mt-0.5 text-xs text-muted-foreground">{lead?.address || 'No address on the lead'}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Date
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 h-10 rounded-xl" />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="mt-1 h-11 w-full justify-start rounded-xl text-sm font-semibold normal-case text-foreground">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                    {format(date, 'EEE d MMM yyyy')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => d && setDate(d)}
+                    disabled={(d) => d < startOfDay(new Date())}
+                    initialFocus
+                    className="pointer-events-auto p-3"
+                  />
+                </PopoverContent>
+              </Popover>
               {usedQuotedDate && <span className="mt-1 block text-[11px] font-medium normal-case text-primary">From their quote</span>}
-            </label>
-            <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            </div>
+            <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Start time
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 h-10 rounded-xl" />
+              <TimeSelect value={time} onChange={setTime} className="mt-1 h-11 rounded-xl" />
               {usedQuotedTime && <span className="mt-1 block text-[11px] font-medium normal-case text-primary">From their quote</span>}
-            </label>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Tomorrow', d: addDays(startOfDay(new Date()), 1) },
+              { label: format(addDays(startOfDay(new Date()), 2), 'EEE'), d: addDays(startOfDay(new Date()), 2) },
+              { label: format(addDays(startOfDay(new Date()), 3), 'EEE'), d: addDays(startOfDay(new Date()), 3) },
+              { label: 'Next week', d: addDays(startOfDay(new Date()), 7) },
+            ].map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                onClick={() => setDate(q.d)}
+                className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
+                  format(q.d, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                {q.label}
+              </button>
+            ))}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -193,22 +243,39 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
             </label>
           </div>
 
-          <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            Cleaner
-            <select
-              value={cleanerId}
-              onChange={(e) => setCleanerId(e.target.value)}
-              className="mt-1 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground"
-            >
-              <option value="">Assign later</option>
-              {cleaners.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.full_name || c.email}</option>
-              ))}
-            </select>
-            <span className="mt-1 block text-[11px] font-medium normal-case text-muted-foreground">
-              Picking someone texts them the job to accept, same as the Schedule does.
-            </span>
-          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Cleaner 1
+              <select
+                value={cleanerId}
+                onChange={(e) => { setCleanerId(e.target.value); if (!e.target.value) setCleaner2Id(''); }}
+                className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground"
+              >
+                <option value="">Assign later</option>
+                {cleaners.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.full_name || c.email}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Cleaner 2
+              <select
+                value={cleaner2Id}
+                disabled={!cleanerId}
+                onChange={(e) => setCleaner2Id(e.target.value)}
+                className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground disabled:opacity-50"
+              >
+                <option value="">None</option>
+                {cleaners.filter((c: any) => c.id !== cleanerId).map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.full_name || c.email}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="-mt-2 text-[11px] text-muted-foreground">
+            Both cleaners get the job text and have to accept it, same as the Schedule does.
+            {Number(hours) > 0 && cleaner2Id ? ` Two on site means about ${Math.round((Number(hours) / 2) * 10) / 10} hours each.` : ''}
+          </p>
 
           <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <input type="checkbox" checked={textClient} onChange={(e) => setTextClient(e.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
