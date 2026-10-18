@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OPEN_STAGES, stageDef, type LeadStage } from '@/lib/leadPipeline';
 import MessageThread from '@/components/messaging/MessageThread';
+import BookLeadDialog from '@/components/clients/BookLeadDialog';
 
 interface Props {
   lead: any;
@@ -75,6 +76,7 @@ export default function LeadDetailSlideOver({ lead, open, onClose, onMoveStage }
   const queryClient = useQueryClient();
   const [addingClient, setAddingClient] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [booking, setBooking] = useState(false);
 
   // NOTE: every hook below must run on EVERY render, including the renders
   // where there is no lead yet. This component stays mounted while the list is
@@ -304,9 +306,17 @@ export default function LeadDetailSlideOver({ lead, open, onClose, onMoveStage }
               Approve &amp; schedule
             </Button>
           )}
+          {!scheduledJob && (
+            <Button
+              onClick={() => setBooking(true)}
+              className="w-full h-12 font-bold gap-2 bg-primary text-primary-foreground"
+            >
+              <CalendarCheck className="w-4 h-4" /> Book this clean in
+            </Button>
+          )}
           <Button onClick={handleEditQuote}
-            className={`w-full h-12 font-bold gap-2 ${canApprove ? 'bg-card border border-border text-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}
-            variant={canApprove ? 'outline' : 'default'}>
+            className={`w-full h-12 font-bold gap-2 ${canApprove || !scheduledJob ? 'bg-card border border-border text-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}
+            variant={canApprove || !scheduledJob ? 'outline' : 'default'}>
             <FilePen className="w-4 h-4" /> Edit &amp; send quote
           </Button>
           {lead.phone && (
@@ -342,6 +352,12 @@ export default function LeadDetailSlideOver({ lead, open, onClose, onMoveStage }
           </Button>
           <Button variant="ghost" onClick={onClose} className="w-full h-11">Close</Button>
         </div>
+        <BookLeadDialog
+          lead={lead}
+          open={booking}
+          onOpenChange={setBooking}
+          onBooked={() => { queryClient.invalidateQueries({ queryKey: ['lead-scheduled-job'] }); }}
+        />
       </SheetContent>
     </Sheet>
   );
