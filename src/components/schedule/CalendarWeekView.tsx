@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
+import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
+import { TeamSplit } from './TeamSplit';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffChips } from './TimeOffChips';
 
@@ -260,21 +262,16 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const GAP = 2; // px gap between columns
                   const colWidthPct = 100 / totalCols;
                   const leftPct = col * colWidthPct;
-                  const cleaner1 = getCleanerName(job.cleaner_1_id, nameMap);
-                  const cleaner2 = getCleanerName(job.cleaner_2_id, nameMap);
+                  const team = jobCleaners(job, nameMap);
+                  const isTeamJob = team.length > 1;
                   const clientName = jobLabel(job);
                   const address = job.properties?.address || '';
                   const isAirbnb = job.properties?.client_type === 'airbnb';
                   const isFirstClean = job.properties?.first_clean === true;
                   const isRecurring = !!job.series_id || !!job.recurring_parent_id || (job.frequency && job.frequency !== 'one-off');
-                  // Build a compact cleaner string. Show just first names to fit
-                  // the narrow card. Both cleaners if assigned, "(2)" hint if 2.
-                  const cleanerStr = (() => {
-                    const names = [cleaner1, cleaner2].filter(n => n && n !== 'Unassigned' && n !== '?').map(n => n.split(' ')[0]);
-                    if (names.length === 0) return null;
-                    if (names.length === 1) return names[0];
-                    return `${names[0]} + ${names[1]}`;
-                  })();
+                  // One clean, however many cleaners. The block splits into a band
+                  // each (TeamSplit); this line is the fallback for short blocks.
+                  const cleanerStr = team.length ? teamLabel(team) : null;
 
                   // Status-based colour coding
                   // yellow=needs cleaner, green=confirmed, blue=in progress
@@ -313,7 +310,8 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         outlineOffset: awaitingApproval ? '-3px' : undefined,
                       }}
                     >
-                      <div className="px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
+                      {isTeamJob && <TeamSplit team={team} height={height} textColor={statusText} />}
+                      <div className="relative px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
                         {/* Line 1: name + indicator icons */}
                         <div className="flex items-center gap-1 min-w-0">
                           <p
@@ -349,8 +347,9 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                             📍 {address}
                           </p>
                         )}
-                        {/* Line 4: cleaners */}
-                        {height >= 64 && cleanerStr && (
+                        {/* Line 4: cleaners. A team job already names them on each
+                            band, so this only repeats for a single cleaner. */}
+                        {height >= 64 && cleanerStr && !isTeamJob && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5"
                             style={{ color: statusText, opacity: 0.8 }}
@@ -358,7 +357,12 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                             👤 {cleanerStr}
                           </p>
                         )}
-                        {height >= 64 && !cleanerStr && (
+                        {isTeamJob && height >= 40 && height < 64 && (
+                          <p className="text-[9px] font-bold leading-tight truncate mt-0.5" style={{ color: statusText, opacity: .9 }}>
+                            👥 {team.length} cleaners
+                          </p>
+                        )}
+                        {height >= 64 && !cleanerStr && !isTeamJob && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5 italic"
                             style={{ color: statusText, opacity: 0.7 }}

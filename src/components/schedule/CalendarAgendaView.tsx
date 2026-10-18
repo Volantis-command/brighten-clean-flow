@@ -3,6 +3,7 @@ import { addDays, format, isToday } from 'date-fns';
 import { AlertTriangle, CalendarPlus, CheckCircle2, Clock3, MapPin, Sparkles, UserRound } from 'lucide-react';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
+import { jobCleaners } from '@/lib/jobCleaners';
 import type { DayOff } from '@/hooks/useTimeOff';
 
 interface CalendarAgendaViewProps {
@@ -70,7 +71,7 @@ export function CalendarAgendaView({ date, jobs, nameMap, onJobClick, onAddJob, 
                 {dayJobs.map((job) => {
                   const status = statusMeta(job.status);
                   const StatusIcon = status.icon;
-                  const cleanerNames = [job.cleaner_1_id, job.cleaner_2_id].filter(Boolean).map((id) => nameMap[id as string] || 'Cleaner');
+                  const cleanerNames = jobCleaners(job, nameMap).map((c) => c.name);
                   const address = [job.properties?.address, job.properties?.suburb].filter(Boolean).join(', ');
                   return (
                     <button

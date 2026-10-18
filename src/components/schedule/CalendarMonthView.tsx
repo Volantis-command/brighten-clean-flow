@@ -4,6 +4,7 @@ import { getCleanerColor } from './cleanerColors';
 import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabelShort } from '@/lib/jobLabel';
+import { jobCleaners } from '@/lib/jobCleaners';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffChips } from './TimeOffChips';
 
@@ -110,6 +111,7 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                 <div className="space-y-0.5">
                   {dayJobs.slice(0, maxPills).map(job => {
                     const shortName = jobLabelShort(job, 2);
+                    const team = jobCleaners(job, nameMap);
                     const isComplete = job.status === 'completed';
                     const isInProgress = job.status === 'in_progress';
                     const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
@@ -134,6 +136,15 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                         }}
                       >
                         {shortName}
+                        {team.length > 1 && (
+                          <span
+                            className="ml-1 rounded px-1 font-extrabold"
+                            style={{ background: pillBorder, color: '#fff' }}
+                            title={team.map((c) => c.name).join(', ')}
+                          >
+                            {team.map((c) => c.initial).join('')}
+                          </span>
+                        )}
                       </div>
                     );
                   })}

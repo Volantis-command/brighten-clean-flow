@@ -4,6 +4,8 @@ import { getCleanerColor, getCleanerName } from './cleanerColors';
 import { Plus } from 'lucide-react';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
+import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
+import { TeamSplit } from './TeamSplit';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffNote } from './TimeOffChips';
 
@@ -163,7 +165,9 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
               const duration = getDurationHours(job.estimated_duration);
               const top = (startTime - firstHour) * HOUR_HEIGHT;
               const height = Math.max(duration * HOUR_HEIGHT, 36);
-              const cleanerName = getCleanerName(job.cleaner_1_id, nameMap);
+              const team = jobCleaners(job, nameMap);
+              const isTeamJob = team.length > 1;
+              const cleanerName = team.length ? teamLabel(team) : getCleanerName(job.cleaner_1_id, nameMap);
               const clientName = jobLabel(job);
               const address = job.properties?.address || '';
 
@@ -197,7 +201,8 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                     outlineOffset: awaitingApproval ? '-3px' : undefined,
                   }}
                 >
-                  <div className="px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">
+                  {isTeamJob && <TeamSplit team={team} height={height} textColor={textColor} />}
+                  <div className="relative px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">
                     <p className={`text-sm font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`} style={{ color: textColor }}>
                       {clientName}
                     </p>
@@ -208,7 +213,7 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                     )}
                     {height >= 68 && (
                       <p className="text-xs leading-tight truncate mt-0.5 opacity-75" style={{ color: textColor }}>
-                        👤 {cleanerName}
+                        {isTeamJob ? '👥' : '👤'} {cleanerName}
                         {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}
                         {job.estimated_duration ? ` · ${job.estimated_duration / 60}hr` : ''}
                       </p>
