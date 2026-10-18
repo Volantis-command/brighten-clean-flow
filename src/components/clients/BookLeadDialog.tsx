@@ -62,10 +62,20 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
 
   const [date, setDate] = useState<Date>(() => (lead?.preferred_date ? parseISO(lead.preferred_date) : addDays(startOfDay(new Date()), 1)));
   const [time, setTime] = useState(() => (lead?.preferred_time ? String(lead.preferred_time).slice(0, 5) : '09:00'));
+  // The quote is hours of work. Two cleaners means half the time on site, so
+  // the clean takes the slot it will really take. Typing your own hours wins.
+  const quoteHours = useMemo(() => quotedHours(lead), [lead]);
   const [hours, setHours] = useState(() => String(quotedHours(lead)));
+  const [hoursEdited, setHoursEdited] = useState(false);
   const [priceInc, setPriceInc] = useState(() => (price.inc != null ? String(price.inc) : ''));
   const [cleanerId, setCleanerId] = useState('');
   const [cleaner2Id, setCleaner2Id] = useState('');
+
+  const setTeamSize = (size: number) => {
+    if (hoursEdited) return;
+    const each = Math.round((quoteHours / size) * 4) / 4; // to the nearest 15 min
+    setHours(String(each));
+  };
   const [textClient, setTextClient] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -234,7 +244,16 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
           <div className="grid grid-cols-2 gap-3">
             <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Hours on site
-              <Input type="number" min="0.5" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} className="mt-1 h-10 rounded-xl" />
+              <Input
+                type="number" min="0.5" step="0.25" value={hours}
+                onChange={(e) => { setHours(e.target.value); setHoursEdited(true); }}
+                className="mt-1 h-10 rounded-xl"
+              />
+              <span className="mt-1 block text-[11px] font-medium normal-case text-primary">
+                {cleaner2Id
+                  ? `${quoteHours} hrs of work, 2 cleaners`
+                  : `Quoted ${quoteHours} hrs`}
+              </span>
             </label>
             <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Price inc GST
@@ -248,7 +267,10 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
               Cleaner 1
               <select
                 value={cleanerId}
-                onChange={(e) => { setCleanerId(e.target.value); if (!e.target.value) setCleaner2Id(''); }}
+                onChange={(e) => {
+                  setCleanerId(e.target.value);
+                  if (!e.target.value) { setCleaner2Id(''); setTeamSize(1); }
+                }}
                 className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground"
               >
                 <option value="">Assign later</option>
@@ -262,7 +284,7 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
               <select
                 value={cleaner2Id}
                 disabled={!cleanerId}
-                onChange={(e) => setCleaner2Id(e.target.value)}
+                onChange={(e) => { setCleaner2Id(e.target.value); setTeamSize(e.target.value ? 2 : 1); }}
                 className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground disabled:opacity-50"
               >
                 <option value="">None</option>
@@ -274,7 +296,7 @@ export default function BookLeadDialog({ lead, open, onOpenChange, onBooked }: P
           </div>
           <p className="-mt-2 text-[11px] text-muted-foreground">
             Both cleaners get the job text and have to accept it, same as the Schedule does.
-            {Number(hours) > 0 && cleaner2Id ? ` Two on site means about ${Math.round((Number(hours) / 2) * 10) / 10} hours each.` : ''}
+            {cleaner2Id && !hoursEdited ? ` Time on site halved to ${hours} hrs for the pair.` : ''}
           </p>
 
           <label className="flex items-center gap-2 text-sm font-semibold text-foreground">

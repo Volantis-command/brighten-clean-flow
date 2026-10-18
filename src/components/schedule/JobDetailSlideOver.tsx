@@ -59,11 +59,41 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
     setAssigningCleaner(true);
     try {
       const newId = value === '__none__' ? null : value;
-      const { error } = await supabase.from('jobs').update({ [slot]: newId } as any).eq('id', job.id);
+
+      // A second cleaner halves the time on site: the same work, two people
+      // doing it. Taking them off puts it back. The duration is still yours to
+      // change afterwards, and the undo on the toast puts it straight back.
+      const patch: Record<string, any> = { [slot]: newId };
+      const mins = Number(job.estimated_duration) || 0;
+      const hadSecond = !!job.cleaner_2_id;
+      let timeNote = '';
+      if (slot === 'cleaner_2_id' && mins > 0) {
+        if (newId && !hadSecond) {
+          patch.estimated_duration = Math.max(30, Math.round((mins / 2) / 15) * 15);
+          timeNote = ` Time on site halved to ${patch.estimated_duration / 60} hrs.`;
+        } else if (!newId && hadSecond) {
+          patch.estimated_duration = Math.round((mins * 2) / 15) * 15;
+          timeNote = ` Time on site back to ${patch.estimated_duration / 60} hrs.`;
+        }
+      }
+
+      const { error } = await supabase.from('jobs').update(patch as any).eq('id', job.id);
       if (error) throw error;
       // syncJobAssignment recomputes status, manages job_acceptances rows, sends SMS to new cleaner
       await syncJobAssignment(job.id, { sendSms: true });
-      toast.success(newId ? 'Cleaner assigned ✓' : 'Cleaner removed');
+      toast.success((newId ? 'Cleaner assigned ✓' : 'Cleaner removed') + timeNote, {
+        duration: timeNote ? 10000 : 4000,
+        action: timeNote
+          ? {
+              label: 'Undo the time',
+              onClick: async () => {
+                await supabase.from('jobs').update({ estimated_duration: mins } as any).eq('id', job.id);
+                queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+                toast.success(`Back to ${mins / 60} hrs`);
+              },
+            }
+          : undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-acceptances'] });
     } catch (e: any) {
