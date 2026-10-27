@@ -7,6 +7,7 @@ import { jobLabelShort } from '@/lib/jobLabel';
 import { jobCleaners } from '@/lib/jobCleaners';
 import { jobClosure } from '@/lib/jobClosure';
 import { Check } from 'lucide-react';
+import { CLOSED_PILL_BG, CLOSED_PILL_TEXT, CLOSED_PILL_BORDER } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffChips } from './TimeOffChips';
 
@@ -132,14 +133,18 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                           e.dataTransfer.effectAllowed = 'move';
                         }}
                         onClick={(e) => { e.stopPropagation(); onJobClick(job); }}
-                        className={`text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 ${isCancelled ? 'line-through' : ''} ${settled ? 'opacity-50' : ''}`}
+                        className={`text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 ${isCancelled ? 'line-through' : ''}`}
                         style={{
-                          backgroundColor: pillBg,
-                          color: pillText,
-                          borderLeft: `2px solid ${pillBorder}`,
+                          backgroundColor: settled ? CLOSED_PILL_BG : pillBg,
+                          color: settled ? CLOSED_PILL_TEXT : pillText,
+                          borderLeft: `2px solid ${settled ? CLOSED_PILL_BORDER : pillBorder}`,
                         }}
                       >
-                        {settled && <Check className="mr-0.5 inline h-2.5 w-2.5 align-[-1px] text-emerald-600" strokeWidth={4} />}
+                        {settled && (
+                          <span className="mr-1 inline-grid h-3.5 w-3.5 place-items-center rounded-full bg-emerald-500 align-[-2px] text-white">
+                            <Check className="h-2.5 w-2.5" strokeWidth={4} />
+                          </span>
+                        )}
                         {closure.chip && (
                           <span className={`mr-1 rounded px-1 font-extrabold ${closure.tone === 'bad' ? 'bg-red-600 text-white' : 'bg-amber-400 text-[#3A2A00]'}`}>
                             {closure.tone === 'bad' ? '!' : '$'}

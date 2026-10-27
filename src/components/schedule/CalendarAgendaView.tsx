@@ -5,6 +5,7 @@ import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
 import { jobCleaners } from '@/lib/jobCleaners';
 import { jobClosure } from '@/lib/jobClosure';
+import { ClosedTick } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
 
 interface CalendarAgendaViewProps {
@@ -81,8 +82,9 @@ export function CalendarAgendaView({ date, jobs, nameMap, onJobClick, onAddJob, 
                       type="button"
                       key={job.id}
                       onClick={() => onJobClick(job)}
-                      className={`w-full min-w-0 rounded-2xl border bg-card p-4 text-left transition-all hover:border-primary/40 active:scale-[0.99] ${settled ? 'border-border opacity-55' : closure.chip ? (closure.tone === 'bad' ? 'border-red-500/60' : 'border-amber-400/70') : 'border-border'}`}
+                      className={`relative w-full min-w-0 rounded-2xl border bg-card p-4 text-left transition-all hover:border-primary/40 active:scale-[0.99] ${settled ? 'border-[hsl(215_24%_45%)] bg-[hsl(215_22%_94%)] dark:bg-[hsl(215_24%_22%)]' : closure.chip ? (closure.tone === 'bad' ? 'border-red-500/60' : 'border-amber-400/70') : 'border-border'}`}
                     >
+                      {settled && <ClosedTick reason={closure.reason} size="md" />}
                       <div className="flex min-w-0 items-start gap-3">
                         <div className="w-14 shrink-0 pt-0.5 text-sm font-extrabold text-foreground">{job.scheduled_time?.slice(0, 5) || 'TBC'}</div>
                         <div className="min-w-0 flex-1">

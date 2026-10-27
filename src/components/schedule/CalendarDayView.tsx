@@ -7,7 +7,7 @@ import { jobLabel } from '@/lib/jobLabel';
 import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
 import { TeamSplit } from './TeamSplit';
 import { jobClosure } from '@/lib/jobClosure';
-import { ClosedTick, ActionChip } from './ClosedTick';
+import { ClosedTick, ActionChip, CLOSED_BG, CLOSED_BORDER, CLOSED_TEXT } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffNote } from './TimeOffChips';
 
@@ -195,30 +195,30 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                   draggable
                   onDragStart={(e) => handleDragStart(e, job)}
                   onClick={() => onJobClick(job)}
-                  className={`absolute left-1 right-4 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] ${settled ? 'opacity-45 hover:opacity-80' : ''}`}
+                  className="absolute left-1 right-4 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
                   style={{
                     top: Math.max(top, 0),
                     height,
-                    backgroundColor: awaitingApproval ? 'hsl(24 95% 53%)' : bgColor,
-                    borderLeft: `4px ${awaitingApproval ? 'dashed' : 'solid'} ${awaitingApproval ? 'hsl(24 95% 35%)' : borderColor}`,
+                    backgroundColor: settled ? CLOSED_BG : awaitingApproval ? 'hsl(24 95% 53%)' : bgColor,
+                    borderLeft: `4px ${awaitingApproval && !settled ? 'dashed' : 'solid'} ${settled ? CLOSED_BORDER : awaitingApproval ? 'hsl(24 95% 35%)' : borderColor}`,
                     outline: awaitingApproval ? '2px dashed hsl(24 95% 35%)' : undefined,
                     outlineOffset: awaitingApproval ? '-3px' : undefined,
                   }}
                 >
                   {isTeamJob && <TeamSplit team={team} height={height} textColor={textColor} />}
-                  {settled && <ClosedTick reason={closure.reason} size="md" />}
+                  {settled && <ClosedTick reason={closure.reason} size="lg" />}
                   {closure.chip && <ActionChip label={closure.chip} tone={closure.tone} />}
                   <div className="relative px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">
-                    <p className={`text-sm font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`} style={{ color: textColor }}>
+                    <p className={`text-sm font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`} style={{ color: settled ? CLOSED_TEXT : textColor }}>
                       {clientName}
                     </p>
                     {height >= 52 && address && (
-                      <p className="text-xs leading-tight truncate mt-0.5 opacity-85" style={{ color: textColor }}>
+                      <p className="text-xs leading-tight truncate mt-0.5 opacity-85" style={{ color: settled ? CLOSED_TEXT : textColor }}>
                         📍 {address}
                       </p>
                     )}
                     {height >= 68 && (
-                      <p className="text-xs leading-tight truncate mt-0.5 opacity-75" style={{ color: textColor }}>
+                      <p className="text-xs leading-tight truncate mt-0.5 opacity-75" style={{ color: settled ? CLOSED_TEXT : textColor }}>
                         {isTeamJob ? '👥' : '👤'} {cleanerName}
                         {job.scheduled_time ? ` · ${job.scheduled_time.slice(0, 5)}` : ''}
                         {job.estimated_duration ? ` · ${job.estimated_duration / 60}hr` : ''}

@@ -8,7 +8,7 @@ import { jobLabel } from '@/lib/jobLabel';
 import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
 import { TeamSplit } from './TeamSplit';
 import { jobClosure } from '@/lib/jobClosure';
-import { ClosedTick, ActionChip } from './ClosedTick';
+import { ClosedTick, ActionChip, CLOSED_BG, CLOSED_BORDER, CLOSED_TEXT } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffChips } from './TimeOffChips';
 
@@ -305,32 +305,32 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                       draggable
                       onDragStart={(e) => handleDragStart(e, job)}
                       onClick={() => onJobClick(job)}
-                      className={`absolute z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event ${settled ? 'opacity-45 hover:opacity-80' : ''}`}
+                      className="absolute z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event"
                       style={{
                         top: Math.max(top, 0),
                         height,
                         left: `calc(${leftPct}% + ${GAP}px)`,
                         width: `calc(${colWidthPct}% - ${GAP * 2}px)`,
-                        backgroundColor: awaitingApproval ? 'hsl(24 95% 53%)' : statusBg,
-                        borderLeft: `3px ${awaitingApproval ? 'dashed' : 'solid'} ${awaitingApproval ? 'hsl(24 95% 35%)' : statusBorder}`,
+                        backgroundColor: settled ? CLOSED_BG : awaitingApproval ? 'hsl(24 95% 53%)' : statusBg,
+                        borderLeft: `3px ${awaitingApproval && !settled ? 'dashed' : 'solid'} ${settled ? CLOSED_BORDER : awaitingApproval ? 'hsl(24 95% 35%)' : statusBorder}`,
                         outline: awaitingApproval ? '2px dashed hsl(24 95% 35%)' : undefined,
                         outlineOffset: awaitingApproval ? '-3px' : undefined,
                       }}
                     >
                       {isTeamJob && <TeamSplit team={team} height={height} textColor={statusText} />}
-                      {settled && <ClosedTick reason={closure.reason} />}
+                      {settled && <ClosedTick reason={closure.reason} size={height >= 56 ? 'md' : 'sm'} />}
                       {closure.chip && <ActionChip label={closure.chip} tone={closure.tone} compact />}
                       <div className="relative px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
                         {/* Line 1: name + indicator icons */}
                         <div className="flex items-center gap-1 min-w-0">
                           <p
                             className={`text-[11px] font-bold leading-tight truncate flex-1 min-w-0 ${isCancelled ? 'line-through' : ''}`}
-                            style={{ color: statusText }}
+                            style={{ color: settled ? CLOSED_TEXT : statusText }}
                             title={clientName}
                           >
                             {clientName}
                           </p>
-                          <span className="flex items-center gap-0.5 shrink-0" style={{ color: statusText }}>
+                          <span className="flex items-center gap-0.5 shrink-0" style={{ color: settled ? CLOSED_TEXT : statusText }}>
                             {isRecurring && <span className="text-[9px]" title="Recurring">🔁</span>}
                             {isAirbnb && <span className="text-[9px]" title="Airbnb / short-stay">🏠</span>}
                             {isFirstClean && <span className="text-[9px]" title="First clean">⭐</span>}
@@ -340,7 +340,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         {height >= 32 && job.scheduled_time && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5 font-semibold"
-                            style={{ color: statusText, opacity: 0.85 }}
+                            style={{ color: settled ? CLOSED_TEXT : statusText, opacity: 0.85 }}
                           >
                             {job.scheduled_time.slice(0, 5)}
                             {duration ? ` · ${duration}hr` : ''}
@@ -350,7 +350,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         {height >= 48 && address && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5"
-                            style={{ color: statusText, opacity: 0.8 }}
+                            style={{ color: settled ? CLOSED_TEXT : statusText, opacity: 0.8 }}
                             title={address}
                           >
                             📍 {address}
@@ -361,20 +361,20 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         {height >= 64 && cleanerStr && !isTeamJob && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5"
-                            style={{ color: statusText, opacity: 0.8 }}
+                            style={{ color: settled ? CLOSED_TEXT : statusText, opacity: 0.8 }}
                           >
                             👤 {cleanerStr}
                           </p>
                         )}
                         {isTeamJob && height >= 40 && height < 64 && (
-                          <p className="text-[9px] font-bold leading-tight truncate mt-0.5" style={{ color: statusText, opacity: .9 }}>
+                          <p className="text-[9px] font-bold leading-tight truncate mt-0.5" style={{ color: settled ? CLOSED_TEXT : statusText, opacity: .9 }}>
                             👥 {team.length} cleaners
                           </p>
                         )}
                         {height >= 64 && !cleanerStr && !isTeamJob && (
                           <p
                             className="text-[9px] leading-tight truncate mt-0.5 italic"
-                            style={{ color: statusText, opacity: 0.7 }}
+                            style={{ color: settled ? CLOSED_TEXT : statusText, opacity: 0.7 }}
                           >
                             No cleaner assigned
                           </p>
