@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  addWeeks, subWeeks, addMonths, subMonths, differenceInDays, differenceInMinutes,
+  addWeeks, subWeeks, addMonths, subMonths, differenceInMinutes,
 } from 'date-fns';
-import { toast } from 'sonner';
-import { AlertTriangle, ExternalLink, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
-const OVERDUE_DAYS = 7;
+/** A clean under this is a typo, not a price. Caught a 10 cent invoice. */
+const SUSPICIOUS_UNDER = 20;
 
 /** The team's weekly target, in cleaner hours (BJ, 1 Oct 2026). */
 const WEEKLY_HOURS_TARGET = 100;
 
 /** Jobs in these states are not real work and must never count as revenue. */
 const DEAD_JOB_STATUSES = ['cancelled'];
-
-/** Raised but not settled. These are the ones Brendan chases. */
-const UNPAID_STATUSES = ['draft', 'sent', 'authorised', 'failed'];
 
 const fmt = (n: number) =>
   n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
@@ -184,12 +181,18 @@ function HoursCard({ period, jobs, entriesByJob, quotePrices }: {
   let revenue = 0;
   let unpricedHours = 0;
   inPeriod.forEach((j) => {
+    // Your own places are free on purpose, so they belong in the hours but not
+    // in the rate. Counting them would read as work done for nothing.
+    if (j.properties?.no_charge) return;
     const v = jobValueInc(j, quotePrices);
     const { hours } = jobHours(j, entriesByJob[j.id] || []);
     if (v === null) unpricedHours += hours;
     else revenue += v;
   });
-  const perHour = total > 0 ? revenue / total : 0;
+  const chargeableHours = inPeriod
+    .filter((j) => !j.properties?.no_charge)
+    .reduce((s, j) => s + jobHours(j, entriesByJob[j.id] || []).hours, 0);
+  const perHour = chargeableHours > 0 ? revenue / chargeableHours : 0;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
@@ -270,7 +273,7 @@ function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[
   let unpriced = 0;
   inPeriod.forEach((j) => {
     const v = jobValueInc(j, quotePrices);
-    if (v === null) unpriced++;
+    if (v === null) { if (!j.properties?.no_charge) unpriced++; }
     else total += v;
   });
 
@@ -302,8 +305,6 @@ function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[
 export default function FinancialsPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const now = new Date();
   const { weeks, months } = buildPeriods(now);
@@ -316,22 +317,22 @@ export default function FinancialsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['financials-v2', rangeFrom, rangeTo],
     queryFn: async () => {
-      const [{ data: periodJobs, error: pErr }, { data: openInvoices, error: iErr }] =
+      const [{ data: periodJobs, error: pErr }, { data: openWork, error: iErr }] =
         await Promise.all([
           supabase
             .from('jobs')
-            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, linked_quote_id, estimated_duration, cleaner_1_id, cleaner_2_id, properties(property_name, default_price, price_includes_gst, price_turnover)')
+            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, linked_quote_id, estimated_duration, cleaner_1_id, cleaner_2_id, closed_off_at, invoice_status, properties(property_name, default_price, price_includes_gst, price_turnover, no_charge)')
             .gte('scheduled_date', rangeFrom)
             .lte('scheduled_date', rangeTo)
             .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`),
-          // Unpaid invoices are not limited to the period cards. An invoice
-          // from three months ago that never got paid is exactly the one worth
-          // seeing, so this query is deliberately unbounded by date.
+          // Unfinished work, not limited to the period cards. A clean from
+          // three months ago that nobody closed off is exactly the one worth
+          // seeing. Paid and unpaid are deliberately absent: that is Xero's job.
           supabase
             .from('jobs')
-            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, linked_quote_id, invoice_status, invoice_amount, invoice_sent_at, xero_invoice_id, xero_invoice_number, properties(property_name, default_price, price_includes_gst, price_turnover)')
-            .in('invoice_status', UNPAID_STATUSES)
+            .select('id, scheduled_date, status, price_ex_gst, price_inc_gst, linked_quote_id, closed_off_at, invoice_status, invoice_error, cleaner_1_id, properties(property_name, default_price, price_includes_gst, price_turnover, no_charge)')
             .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`)
+            .or('status.eq.pending_cleaner,and(status.eq.completed,closed_off_at.is.null)')
             .order('scheduled_date', { ascending: true }),
         ]);
       if (pErr) throw pErr;
@@ -340,7 +341,7 @@ export default function FinancialsPage() {
       // Only look up quotes for jobs that actually need one, which is usually
       // none of them. Skipping this when the chain already resolved keeps the
       // page to two queries in the common case.
-      const needQuote = [...(periodJobs || []), ...(openInvoices || [])]
+      const needQuote = [...(periodJobs || []), ...(openWork || [])]
         .filter((j: any) => j.linked_quote_id && jobValueEx(j, {}) === null)
         .map((j: any) => j.linked_quote_id);
 
@@ -382,39 +383,42 @@ export default function FinancialsPage() {
         (people || []).forEach((p: any) => { names[p.id] = p.full_name || 'Unnamed cleaner'; });
       }
 
-      // Completed work with no price is money that will never be invoiced
-      // unless someone notices, so it gets its own list.
-      const missingPrice = (periodJobs || []).filter(
-        (j: any) => jobValueInc(j, quotePrices) === null && j.status === 'completed',
-      );
+      // Any booking with no price is money that will never be invoiced unless
+      // someone notices. Upcoming ones matter as much as finished ones: a
+      // recurring clean with no price repeats the hole every week (Rumble: 56
+      // jobs, never once priced). A price under $20 is a typo, so it lands here
+      // too rather than quietly understating the week.
+      const priceHoles = (periodJobs || [])
+        .filter((j: any) => !j.properties?.no_charge)
+        .map((j: any) => {
+          const v = jobValueInc(j, quotePrices);
+          if (v === null) return { job: j, kind: 'none' as const, value: null };
+          if (v < SUSPICIOUS_UNDER) return { job: j, kind: 'tiny' as const, value: v };
+          return null;
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => a.job.scheduled_date.localeCompare(b.job.scheduled_date));
 
       return {
         periodJobs: periodJobs || [],
-        openInvoices: openInvoices || [],
+        openWork: (openWork || []).map((j: any) => {
+          const noCharge = !!j.properties?.no_charge;
+          const unpriced = jobValueInc(j, quotePrices) === null && !noCharge;
+          let need = '';
+          if (j.status === 'pending_cleaner') need = 'Needs a cleaner';
+          else if (unpriced) need = 'Needs a price';
+          else if (j.invoice_status === 'failed') need = 'Invoice failed in Xero';
+          else if (j.invoice_status === 'draft') need = 'Draft in Xero, send it';
+          else if (!j.invoice_status || j.invoice_status === 'none') need = 'Done, not invoiced';
+          else need = 'Done, tick it off';
+          return { ...j, need, noCharge };
+        }),
         quotePrices,
-        missingPrice,
+        priceHoles,
         entriesByJob,
         names,
       };
     },
-  });
-
-  const setStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'paid' | 'voided' }) => {
-      const patch =
-        status === 'paid'
-          ? { invoice_status: 'paid', invoice_paid_at: new Date().toISOString() }
-          : { invoice_status: 'voided' };
-      const { error } = await supabase.from('jobs').update(patch).eq('id', id);
-      if (error) throw error;
-    },
-    onMutate: ({ id }) => setPendingId(id),
-    onSettled: () => setPendingId(null),
-    onSuccess: (_r, { status }) => {
-      toast.success(status === 'paid' ? 'Marked paid' : 'Marked void');
-      queryClient.invalidateQueries({ queryKey: ['financials-v2'] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   if (isLoading) {
@@ -426,21 +430,21 @@ export default function FinancialsPage() {
   }
 
   const jobs = data?.periodJobs || [];
-  const openInvoices = data?.openInvoices || [];
+  const openWork = data?.openWork || [];
   const quotePrices = data?.quotePrices || {};
-  const missingPrice = data?.missingPrice || [];
+  const priceHoles = data?.priceHoles || [];
   const entriesByJob = data?.entriesByJob || {};
   const names = data?.names || {};
   const thisWeek = weeks[1];
 
-  const outstanding = openInvoices.reduce(
-    (s: number, j: any) => s + (Number(j.invoice_amount) || jobValueInc(j, quotePrices) || 0),
-    0,
-  );
 
   return (
     <div className="space-y-8 p-4 md:p-6">
       <h1 className="text-3xl font-extrabold text-primary">Financials</h1>
+      <p className="-mt-6 text-sm text-muted-foreground">
+        Every booking counts here, whatever its status. Needs a cleaner, confirmed, done,
+        invoiced or paid, it is all in. Only cancelled cleans are left out.
+      </p>
 
       <section>
         <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -484,134 +488,112 @@ export default function FinancialsPage() {
         </div>
       </section>
 
-      {/* ── Unpaid ─────────────────────────────────────────────────────────── */}
+      {/* ── Needs action: what is not finished ─────────────────────────────── */}
       <section className="rounded-2xl border border-border bg-card">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-5 py-4">
           <h2 className="text-lg font-bold text-primary">
-            Unpaid invoices ({openInvoices.length})
+            Needs action ({openWork.length})
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {fmtExact(outstanding)} outstanding
-          </p>
+          <p className="text-sm text-muted-foreground">Tap one to open that day on the calendar</p>
         </div>
 
-        {openInvoices.length === 0 ? (
+        {openWork.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-            Nothing outstanding.
+            Nothing outstanding. Every clean is either booked, done and closed off.
           </p>
         ) : (
           <div className="divide-y divide-border">
-            {openInvoices.map((j: any) => {
-              const value = Number(j.invoice_amount) || jobValueInc(j, quotePrices);
-              const days = j.invoice_sent_at
-                ? differenceInDays(Date.now(), new Date(j.invoice_sent_at))
-                : null;
-              const overdue = j.invoice_status === 'sent' && days !== null && days >= OVERDUE_DAYS;
-              const busy = pendingId === j.id;
-
+            {openWork.map((j: any) => {
+              const value = jobValueInc(j, quotePrices);
+              const when = new Date(j.scheduled_date + 'T00:00:00');
+              const late = j.scheduled_date < d(new Date());
               return (
-                <div key={j.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                  <button
-                    className="min-w-0 flex-1 text-left"
-                    onClick={() => navigate(`/jobs/${j.id}`)}
-                  >
+                <button
+                  key={j.id}
+                  onClick={() => navigate(`/schedule?date=${j.scheduled_date}&view=day`)}
+                  className="flex w-full flex-wrap items-center gap-3 px-5 py-3 text-left hover:bg-muted/40"
+                >
+                  <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-foreground">
                       {j.properties?.property_name || 'Unknown property'}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {format(new Date(j.scheduled_date + 'T00:00:00'), 'd MMM yyyy')}
-                      {j.xero_invoice_number ? ` · ${j.xero_invoice_number}` : ''}
+                      {format(when, 'EEE d MMM yyyy')}
                       {' · '}
-                      <span className={overdue ? 'font-bold text-red-400' : ''}>
-                        {overdue
-                          ? `overdue ${days} days`
-                          : (j.invoice_status || 'no invoice')}
+                      <span className={late ? 'font-bold text-amber-400' : 'font-bold text-foreground'}>
+                        {j.need}
                       </span>
-                      {value === null && (
-                        <span className="font-bold text-amber-400"> · no price set</span>
-                      )}
+                      {j.noCharge && <span className="text-muted-foreground"> · no charge, yours</span>}
                     </p>
-                  </button>
-
-                  <p className="shrink-0 font-bold tabular-nums text-foreground">
-                    {value === null ? '—' : fmtExact(value)}
-                  </p>
-
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      disabled={busy}
-                      onClick={() => setStatus.mutate({ id: j.id, status: 'paid' })}
-                      className="rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/10 disabled:opacity-40"
-                    >
-                      {busy ? '...' : 'Paid'}
-                    </button>
-                    <button
-                      disabled={busy}
-                      onClick={() => setStatus.mutate({ id: j.id, status: 'voided' })}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
-                    >
-                      Void
-                    </button>
-                    {j.xero_invoice_id && (
-                      <a
-                        href={`https://go.xero.com/app/invoicing/edit/${j.xero_invoice_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center rounded-lg border border-border px-2 text-muted-foreground hover:bg-muted"
-                        title="Open in Xero"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
                   </div>
-                </div>
+                  <p className="shrink-0 font-bold tabular-nums text-foreground">
+                    {j.noCharge ? '—' : value === null ? '—' : fmtExact(value)}
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-primary">Open the day →</span>
+                </button>
               );
             })}
           </div>
         )}
         <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          Paid and Void change Brightly only. Xero is the source of truth and syncs back
-          every 15 minutes, so use these for payments recorded outside Xero.
+          Paid and unpaid are not here on purpose. Xero owns that. This is only what still
+          needs doing: a cleaner, a price, an invoice, or a tick.
         </p>
       </section>
 
-      {/* ── Missing prices ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-amber-500/30 bg-card">
+      {/* ── Price holes: the money these figures cannot see ────────────────── */}
+      <section className="rounded-2xl border border-amber-500/40 bg-card">
         <div className="border-b border-border px-5 py-4">
           <h2 className="flex items-center gap-2 text-lg font-bold text-amber-400">
             <AlertTriangle className="h-4 w-4" />
-            Completed jobs with no price ({missingPrice.length})
+            Cleans with no price ({priceHoles.length})
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            These are missing from every figure above and cannot be invoiced until priced.
+            Booked work the figures above cannot count. A recurring clean with no price
+            repeats the hole every week, so these are worth fixing on the property, not
+            just on the one job.
           </p>
         </div>
-        {missingPrice.length === 0 ? (
+        {priceHoles.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-            Every completed job in range has a price.
+            Every booking in range carries a price.
           </p>
         ) : (
           <div className="divide-y divide-border">
-            {missingPrice.map((j: any) => (
-              <button
-                key={j.id}
-                onClick={() => navigate(`/jobs/${j.id}`)}
-                className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-muted/40"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foreground">
-                    {j.properties?.property_name || 'Unknown property'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(j.scheduled_date + 'T00:00:00'), 'd MMM yyyy')}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs font-bold text-primary">Set price</span>
-              </button>
-            ))}
+            {priceHoles.map((h: any) => {
+              const j = h.job;
+              const when = new Date(j.scheduled_date + 'T00:00:00');
+              const past = j.scheduled_date < d(new Date());
+              return (
+                <button
+                  key={j.id}
+                  onClick={() => navigate(`/jobs/${j.id}`)}
+                  className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-muted/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-foreground">
+                      {j.properties?.property_name || 'Unknown property'}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {format(when, 'd MMM yyyy')}
+                      {' · '}
+                      {past ? 'already done' : 'booked'}
+                      {' · '}
+                      <span className="font-bold text-amber-400">
+                        {h.kind === 'tiny' ? `priced at ${fmtExact(h.value)}, looks like a typo` : 'no price anywhere'}
+                      </span>
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs font-bold text-primary">
+                    {h.kind === 'tiny' ? 'Fix price' : 'Set price'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
       </section>
+
     </div>
   );
 }

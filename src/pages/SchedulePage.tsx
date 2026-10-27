@@ -35,12 +35,18 @@ export default function SchedulePage() {
   const { jobs, isLoading, nameMap, acceptancesByJob, invalidate } = useScheduleJobs();
 
   const [view, setView] = useState<CalendarView>(() => {
+    const wantedView = searchParams.get('view');
+    if (wantedView && ['agenda', 'day', 'week', 'month'].includes(wantedView)) return wantedView as CalendarView;
     const saved = localStorage.getItem('schedule-view');
     const isPhone = window.matchMedia('(max-width: 639px)').matches;
     if (isPhone && (!saved || saved === 'week' || saved === 'month')) return 'agenda';
     return (saved as CalendarView) || 'week';
   });
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // A link can land on a specific day: /schedule?date=2026-10-23&view=day
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const wanted = searchParams.get('date');
+    return wanted && /^\d{4}-\d{2}-\d{2}$/.test(wanted) ? new Date(wanted + 'T00:00:00') : new Date();
+  });
   // Time off for every date any view can show from here: the month grid spills
   // into the neighbouring months and the agenda runs 14 days out.
   const timeOffByDate = useTimeOffByDate(subDays(selectedDate, 45), addDays(selectedDate, 60));
