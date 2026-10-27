@@ -65,6 +65,7 @@ const JobCompleteDonePage = lazy(() => import('./pages/JobCompleteDonePage'));
 const JobAuditPage = lazy(() => import('./pages/JobAuditPage'));
 const PendingInvoicesPage = lazy(() => import('./pages/PendingInvoicesPage'));
 const FinancialsPage = lazy(() => import('./pages/FinancialsPage'));
+const CloseOffPage = lazy(() => import('./pages/CloseOffPage'));
 const PendingTimeEditsPage = lazy(() => import('./pages/PendingTimeEditsPage'));
 const LiveTrackerPage = lazy(() => import('./pages/LiveTrackerPage'));
 const MapPage = lazy(() => import('./pages/MapPage'));
@@ -264,6 +265,7 @@ function AppRoutes() {
         <Route path="/timesheets" element={<ProtectedRoute allowedRoles={['admin']}><TimesheetsPage /></ProtectedRoute>} />
         <Route path="/invoices/pending" element={<ProtectedRoute allowedRoles={['admin']}><PendingInvoicesPage /></ProtectedRoute>} />
         <Route path="/financials" element={<ProtectedRoute allowedRoles={['admin']}><FinancialsPage /></ProtectedRoute>} />
+        <Route path="/close-off" element={<ProtectedRoute allowedRoles={['admin']}><CloseOffPage /></ProtectedRoute>} />
         <Route path="/timesheets/pending-edits" element={<ProtectedRoute allowedRoles={['admin']}><PendingTimeEditsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<CleanerProfilePage />} />
         <Route path="/my-cleans" element={<Navigate to="/my-jobs" replace />} />

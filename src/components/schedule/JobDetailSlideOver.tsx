@@ -12,6 +12,7 @@ import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
 import { useCleanersList } from '@/hooks/useCleanersList';
+import { jobClosure, closeOffJob, reopenJob } from '@/lib/jobClosure';
 import { syncJobAssignment } from '@/lib/jobAssignment';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
@@ -45,7 +46,7 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [assigningCleaner, setAssigningCleaner] = useState(false);
   const [convertingFreq, setConvertingFreq] = useState(false);
-  const [togglingInvoiceSent, setTogglingInvoiceSent] = useState(false);
+  const [closingOff, setClosingOff] = useState(false);
   const [creatingXeroInvoice, setCreatingXeroInvoice] = useState(false);
   const { data: cleanersList = [] } = useCleanersList();
   // Must sit above the early return below. A hook after it runs only when a job
@@ -54,6 +55,36 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [approving, setApproving] = useState<null | 'approve' | 'request_change'>(null);
 
   if (!job) return null;
+
+  const closure = jobClosure(job);
+
+  const handleCloseOff = async (reason: 'invoice_sent' | 'no_invoice_needed') => {
+    setClosingOff(true);
+    try {
+      await closeOffJob(job.id, reason);
+      toast.success(reason === 'invoice_sent' ? 'Closed off, invoice sent' : 'Closed off, no invoice needed');
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs-to-close'] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setClosingOff(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    setClosingOff(true);
+    try {
+      await reopenJob(job.id);
+      toast.success('Reopened. It is back on the close off list.');
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs-to-close'] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setClosingOff(false);
+    }
+  };
 
   const handleCleanerChange = async (slot: 'cleaner_1_id' | 'cleaner_2_id', value: string) => {
     setAssigningCleaner(true);
@@ -209,25 +240,6 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
       queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
     }
     setUpdatingStatus(false);
-  };
-
-  const handleToggleInvoiceSent = async () => {
-    setTogglingInvoiceSent(true);
-    const alreadySent = !!(job as any).invoice_sent_at;
-    const { error } = await supabase
-      .from('jobs')
-      .update(alreadySent
-        ? { invoice_sent_at: null, invoice_status: 'none' } as any
-        : { invoice_sent_at: new Date().toISOString(), invoice_status: 'sent' } as any
-      )
-      .eq('id', job.id);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(alreadySent ? 'Invoice sent mark removed' : 'Marked as invoice sent ✓');
-      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
-    }
-    setTogglingInvoiceSent(false);
   };
 
   const handleCreateXeroInvoice = async () => {
@@ -439,72 +451,83 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
             )}
           </div>
 
-          {/* Invoice section — admin quick-mark + Xero create button */}
+          {/* Close off — one tick that means nothing else is owed on this clean */}
           {(job.status === 'completed' || job.status === 'complete') && (
             <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase">Invoice</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Close off</label>
 
-              {/* Xero invoice status pill */}
-              {job.xero_invoice_id ? (
-                <div className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold',
-                  job.invoice_status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                  job.invoice_status === 'sent' || job.invoice_status === 'authorised' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                  'bg-orange-50 text-orange-700 border border-orange-200'
-                )}>
-                  <FileText className="h-4 w-4 shrink-0" />
-                  <span>
-                    {job.invoice_status === 'paid' ? 'Paid in Xero' :
-                     job.invoice_status === 'sent' ? 'Invoice sent (Xero)' :
-                     job.invoice_status === 'authorised' ? 'Approved in Xero' :
-                     'Draft in Xero — approve & send'}
-                  </span>
+              {closure.closed ? (
+                <div className="rounded-xl border-2 border-emerald-500 bg-emerald-500/10 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-700 dark:text-emerald-400">
+                    <CheckSquare className="h-5 w-5 shrink-0" />
+                    {(job as any).closed_off_reason === 'no_invoice_needed'
+                      ? 'Closed off, no invoice needed'
+                      : 'Closed off, invoice sent'}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {(job as any).closed_off_at
+                      ? format(new Date((job as any).closed_off_at), "d MMM yyyy 'at' h:mma")
+                      : ''}
+                    {job.xero_invoice_number ? ` · ${job.xero_invoice_number}` : ''}
+                  </p>
+                  <button
+                    onClick={handleReopen}
+                    disabled={closingOff}
+                    className="mt-2 text-xs font-bold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  >
+                    Reopen this one
+                  </button>
                 </div>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-2 justify-start"
-                  onClick={handleCreateXeroInvoice}
-                  disabled={creatingXeroInvoice}
-                >
-                  {creatingXeroInvoice
-                    ? <Loader2 className="h-4 w-4 animate-spin" />
-                    : <FileText className="h-4 w-4" />
-                  }
-                  {creatingXeroInvoice ? 'Creating…' : 'Create Xero invoice'}
-                </Button>
-              )}
-
-              {/* Manual "invoice sent" tick — shown whenever Xero hasn't confirmed paid/sent/authorised */}
-              {!['paid', 'sent', 'authorised'].includes(job.invoice_status as string) && (
-                <button
-                  onClick={handleToggleInvoiceSent}
-                  disabled={togglingInvoiceSent}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors font-bold text-sm',
-                    (job as any).invoice_sent_at
-                      ? 'bg-primary/10 border-primary text-primary'
-                      : 'bg-muted/40 border-border text-muted-foreground hover:border-primary/50'
-                  )}
-                >
-                  {(job as any).invoice_sent_at
-                    ? <CheckSquare className="h-5 w-5 shrink-0" />
-                    : <Square className="h-5 w-5 shrink-0" />
-                  }
-                  <span>{job.xero_invoice_id ? 'Mark as invoiced' : 'Sent manually (outside Xero)'}</span>
-                  {(job as any).invoice_sent_at && (
-                    <span className="ml-auto text-xs font-normal text-muted-foreground">
-                      {format(new Date((job as any).invoice_sent_at), 'd MMM')}
+                <>
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-2 text-sm font-semibold text-muted-foreground">
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span>
+                      {job.invoice_status === 'failed' ? 'Xero refused the invoice'
+                        : job.invoice_status === 'draft' ? 'Draft in Xero, needs approving and sending'
+                        : ['sent', 'authorised', 'paid'].includes(String(job.invoice_status)) ? `Invoice ${job.invoice_status} in Xero`
+                        : 'No invoice raised yet'}
+                      {job.xero_invoice_number ? ` · ${job.xero_invoice_number}` : ''}
                     </span>
-                  )}
-                </button>
-              )}
+                  </div>
 
-              {job.invoice_status === 'failed' && (
-                <p className="text-xs text-destructive px-1">
-                  Last attempt failed — tap "Create Xero invoice" to retry.
-                </p>
+                  {!job.xero_invoice_id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start gap-2"
+                      onClick={handleCreateXeroInvoice}
+                      disabled={creatingXeroInvoice}
+                    >
+                      {creatingXeroInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                      {creatingXeroInvoice ? 'Creating…' : 'Create Xero invoice'}
+                    </Button>
+                  )}
+
+                  <button
+                    onClick={() => handleCloseOff('invoice_sent')}
+                    disabled={closingOff}
+                    className="flex w-full items-center gap-3 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-sm font-extrabold text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
+                  >
+                    {closingOff ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Square className="h-5 w-5 shrink-0" />}
+                    Invoice sent, close this off
+                  </button>
+
+                  <button
+                    onClick={() => handleCloseOff('no_invoice_needed')}
+                    disabled={closingOff}
+                    className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                  >
+                    <Square className="h-4 w-4 shrink-0" />
+                    No invoice needed, close off
+                  </button>
+
+                  {job.invoice_status === 'failed' && (
+                    <p className="px-1 text-xs text-destructive">
+                      {(job as any).invoice_error || 'Last attempt failed.'} Tap Create Xero invoice to retry.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

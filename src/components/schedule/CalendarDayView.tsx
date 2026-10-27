@@ -6,6 +6,8 @@ import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
 import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
 import { TeamSplit } from './TeamSplit';
+import { jobClosure } from '@/lib/jobClosure';
+import { ClosedTick, ActionChip } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffNote } from './TimeOffChips';
 
@@ -165,6 +167,8 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
               const duration = getDurationHours(job.estimated_duration);
               const top = (startTime - firstHour) * HOUR_HEIGHT;
               const height = Math.max(duration * HOUR_HEIGHT, 36);
+              const closure = jobClosure(job);
+              const settled = closure.closed && job.status === 'completed';
               const team = jobCleaners(job, nameMap);
               const isTeamJob = team.length > 1;
               const cleanerName = team.length ? teamLabel(team) : getCleanerName(job.cleaner_1_id, nameMap);
@@ -191,7 +195,7 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                   draggable
                   onDragStart={(e) => handleDragStart(e, job)}
                   onClick={() => onJobClick(job)}
-                  className="absolute left-1 right-4 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+                  className={`absolute left-1 right-4 z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] ${settled ? 'opacity-45 hover:opacity-80' : ''}`}
                   style={{
                     top: Math.max(top, 0),
                     height,
@@ -202,6 +206,8 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
                   }}
                 >
                   {isTeamJob && <TeamSplit team={team} height={height} textColor={textColor} />}
+                  {settled && <ClosedTick reason={closure.reason} size="md" />}
+                  {closure.chip && <ActionChip label={closure.chip} tone={closure.tone} />}
                   <div className="relative px-3 py-1.5 h-full flex flex-col justify-start overflow-hidden">
                     <p className={`text-sm font-bold leading-tight truncate ${isCancelled ? 'line-through' : ''}`} style={{ color: textColor }}>
                       {clientName}

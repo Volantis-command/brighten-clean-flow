@@ -7,6 +7,8 @@ import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
 import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
 import { TeamSplit } from './TeamSplit';
+import { jobClosure } from '@/lib/jobClosure';
+import { ClosedTick, ActionChip } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffChips } from './TimeOffChips';
 
@@ -292,13 +294,18 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   // already means 'needs a cleaner' on 205 jobs.
                   const awaitingApproval = (job as any).approval_status === 'pending';
 
+                  // Finished with: the block steps back so only the cleans that
+                  // still want something from you hold your eye.
+                  const closure = jobClosure(job);
+                  const settled = closure.closed && isComplete;
+
                   return (
                     <div
                       key={job.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, job)}
                       onClick={() => onJobClick(job)}
-                      className="absolute z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event"
+                      className={`absolute z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event ${settled ? 'opacity-45 hover:opacity-80' : ''}`}
                       style={{
                         top: Math.max(top, 0),
                         height,
@@ -311,6 +318,8 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                       }}
                     >
                       {isTeamJob && <TeamSplit team={team} height={height} textColor={statusText} />}
+                      {settled && <ClosedTick reason={closure.reason} />}
+                      {closure.chip && <ActionChip label={closure.chip} tone={closure.tone} compact />}
                       <div className="relative px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
                         {/* Line 1: name + indicator icons */}
                         <div className="flex items-center gap-1 min-w-0">

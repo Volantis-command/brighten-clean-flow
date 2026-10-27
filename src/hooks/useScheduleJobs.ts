@@ -35,6 +35,11 @@ export interface ScheduleJob {
   } | null;
   invoice_sent_at: string | null;
   xero_invoice_id: string | null;
+  xero_invoice_number: string | null;
+  invoice_error: string | null;
+  /** Set once the clean is finished with: invoice sent, or none needed. */
+  closed_off_at: string | null;
+  closed_off_reason: string | null;
   // Set to true for iCal booking suggestions shown on calendar before approval
   _isSuggestion?: boolean;
 }
@@ -109,6 +114,10 @@ export function useScheduleJobs() {
     invoice_status: null,
     invoice_sent_at: null,
     xero_invoice_id: null,
+    xero_invoice_number: null,
+    invoice_error: null,
+    closed_off_at: null,
+    closed_off_reason: null,
     series_id: null,
     recurring_parent_id: null,
     is_urgent: false,

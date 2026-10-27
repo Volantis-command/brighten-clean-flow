@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { addDays, startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay, isWithinInterval } from 'date-fns';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import type { CalendarView } from './CalendarViewToggle';
@@ -34,6 +35,9 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
     .reduce((s, j) => s + Number(j.price_ex_gst), 0);
   const completed = periodJobs.filter(j => j.status === 'completed').length;
   const inProgress = periodJobs.filter(j => j.status === 'in_progress').length;
+  // Finished cleans that still owe something, across the whole book and not
+  // just this week: it is the number that quietly grows if nobody looks.
+  const openToClose = jobs.filter(j => j.status === 'completed' && !(j as any).closed_off_at).length;
 
   return (
     <p className="flex flex-wrap gap-x-1 text-xs sm:text-sm text-muted-foreground font-medium">
@@ -44,6 +48,17 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
       <span>{completed} completed</span>
       <span className="mx-1.5 opacity-40">·</span>
       <span>{inProgress} in progress</span>
+      {openToClose > 0 && (
+        <>
+          <span className="mx-1.5 opacity-40">·</span>
+          <Link
+            to="/close-off"
+            className="font-bold text-amber-500 underline-offset-2 hover:underline"
+          >
+            {openToClose} to close off
+          </Link>
+        </>
+      )}
     </p>
   );
 }

@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabelShort } from '@/lib/jobLabel';
 import { jobCleaners } from '@/lib/jobCleaners';
+import { jobClosure } from '@/lib/jobClosure';
+import { Check } from 'lucide-react';
 import type { DayOff } from '@/hooks/useTimeOff';
 import { TimeOffChips } from './TimeOffChips';
 
@@ -112,6 +114,8 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                   {dayJobs.slice(0, maxPills).map(job => {
                     const shortName = jobLabelShort(job, 2);
                     const team = jobCleaners(job, nameMap);
+                    const closure = jobClosure(job);
+                    const settled = closure.closed && job.status === 'completed';
                     const isComplete = job.status === 'completed';
                     const isInProgress = job.status === 'in_progress';
                     const isCancelled = job.status === 'cancelled' || job.status === 'flagged';
@@ -128,13 +132,19 @@ export function CalendarMonthView({ date, jobs, nameMap, onJobClick, onDateClick
                           e.dataTransfer.effectAllowed = 'move';
                         }}
                         onClick={(e) => { e.stopPropagation(); onJobClick(job); }}
-                        className={`text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 ${isCancelled ? 'line-through' : ''}`}
+                        className={`text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 ${isCancelled ? 'line-through' : ''} ${settled ? 'opacity-50' : ''}`}
                         style={{
                           backgroundColor: pillBg,
                           color: pillText,
                           borderLeft: `2px solid ${pillBorder}`,
                         }}
                       >
+                        {settled && <Check className="mr-0.5 inline h-2.5 w-2.5 align-[-1px] text-emerald-600" strokeWidth={4} />}
+                        {closure.chip && (
+                          <span className={`mr-1 rounded px-1 font-extrabold ${closure.tone === 'bad' ? 'bg-red-600 text-white' : 'bg-amber-400 text-[#3A2A00]'}`}>
+                            {closure.tone === 'bad' ? '!' : '$'}
+                          </span>
+                        )}
                         {shortName}
                         {team.length > 1 && (
                           <span
