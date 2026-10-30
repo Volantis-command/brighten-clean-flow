@@ -114,15 +114,33 @@ export default function SchedulePage() {
     navigate(`/schedule/new?date=${dateStr}${timeStr ? `&time=${timeStr}` : ''}`);
   }, [navigate]);
 
-  const handleJobDrop = useCallback(async (job: ScheduleJob, newDate: string, newTime?: string) => {
+  const handleJobDrop = useCallback(async (job: ScheduleJob, newDate: string, newTime?: string, override = false) => {
     // Check if anything actually changed
     if (job.scheduled_date === newDate && (!newTime || job.scheduled_time === newTime)) return;
 
     const update: Record<string, any> = { scheduled_date: newDate };
     if (newTime) update.scheduled_time = newTime;
+    if (override) {
+      update.availability_override = true;
+      update.availability_override_reason = 'Admin moved the clean onto a day the cleaner is away.';
+    }
 
     const { error } = await supabase.from('jobs').update(update as any).eq('id', job.id);
     if (error) {
+      // The cleaner is away that day. Offer the override right here instead of
+      // bouncing the move and making someone go and edit the roster.
+      if (!override && /unavailable on the scheduled date|override is required/i.test(error.message)) {
+        const who = (job.cleaner_1_id && nameMap[job.cleaner_1_id]) || 'The cleaner';
+        toast.warning(`${who.split(' ')[0]} is off on ${format(new Date(newDate + 'T00:00:00'), 'EEE d MMM')}.`, {
+          duration: 15000,
+          description: 'Move it anyway, or drop it on another day.',
+          action: {
+            label: 'Move it anyway',
+            onClick: () => { void handleJobDrop(job, newDate, newTime, true); },
+          },
+        });
+        return;
+      }
       toast.error(`Failed to move job: ${error.message}`);
       return;
     }

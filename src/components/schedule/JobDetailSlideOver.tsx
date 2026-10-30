@@ -86,7 +86,15 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
     }
   };
 
-  const handleCleanerChange = async (slot: 'cleaner_1_id' | 'cleaner_2_id', value: string) => {
+  /** The database refuses a cleaner who is away unless an admin says otherwise. */
+  const isUnavailableError = (message?: string) =>
+    /unavailable on the scheduled date|override is required/i.test(message || '');
+
+  const handleCleanerChange = async (
+    slot: 'cleaner_1_id' | 'cleaner_2_id',
+    value: string,
+    override = false,
+  ) => {
     setAssigningCleaner(true);
     try {
       const newId = value === '__none__' ? null : value;
@@ -108,11 +116,34 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
         }
       }
 
+      if (override) {
+        patch.availability_override = true;
+        patch.availability_override_reason = 'Admin assigned a cleaner who is away on this date.';
+      }
+
       const { error } = await supabase.from('jobs').update(patch as any).eq('id', job.id);
-      if (error) throw error;
+      if (error) {
+        // Say who is away and on what day, and offer the override here rather
+        // than making someone go and change the roster first.
+        if (!override && isUnavailableError(error.message)) {
+          const name = value !== '__none__' ? (nameMap[value] || 'That cleaner') : 'That cleaner';
+          const when = format(new Date(job.scheduled_date + 'T00:00:00'), 'EEE d MMM');
+          toast.warning(`${name.split(' ')[0]} is off on ${when}.`, {
+            duration: 15000,
+            description: 'Assign them anyway, or pick someone else.',
+            action: {
+              label: 'Assign anyway',
+              onClick: () => { void handleCleanerChange(slot, value, true); },
+            },
+          });
+          setAssigningCleaner(false);
+          return;
+        }
+        throw error;
+      }
       // syncJobAssignment recomputes status, manages job_acceptances rows, sends SMS to new cleaner
       await syncJobAssignment(job.id, { sendSms: true });
-      toast.success((newId ? 'Cleaner assigned ✓' : 'Cleaner removed') + timeNote, {
+      toast.success((newId ? (override ? 'Assigned over their time off ✓' : 'Cleaner assigned ✓') : 'Cleaner removed') + timeNote, {
         duration: timeNote ? 10000 : 4000,
         action: timeNote
           ? {
