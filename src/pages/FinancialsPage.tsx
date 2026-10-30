@@ -130,18 +130,43 @@ function buildPeriods(now: Date): { weeks: Period[]; months: Period[] } {
       isFuture: offset > 0,
     };
   };
+  // This week and the next four. Five weeks is what fits in a glance and covers
+  // the booking window a cleaning business actually sells into (BJ, 30 Oct 2026).
+  const weeks = [0, 1, 2, 3, 4].map((offset) => {
+    const base = offset === 0 ? now : addWeeks(now, offset);
+    const label = offset === 0 ? 'This week'
+      : offset === 1 ? 'Next week'
+      : `Week of ${format(startOfWeek(base, { weekStartsOn: 1 }), 'd MMM')}`;
+    return wk(offset, label);
+  });
   return {
-    weeks: [wk(-1, 'Last week'), wk(0, 'This week'), wk(1, 'Next week')],
+    weeks,
     months: [mo(-1, 'Last month'), mo(0, 'This month'), mo(1, 'Next month')],
   };
 }
 
-/** One week's hours, split into what is already clocked and what is still booked. */
-function periodHours(period: Period, jobs: any[], entriesByJob: Record<string, any[]>) {
+/**
+ * One week's hours and money, both split by cleaner.
+ *
+ * Money follows the hours. A $200 clean done by two cleaners is $100 against
+ * each, so a cleaner's column reads as what their own time brought in instead
+ * of counting the same job twice. Free properties (BJ's own) carry hours and
+ * no money, on purpose.
+ */
+function periodHours(
+  period: Period,
+  jobs: any[],
+  entriesByJob: Record<string, any[]>,
+  quotePrices: Record<string, number> = {},
+) {
   let clocked = 0;
   let booked = 0;
   let jobCount = 0;
+  let money = 0;
+  let unpricedHours = 0;
+  let chargeableHours = 0;
   const byCleaner: Record<string, number> = {};
+  const moneyByCleaner: Record<string, number> = {};
 
   jobs
     .filter((j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to)
@@ -150,49 +175,64 @@ function periodHours(period: Period, jobs: any[], entriesByJob: Record<string, a
       const { hours, clocked: isClocked } = jobHours(j, entries);
       if (hours <= 0) return;
       jobCount++;
+
+      // Whose hours these are, and in what share. Clocked time wins once the
+      // clean is done, because that is what payroll pays.
+      const share: Record<string, number> = {};
       if (isClocked) {
         clocked += hours;
         entries.forEach((e) => {
           const h = entryHours(e);
-          if (h > 0) byCleaner[e.user_id] = round2((byCleaner[e.user_id] || 0) + h);
+          if (h > 0) share[e.user_id] = round2((share[e.user_id] || 0) + h);
         });
       } else {
         booked += hours;
         const heads = cleanerIds(j);
-        const each = hours / Math.max(1, heads.length);
-        if (heads.length === 0) byCleaner.unassigned = round2((byCleaner.unassigned || 0) + hours);
-        else heads.forEach((id) => { byCleaner[id] = round2((byCleaner[id] || 0) + each); });
+        if (heads.length === 0) share.unassigned = hours;
+        else {
+          const each = hours / heads.length;
+          heads.forEach((id) => { share[id] = round2((share[id] || 0) + each); });
+        }
       }
+      const shareTotal = Object.values(share).reduce((sum, h) => sum + h, 0) || hours;
+
+      const value = j.properties?.no_charge ? 0 : jobValueInc(j, quotePrices);
+      if (value === null) unpricedHours += hours;
+      else money += value;
+      if (!j.properties?.no_charge) chargeableHours += hours;
+      const earned = value || 0;
+
+      Object.entries(share).forEach(([id, h]) => {
+        byCleaner[id] = round2((byCleaner[id] || 0) + h);
+        moneyByCleaner[id] = round2((moneyByCleaner[id] || 0) + (earned * h) / shareTotal);
+      });
     });
 
-  return { clocked: round2(clocked), booked: round2(booked), total: round2(clocked + booked), jobCount, byCleaner };
+  return {
+    clocked: round2(clocked),
+    booked: round2(booked),
+    total: round2(clocked + booked),
+    jobCount,
+    money: round2(money),
+    unpricedHours: round2(unpricedHours),
+    chargeableHours: round2(chargeableHours),
+    byCleaner,
+    moneyByCleaner,
+  };
 }
 
 function HoursCard({ period, jobs, entriesByJob, quotePrices }: {
   period: Period; jobs: any[]; entriesByJob: Record<string, any[]>; quotePrices: Record<string, number>;
 }) {
-  const { clocked, booked, total, jobCount } = periodHours(period, jobs, entriesByJob);
+  const { clocked, booked, total, jobCount, money, unpricedHours, chargeableHours } =
+    periodHours(period, jobs, entriesByJob, quotePrices);
   const pct = Math.min(100, Math.round((total / WEEKLY_HOURS_TARGET) * 100));
   const short = round2(WEEKLY_HOURS_TARGET - total);
 
-  // What the week earns per cleaner hour. Hours with no price on the job drag
-  // this down, which is the point: unpriced work still costs wages.
-  const inPeriod = jobs.filter((j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to);
-  let revenue = 0;
-  let unpricedHours = 0;
-  inPeriod.forEach((j) => {
-    // Your own places are free on purpose, so they belong in the hours but not
-    // in the rate. Counting them would read as work done for nothing.
-    if (j.properties?.no_charge) return;
-    const v = jobValueInc(j, quotePrices);
-    const { hours } = jobHours(j, entriesByJob[j.id] || []);
-    if (v === null) unpricedHours += hours;
-    else revenue += v;
-  });
-  const chargeableHours = inPeriod
-    .filter((j) => !j.properties?.no_charge)
-    .reduce((s, j) => s + jobHours(j, entriesByJob[j.id] || []).hours, 0);
-  const perHour = chargeableHours > 0 ? revenue / chargeableHours : 0;
+  // What the week earns per cleaner hour. Your own places are free on purpose,
+  // so they sit in the hours but not in the rate. Hours with no price on the
+  // job do drag it down, which is the point: unpriced work still costs wages.
+  const perHour = chargeableHours > 0 ? money / chargeableHours : 0;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
@@ -238,29 +278,98 @@ function HoursCard({ period, jobs, entriesByJob, quotePrices }: {
   );
 }
 
-function CleanerHoursList({ period, jobs, entriesByJob, names }: {
-  period: Period; jobs: any[]; entriesByJob: Record<string, any[]>; names: Record<string, string>;
+function CleanerWeekGrid({ periods, jobs, entriesByJob, names, quotePrices }: {
+  periods: Period[]; jobs: any[]; entriesByJob: Record<string, any[]>;
+  names: Record<string, string>; quotePrices: Record<string, number>;
 }) {
-  const { byCleaner, total } = periodHours(period, jobs, entriesByJob);
-  const rows = Object.entries(byCleaner)
-    .map(([id, hours]) => ({ id, hours, name: id === 'unassigned' ? 'Not assigned yet' : (names[id] || 'Unknown cleaner') }))
-    .sort((a, b) => b.hours - a.hours);
+  // One row per cleaner, one column per week, hours over the money those hours
+  // bring in. You can see who is loaded and who is idle five weeks out, and
+  // what each week is actually worth, before it becomes a problem.
+  const perWeek = periods.map((p) => periodHours(p, jobs, entriesByJob, quotePrices));
+
+  const ids = Array.from(new Set(perWeek.flatMap((w) => Object.keys(w.byCleaner))));
+  const rows = ids
+    .map((id) => ({
+      id,
+      name: id === 'unassigned' ? 'Not assigned yet' : (names[id] || 'Unknown cleaner'),
+      cells: perWeek.map((w) => ({ hours: w.byCleaner[id] || 0, money: w.moneyByCleaner[id] || 0 })),
+      total: round2(perWeek.reduce((sum, w) => sum + (w.byCleaner[id] || 0), 0)),
+      totalMoney: round2(perWeek.reduce((sum, w) => sum + (w.moneyByCleaner[id] || 0), 0)),
+    }))
+    .sort((a, b) => (a.id === 'unassigned' ? 1 : b.id === 'unassigned' ? -1 : b.total - a.total));
+
+  const grandTotal = round2(perWeek.reduce((sum, w) => sum + w.total, 0));
+  const grandMoney = round2(perWeek.reduce((sum, w) => sum + w.money, 0));
+  const busiest = Math.max(1, ...rows.flatMap((r) => r.cells.map((c) => c.hours)));
 
   if (rows.length === 0) {
-    return <p className="px-5 py-8 text-center text-sm text-muted-foreground">No hours this week yet.</p>;
+    return <p className="px-5 py-8 text-center text-sm text-muted-foreground">Nothing booked in the next five weeks.</p>;
   }
 
   return (
-    <div className="divide-y divide-border">
-      {rows.map((r) => (
-        <div key={r.id} className="flex items-center gap-3 px-5 py-3">
-          <p className="min-w-0 flex-1 truncate font-semibold text-foreground">{r.name}</p>
-          <div className="hidden h-2 w-40 overflow-hidden rounded-full bg-muted sm:block">
-            <div className="h-full rounded-full bg-primary/60" style={{ width: `${total > 0 ? Math.round((r.hours / total) * 100) : 0}%` }} />
-          </div>
-          <p className="w-16 shrink-0 text-right font-bold tabular-nums text-foreground">{fmtHours(r.hours)}</p>
-        </div>
-      ))}
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="px-5 py-2.5 text-left font-bold">Cleaner</th>
+            {periods.map((p) => (
+              <th key={p.key} className="px-3 py-2.5 text-right font-bold">
+                {p.label === 'This week' ? 'This week' : p.label === 'Next week' ? 'Next week' : format(new Date(p.from + 'T00:00:00'), 'd MMM')}
+              </th>
+            ))}
+            <th className="px-5 py-2.5 text-right font-bold text-foreground">5 weeks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id} className="border-b border-border/70">
+              <td className="px-5 py-2.5 font-semibold text-foreground">{r.name}</td>
+              {r.cells.map((c, i) => (
+                <td key={i} className="px-3 py-2.5 text-right tabular-nums">
+                  {c.hours > 0 ? (
+                    <>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="hidden h-1.5 rounded-full bg-primary/50 sm:inline-block"
+                          style={{ width: `${Math.max(4, (c.hours / busiest) * 40)}px` }}
+                        />
+                        <span className="font-semibold text-foreground">{fmtHours(c.hours)}</span>
+                      </span>
+                      <span className="block text-[11px] font-semibold text-muted-foreground">
+                        {c.money > 0 ? fmt(c.money) : 'no price'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground/50">—</span>
+                  )}
+                </td>
+              ))}
+              <td className="px-5 py-2.5 text-right tabular-nums">
+                <span className="font-extrabold text-foreground">{fmtHours(r.total)}</span>
+                <span className="block text-[11px] font-bold text-primary">{fmt(r.totalMoney)}</span>
+              </td>
+            </tr>
+          ))}
+          <tr className="bg-muted/40">
+            <td className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Team total</td>
+            {perWeek.map((w, i) => (
+              <td key={i} className="px-3 py-3 text-right tabular-nums">
+                <span className={`font-extrabold ${w.total >= WEEKLY_HOURS_TARGET ? 'text-primary' : 'text-foreground'}`}>{fmtHours(w.total)}</span>
+                <span className="block text-[11px] font-bold text-foreground">{fmt(w.money)}</span>
+                <span className="block text-[10px] font-semibold text-muted-foreground">
+                  {w.total >= WEEKLY_HOURS_TARGET ? 'target hit' : `${fmtHours(round2(WEEKLY_HOURS_TARGET - w.total))} short`}
+                  {w.chargeableHours > 0 && ` · ${fmt(w.money / w.chargeableHours)}/h`}
+                </span>
+              </td>
+            ))}
+            <td className="px-5 py-3 text-right tabular-nums">
+              <span className="font-extrabold text-foreground">{fmtHours(grandTotal)}</span>
+              <span className="block text-[11px] font-bold text-primary">{fmt(grandMoney)}</span>
+              <span className="block text-[10px] font-semibold text-muted-foreground">of {WEEKLY_HOURS_TARGET * periods.length}h</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -272,8 +381,11 @@ function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[
   let total = 0;
   let unpriced = 0;
   inPeriod.forEach((j) => {
+    // Your own places are free on purpose, so they earn nothing here. This
+    // keeps the week card and the per cleaner money below saying the same thing.
+    if (j.properties?.no_charge) return;
     const v = jobValueInc(j, quotePrices);
-    if (v === null) { if (!j.properties?.no_charge) unpriced++; }
+    if (v === null) unpriced++;
     else total += v;
   });
 
@@ -312,7 +424,8 @@ export default function FinancialsPage() {
   // One window wide enough for every card, so the six figures always come from
   // the same snapshot and cannot disagree with each other.
   const rangeFrom = months[0].from < weeks[0].from ? months[0].from : weeks[0].from;
-  const rangeTo = months[2].to > weeks[2].to ? months[2].to : weeks[2].to;
+  const lastWeek = weeks[weeks.length - 1];
+  const rangeTo = months[2].to > lastWeek.to ? months[2].to : lastWeek.to;
 
   const { data, isLoading } = useQuery({
     queryKey: ['financials-v2', rangeFrom, rangeTo],
@@ -435,7 +548,6 @@ export default function FinancialsPage() {
   const priceHoles = data?.priceHoles || [];
   const entriesByJob = data?.entriesByJob || {};
   const names = data?.names || {};
-  const thisWeek = weeks[1];
 
 
   return (
@@ -450,7 +562,7 @@ export default function FinancialsPage() {
         <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           By week
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {weeks.map((p) => <RevenueCard key={p.key} period={p} jobs={jobs} quotePrices={quotePrices} />)}
         </div>
       </section>
@@ -464,18 +576,20 @@ export default function FinancialsPage() {
           Every cleaner on a job counts: a 2.5 hour clean with two cleaners is 5 hours.
           Clocked time is used once a clean is done, booked hours before that.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {weeks.map((p) => <HoursCard key={p.key} period={p} jobs={jobs} entriesByJob={entriesByJob} quotePrices={quotePrices} />)}
         </div>
 
         <div className="mt-4 rounded-2xl border border-border bg-card">
           <div className="border-b border-border px-5 py-4">
-            <h3 className="text-lg font-bold text-primary">Hours per cleaner, this week</h3>
+            <h3 className="text-lg font-bold text-primary">Hours and money per cleaner, five weeks out</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {format(new Date(thisWeek.from + 'T00:00:00'), 'd MMM')} to {format(new Date(thisWeek.to + 'T00:00:00'), 'd MMM')}
+              {format(new Date(weeks[0].from + 'T00:00:00'), 'd MMM')} to {format(new Date(weeks[weeks.length - 1].to + 'T00:00:00'), 'd MMM')}.
+              Clocked time where a clean is done, booked hours before that. The money under each
+              figure is that cleaner's share of the job, so a two cleaner job splits in half.
             </p>
           </div>
-          <CleanerHoursList period={thisWeek} jobs={jobs} entriesByJob={entriesByJob} names={names} />
+          <CleanerWeekGrid periods={weeks} jobs={jobs} entriesByJob={entriesByJob} names={names} quotePrices={quotePrices} />
         </div>
       </section>
 
