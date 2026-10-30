@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, MapPin, Clock, Timer, Users, Send, Trash2, ExternalLink, CheckSquare, Square, FileText, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -49,6 +49,28 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
   const [closingOff, setClosingOff] = useState(false);
   const [creatingXeroInvoice, setCreatingXeroInvoice] = useState(false);
   const { data: cleanersList = [] } = useCleanersList();
+
+  // Who can actually work this day, straight from the same rule the database
+  // enforces on insert, so the list can never disagree with it. Lucy read as
+  // "unavailable" on a Sunday purely because her roster said Mon to Fri, and
+  // the dropdown gave no hint until the save was refused (BJ, 30 Oct 2026).
+  const { data: availability = {} } = useQuery({
+    queryKey: ['cleaners-available-on', job?.scheduled_date ?? null],
+    enabled: !!job?.scheduled_date,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('cleaners_available_on' as any, { p_date: job.scheduled_date });
+      if (error) throw error;
+      const map: Record<string, { available: boolean; onLeave: boolean }> = {};
+      ((data as any[]) || []).forEach((r) => { map[r.user_id] = { available: r.available, onLeave: r.on_leave }; });
+      return map;
+    },
+  });
+
+  const availabilityNote = (id: string) => {
+    const a = (availability as any)[id];
+    if (!a || a.available) return '';
+    return a.onLeave ? ' · off that day' : ' · not rostered that day';
+  };
   // Must sit above the early return below. A hook after it runs only when a job
   // is set, so opening the panel changed the hook count between renders, which
   // is React error #310 (the 9 Aug black-screen crash).
@@ -608,7 +630,10 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                   <SelectContent>
                     <SelectItem value="__none__">— Unassigned —</SelectItem>
                     {(cleanersList as any[]).map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {(c.full_name || c.email)}
+                        <span className="text-muted-foreground">{availabilityNote(c.id)}</span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -628,7 +653,10 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                     {(cleanersList as any[])
                       .filter((c: any) => c.id !== job.cleaner_1_id)
                       .map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          {(c.full_name || c.email)}
+                          <span className="text-muted-foreground">{availabilityNote(c.id)}</span>
+                        </SelectItem>
                       ))}
                   </SelectContent>
                 </Select>
