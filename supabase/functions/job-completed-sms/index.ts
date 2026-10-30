@@ -55,6 +55,17 @@ function formatDateNice(dateStr: string): string {
   }
 }
 
+/** Calendar months, so a monthly clean on the 4th stays on the 4th. */
+function addMonthsToDate(dateStr: string, months: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, last));
+  return d.toISOString().slice(0, 10);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -85,6 +96,93 @@ Deno.serve(async (req) => {
 
     const property = (job as any).properties;
     const results: any[] = [];
+
+    // ── Next clean in the series ──────────────────────────────────────────
+    // This runs FIRST and on its own. It used to sit below the client lookup
+    // and the phone check, both of which return early, so a property with no
+    // client link or a client with no mobile silently never got another clean
+    // (Joy lost her fortnightly exactly that way). Nothing about creating the
+    // next clean needs a phone number.
+    //
+    // The nightly recurring-top-up function is now the belt to this brace: even
+    // if this never fires, the series is refilled within 24 hours.
+    const isRecurring = !!job.series_id;
+    let nextDateStr = '';
+
+    if (isRecurring && job.series_id && job.status === 'completed') {
+      const { data: series } = await supabase
+        .from('job_series')
+        .select('*')
+        .eq('id', job.series_id)
+        .single();
+
+      if (series) {
+        const intervalWeeks = series.interval_weeks || 1;
+        // Monthly keeps the date, not a 28 day drift.
+        nextDateStr = (String(series.frequency).toLowerCase() === 'monthly' && intervalWeeks === 4)
+          ? addMonthsToDate(job.scheduled_date, 1)
+          : addWeeksToDate(job.scheduled_date, intervalWeeks);
+
+        const withinRange = !series.end_date || nextDateStr <= series.end_date;
+
+        if (withinRange) {
+          // Any existing clean on that date counts, cancelled ones included, so
+          // a date somebody deliberately cancelled is not quietly recreated.
+          const { data: existingNext } = await supabase
+            .from('jobs')
+            .select('id')
+            .eq('property_id', job.property_id!)
+            .eq('scheduled_date', nextDateStr)
+            .eq('series_id', job.series_id)
+            .limit(1);
+
+          if (!existingNext?.length) {
+            const { error: insertErr } = await supabase.from('jobs').insert({
+              property_id: job.property_id,
+              scheduled_date: nextDateStr,
+              scheduled_time: job.scheduled_time,
+              estimated_duration: job.estimated_duration,
+              cleaner_1_id: job.cleaner_1_id,
+              cleaner_2_id: job.cleaner_2_id,
+              // A standing booking with the same cleaner stays confirmed rather
+              // than sitting yellow waiting on an acceptance nobody asked for.
+              status: job.cleaner_1_id ? 'confirmed' : 'pending_cleaner',
+              series_id: job.series_id,
+              frequency: series.frequency,
+              recurring_parent_id: job.id,
+              approval_status: 'approved',
+              price_ex_gst: job.price_ex_gst,
+              price_inc_gst: job.price_inc_gst,
+              notes: job.notes,
+              source: 'recurring',
+            });
+
+            if (insertErr) {
+              // Silence here is what killed series before. Tell someone.
+              console.error('[job-completed-sms] Failed to create next recurring job:', insertErr);
+              const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+              if (admins?.length) {
+                await supabase.from('notifications').insert(admins.map(({ user_id }: any) => ({
+                  user_id,
+                  title: 'Next recurring clean could not be booked',
+                  message: `${property?.property_name || 'A property'} on ${nextDateStr}: ${insertErr.message}. Tonight's top up will retry.`,
+                  type: 'recurring_attention',
+                  event_type: 'recurring_attention',
+                  tier: 'important',
+                  link: '/schedule',
+                  read: false,
+                  metadata: { job_id: job.id, series_id: job.series_id, next_date: nextDateStr },
+                })));
+              }
+            } else {
+              console.log(`[job-completed-sms] Created next recurring job for ${nextDateStr}`);
+              results.push({ type: 'recurring_job_created', date: nextDateStr });
+            }
+          }
+        }
+      }
+    }
+
 
     // Find client via client_properties
     const { data: clientProps } = await supabase
@@ -117,67 +215,9 @@ Deno.serve(async (req) => {
     const portalToken = clientProps[0].portal_token || '';
     const propertyAddress = [property?.address, property?.suburb].filter(Boolean).join(', ') || property?.property_name || 'your property';
 
-    // Check if this job is part of a recurring series
-    const isRecurring = !!job.series_id;
-    let nextDateStr = '';
-
-    if (isRecurring && job.series_id) {
-      // Get series config
-      const { data: series } = await supabase
-        .from('job_series')
-        .select('*')
-        .eq('id', job.series_id)
-        .single();
-
-      if (series) {
-        const intervalWeeks = series.interval_weeks || 1;
-        nextDateStr = addWeeksToDate(job.scheduled_date, intervalWeeks);
-
-        // Check if end_date allows it
-        const withinRange = !series.end_date || nextDateStr <= series.end_date;
-
-        if (withinRange) {
-          // Check if next job already exists
-          const { data: existingNext } = await supabase
-            .from('jobs')
-            .select('id')
-            .eq('property_id', job.property_id!)
-            .eq('scheduled_date', nextDateStr)
-            .eq('series_id', job.series_id)
-            .limit(1);
-
-          if (!existingNext?.length) {
-            // Create next recurring job
-            const { error: insertErr } = await supabase.from('jobs').insert({
-              property_id: job.property_id,
-              scheduled_date: nextDateStr,
-              scheduled_time: job.scheduled_time,
-              cleaner_1_id: job.cleaner_1_id,
-              cleaner_2_id: job.cleaner_2_id,
-              status: 'scheduled',
-              series_id: job.series_id,
-              price_ex_gst: job.price_ex_gst,
-              price_inc_gst: job.price_inc_gst,
-              notes: job.notes,
-              source: 'recurring',
-            });
-
-            if (insertErr) {
-              console.error('[job-completed-sms] Failed to create next recurring job:', insertErr);
-            } else {
-              console.log(`[job-completed-sms] Created next recurring job for ${nextDateStr}`);
-              results.push({ type: 'recurring_job_created', date: nextDateStr });
-            }
-          }
-        }
-      }
-
-      // No SMS. Brendan's call (7 Sep 2026): clients get no message after a
-      // clean. This function still owns creating the next recurring job
-      // above, which is why it runs at all; Airbnb hosts are messaged by
-      // guest-ready-sms, not here.
-      results.push({ type: 'completion_sms', status: 'disabled' });
-    }
+    // No SMS. Brendan's call (7 Sep 2026): clients get no message after a
+    // clean. Airbnb hosts are messaged by guest-ready-sms, not here.
+    results.push({ type: 'completion_sms', status: 'disabled' });
 
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

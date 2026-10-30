@@ -709,14 +709,28 @@ export default function JobDetailPage() {
                     // Soft-cancel (never hard-delete — data safety). Broadened
                     // from status='scheduled' to all live future statuses so it
                     // actually catches pending_cleaner/awaiting_cleaner/confirmed.
-                    const { error } = await supabase.from('jobs')
+                    // 'awaiting_cleaner' is not a real status. The real one is
+                    // 'awaiting_cleaner_acceptance', which is where every clean
+                    // with a cleaner on it sits, so the old list left most of
+                    // the series live while saying it had cancelled it.
+                    const { data: killed, error } = await supabase.from('jobs')
                       .update({ status: 'cancelled' } as any)
                       .eq('series_id', (job as any).series_id)
                       .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
-                      .in('status', ['scheduled', 'confirmed', 'pending_cleaner', 'awaiting_cleaner'])
-                      .neq('id', jobId!);
+                      .in('status', ['scheduled', 'confirmed', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'in_progress'])
+                      .neq('id', jobId!)
+                      .select('id');
                     if (error) { toast.error(error.message); return; }
-                    toast.success('Future cleans in series cancelled');
+                    // Close the series too. Without this, completing any earlier
+                    // clean (or tonight's top up) rebuilds the whole thing.
+                    const { error: seriesErr } = await supabase.from('job_series')
+                      .update({ end_date: format(new Date(), 'yyyy-MM-dd') } as any)
+                      .eq('id', (job as any).series_id);
+                    if (seriesErr) {
+                      toast.warning(`${killed?.length ?? 0} cleans cancelled, but the series stayed open: ${seriesErr.message}`);
+                      return;
+                    }
+                    toast.success(`${killed?.length ?? 0} future cleans cancelled and the series closed`);
                     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
                   }}
                 >

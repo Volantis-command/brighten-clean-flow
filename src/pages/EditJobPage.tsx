@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
@@ -152,24 +152,56 @@ export default function EditJobPage() {
     const shouldReaccept = job.status === 'confirmed' && (scheduleChanged || assignmentChanged);
 
     if (editScope === 'future' && seriesId) {
-      // Future recurring edit: touch all yellow/green scheduled future jobs in the series.
-      // (Skip in-progress, completed, cancelled, flagged — those are terminal/in-flight.)
-      const { data: updatedFuture, error } = await supabase.from('jobs')
-        .update({
-          scheduled_time: time,
-          estimated_duration: parseInt(duration),
-          cleaner_1_id: cleaner1,
-          cleaner_2_id: cleaner2 || null,
-          notes: notes || null,
-          availability_override: availabilityOverride,
-          availability_override_reason: availabilityOverride ? 'Admin manually overrode cleaner availability for future cleans in this series.' : null,
-        } as any)
-        .eq('series_id', seriesId)
-        .gte('scheduled_date', format(date, 'yyyy-MM-dd'))
-        .in('status', ['scheduled', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'confirmed'])
-        .select('id');
+      // Future recurring edit: touch every live future clean in the series.
+      // (Skip in-progress, completed, cancelled, flagged — terminal or in flight.)
+      //
+      // Moving the date here used to do nothing at all: the new date was used
+      // only as the "from here on" filter and was never written, while the
+      // toast still said every job was updated. Changing the day now SHIFTS the
+      // whole series by the same number of days, which is what moving a standing
+      // booking means. The cleans stay on cadence, just on the new weekday.
+      const dayShift = differenceInCalendarDays(date, new Date(job.scheduled_date + 'T00:00:00'));
 
-      if (error) { toast.error(error.message); setSaving(false); return; }
+      const { data: futureRows, error: readErr } = await supabase.from('jobs')
+        .select('id, scheduled_date')
+        .eq('series_id', seriesId)
+        .gte('scheduled_date', job.scheduled_date)
+        .in('status', ['scheduled', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'confirmed'])
+        .order('scheduled_date', { ascending: true });
+      if (readErr) { toast.error(readErr.message); setSaving(false); return; }
+
+      const sharedPatch = {
+        scheduled_time: time,
+        estimated_duration: parseInt(duration),
+        cleaner_1_id: cleaner1,
+        cleaner_2_id: cleaner2 || null,
+        notes: notes || null,
+        availability_override: availabilityOverride,
+        availability_override_reason: availabilityOverride ? 'Admin manually overrode cleaner availability for future cleans in this series.' : null,
+      };
+
+      // Shifting dates one row at a time, furthest first, so two cleans never
+      // collide on the same date mid-shift (the unique index would refuse).
+      const ordered = dayShift > 0 ? [...(futureRows || [])].reverse() : (futureRows || []);
+      const moved: string[] = [];
+      let failed: string | null = null;
+      for (const row of ordered) {
+        const patch: any = { ...sharedPatch };
+        if (dayShift !== 0) {
+          patch.scheduled_date = format(addDays(new Date(row.scheduled_date + 'T00:00:00'), dayShift), 'yyyy-MM-dd');
+        }
+        const { error: rowErr } = await supabase.from('jobs').update(patch).eq('id', row.id);
+        if (rowErr) { failed = rowErr.message; break; }
+        moved.push(row.id);
+      }
+      if (failed) {
+        toast.error(`Updated ${moved.length} of ${ordered.length} cleans, then stopped: ${failed}`, { duration: 12000 });
+        setSaving(false);
+        return;
+      }
+      const updatedFuture = moved.map((id) => ({ id }));
+      const error = null as any;
+      if (error) { toast.error(error); setSaving(false); return; }
 
       await supabase.from('job_series').update({
         cleaner_1_id: cleaner1,
@@ -177,6 +209,9 @@ export default function EditJobPage() {
         notes: notes || null,
         interval_weeks: getIntervalWeeks(recurring),
         frequency: recurring.frequency,
+        // The series anchor moves with the cleans, so tonight's top up carries
+        // on from the new day instead of dragging them back to the old one.
+        start_date: format(date, 'yyyy-MM-dd'),
         end_date: recurring.endType === 'until' && recurring.endDate ? format(recurring.endDate, 'yyyy-MM-dd') : null,
       } as any).eq('id', seriesId);
 
@@ -187,7 +222,11 @@ export default function EditJobPage() {
         await syncJobAssignment(touchedIds[i], { sendSms: i === 0, forceReaccept: true });
       }
 
-      toast.success('All future jobs updated!');
+      toast.success(
+        dayShift === 0
+          ? `${moved.length} future cleans updated`
+          : `${moved.length} future cleans moved ${Math.abs(dayShift)} day${Math.abs(dayShift) === 1 ? '' : 's'} ${dayShift > 0 ? 'later' : 'earlier'}`,
+      );
     } else {
       const { error } = await supabase.from('jobs').update(updatePayload).eq('id', jobId!);
       if (error) { toast.error(error.message); setSaving(false); return; }
