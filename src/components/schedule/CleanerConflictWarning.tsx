@@ -1,11 +1,14 @@
 import { AlertTriangle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { UnavailableReason } from '@/hooks/useCleanerConflicts';
 
 interface ConflictWarningProps {
   cleanerName: string;
   conflicts: { property_name: string; time: string | null }[];
   isOnLeave: boolean;
   isUnavailable?: boolean;
+  /** Why they are blocked, so the panel does not say "not on Mondays" about a holiday. */
+  unavailableReason?: UnavailableReason;
   dayName?: string;
   leaveReason?: string;
   canOverrideAvailability?: boolean;
@@ -13,7 +16,7 @@ interface ConflictWarningProps {
   onCancel: () => void;
 }
 
-export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUnavailable, dayName, leaveReason, canOverrideAvailability = false, onConfirm, onCancel }: ConflictWarningProps) {
+export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUnavailable, unavailableReason, dayName, leaveReason, canOverrideAvailability = false, onConfirm, onCancel }: ConflictWarningProps) {
   if (isUnavailable) {
     return (
       <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 space-y-3">
@@ -21,7 +24,11 @@ export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUn
           <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-sm font-bold text-destructive">
-              ❌ {cleanerName} is not available on {dayName ? dayName.charAt(0).toUpperCase() + dayName.slice(1) + 's' : 'this day'}.
+              {unavailableReason?.kind === 'leave'
+                ? <>❌ {cleanerName} is on approved leave on this date{unavailableReason.detail ? ` (${unavailableReason.detail})` : ''}.</>
+                : unavailableReason?.kind === 'day_off'
+                ? <>❌ {cleanerName} has marked this date as a day off.</>
+                : <>❌ {cleanerName} is not available on {dayName ? dayName.charAt(0).toUpperCase() + dayName.slice(1) + 's' : 'this day'}.</>}
             </p>
             <p className="text-xs text-muted-foreground">
               {canOverrideAvailability

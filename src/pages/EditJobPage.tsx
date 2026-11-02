@@ -67,7 +67,7 @@ export default function EditJobPage() {
   });
 
   // Availability check
-  const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
+  const { unavailableMap, unavailableReason, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   // Conflict detection for cleaner 1
   const c1Conflicts = useCleanerConflicts(cleaner1, date);
@@ -91,7 +91,7 @@ export default function EditJobPage() {
 
   const getCleanerLabel = (c: any) => {
     const name = c.full_name || c.email;
-    if (unavailableMap[c.id]) return `❌ ${name} (not available)`;
+    if (unavailableMap[c.id]) return `❌ ${name} (${unavailableReason[c.id]?.kind === 'leave' ? 'on leave' : 'not available'})`;
     return name;
   };
 
@@ -409,6 +409,7 @@ export default function EditJobPage() {
               conflicts={c1FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
               isOnLeave={c1Conflicts.isOnLeave}
               isUnavailable={c1Unavailable}
+              unavailableReason={unavailableReason[cleaner1]}
               dayName={dayName}
               canOverrideAvailability={canOverrideAvailability}
               leaveReason={c1Conflicts.leaveOnDate[0]?.reason}
@@ -437,6 +438,7 @@ export default function EditJobPage() {
               conflicts={c2FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
               isOnLeave={c2Conflicts.isOnLeave}
               isUnavailable={c2Unavailable}
+              unavailableReason={cleaner2 ? unavailableReason[cleaner2] : undefined}
               dayName={dayName}
               canOverrideAvailability={canOverrideAvailability}
               leaveReason={c2Conflicts.leaveOnDate[0]?.reason}

@@ -55,7 +55,7 @@ export default function AddJobPage() {
   const [priceIncGst, setPriceIncGst] = useState<number | null>(null);
 
   const { leaveMap, conflictMap } = useAllCleanerLeave(date);
-  const { unavailableMap, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
+  const { unavailableMap, unavailableReason, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties-all'],
@@ -126,7 +126,8 @@ export default function AddJobPage() {
     const isUnavail = !!unavailableMap[c.id];
     const onLeave = !!leaveMap[c.id];
     const hasJobs = (conflictMap[c.id] || []).length > 0;
-    if (isUnavail) return `❌ ${name} (not available)`;
+    // Leave is now a hard block, so say so here rather than the softer wording.
+    if (isUnavail) return `❌ ${name} (${unavailableReason[c.id]?.kind === 'leave' ? 'on leave' : 'not available'})`;
     if (onLeave) return `⚠️ ${name} (on leave)`;
     if (hasJobs) return `${name} (has job)`;
     return `✅ ${name}`;
@@ -409,6 +410,7 @@ export default function AddJobPage() {
               conflicts={cleaner1Conflicts}
               isOnLeave={cleaner1OnLeave}
               isUnavailable={cleaner1Unavailable}
+              unavailableReason={unavailableReason[cleaner1]}
               dayName={dayName}
               canOverrideAvailability={canOverrideAvailability}
               onConfirm={() => setConflictAcknowledged(true)}
@@ -437,6 +439,7 @@ export default function AddJobPage() {
               conflicts={cleaner2Conflicts}
               isOnLeave={cleaner2OnLeave}
               isUnavailable={cleaner2Unavailable}
+              unavailableReason={cleaner2 ? unavailableReason[cleaner2] : undefined}
               dayName={dayName}
               canOverrideAvailability={canOverrideAvailability}
               onConfirm={() => setConflictAcknowledged(true)}

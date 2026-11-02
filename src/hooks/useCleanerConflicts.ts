@@ -113,6 +113,9 @@ export function useAllCleanerLeave(date: Date | undefined) {
   return { leaveMap, conflictMap };
 }
 
+/** Why a cleaner cannot work that date. 'detail' carries the leave reason. */
+export type UnavailableReason = { kind: 'leave' | 'day_off' | 'roster'; detail: string | null };
+
 // Map day index (0=Sun) to short day name used in weekly_availability
 const DAY_INDEX_TO_NAME = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
@@ -132,34 +135,67 @@ export function isWeeklyDayAvailable(weeklyAvailability: unknown, dayName: strin
   return ['mon', 'tue', 'wed', 'thu', 'fri'].includes(dayName);
 }
 
-// Fetch all cleaners' weekly availability for a given date's day-of-week
+/**
+ * Who cannot work on a given date, and why.
+ *
+ * ⚠️ This MUST agree with cleaner_is_available_on_date in the database, because
+ * that function is what the trg_enforce_job_cleaner_availability trigger calls
+ * when the job is saved. The order is the same on purpose:
+ *   1. approved leave  2. that date's own hours  3. the weekly roster
+ *
+ * BJ, 3 Nov 2026: "its not letting me override the cleaner." Leave was missing
+ * from this list, so a cleaner on holiday read as a soft "on leave" warning
+ * here while the database counted them as flatly unavailable. The screen then
+ * had nothing to override, sent the job with availability_override false, and
+ * the trigger refused it with no way forward. Any rule added to the database
+ * function has to be added here too, or the same dead end comes back.
+ */
 export function useAllCleanerAvailability(date: Date | undefined, cleanerIds: string[]) {
   const dayName = date ? DAY_INDEX_TO_NAME[date.getDay()] : '';
   const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
 
-  const { data: unavailableMap = {} } = useQuery({
+  const { data = { unavailableMap: {}, unavailableReason: {} } } = useQuery({
     queryKey: ['all-cleaner-availability', dateStr, cleanerIds.join(',')],
     queryFn: async () => {
-      if (!dayName || !dateStr || cleanerIds.length === 0) return {};
-      const [profilesResult, dateOverridesResult] = await Promise.all([
+      const empty = { unavailableMap: {} as Record<string, boolean>, unavailableReason: {} as Record<string, UnavailableReason> };
+      if (!dayName || !dateStr || cleanerIds.length === 0) return empty;
+      const [profilesResult, dateOverridesResult, leaveResult] = await Promise.all([
         supabase.from('profiles').select('id, weekly_availability').in('id', cleanerIds),
         supabase.from('cleaner_availability').select('user_id, available').eq('date', dateStr).in('user_id', cleanerIds),
+        // No status filter, matching the database: any leave row covering the
+        // date blocks the cleaner.
+        supabase.from('staff_leave').select('user_id, reason').lte('start_date', dateStr).gte('end_date', dateStr).in('user_id', cleanerIds),
       ]);
 
       const explicitAvailability = new Map<string, boolean>();
       (dateOverridesResult.data || []).forEach((row: any) => explicitAvailability.set(row.user_id, row.available));
-      const map: Record<string, boolean> = {};
+
+      const onLeave = new Map<string, string | null>();
+      (leaveResult.data || []).forEach((row: any) => onLeave.set(row.user_id, row.reason ?? null));
+
+      const unavailableMap: Record<string, boolean> = {};
+      const unavailableReason: Record<string, UnavailableReason> = {};
+
       (profilesResult.data || []).forEach((profile: any) => {
+        if (onLeave.has(profile.id)) {
+          unavailableMap[profile.id] = true;
+          unavailableReason[profile.id] = { kind: 'leave', detail: onLeave.get(profile.id) || null };
+          return;
+        }
         const explicit = explicitAvailability.get(profile.id);
         const available = explicit ?? isWeeklyDayAvailable(profile.weekly_availability, dayName);
-        if (!available) map[profile.id] = true;
+        if (!available) {
+          unavailableMap[profile.id] = true;
+          unavailableReason[profile.id] = { kind: explicit === false ? 'day_off' : 'roster', detail: null };
+        }
       });
-      return map;
+
+      return { unavailableMap, unavailableReason };
     },
     enabled: !!dayName && !!dateStr && cleanerIds.length > 0,
   });
 
-  return { unavailableMap, dayName };
+  return { unavailableMap: data.unavailableMap, unavailableReason: data.unavailableReason, dayName };
 }
 
 // Dashboard: jobs in next 7 days where assigned cleaner is on leave

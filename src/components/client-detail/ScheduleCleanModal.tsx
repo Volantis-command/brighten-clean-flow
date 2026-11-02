@@ -51,7 +51,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
   const [frequency, setFrequency] = useState('one-off');
   const [availabilityOverride, setAvailabilityOverride] = useState(false);
 
-  const { unavailableMap } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
+  const { unavailableMap, unavailableReason } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
   // Helper to set both prices from one value
   const setPriceFromEx = (val: string) => {
@@ -113,7 +113,7 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
 
   const getCleanerLabel = (c: any) => {
     const name = c.full_name || c.email;
-    if (unavailableMap[c.id]) return `❌ ${name} (not available)`;
+    if (unavailableMap[c.id]) return `❌ ${name} (${unavailableReason[c.id]?.kind === 'leave' ? 'on leave' : 'not available'})`;
     return name;
   };
 
