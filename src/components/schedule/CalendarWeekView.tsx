@@ -158,7 +158,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
   const firstHour = HOURS[0];
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+    <div className="flex h-full min-h-[400px] flex-col bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
       {/* Day headers */}
       <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border bg-muted/30">
         <div className="border-r border-border" />
@@ -189,7 +189,7 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
       </div>
 
       {/* Time grid */}
-      <div className="overflow-y-auto max-h-[calc(100vh-280px)]" style={{ minHeight: '400px' }}>
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="grid grid-cols-[56px_repeat(7,1fr)] relative" style={{ height: totalHeight }}>
           {/* Hour labels + horizontal lines */}
           <div className="relative border-r border-border">

@@ -13,12 +13,19 @@ export default function AppLayout() {
   // out of an in-progress clean.
   const inCleanWorkflow = pathname.startsWith('/clean/');
 
+  // BJ, 3 Nov 2026: "the page should be fixed and not move, the only thing that
+  // can move up and down is the calendar." The shell is min-h-screen everywhere
+  // else so pages grow and the window scrolls, which is right for a list and
+  // wrong for a calendar. The schedule locks to the viewport instead, and the
+  // grid inside it does the scrolling. Only this route changes.
+  const fixedPage = pathname.startsWith('/schedule');
+
   return (
-    <div className={`brightly-canvas min-h-screen flex w-full min-w-0 max-w-full ${activeEntry ? 'pt-[60px]' : ''}`}>
+    <div className={`brightly-canvas flex w-full min-w-0 max-w-full ${fixedPage ? 'h-dvh overflow-hidden' : 'min-h-screen'} ${activeEntry ? 'pt-[60px]' : ''}`}>
       <DesktopSidebar />
-      <div className="flex-1 min-w-0 w-full max-w-full flex flex-col min-h-screen">
+      <div className={`flex-1 min-w-0 w-full max-w-full flex flex-col ${fixedPage ? 'h-full min-h-0' : 'min-h-screen'}`}>
         <TopBar />
-        <main className={`min-w-0 w-full max-w-full flex-1 p-4 md:p-6 ${inCleanWorkflow ? '' : 'pb-24 md:pb-6'} overflow-x-clip overflow-y-auto`}>
+        <main className={`min-w-0 w-full max-w-full flex-1 p-4 md:p-6 ${inCleanWorkflow ? '' : 'pb-24 md:pb-6'} overflow-x-clip ${fixedPage ? 'min-h-0 overflow-y-hidden' : 'overflow-y-auto'}`}>
           <Outlet />
         </main>
         {!inCleanWorkflow && <MobileNav />}

@@ -12,13 +12,11 @@ import { useTimeOffByDate } from '@/hooks/useTimeOff';
 import { CalendarWeekView } from '@/components/schedule/CalendarWeekView';
 import { CalendarMonthView } from '@/components/schedule/CalendarMonthView';
 import { CalendarAgendaView } from '@/components/schedule/CalendarAgendaView';
-import { CalendarLegend } from '@/components/schedule/CalendarLegend';
 import { JobDetailSlideOver } from '@/components/schedule/JobDetailSlideOver';
 import { ScheduleStatsBar } from '@/components/schedule/ScheduleStatsBar';
 import { jobLabel } from '@/lib/jobLabel';
 import { StatusFilter } from '@/components/schedule/StatusFilter';
 import { ScheduleJobCard } from '@/components/schedule/ScheduleJobCard';
-import { RecurringSeriesPanel } from '@/components/schedule/RecurringSeriesPanel';
 import { useScheduleJobs, type ScheduleJob } from '@/hooks/useScheduleJobs';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
@@ -229,10 +227,10 @@ export default function SchedulePage() {
   // Admin calendar view
   if (isAdmin) {
     return (
-      <div className="min-w-0 w-full max-w-full space-y-3">
+      <div className="flex h-full min-h-0 min-w-0 w-full max-w-full flex-col gap-3">
         {/* Pre-schedule strip */}
         {preScheduleJobs.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="shrink-0 bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <p className="font-bold text-foreground text-sm">
@@ -262,7 +260,7 @@ export default function SchedulePage() {
         )}
 
         {/* Row 1: Title + controls */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
+        <div className="flex shrink-0 flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
             <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
@@ -276,7 +274,7 @@ export default function SchedulePage() {
         </div>
 
         {/* Row 2: Filters + date navigation */}
-        <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 shrink-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div className="grid w-full grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-1 sm:flex sm:w-auto sm:gap-2">
             <button
               onClick={() => navigateDate('prev')}
@@ -305,7 +303,8 @@ export default function SchedulePage() {
           <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
 
-        {/* Calendar body */}
+        {/* Calendar body: the one part of this page that moves. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-clip">
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -363,11 +362,7 @@ export default function SchedulePage() {
             )}
           </>
         )}
-
-        {/* Recurring Series Section */}
-        <RecurringSeriesPanel jobs={filteredJobs} nameMap={nameMap} />
-
-        <CalendarLegend jobs={filteredJobs} nameMap={nameMap} />
+        </div>
 
         {selectedJob && (
           <JobDetailSlideOver

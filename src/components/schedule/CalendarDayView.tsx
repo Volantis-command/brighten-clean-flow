@@ -94,7 +94,7 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
   }, []);
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+    <div className="flex h-full min-h-[400px] flex-col bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
       {/* Header */}
       <div className="px-5 py-3 border-b border-border bg-muted/30">
         <h2 className="text-lg font-extrabold text-foreground">
@@ -107,7 +107,7 @@ export function CalendarDayView({ date, jobs, nameMap, acceptancesByJob, onJobCl
       </div>
 
       {/* Time grid */}
-      <div className="overflow-y-auto max-h-[calc(100vh-300px)]" style={{ minHeight: '400px' }}>
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="grid grid-cols-[72px_1fr] relative" style={{ height: totalHeight }}>
           {/* Hour labels */}
           <div className="relative border-r border-border">
