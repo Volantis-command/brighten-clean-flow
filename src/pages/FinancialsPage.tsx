@@ -374,6 +374,127 @@ function CleanerWeekGrid({ periods, jobs, entriesByJob, names, quotePrices }: {
   );
 }
 
+/**
+ * What we charge, what the cleaners cost, and what is left.
+ *
+ * Charged is EX GST on purpose. The rest of this page shows inc GST because
+ * that is how a clean is quoted, but GST is the tax office's money, not yours,
+ * so counting it as revenue would flatter every margin on this table.
+ *
+ * Cost is hours times profiles.hourly_rate, the same number Payroll and
+ * Timesheets pay from, so this agrees with what you actually hand over.
+ */
+function GrossProfitTable({ periods, month, jobs, entriesByJob, quotePrices, names, rates }: {
+  periods: Period[]; month: Period; jobs: any[]; entriesByJob: Record<string, any[]>;
+  quotePrices: Record<string, number>; names: Record<string, string>; rates: Record<string, number>;
+}) {
+  const columns = [...periods, month];
+
+  const stats = columns.map((p) => {
+    const h = periodHours(p, jobs, entriesByJob, quotePrices);
+    const chargedEx = round2(h.money / 1.1);
+
+    const byCleaner = Object.entries(h.byCleaner).map(([id, hours]) => ({
+      id,
+      hours: round2(hours),
+      rate: rates[id] ?? null,
+      cost: rates[id] != null ? round2(hours * rates[id]) : 0,
+    }));
+    const cost = round2(byCleaner.reduce((sum, c) => sum + c.cost, 0));
+    // Hours on the clock with nobody to pay, or nobody with a rate saved. Those
+    // hours will cost something, so the margin below is the best case.
+    const unratedHours = round2(byCleaner.filter((c) => c.rate == null).reduce((sum, c) => sum + c.hours, 0));
+
+    const gp = round2(chargedEx - cost);
+    const pct = chargedEx > 0 ? (gp / chargedEx) * 100 : 0;
+    return { period: p, chargedEx, cost, gp, pct, byCleaner, unratedHours };
+  });
+
+  const cleanerIdsShown = Array.from(new Set(stats.flatMap((st) => st.byCleaner.map((c) => c.id))))
+    .sort((a, b) => (a === 'unassigned' ? 1 : b === 'unassigned' ? -1 : 0));
+
+  const pctTone = (pct: number) => (pct >= 50 ? 'text-primary' : pct >= 35 ? 'text-foreground' : 'text-amber-400');
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="px-5 py-2.5 text-left font-bold">&nbsp;</th>
+            {columns.map((p, i) => (
+              <th key={p.key} className={`px-3 py-2.5 text-right font-bold ${i === columns.length - 1 ? 'text-foreground' : ''}`}>
+                {i === columns.length - 1
+                  ? format(new Date(p.from + 'T00:00:00'), 'MMMM')
+                  : p.label === 'This week' ? 'This week'
+                  : p.label === 'Next week' ? 'Next week'
+                  : format(new Date(p.from + 'T00:00:00'), 'd MMM')}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="border-b border-border/70">
+            <td className="px-5 py-2.5 font-semibold text-foreground">Charged, ex GST</td>
+            {stats.map((st, i) => (
+              <td key={i} className="px-3 py-2.5 text-right font-semibold tabular-nums text-foreground">
+                {st.chargedEx > 0 ? fmt(st.chargedEx) : <span className="text-muted-foreground/50">—</span>}
+              </td>
+            ))}
+          </tr>
+
+          {cleanerIdsShown.map((id) => (
+            <tr key={id} className="border-b border-border/40">
+              <td className="px-5 py-2 pl-8 text-xs text-muted-foreground">
+                {id === 'unassigned' ? 'Nobody assigned' : (names[id] || 'Unknown cleaner')}
+                {id !== 'unassigned' && rates[id] != null && <span className="ml-1">at {fmtExact(rates[id])}/h</span>}
+                {id !== 'unassigned' && rates[id] == null && <span className="ml-1 font-bold text-amber-400">no rate saved</span>}
+              </td>
+              {stats.map((st, i) => {
+                const c = st.byCleaner.find((x) => x.id === id);
+                return (
+                  <td key={i} className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+                    {c ? (c.rate != null ? fmt(c.cost) : `${fmtHours(c.hours)} unpaid?`) : <span className="text-muted-foreground/40">—</span>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+
+          <tr className="border-b border-border/70">
+            <td className="px-5 py-2.5 font-semibold text-foreground">Cleaners cost</td>
+            {stats.map((st, i) => (
+              <td key={i} className="px-3 py-2.5 text-right font-semibold tabular-nums text-foreground">
+                {st.cost > 0 ? fmt(st.cost) : <span className="text-muted-foreground/50">—</span>}
+              </td>
+            ))}
+          </tr>
+
+          <tr className="bg-muted/40">
+            <td className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Gross profit</td>
+            {stats.map((st, i) => (
+              <td key={i} className="px-3 py-3 text-right tabular-nums">
+                <span className={`text-base font-extrabold ${st.gp >= 0 ? 'text-foreground' : 'text-red-400'}`}>
+                  {st.chargedEx > 0 || st.cost > 0 ? fmt(st.gp) : '—'}
+                </span>
+                {st.chargedEx > 0 && (
+                  <span className={`block text-[11px] font-bold ${pctTone(st.pct)}`}>
+                    {Math.round(st.pct)}%
+                  </span>
+                )}
+                {st.unratedHours > 0 && (
+                  <span className="block text-[10px] font-semibold text-amber-400">
+                    {fmtHours(st.unratedHours)} with no rate
+                  </span>
+                )}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[]; quotePrices: Record<string, number> }) {
   const inPeriod = jobs.filter(
     (j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to,
@@ -491,9 +612,15 @@ export default function FinancialsPage() {
         ...Object.values(entriesByJob).flat().map((e: any) => e.user_id),
       ])].filter(Boolean);
       const names: Record<string, string> = {};
+      const rates: Record<string, number> = {};
       if (peopleIds.length) {
-        const { data: people } = await supabase.from('profiles').select('id, full_name').in('id', peopleIds);
-        (people || []).forEach((p: any) => { names[p.id] = p.full_name || 'Unnamed cleaner'; });
+        // hourly_rate is what Payroll and Timesheets actually pay from, so the
+        // cost side of gross profit comes from the same number they do.
+        const { data: people } = await supabase.from('profiles').select('id, full_name, hourly_rate').in('id', peopleIds);
+        (people || []).forEach((p: any) => {
+          names[p.id] = p.full_name || 'Unnamed cleaner';
+          if (p.hourly_rate != null) rates[p.id] = Number(p.hourly_rate);
+        });
       }
 
       // Any booking with no price is money that will never be invoiced unless
@@ -530,6 +657,7 @@ export default function FinancialsPage() {
         priceHoles,
         entriesByJob,
         names,
+        rates,
       };
     },
   });
@@ -548,6 +676,7 @@ export default function FinancialsPage() {
   const priceHoles = data?.priceHoles || [];
   const entriesByJob = data?.entriesByJob || {};
   const names = data?.names || {};
+  const rates = data?.rates || {};
 
 
   return (
@@ -590,6 +719,26 @@ export default function FinancialsPage() {
             </p>
           </div>
           <CleanerWeekGrid periods={weeks} jobs={jobs} entriesByJob={entriesByJob} names={names} quotePrices={quotePrices} />
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-border bg-card">
+          <div className="border-b border-border px-5 py-4">
+            <h3 className="text-lg font-bold text-primary">Gross profit</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              What we charge, less what the cleaners cost. Charged is ex GST, because GST is not yours to keep.
+              Cost is hours at each cleaner's saved rate, the same number Payroll pays from. Free properties are
+              in the hours and not in the charge, so they read as pure cost, which is what they are.
+            </p>
+          </div>
+          <GrossProfitTable
+            periods={weeks}
+            month={months.find((m) => m.key === 'month0') || months[0]}
+            jobs={jobs}
+            entriesByJob={entriesByJob}
+            quotePrices={quotePrices}
+            names={names}
+            rates={rates}
+          />
         </div>
       </section>
 
