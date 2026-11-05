@@ -316,7 +316,7 @@ function ConflictBadge({ staffId }: { staffId: string }) {
         .or(`cleaner_1_id.eq.${staffId},cleaner_2_id.eq.${staffId}`)
         .gte('scheduled_date', monthStart)
         .lte('scheduled_date', monthEnd)
-        .in('status', ['scheduled', 'in_progress']);
+        .neq('status', 'cancelled'); // allowlist went stale: see lib/cleanerClash.ts
       if (!data) return 0;
       const dateCounts: Record<string, number> = {};
       data.forEach((j: any) => { dateCounts[j.scheduled_date] = (dateCounts[j.scheduled_date] || 0) + 1; });

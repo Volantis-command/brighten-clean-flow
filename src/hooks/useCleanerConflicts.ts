@@ -1,11 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { FREED_STATUS, type CleanerJob } from '@/lib/cleanerClash';
+
+// ⚠️ These queries ask "is this cleaner already working?" and they ask it with
+// a DENYLIST, .neq('status', 'cancelled'), on purpose.
+//
+// They used to use .in('status', ['scheduled', 'in_progress']). In production
+// that matched 1 job out of 505, and 'in_progress' is not a status this system
+// writes at all, so the double-booking check was dead. See lib/cleanerClash.ts
+// for the full account. Do not turn these back into an allowlist.
 
 interface ConflictJob {
   id: string;
   property_name: string;
   scheduled_time: string | null;
+  estimated_duration: number | null;
 }
 
 interface LeaveEntry {
@@ -26,14 +36,15 @@ export function useCleanerConflicts(cleanerId: string | undefined, date: Date | 
       if (!cleanerId || !dateStr) return [];
       const { data } = await supabase
         .from('jobs')
-        .select('id, scheduled_time, properties(property_name)')
+        .select('id, scheduled_time, estimated_duration, properties(property_name)')
         .eq('scheduled_date', dateStr)
         .or(`cleaner_1_id.eq.${cleanerId},cleaner_2_id.eq.${cleanerId}`)
-        .in('status', ['scheduled', 'in_progress']);
+        .neq('status', FREED_STATUS);
       return (data || []).map((j: any) => ({
         id: j.id,
         property_name: j.properties?.property_name || 'Unknown',
         scheduled_time: j.scheduled_time?.slice(0, 5) || null,
+        estimated_duration: j.estimated_duration ?? null,
       })) as ConflictJob[];
     },
     enabled: !!cleanerId && !!dateStr,
@@ -90,12 +101,16 @@ export function useAllCleanerLeave(date: Date | undefined) {
       if (!dateStr) return {};
       const { data } = await supabase
         .from('jobs')
-        .select('cleaner_1_id, cleaner_2_id, scheduled_time, properties(property_name)')
+        .select('cleaner_1_id, cleaner_2_id, scheduled_time, estimated_duration, properties(property_name)')
         .eq('scheduled_date', dateStr)
-        .in('status', ['scheduled', 'in_progress']);
-      const map: Record<string, { property_name: string; time: string | null }[]> = {};
+        .neq('status', FREED_STATUS);
+      const map: Record<string, CleanerJob[]> = {};
       (data || []).forEach((j: any) => {
-        const entry = { property_name: j.properties?.property_name || 'Unknown', time: j.scheduled_time?.slice(0, 5) || null };
+        const entry: CleanerJob = {
+          property_name: j.properties?.property_name || 'Unknown',
+          time: j.scheduled_time?.slice(0, 5) || null,
+          durationMin: j.estimated_duration ?? null,
+        };
         if (j.cleaner_1_id) {
           if (!map[j.cleaner_1_id]) map[j.cleaner_1_id] = [];
           map[j.cleaner_1_id].push(entry);

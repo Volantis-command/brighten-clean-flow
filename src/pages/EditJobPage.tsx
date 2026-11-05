@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { RecurringJobSection, defaultRecurringConfig, RecurringConfig, getIntervalWeeks } from '@/components/schedule/RecurringJobSection';
 import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWarning';
+import { findClashes, describeJob, DEFAULT_JOB_MINUTES, type CleanerJob } from '@/lib/cleanerClash';
 import { syncJobAssignment } from '@/lib/jobAssignment';
 import { useAuth } from '@/contexts/AuthContext';
 import { DURATIONS } from '@/lib/jobDurations';
@@ -69,21 +70,36 @@ export default function EditJobPage() {
   // Availability check
   const { unavailableMap, unavailableReason, dayName } = useAllCleanerAvailability(date, cleaners.map((c: any) => c.id));
 
+  // How long this clean runs, so "booked at the same time" means overlapping
+  // hours rather than merely the same day.
+  const jobMinutes = Number(duration) || DEFAULT_JOB_MINUTES;
+
+  // The job being edited is always in its own cleaner's list, so it is filtered
+  // out by id first. Without that, every job would clash with itself.
+  const toCleanerJob = (c: { property_name: string; scheduled_time: string | null; estimated_duration: number | null }): CleanerJob =>
+    ({ property_name: c.property_name, time: c.scheduled_time, durationMin: c.estimated_duration });
+
   // Conflict detection for cleaner 1
   const c1Conflicts = useCleanerConflicts(cleaner1, date);
-  const c1FilteredConflicts = c1Conflicts.conflicts.filter(c => c.id !== jobId);
+  const c1FilteredConflicts = c1Conflicts.conflicts.filter(c => c.id !== jobId).map(toCleanerJob);
+  const c1Clashes = findClashes(c1FilteredConflicts, time, jobMinutes);
   const c1Unavailable = !!unavailableMap[cleaner1];
   const c1HasIssue = c1Unavailable || c1FilteredConflicts.length > 0 || c1Conflicts.isOnLeave;
 
   const c2Conflicts = useCleanerConflicts(cleaner2 || undefined, date);
-  const c2FilteredConflicts = c2Conflicts.conflicts.filter(c => c.id !== jobId);
+  const c2FilteredConflicts = c2Conflicts.conflicts.filter(c => c.id !== jobId).map(toCleanerJob);
+  const c2Clashes = cleaner2 ? findClashes(c2FilteredConflicts, time, jobMinutes) : [];
   const c2Unavailable = cleaner2 ? !!unavailableMap[cleaner2] : false;
   const c2HasIssue = cleaner2 && (c2Unavailable || c2FilteredConflicts.length > 0 || c2Conflicts.isOnLeave);
 
   const hasUnavailableCleaner = Boolean((cleaner1 && c1Unavailable) || (cleaner2 && c2Unavailable));
+  // Moving a job onto a slot the cleaner is already working is the same
+  // mistake as booking a new one there, so it is blocked the same way.
+  const hasClashingCleaner = Boolean(c1Clashes.length || c2Clashes.length);
   const canOverrideAvailability = role === 'admin';
-  const availabilityOverride = hasUnavailableCleaner && canOverrideAvailability && conflictAcknowledged;
-  const hasHardBlock = hasUnavailableCleaner && !availabilityOverride;
+  const blocked = hasUnavailableCleaner || hasClashingCleaner;
+  const availabilityOverride = blocked && canOverrideAvailability && conflictAcknowledged;
+  const hasHardBlock = blocked && !availabilityOverride;
   const hasAnyConflict = c1HasIssue || c2HasIssue;
 
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
@@ -124,7 +140,15 @@ export default function EditJobPage() {
   const handleSave = async () => {
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
-    if (hasHardBlock) { toast.error('Cannot save — a cleaner is not available on this day.'); return; }
+    if (hasHardBlock) {
+      const clash = c1Clashes[0] || c2Clashes[0];
+      toast.error(
+        clash
+          ? `Cannot save. That cleaner is already on ${describeJob(clash)}.`
+          : 'Cannot save — a cleaner is not available on this day.'
+      );
+      return;
+    }
     if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
     setSaving(true);
@@ -376,10 +400,10 @@ export default function EditJobPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Start Time *">
-              <TimeSelect value={time} onChange={setTime} className="h-14 rounded-2xl" />
+              <TimeSelect value={time} onChange={(v: string) => { setTime(v); setConflictAcknowledged(false); }} className="h-14 rounded-2xl" />
             </FormField>
             <FormField label="Estimated Duration">
-              <Select value={duration} onValueChange={setDuration}>
+              <Select value={duration} onValueChange={(v) => { setDuration(v); setConflictAcknowledged(false); }}>
                 <SelectTrigger className="h-14 rounded-2xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
@@ -406,7 +430,8 @@ export default function EditJobPage() {
           {c1HasIssue && !conflictAcknowledged && (
             <CleanerConflictWarning
               cleanerName={cleaner1Name}
-              conflicts={c1FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
+              conflicts={c1FilteredConflicts}
+              clashes={c1Clashes}
               isOnLeave={c1Conflicts.isOnLeave}
               isUnavailable={c1Unavailable}
               unavailableReason={unavailableReason[cleaner1]}
@@ -435,7 +460,8 @@ export default function EditJobPage() {
           {c2HasIssue && !conflictAcknowledged && (
             <CleanerConflictWarning
               cleanerName={cleaner2Name}
-              conflicts={c2FilteredConflicts.map(c => ({ property_name: c.property_name, time: c.scheduled_time }))}
+              conflicts={c2FilteredConflicts}
+              clashes={c2Clashes}
               isOnLeave={c2Conflicts.isOnLeave}
               isUnavailable={c2Unavailable}
               unavailableReason={cleaner2 ? unavailableReason[cleaner2] : undefined}

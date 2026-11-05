@@ -1,10 +1,13 @@
 import { AlertTriangle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UnavailableReason } from '@/hooks/useCleanerConflicts';
+import { describeJob, type CleanerJob } from '@/lib/cleanerClash';
 
 interface ConflictWarningProps {
   cleanerName: string;
-  conflicts: { property_name: string; time: string | null }[];
+  conflicts: CleanerJob[];
+  /** The subset of `conflicts` that actually overlap this clean's hours. */
+  clashes?: CleanerJob[];
   isOnLeave: boolean;
   isUnavailable?: boolean;
   /** Why they are blocked, so the panel does not say "not on Mondays" about a holiday. */
@@ -16,7 +19,38 @@ interface ConflictWarningProps {
   onCancel: () => void;
 }
 
-export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUnavailable, unavailableReason, dayName, leaveReason, canOverrideAvailability = false, onConfirm, onCancel }: ConflictWarningProps) {
+export function CleanerConflictWarning({ cleanerName, conflicts, clashes = [], isOnLeave, isUnavailable, unavailableReason, dayName, leaveReason, canOverrideAvailability = false, onConfirm, onCancel }: ConflictWarningProps) {
+  if (clashes.length > 0) {
+    return (
+      <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-destructive">
+              ❌ {cleanerName} is already booked at this time.
+            </p>
+            {clashes.map((c, i) => (
+              <p key={i} className="text-xs text-muted-foreground ml-1">• {describeJob(c)}</p>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              {canOverrideAvailability
+                ? 'Move the time, or assign someone else. Overriding puts them on two cleans at once.'
+                : 'Move the time or assign a different cleaner. Only an admin can override this.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={onCancel} className="rounded-xl">Choose Different Cleaner</Button>
+          {canOverrideAvailability && (
+            <Button size="sm" onClick={onConfirm} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Double-book Anyway
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (isUnavailable) {
     return (
       <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 space-y-3">
@@ -61,13 +95,11 @@ export function CleanerConflictWarning({ cleanerName, conflicts, isOnLeave, isUn
           )}
           {conflicts.length > 0 && (
             <p className="text-sm font-bold text-destructive">
-              ⚠️ {cleanerName} already has {conflicts.length === 1 ? 'a job' : `${conflicts.length} jobs`} on this date:
+              ⚠️ {cleanerName} already has {conflicts.length === 1 ? 'a job' : `${conflicts.length} jobs`} that day, at other times:
             </p>
           )}
           {conflicts.map((c, i) => (
-            <p key={i} className="text-xs text-muted-foreground ml-1">
-              • {c.property_name}{c.time ? ` at ${c.time}` : ''}
-            </p>
+            <p key={i} className="text-xs text-muted-foreground ml-1">• {describeJob(c)}</p>
           ))}
         </div>
       </div>

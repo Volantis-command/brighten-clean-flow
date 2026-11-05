@@ -25,6 +25,7 @@ import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssig
 import { useAuth } from '@/contexts/AuthContext';
 import { DURATIONS } from '@/lib/jobDurations';
 import { parseSlotDate, parseSlotTime } from '@/lib/scheduleSlot';
+import { findClashes, describeJob, DEFAULT_JOB_MINUTES } from '@/lib/cleanerClash';
 
 
 const SOFA_OPTIONS = [
@@ -113,48 +114,80 @@ export default function AddJobPage() {
     }
   };
 
+  // How long the clean we are booking runs for, so a clash is an overlap in
+  // time rather than merely the same day. A cleaner doing three turnovers in a
+  // day is normal; two at once is not.
+  const jobMinutes = Number(duration) || DEFAULT_JOB_MINUTES;
+
   // Conflict state for selected cleaners
   const cleaner1Name = cleaners.find((c: any) => c.id === cleaner1)?.full_name || 'Cleaner';
   const cleaner1OnLeave = !!leaveMap[cleaner1];
   const cleaner1Unavailable = !!unavailableMap[cleaner1];
   const cleaner1Conflicts = conflictMap[cleaner1] || [];
+  const cleaner1Clashes = findClashes(cleaner1Conflicts, time, jobMinutes);
   const cleaner1HasIssue = cleaner1 && (cleaner1Unavailable || cleaner1OnLeave || cleaner1Conflicts.length > 0);
 
   const cleaner2Name = cleaners.find((c: any) => c.id === cleaner2)?.full_name || 'Cleaner';
   const cleaner2OnLeave = cleaner2 ? !!leaveMap[cleaner2] : false;
   const cleaner2Unavailable = cleaner2 ? !!unavailableMap[cleaner2] : false;
   const cleaner2Conflicts = cleaner2 ? (conflictMap[cleaner2] || []) : [];
+  const cleaner2Clashes = findClashes(cleaner2Conflicts, time, jobMinutes);
   const cleaner2HasIssue = cleaner2 && (cleaner2Unavailable || cleaner2OnLeave || cleaner2Conflicts.length > 0);
 
   const hasUnavailableCleaner = Boolean((cleaner1 && cleaner1Unavailable) || (cleaner2 && cleaner2Unavailable));
+
+  // Being booked elsewhere at the same time is a hard block, same as leave.
+  // BJ, 5 Nov 2026: "when jess is rostered on a clean, it shouldnt let me
+  // roster her on for another one at the same time."
+  const hasClashingCleaner = Boolean(cleaner1Clashes.length || cleaner2Clashes.length);
   const canOverrideAvailability = role === 'admin';
-  const availabilityOverride = hasUnavailableCleaner && canOverrideAvailability && conflictAcknowledged;
-  const hasHardBlock = hasUnavailableCleaner && !availabilityOverride;
+  const blocked = hasUnavailableCleaner || hasClashingCleaner;
+  const availabilityOverride = blocked && canOverrideAvailability && conflictAcknowledged;
+  const hasHardBlock = blocked && !availabilityOverride;
 
   // Reset conflict acknowledged when cleaner or date changes
   const handleCleaner1Change = (v: string) => { setCleaner1(v); setConflictAcknowledged(false); };
   const handleCleaner2Change = (v: string) => { setCleaner2(v === '__none__' ? '' : v); setConflictAcknowledged(false); };
   const handleDateChange = (d: Date | undefined) => { setDate(d); setConflictAcknowledged(false); };
+  // Moving the clean can remove the clash entirely, or create a new one, so an
+  // acknowledgement of the old overlap must not carry over to a different one.
+  const handleTimeChange = (v: string) => { setTime(v); setConflictAcknowledged(false); };
+  const handleDurationChange = (v: string) => { setDuration(v); setConflictAcknowledged(false); };
 
   const getCleanerLabel = (c: any) => {
     const name = c.full_name || c.email;
     const isUnavail = !!unavailableMap[c.id];
     const onLeave = !!leaveMap[c.id];
-    const hasJobs = (conflictMap[c.id] || []).length > 0;
+    const jobsThatDay = conflictMap[c.id] || [];
+    const clash = findClashes(jobsThatDay, time, jobMinutes)[0];
     // Leave is now a hard block, so say so here rather than the softer wording.
     if (isUnavail) return `❌ ${name} (${unavailableReason[c.id]?.kind === 'leave' ? 'on leave' : 'not available'})`;
+    // Named, because "unavailable" is not actionable and "already on Rumble at
+    // 11:00" tells you straight away what to move.
+    if (clash) return `❌ ${name} (already on ${describeJob(clash)})`;
     if (onLeave) return `⚠️ ${name} (on leave)`;
-    if (hasJobs) return `${name} (has job)`;
+    if (jobsThatDay.length > 0) return `${name} (${jobsThatDay.length} other job${jobsThatDay.length > 1 ? 's' : ''} that day)`;
     return `✅ ${name}`;
   };
 
-  const isCleanerDisabled = (id: string) => !!unavailableMap[id] && !canOverrideAvailability;
+  const isCleanerDisabled = (id: string) => {
+    if (canOverrideAvailability) return false;
+    return !!unavailableMap[id] || findClashes(conflictMap[id] || [], time, jobMinutes).length > 0;
+  };
 
   const handleSave = async () => {
     if (!propertyId) { toast.error('Please select a property.'); return; }
     if (!date) { toast.error('Please select a date.'); return; }
     if (!cleaner1) { toast.error('Please assign at least one cleaner.'); return; }
-    if (hasHardBlock) { toast.error('Cannot save — a cleaner is not available on this day.'); return; }
+    if (hasHardBlock) {
+      const clash = cleaner1Clashes[0] || cleaner2Clashes[0];
+      toast.error(
+        clash
+          ? `Cannot save. That cleaner is already on ${describeJob(clash)}.`
+          : 'Cannot save — a cleaner is not available on this day.'
+      );
+      return;
+    }
     const hasAnyConflict = cleaner1HasIssue || cleaner2HasIssue;
     if (hasAnyConflict && !conflictAcknowledged) { toast.error('Please acknowledge the conflict warning before saving.'); return; }
 
@@ -390,10 +423,10 @@ export default function AddJobPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Start Time *">
-              <TimeSelect value={time} onChange={setTime} className="h-14 rounded-2xl" />
+              <TimeSelect value={time} onChange={handleTimeChange} className="h-14 rounded-2xl" />
             </FormField>
             <FormField label="Estimated Duration">
-              <Select value={duration} onValueChange={setDuration}>
+              <Select value={duration} onValueChange={handleDurationChange}>
                 <SelectTrigger className="h-14 rounded-2xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
@@ -423,6 +456,7 @@ export default function AddJobPage() {
             <CleanerConflictWarning
               cleanerName={cleaner1Name}
               conflicts={cleaner1Conflicts}
+              clashes={cleaner1Clashes}
               isOnLeave={cleaner1OnLeave}
               isUnavailable={cleaner1Unavailable}
               unavailableReason={unavailableReason[cleaner1]}
@@ -452,6 +486,7 @@ export default function AddJobPage() {
             <CleanerConflictWarning
               cleanerName={cleaner2Name}
               conflicts={cleaner2Conflicts}
+              clashes={cleaner2Clashes}
               isOnLeave={cleaner2OnLeave}
               isUnavailable={cleaner2Unavailable}
               unavailableReason={cleaner2 ? unavailableReason[cleaner2] : undefined}
