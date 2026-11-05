@@ -1,3 +1,5 @@
+import { Check, SlidersHorizontal } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 const FILTERS = [
@@ -14,23 +16,46 @@ interface StatusFilterProps {
   onChange: (value: string) => void;
 }
 
+/**
+ * Six chips wrapped onto two rows and pushed the calendar off a phone screen.
+ * They live behind one icon now, with a dot when a filter is actually on so
+ * you can never be looking at a filtered calendar without knowing it.
+ */
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
+  const active = FILTERS.find((f) => f.value === value) || FILTERS[0];
+  const filtering = value !== 'all';
+
   return (
-    <div className="flex w-full flex-wrap bg-muted rounded-xl p-1 gap-1 sm:w-auto" role="group" aria-label="Filter jobs by status">
-      {FILTERS.map((f) => (
+    <Popover>
+      <PopoverTrigger asChild>
         <button
-          key={f.value}
-          onClick={() => onChange(f.value)}
           className={cn(
-            'min-h-10 flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold transition-all sm:flex-none',
-            value === f.value
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
+            'relative flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition-colors sm:px-3',
+            filtering
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border text-muted-foreground hover:text-foreground'
           )}
+          aria-label={`Filter jobs, currently ${active.label}`}
         >
-          {f.label}
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span className={filtering ? 'inline' : 'hidden sm:inline'}>{filtering ? active.label : 'Filter'}</span>
         </button>
-      ))}
-    </div>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-52 p-1">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => onChange(f.value)}
+            className={cn(
+              'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors',
+              f.value === value ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
+            )}
+          >
+            {f.label}
+            {f.value === value && <Check className="h-4 w-4" />}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Repeat } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
 import { CalendarDayView } from '@/components/schedule/CalendarDayView';
 import { useTimeOffByDate } from '@/hooks/useTimeOff';
@@ -259,48 +259,61 @@ export default function SchedulePage() {
           </div>
         )}
 
-        {/* Row 1: Title + controls */}
-        <div className="flex shrink-0 flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Schedule</h1>
-            <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
-          </div>
-          <div className="flex w-full items-center gap-3 flex-wrap lg:w-auto">
-            <CalendarViewToggle view={view} onChange={setView} />
-            <Button variant="accent" onClick={() => handleAddJob(selectedDate)} className="min-h-11 flex-1 gap-2 sm:flex-none">
-              <Plus className="h-5 w-5" /> Schedule Job
-            </Button>
-          </div>
+        {/* ── One toolbar, Apple Calendar style ─────────────────────────────
+            BJ, 5 Nov 2026: "make everything above the calendar a lot more
+            compact ... put each as a button to push at the top. so it brings
+            the actual calendar all the way to the top."
+
+            Was: an h1, a stats paragraph, a full width view toggle, a full
+            width Schedule Job button, a date row and six wrapped filter chips.
+            On a phone that was most of the screen before a single clean showed.
+            Now: month and arrows on the left, controls on the right, one row,
+            with the numbers on a single quiet line underneath. ───────────── */}
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => navigateDate('prev')}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+            aria-label="Previous date range"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h1 className="min-w-[88px] flex-1 truncate text-base font-extrabold text-primary sm:text-xl">
+            {getHeaderLabel()}
+          </h1>
+          <button
+            onClick={() => navigateDate('next')}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+            aria-label="Next date range"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {!isToday(selectedDate) && (
+            <button
+              onClick={() => setSelectedDate(new Date())}
+              className="h-8 shrink-0 rounded-lg border border-border px-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Today
+            </button>
+          )}
+
+          <CalendarViewToggle view={view} onChange={setView} />
+          <StatusFilter value={statusFilter} onChange={handleStatusChange} />
+
+          <button
+            onClick={() => handleAddJob(selectedDate)}
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-bold text-primary-foreground transition-transform hover:scale-[1.03] sm:px-3"
+            aria-label="Schedule a job"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Schedule Job</span>
+          </button>
         </div>
 
-        {/* Row 2: Filters + date navigation */}
-        <div className="flex min-w-0 shrink-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-          <div className="grid w-full grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-1 sm:flex sm:w-auto sm:gap-2">
-            <button
-              onClick={() => navigateDate('prev')}
-              className="h-11 w-11 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
-              aria-label="Previous date range"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <h2 className="min-w-0 truncate text-center text-sm font-bold text-foreground sm:min-w-[180px] sm:text-base">
-              {getHeaderLabel()}
-            </h2>
-            <button
-              onClick={() => navigateDate('next')}
-              className="h-11 w-11 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
-              aria-label="Next date range"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            {!isToday(selectedDate) && (
-              <Button variant="outline" size="sm" className="col-span-3 mt-1 min-h-10 gap-1.5 text-xs sm:ml-1 sm:mt-0" onClick={() => setSelectedDate(new Date())}>
-                <CalendarDays className="h-3.5 w-3.5" /> Today
-              </Button>
-            )}
-          </div>
-
-          <StatusFilter value={statusFilter} onChange={handleStatusChange} />
+        {/* The numbers, one quiet line. Scrolls sideways rather than wrapping
+            and stealing a second row from the calendar. */}
+        <div className="shrink-0 overflow-x-auto">
+          <ScheduleStatsBar view={view} date={selectedDate} jobs={filteredJobs} />
         </div>
 
         {/* Calendar body: the one part of this page that moves. */}

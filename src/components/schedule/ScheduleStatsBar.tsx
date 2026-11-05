@@ -40,7 +40,9 @@ export function ScheduleStatsBar({ view, date, jobs }: ScheduleStatsBarProps) {
   const openToClose = jobs.filter(j => j.status === 'completed' && !(j as any).closed_off_at).length;
 
   return (
-    <p className="flex flex-wrap gap-x-1 text-xs sm:text-sm text-muted-foreground font-medium">
+    // One line, never wrapping: on a phone this used to take three rows and
+    // push the calendar below the fold (BJ, 5 Nov 2026).
+    <p className="flex w-max flex-nowrap items-center gap-x-1 whitespace-nowrap text-[11px] font-medium text-muted-foreground sm:text-xs">
       <span>{totalJobs} job{totalJobs !== 1 ? 's' : ''}</span>
       <span className="mx-1.5 opacity-40">·</span>
       <span>${revenue.toLocaleString()} revenue</span>

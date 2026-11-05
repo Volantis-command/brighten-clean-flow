@@ -7,28 +7,34 @@ interface CalendarViewToggleProps {
   onChange: (view: CalendarView) => void;
 }
 
-const VIEWS: { value: CalendarView; label: string }[] = [
-  { value: 'agenda', label: 'Agenda' },
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
+// Short labels on a phone, because this sits in one toolbar row beside the
+// month, the filter and the add button (BJ, 5 Nov 2026: "make everything above
+// the calendar a lot more compact ... look at the apple calender").
+const VIEWS: { value: CalendarView; label: string; short: string }[] = [
+  { value: 'agenda', label: 'Agenda', short: 'List' },
+  { value: 'day', label: 'Day', short: 'D' },
+  { value: 'week', label: 'Week', short: 'W' },
+  { value: 'month', label: 'Month', short: 'M' },
 ];
 
 export function CalendarViewToggle({ view, onChange }: CalendarViewToggleProps) {
   return (
-    <div className="grid w-full grid-cols-4 bg-muted rounded-xl p-1 gap-0.5 sm:inline-flex sm:w-auto" role="group" aria-label="Calendar view">
-      {VIEWS.map(v => (
+    <div className="inline-flex shrink-0 gap-0.5 rounded-lg bg-muted p-0.5" role="group" aria-label="Calendar view">
+      {VIEWS.map((v) => (
         <button
           key={v.value}
           onClick={() => onChange(v.value)}
+          aria-label={v.label}
+          aria-pressed={view === v.value}
           className={cn(
-            'min-h-11 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all',
+            'h-8 rounded-md px-2 text-xs font-bold transition-all sm:px-3',
             view === v.value
-              ? 'bg-primary text-primary-foreground shadow-md'
-              : 'text-muted-foreground hover:text-foreground hover:bg-background'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          {v.label}
+          <span className="sm:hidden">{v.short}</span>
+          <span className="hidden sm:inline">{v.label}</span>
         </button>
       ))}
     </div>
