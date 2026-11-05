@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleanersList } from '@/hooks/useCleanersList';
@@ -24,6 +24,7 @@ import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWar
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 import { useAuth } from '@/contexts/AuthContext';
 import { DURATIONS } from '@/lib/jobDurations';
+import { parseSlotDate, parseSlotTime } from '@/lib/scheduleSlot';
 
 
 const SOFA_OPTIONS = [
@@ -34,15 +35,29 @@ const SOFA_OPTIONS = [
 
 export default function AddJobPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { role } = useAuth();
+
+  // The calendar hands us the slot that was clicked, as
+  // /schedule/new?date=2026-11-16&time=08:00. Every calendar view has sent
+  // this for a long time and this page used to throw it away and open on today
+  // at 9am, so clicking Thursday 11am still meant setting Thursday 11am by
+  // hand. Parsing lives in lib/scheduleSlot.ts so it can be tested.
+  //
+  // Lazily initialised, because these are only the starting values. Once the
+  // form is open the user owns the fields, and re-reading the URL would stamp
+  // on whatever they had just chosen.
+  const [slotDate] = useState<Date>(() => parseSlotDate(searchParams.get('date')));
+  const [slotTime] = useState<string>(() => parseSlotTime(searchParams.get('time')));
+
   const queryClient = useQueryClient();
   const { data: cleaners = [] } = useCleanersList();
   const [saving, setSaving] = useState(false);
   const [conflictAcknowledged, setConflictAcknowledged] = useState(false);
 
   const [propertyId, setPropertyId] = useState('');
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [time, setTime] = useState('09:00');
+  const [date, setDate] = useState<Date | undefined>(slotDate);
+  const [time, setTime] = useState(slotTime);
   const [duration, setDuration] = useState('120');
   const [cleaner1, setCleaner1] = useState('');
   const [cleaner2, setCleaner2] = useState('');
