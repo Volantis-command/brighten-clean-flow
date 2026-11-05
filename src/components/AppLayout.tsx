@@ -18,7 +18,11 @@ export default function AppLayout() {
   // else so pages grow and the window scrolls, which is right for a list and
   // wrong for a calendar. The schedule locks to the viewport instead, and the
   // grid inside it does the scrolling. Only this route changes.
-  const fixedPage = pathname.startsWith('/schedule');
+  // ⚠️ EXACT match, never startsWith. /schedule/new is the Add Job form, which
+  // is taller than the screen and has to scroll (BJ, 5 Nov 2026: "i cant scroll
+  // down on this page"). Only the calendar itself gets locked to the viewport.
+  // Query strings are not part of pathname, so /schedule?date=... still matches.
+  const fixedPage = pathname === '/schedule' || pathname === '/schedule/';
 
   return (
     <div className={`brightly-canvas flex w-full min-w-0 max-w-full ${fixedPage ? 'h-dvh overflow-hidden' : 'min-h-screen'} ${activeEntry ? 'pt-[60px]' : ''}`}>
