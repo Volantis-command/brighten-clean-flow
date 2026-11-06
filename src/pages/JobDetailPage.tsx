@@ -50,7 +50,11 @@ export default function JobDetailPage() {
 
   // Pricing state
   const [priceInput, setPriceInput] = useState('');
+  const [priceIncInput, setPriceIncInput] = useState('');
   const [priceNotes, setPriceNotes] = useState('');
+  // Editing is off until asked for. The price on a finished clean is what gets
+  // invoiced, so it should take a deliberate click to change, not a stray one.
+  const [editingPrice, setEditingPrice] = useState(false);
   const [confirmTime, setConfirmTime] = useState('08:00');
   const [savingPrice, setSavingPrice] = useState(false);
 
@@ -72,6 +76,7 @@ export default function JobDetailPage() {
   useEffect(() => {
     if (job) {
       setPriceInput(job.price_ex_gst ? String(job.price_ex_gst) : '');
+      setPriceIncInput(job.price_ex_gst ? (Number(job.price_ex_gst) * 1.1).toFixed(2) : '');
       setPriceNotes(job.price_notes || '');
       if (job.scheduled_time) setConfirmTime(job.scheduled_time.slice(0, 5));
     }
@@ -193,6 +198,20 @@ export default function JobDetailPage() {
   const priceExGst = priceNum;
   const priceIncGst = priceExGst * 1.10;
 
+  // BJ thinks in the number on the invoice, which is inc GST, and the app
+  // stores ex GST. Typing in either box fills the other, rounded to the cent,
+  // so there is no mental arithmetic and no rounding drift between them.
+  const onChangeEx = (v: string) => {
+    setPriceInput(v);
+    const n = parseFloat(v);
+    setPriceIncInput(Number.isFinite(n) ? (n * 1.1).toFixed(2) : '');
+  };
+  const onChangeInc = (v: string) => {
+    setPriceIncInput(v);
+    const n = parseFloat(v);
+    setPriceInput(Number.isFinite(n) ? (n / 1.1).toFixed(2) : '');
+  };
+
   const handleSavePrice = async () => {
     if (!jobId) return;
     setSavingPrice(true);
@@ -205,6 +224,7 @@ export default function JobDetailPage() {
       toast.error(error.message);
     } else {
       toast.success('Price saved');
+      setEditingPrice(false);
       queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
     }
     setSavingPrice(false);
@@ -1012,43 +1032,109 @@ export default function JobDetailPage() {
         </Card>
       )}
 
-      {/* Pricing — Admin read-only (for non-awaiting_quote jobs) */}
+      {/* Pricing — admin, editable on any job.
+          BJ, 6 Nov 2026: "i need to be able to overide the price in any job,
+          this job didnt take the full 6 hours, so i need to channge the price
+          to reflect what i am invoiceing."
+          The override editor already existed here, but only rendered when the
+          job had NO price, so the one case that needed it, correcting a price
+          that is already wrong, was the one case it would not show. */}
       {role === 'admin' && job.status !== 'awaiting_quote' && job.status !== 'awaiting_approval' && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Pricing
+            <CardTitle className="text-lg flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Pricing
+              </span>
+              {!editingPrice && (
+                <Button variant="outline" size="sm" className="rounded-xl"
+                  onClick={() => setEditingPrice(true)}>
+                  {(job.price_ex_gst && job.price_ex_gst > 0) ? 'Change price' : 'Set price'}
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {(job.price_ex_gst && job.price_ex_gst > 0) ? (
-              <div className="space-y-2">
-                <p className="text-lg    font-extrabold text-primary">
-                  ${Number(job.price_ex_gst).toFixed(2)} ex GST
-                  <span className="text-sm font-semibold text-muted-foreground ml-2">
-                    (${(Number(job.price_ex_gst) * 1.1).toFixed(2)} inc GST)
-                  </span>
-                </p>
-                {job.price_notes && (
-                  <p className="text-sm text-muted-foreground">{job.price_notes}</p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
+            {!editingPrice ? (
+              (job.price_ex_gst && job.price_ex_gst > 0) ? (
+                <div className="space-y-2">
+                  <p className="text-lg font-extrabold text-primary">
+                    ${Number(job.price_ex_gst).toFixed(2)} ex GST
+                    <span className="text-sm font-semibold text-muted-foreground ml-2">
+                      (${(Number(job.price_ex_gst) * 1.1).toFixed(2)} inc GST)
+                    </span>
+                  </p>
+                  {job.price_notes && (
+                    <p className="text-sm text-muted-foreground">{job.price_notes}</p>
+                  )}
+                </div>
+              ) : (
                 <p className="text-sm text-muted-foreground">No price set</p>
-                <div>
-                  <Label className="text-sm font-semibold">Override Price (ex GST)</Label>
-                  <Input type="number" step="0.01" min="0" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} placeholder="0.00" className="h-10 rounded-xl" />
+              )
+            ) : (
+              <div className="space-y-3">
+                {/* Changing the number here does not reach Xero. Say so before
+                    the edit, not after, or the two quietly disagree. */}
+                {(job.xero_invoice_id || (job.invoice_status && job.invoice_status !== 'not_raised')) && (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                    <p className="font-semibold text-amber-600 dark:text-amber-400">
+                      This clean is already invoiced{job.xero_invoice_number ? ` (${job.xero_invoice_number})` : ''}.
+                    </p>
+                    <p className="text-muted-foreground mt-1">
+                      Changing the price here updates Brightly only. Amend or credit the invoice in Xero as well, or the two will disagree.
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm font-semibold">Ex GST</Label>
+                    <Input type="number" step="0.01" min="0" inputMode="decimal"
+                      value={priceInput} onChange={(e) => onChangeEx(e.target.value)}
+                      placeholder="0.00" className="h-10 rounded-xl" />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Inc GST</Label>
+                    <Input type="number" step="0.01" min="0" inputMode="decimal"
+                      value={priceIncInput} onChange={(e) => onChangeInc(e.target.value)}
+                      placeholder="0.00" className="h-10 rounded-xl" />
+                  </div>
                 </div>
+
+                {job.price_ex_gst && priceExGst > 0 && Math.abs(priceExGst - Number(job.price_ex_gst)) > 0.009 && (
+                  <p className="text-sm text-muted-foreground">
+                    Was ${Number(job.price_ex_gst).toFixed(2)} ex GST.{' '}
+                    <span className={priceExGst < Number(job.price_ex_gst) ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-primary font-semibold'}>
+                      {priceExGst < Number(job.price_ex_gst) ? '-' : '+'}${Math.abs(priceExGst - Number(job.price_ex_gst)).toFixed(2)}
+                    </span>
+                  </p>
+                )}
+
                 <div>
-                  <Label className="text-sm font-semibold">Notes</Label>
-                  <Input value={priceNotes} onChange={(e) => setPriceNotes(e.target.value)} placeholder="e.g. One-off rate" className="h-10 rounded-xl" />
+                  <Label className="text-sm font-semibold">Why</Label>
+                  <Input value={priceNotes} onChange={(e) => setPriceNotes(e.target.value)}
+                    placeholder="e.g. Finished in 4hr, not 6hr" className="h-10 rounded-xl" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Shows on the job and explains the figure later, when nobody remembers why it changed.
+                  </p>
                 </div>
-                <Button onClick={handleSavePrice} disabled={savingPrice} size="sm" className="gap-2 rounded-xl">
-                  {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
-                  Save Override
-                </Button>
+
+                <div className="flex gap-2">
+                  <Button onClick={handleSavePrice} disabled={savingPrice} size="sm" className="gap-2 rounded-xl">
+                    {savingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+                    Save price
+                  </Button>
+                  <Button variant="ghost" size="sm" className="rounded-xl" disabled={savingPrice}
+                    onClick={() => {
+                      setEditingPrice(false);
+                      setPriceInput(job.price_ex_gst ? String(job.price_ex_gst) : '');
+                      setPriceIncInput(job.price_ex_gst ? (Number(job.price_ex_gst) * 1.1).toFixed(2) : '');
+                      setPriceNotes(job.price_notes || '');
+                    }}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
