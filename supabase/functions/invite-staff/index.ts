@@ -244,6 +244,34 @@ Deno.serve(async (req) => {
           );
         }
 
+        // ADDING A CLIENT MUST NEVER TAKE OVER AN EXISTING ONE.
+        //
+        // BJ, 6 Nov 2026: added "Nathan Spowart" against an address that
+        // already belonged to a client. It did not create anybody. It renamed
+        // the existing account, overwrote their phone number, and handed the
+        // new client the old one's property and six completed cleans.
+        //
+        // The function guarded admin accounts and it guarded the staff/client
+        // divide, but client over client was wide open, and that is the one an
+        // admin hits by accident: a familiar address typed from memory.
+        //
+        // Reuse is still correct for the "find_or_create_client" action, which
+        // is how a quote attaches to somebody who already exists. It is never
+        // correct here. This action is the Add Client button and it means new.
+        if (!isCreatingStaff && hasClientRole) {
+          const { data: owner } = await adminClient
+            .from("profiles").select("full_name").eq("id", newUserId).maybeSingle();
+          const who = (owner as any)?.full_name;
+          return new Response(
+            JSON.stringify({
+              error: who
+                ? `${email} is already the login for ${who}. Open that client to add a property, or use a different email address.`
+                : `${email} already belongs to a client. Open that client to add a property, or use a different email address.`,
+            }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         await adminClient
           .from("user_roles")
           .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
