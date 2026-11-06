@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  addWeeks, subWeeks, addMonths, subMonths, differenceInMinutes,
-} from 'date-fns';
+  addWeeks, subWeeks, addMonths, subMonths, differenceInMinutes, subDays } from 'date-fns';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 /** A clean under this is a typo, not a price. Caught a 10 cent invoice. */
@@ -495,6 +494,218 @@ function GrossProfitTable({ periods, month, jobs, entriesByJob, quotePrices, nam
   );
 }
 
+// ── THE NEW BLOCKS ──────────────────────────────────────────────────────────
+//
+// Added 6 Nov 2026. Everything above this line is the page BJ already uses and
+// is deliberately untouched: "the first 2 screenshots is what i want, its how
+// it is now and i dont want that changed."
+//
+// These four read the same jobs as the cards above, so they cannot disagree
+// with them. The trend chart in particular recomputes gross profit exactly the
+// way GrossProfitTable does, from periodHours and the saved cleaner rates.
+
+/** Direction, not a single week. Bars are revenue, the line is margin. */
+function TrendChart({ periods, jobs, entriesByJob, quotePrices, rates }: {
+  periods: Period[]; jobs: any[]; entriesByJob: Record<string, any[]>;
+  quotePrices: Record<string, number>; rates: Record<string, number>;
+}) {
+  const stats = periods.map((p) => {
+    const h = periodHours(p, jobs, entriesByJob, quotePrices);
+    const chargedEx = round2(h.money / 1.1);
+    const cost = round2(Object.entries(h.byCleaner)
+      .reduce((sum, [id, hours]) => sum + (rates[id] != null ? hours * rates[id] : 0), 0));
+    const gp = round2(chargedEx - cost);
+    return { p, chargedEx, gp, pct: chargedEx > 0 ? (gp / chargedEx) * 100 : 0 };
+  });
+
+  const maxRev = Math.max(...stats.map((s) => s.chargedEx), 1);
+  // Fixed 0-50% axis for the margin line. A scale that moves with the data
+  // makes a bad week look the same as a good one.
+  const PCT_MAX = 50;
+  const W = 620, H = 210, left = 46, right = 12, top = 16, base = 150;
+  const band = (W - left - right) / stats.length;
+  const x = (i: number) => left + band * (i + 0.5);
+  const yRev = (v: number) => base - (v / maxRev) * (base - top);
+  const yPct = (v: number) => base - (Math.min(Math.max(v, 0), PCT_MAX) / PCT_MAX) * (base - top);
+  const tone = (pct: number) => (pct >= 35 ? '#4ade80' : pct >= 25 ? '#fbbf24' : '#f87171');
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img"
+           aria-label="Revenue and gross profit percentage over five weeks">
+        <line x1={left} y1={base} x2={W - right} y2={base} stroke="currentColor" className="text-border" strokeWidth="1" />
+        <line x1={left} y1={(base + top) / 2} x2={W - right} y2={(base + top) / 2} stroke="currentColor" className="text-border/40" strokeWidth="1" />
+        <text x={left - 6} y={base + 4} textAnchor="end" className="fill-muted-foreground text-[10px]">$0</text>
+        <text x={left - 6} y={top + 4} textAnchor="end" className="fill-muted-foreground text-[10px]">{fmt(maxRev)}</text>
+
+        {stats.map((st, i) => (
+          <rect key={`b${i}`} x={x(i) - band * 0.3} y={yRev(st.chargedEx)}
+                width={band * 0.6} height={Math.max(base - yRev(st.chargedEx), 0)}
+                rx="3" className="fill-primary/25" />
+        ))}
+
+        <polyline fill="none" strokeWidth="2.5" strokeLinejoin="round" stroke="#4ade80"
+                  points={stats.map((st, i) => `${x(i)},${yPct(st.pct)}`).join(' ')} />
+        {stats.map((st, i) => (
+          <g key={`p${i}`}>
+            <circle cx={x(i)} cy={yPct(st.pct)} r="4.5" fill={tone(st.pct)} />
+            <text x={x(i)} y={yPct(st.pct) - 10} textAnchor="middle"
+                  className="text-[11px] font-bold" fill={tone(st.pct)}>
+              {Math.round(st.pct)}%
+            </text>
+          </g>
+        ))}
+
+        {stats.map((st, i) => (
+          <g key={`l${i}`}>
+            <text x={x(i)} y={base + 20} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+              {st.p.label === 'This week' ? 'This wk' : st.p.label === 'Next week' ? 'Next wk'
+                : format(new Date(st.p.from + 'T00:00:00'), 'd MMM')}
+            </text>
+            <text x={x(i)} y={base + 36} textAnchor="middle" className="fill-muted-foreground/60 text-[10px] tabular-nums">
+              {st.chargedEx > 0 ? fmt(st.chargedEx) : '—'}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+        <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-primary/25 align-[-1px]" />Charged ex GST</span>
+        <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-primary align-[-1px]" />Gross profit %</span>
+        <span className="text-muted-foreground/60">A week sitting low usually means hours with no cleaner rate against them, not a cheap week.</span>
+      </div>
+    </div>
+  );
+}
+
+type Insights = {
+  priced: number; avgJob: number; avgPerHour: number; medianPerHour: number;
+  loPerHour: number; hiPerHour: number;
+  byFrequency: { key: string; jobs: number; revenue: number; avg: number }[];
+  byService: { key: string; jobs: number; revenue: number; inferred: number }[];
+  topClient: { name: string; revenue: number; share: number } | null;
+  totalRevenue: number; recurringRevenue: number;
+  completed: number; avgBooked: number; avgActual: number;
+  ranOver: number; ranUnder: number; withActual: number;
+};
+
+/** What we charge an hour, where it comes from, and whether the clock agrees. */
+function InsightBlocks({ ins }: { ins: Insights }) {
+  const Card = ({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) => (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-2 text-3xl font-extrabold tabular-nums ${tone || 'text-foreground'}`}>{value}</p>
+      {sub && <p className="mt-2 text-sm text-muted-foreground">{sub}</p>}
+    </div>
+  );
+
+  const freqLabel = (k: string) => k === '(none)' ? 'Not set' : k.charAt(0).toUpperCase() + k.slice(1);
+
+  return (
+    <>
+      <section className="mt-10">
+        <h2 className="text-lg font-extrabold text-primary">What we actually charge an hour</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Last 120 days, {ins.priced} priced cleans. The spread matters more than the average:
+          an average on its own hides the cheap jobs.
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <Card label="Charged per cleaner hour" value={fmt(ins.avgPerHour)}
+                sub={`Median ${fmt(ins.medianPerHour)}. Range ${fmt(ins.loPerHour)} to ${fmt(ins.hiPerHour)}.`} />
+          <Card label="Average clean" value={fmt(ins.avgJob)}
+                sub={`Across ${ins.priced} priced cleans`} />
+          <Card label="Recurring share of revenue"
+                value={`${ins.totalRevenue > 0 ? Math.round((ins.recurringRevenue / ins.totalRevenue) * 100) : 0}%`}
+                sub="Weekly, fortnightly and monthly work. The part of the business that does not need selling again."
+                tone="text-primary" />
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-extrabold text-primary">Where the money comes from</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Last 120 days.</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-card p-5">
+            <table className="w-full min-w-[420px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 text-left font-bold">How often</th>
+                  <th className="py-2 text-right font-bold">Cleans</th>
+                  <th className="py-2 text-right font-bold">Revenue</th>
+                  <th className="py-2 text-right font-bold">Avg clean</th>
+                  <th className="py-2 text-right font-bold">Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ins.byFrequency.map((r) => (
+                  <tr key={r.key} className="border-b border-border/60">
+                    <td className="py-2.5 font-semibold text-foreground">{freqLabel(r.key)}</td>
+                    <td className="py-2.5 text-right tabular-nums">{r.jobs}</td>
+                    <td className="py-2.5 text-right tabular-nums">{fmt(r.revenue)}</td>
+                    <td className="py-2.5 text-right tabular-nums">{fmt(r.avg)}</td>
+                    <td className="py-2.5 text-right tabular-nums text-muted-foreground">
+                      {ins.totalRevenue > 0 ? Math.round((r.revenue / ins.totalRevenue) * 100) : 0}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Biggest client</p>
+              <p className="mt-2 text-2xl font-extrabold text-foreground">{ins.topClient?.name || '—'}</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {ins.topClient
+                  ? <>{fmt(ins.topClient.revenue)}, {Math.round(ins.topClient.share)}% of everything charged. If they leave, that is the hole.</>
+                  : 'No priced work in the window.'}
+              </p>
+            </div>
+            <div className="overflow-x-auto rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">By kind of clean</p>
+              <table className="mt-3 w-full border-collapse text-sm">
+                <tbody>
+                  {ins.byService.map((r) => (
+                    <tr key={r.key} className="border-b border-border/60 last:border-0">
+                      <td className="py-2 font-semibold text-foreground">{r.key}</td>
+                      <td className="py-2 text-right tabular-nums">{r.jobs}</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(r.revenue)}</td>
+                      <td className="py-2 text-right text-xs text-amber-400">
+                        {r.inferred > 0 ? `${r.inferred} assumed` : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-3 text-xs text-muted-foreground">
+                The booking form has never saved its Clean Type, so most of these are assumed from the
+                property rather than chosen. Anything marked assumed is a guess, not a fact.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-extrabold text-primary">Are we quoting enough time?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {ins.completed} completed cleans, {ins.withActual} of them with a clock on and off. This is the
+          number that quietly decides the margin.
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <Card label="Booked vs actual"
+                value={`${ins.avgActual - ins.avgBooked >= 0 ? '+' : ''}${Math.round(ins.avgActual - ins.avgBooked)} min`}
+                sub={`Average ${Math.round(ins.avgBooked)} min booked, ${Math.round(ins.avgActual)} min worked`} />
+          <Card label="Ran over by 10%+" value={String(ins.ranOver)}
+                sub="Cleans where the time was underquoted" tone="text-amber-400" />
+          <Card label="Ran under by 10%+" value={String(ins.ranUnder)}
+                sub={`${ins.ranOver + ins.ranUnder} of ${ins.withActual} missed the estimate by more than 10%. The averages cancel out. The jobs do not.`} />
+        </div>
+      </section>
+    </>
+  );
+}
+
 function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[]; quotePrices: Record<string, number> }) {
   const inPeriod = jobs.filter(
     (j) => j.scheduled_date >= period.from && j.scheduled_date <= period.to,
@@ -535,6 +746,105 @@ function RevenueCard({ period, jobs, quotePrices }: { period: Period; jobs: any[
   );
 }
 
+/**
+ * The 120 day window behind the three blocks at the bottom.
+ *
+ * Deliberately a separate query from the five week one above. That window is
+ * built around the calendar cards and is far too short for an average: a
+ * fortnightly client appears twice in it. 120 days is long enough for the rate
+ * spread to mean something and short enough to still describe the business as
+ * it is now.
+ *
+ * no_charge properties are excluded from every money figure. They are real
+ * hours and zero dollars, so leaving them in drags every average down and makes
+ * the business look cheaper than it is.
+ */
+function useInsights() {
+  const from = format(subDays(new Date(), 120), 'yyyy-MM-dd');
+  return useQuery({
+    queryKey: ['financials-insights', from],
+    queryFn: async (): Promise<Insights> => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, scheduled_date, status, price_ex_gst, estimated_duration, frequency, service_type, service_type_inferred, cleaner_1_id, cleaner_2_id, clock_on, clock_off, clock_off_at, properties(property_name, client_type, no_charge)')
+        .gte('scheduled_date', from)
+        .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`);
+      if (error) throw error;
+
+      const rows = (data || []).filter((j: any) => !j.properties?.no_charge);
+      const priced = rows.filter((j: any) => Number(j.price_ex_gst) > 0);
+
+      // Per cleaner hour, which is the rate that decides whether a job is worth
+      // taking. A two cleaner job burns two hours for every hour on the clock.
+      const perHour = priced.map((j: any) => {
+        const hrs = (Number(j.estimated_duration) || 120) / 60;
+        const heads = Math.max(cleanerIds(j).filter((c) => c !== 'unassigned').length, 1);
+        return Number(j.price_ex_gst) / (hrs * heads);
+      }).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+
+      const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
+      const totalRevenue = round2(sum(priced.map((j: any) => Number(j.price_ex_gst))));
+
+      const group = (key: (j: any) => string) => {
+        const m: Record<string, { jobs: number; revenue: number; inferred: number }> = {};
+        rows.forEach((j: any) => {
+          const k = key(j) || '(none)';
+          if (!m[k]) m[k] = { jobs: 0, revenue: 0, inferred: 0 };
+          m[k].jobs += 1;
+          m[k].revenue += Number(j.price_ex_gst) || 0;
+          if (j.service_type_inferred) m[k].inferred += 1;
+        });
+        return m;
+      };
+
+      const freq = group((j) => j.frequency);
+      const byFrequency = Object.entries(freq)
+        .map(([key, v]) => ({ key, jobs: v.jobs, revenue: round2(v.revenue), avg: v.jobs ? round2(v.revenue / v.jobs) : 0 }))
+        .sort((a, b) => b.revenue - a.revenue);
+
+      const svc = group((j) => j.service_type);
+      const byService = Object.entries(svc)
+        .map(([key, v]) => ({ key, jobs: v.jobs, revenue: round2(v.revenue), inferred: v.inferred }))
+        .sort((a, b) => b.revenue - a.revenue);
+
+      const byClient = group((j) => j.properties?.property_name);
+      const top = Object.entries(byClient).sort((a, b) => b[1].revenue - a[1].revenue)[0];
+
+      const recurringRevenue = round2(byFrequency
+        .filter((r) => ['weekly', 'fortnightly', 'monthly'].includes(r.key))
+        .reduce((a, r) => a + r.revenue, 0));
+
+      // Booked against the clock, on finished cleans only.
+      const done = rows.filter((j: any) => j.status === 'completed');
+      const withActual = done.map((j: any) => {
+        const off = j.clock_off || j.clock_off_at;
+        if (!j.clock_on || !off) return null;
+        const mins = (new Date(off).getTime() - new Date(j.clock_on).getTime()) / 60000;
+        if (!Number.isFinite(mins) || mins <= 0 || mins > 24 * 60) return null;
+        return { booked: Number(j.estimated_duration) || 120, actual: mins };
+      }).filter(Boolean) as { booked: number; actual: number }[];
+
+      return {
+        priced: priced.length,
+        avgJob: priced.length ? round2(totalRevenue / priced.length) : 0,
+        avgPerHour: perHour.length ? round2(sum(perHour) / perHour.length) : 0,
+        medianPerHour: perHour.length ? round2(perHour[Math.floor(perHour.length / 2)]) : 0,
+        loPerHour: perHour.length ? round2(perHour[Math.floor(perHour.length * 0.1)]) : 0,
+        hiPerHour: perHour.length ? round2(perHour[Math.floor(perHour.length * 0.9)]) : 0,
+        byFrequency, byService,
+        topClient: top ? { name: top[0], revenue: round2(top[1].revenue), share: totalRevenue > 0 ? (top[1].revenue / totalRevenue) * 100 : 0 } : null,
+        totalRevenue, recurringRevenue,
+        completed: done.length,
+        withActual: withActual.length,
+        avgBooked: withActual.length ? sum(withActual.map((w) => w.booked)) / withActual.length : 0,
+        avgActual: withActual.length ? sum(withActual.map((w) => w.actual)) / withActual.length : 0,
+        ranOver: withActual.filter((w) => w.actual > w.booked * 1.1).length,
+        ranUnder: withActual.filter((w) => w.actual < w.booked * 0.9).length,
+      };
+    },
+  });
+}
+
 export default function FinancialsPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const navigate = useNavigate();
@@ -547,6 +857,8 @@ export default function FinancialsPage() {
   const rangeFrom = months[0].from < weeks[0].from ? months[0].from : weeks[0].from;
   const lastWeek = weeks[weeks.length - 1];
   const rangeTo = months[2].to > lastWeek.to ? months[2].to : lastWeek.to;
+
+  const { data: insights, isLoading: insightsLoading } = useInsights();
 
   const { data, isLoading } = useQuery({
     queryKey: ['financials-v2', rangeFrom, rangeTo],
@@ -739,6 +1051,23 @@ export default function FinancialsPage() {
             names={names}
             rates={rates}
           />
+
+        {/* Added 6 Nov 2026. Everything above is untouched. */}
+        <section className="mt-10">
+          <h2 className="text-lg font-extrabold text-primary">Five weeks out</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The same numbers as the table above, drawn. Direction beats any single week.
+          </p>
+          <div className="mt-4">
+            <TrendChart periods={weeks} jobs={jobs} entriesByJob={entriesByJob} quotePrices={quotePrices} rates={rates} />
+          </div>
+        </section>
+
+        {insightsLoading ? (
+          <p className="mt-10 text-sm text-muted-foreground">Loading the last 120 days…</p>
+        ) : insights ? (
+          <InsightBlocks ins={insights} />
+        ) : null}
         </div>
       </section>
 
