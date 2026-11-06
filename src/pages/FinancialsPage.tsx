@@ -581,6 +581,8 @@ type Insights = {
   priced: number; avgJob: number; avgPerHour: number; medianPerHour: number;
   loPerHour: number; hiPerHour: number;
   byFrequency: { key: string; jobs: number; revenue: number; avg: number }[];
+  bySegment: { key: string; cleans: number; perHour: number; median: number; avgClean: number; revenue: number }[];
+  deep: { cleans: number; confirmed: number; perHour: number; avgClean: number; revenue: number } | null;
   byService: { key: string; jobs: number; revenue: number; inferred: number }[];
   topClient: { name: string; revenue: number; share: number } | null;
   totalRevenue: number; recurringRevenue: number;
@@ -618,6 +620,76 @@ function InsightBlocks({ ins }: { ins: Insights }) {
                 sub="Weekly, fortnightly and monthly work. The part of the business that does not need selling again."
                 tone="text-primary" />
         </div>
+
+        {/* The same rate, split by who the work is for. This is the comparison
+            that decides where the next cleaner's hours should go. */}
+        {ins.bySegment.length > 1 && (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-border bg-card p-5">
+            <table className="w-full min-w-[560px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 text-left font-bold">Work for</th>
+                  <th className="py-2 text-right font-bold">Cleans</th>
+                  <th className="py-2 text-right font-bold">Per cleaner hour</th>
+                  <th className="py-2 text-right font-bold">Median</th>
+                  <th className="py-2 text-right font-bold">Avg clean</th>
+                  <th className="py-2 text-right font-bold">Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ins.bySegment.map((r) => {
+                  const best = Math.max(...ins.bySegment.map((x) => x.perHour));
+                  const worst = Math.min(...ins.bySegment.map((x) => x.perHour));
+                  const tone = r.perHour === best ? 'text-primary'
+                    : r.perHour === worst ? 'text-amber-400' : 'text-foreground';
+                  return (
+                    <tr key={r.key} className="border-b border-border/60 last:border-0">
+                      <td className="py-2.5 font-semibold text-foreground">{r.key}</td>
+                      <td className="py-2.5 text-right tabular-nums text-muted-foreground">{r.cleans}</td>
+                      <td className={`py-2.5 text-right font-extrabold tabular-nums ${tone}`}>{fmt(r.perHour)}</td>
+                      <td className="py-2.5 text-right tabular-nums text-muted-foreground">{fmt(r.median)}</td>
+                      <td className="py-2.5 text-right tabular-nums">{fmt(r.avgClean)}</td>
+                      <td className="py-2.5 text-right tabular-nums">{fmt(r.revenue)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {(() => {
+              const top = ins.bySegment.reduce((a, b) => (b.perHour > a.perHour ? b : a));
+              const low = ins.bySegment.reduce((a, b) => (b.perHour < a.perHour ? b : a));
+              if (top.key === low.key || low.perHour <= 0) return null;
+              const pct = Math.round(((top.perHour - low.perHour) / low.perHour) * 100);
+              return (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{top.key} pays {pct}% more an hour than {low.key}</span>
+                  {' '}({fmt(top.perHour)} against {fmt(low.perHour)}), and {low.key} is{' '}
+                  {Math.round((low.cleans / ins.priced) * 100)}% of the cleans. That gap is where the next
+                  cleaner's hours are worth the most.
+                </p>
+              );
+            })()}
+
+            {ins.deep && (
+              <div className="mt-4 rounded-xl border border-border/70 bg-background/40 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Deep cleans, counted separately
+                </p>
+                <p className="mt-1.5 text-sm text-foreground">
+                  {ins.deep.cleans} clean{ins.deep.cleans === 1 ? '' : 's'}, {fmt(ins.deep.perHour)} an hour,
+                  {' '}{fmt(ins.deep.avgClean)} a job, {fmt(ins.deep.revenue)} in total.
+                </p>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Not a fourth row: a deep clean happens at a residential or an Airbnb property, so it is
+                  already inside the rows above. {ins.deep.confirmed} of {ins.deep.cleans}{' '}
+                  {ins.deep.confirmed === 1 ? 'was' : 'were'} actually marked as a deep clean rather than
+                  assumed, so treat this as a sample until the Clean Type field has been in use a while.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="mt-10">
@@ -807,6 +879,49 @@ function useInsights() {
         .map(([key, v]) => ({ key, jobs: v.jobs, revenue: round2(v.revenue), inferred: v.inferred }))
         .sort((a, b) => b.revenue - a.revenue);
 
+      // Per cleaner hour, split by the kind of client. client_type is set on
+      // every property, so unlike service_type this split is fact, not a guess.
+      const rate = (j: any) => {
+        const hrs = (Number(j.estimated_duration) || 120) / 60;
+        const heads = Math.max(cleanerIds(j).filter((c) => c !== 'unassigned').length, 1);
+        return Number(j.price_ex_gst) / (hrs * heads);
+      };
+      const segmentOf = (j: any) => {
+        const t = j.properties?.client_type;
+        return t === 'airbnb' ? 'Airbnb' : t === 'residential' ? 'Residential'
+          : t === 'business' || t === 'commercial' ? 'Business' : 'Other';
+      };
+      const segMap: Record<string, any[]> = {};
+      priced.forEach((j: any) => {
+        const k = segmentOf(j);
+        (segMap[k] ||= []).push(j);
+      });
+      const bySegment = Object.entries(segMap).map(([key, js]) => {
+        const rates = js.map(rate).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+        const rev = sum(js.map((j: any) => Number(j.price_ex_gst)));
+        return {
+          key, cleans: js.length,
+          perHour: rates.length ? round2(sum(rates) / rates.length) : 0,
+          median: rates.length ? round2(rates[Math.floor(rates.length / 2)]) : 0,
+          avgClean: js.length ? round2(rev / js.length) : 0,
+          revenue: round2(rev),
+        };
+      }).sort((a, b) => b.revenue - a.revenue);
+
+      // Deep cleans are NOT a fourth segment: a deep clean happens at a
+      // residential or an Airbnb property, so it is already counted above.
+      // Shown on its own so it cannot be read as a slice of the same pie.
+      const deepJobs = priced.filter((j: any) => j.service_type === 'Deep Clean');
+      const deepRates = deepJobs.map(rate).filter((v) => Number.isFinite(v) && v > 0);
+      const deepRev = sum(deepJobs.map((j: any) => Number(j.price_ex_gst)));
+      const deep = deepJobs.length ? {
+        cleans: deepJobs.length,
+        confirmed: deepJobs.filter((j: any) => !j.service_type_inferred).length,
+        perHour: deepRates.length ? round2(sum(deepRates) / deepRates.length) : 0,
+        avgClean: round2(deepRev / deepJobs.length),
+        revenue: round2(deepRev),
+      } : null;
+
       const byClient = group((j) => j.properties?.property_name);
       const top = Object.entries(byClient).sort((a, b) => b[1].revenue - a[1].revenue)[0];
 
@@ -831,7 +946,7 @@ function useInsights() {
         medianPerHour: perHour.length ? round2(perHour[Math.floor(perHour.length / 2)]) : 0,
         loPerHour: perHour.length ? round2(perHour[Math.floor(perHour.length * 0.1)]) : 0,
         hiPerHour: perHour.length ? round2(perHour[Math.floor(perHour.length * 0.9)]) : 0,
-        byFrequency, byService,
+        byFrequency, byService, bySegment, deep,
         topClient: top ? { name: top[0], revenue: round2(top[1].revenue), share: totalRevenue > 0 ? (top[1].revenue / totalRevenue) * 100 : 0 } : null,
         totalRevenue, recurringRevenue,
         completed: done.length,
