@@ -160,3 +160,29 @@ export const PORTAL_CLEAN_TYPES = [
   { value: 'office_commercial', label: SERVICE_TYPES.OFFICE_COMMERCIAL },
   { value: 'other', label: 'Other' },
 ];
+
+// ── WHAT KIND OF CLEAN IT IS ────────────────────────────────────────────────
+//
+// These strings go straight into jobs.service_type and they are what the
+// Financials page groups by, so every booking screen must use this one list.
+// Changing a label here splits history into two categories that look like
+// different kinds of work, so rename only with a matching update to existing
+// rows.
+//
+// A matching database trigger fills this in from the property when a screen or
+// an edge function does not set it, flagging the row as inferred. Anything
+// picked here is a human choice and is NOT flagged.
+export const JOB_CLEAN_TYPES = [
+  'House Clean',
+  'Turnover Clean',
+  'Deep Clean',
+  'End of Lease',
+  'Post-Build',
+] as const;
+
+export type JobCleanType = (typeof JOB_CLEAN_TYPES)[number];
+
+/** What to preselect, so the common case is already right. */
+export function defaultCleanType(clientType?: string | null): JobCleanType {
+  return clientType === 'airbnb' ? 'Turnover Clean' : 'House Clean';
+}

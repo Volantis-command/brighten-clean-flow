@@ -14,14 +14,17 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { JOB_CLEAN_TYPES } from '@/lib/serviceTypes';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 import { DURATIONS } from '@/lib/jobDurations';
 
-const CLEAN_TYPES = [
-  'House Clean', 'Deep Clean', 'End of Lease', 'Post-Build', 'Turnover Clean',
-];
+// Was a local list that only ever lived in this file's UI: the value was
+// collected and then left out of the insert below, so no clean has ever
+// recorded its own type. Now shared with every other booking screen and
+// actually saved.
+const CLEAN_TYPES = JOB_CLEAN_TYPES;
 
 
 interface ScheduleCleanModalProps {
@@ -147,6 +150,11 @@ export default function ScheduleCleanModal({ open, onOpenChange, clientId, clien
         price_inc_gst: finalIncGst,
         notes: notes || null,
         price_notes: internalNotes || null,
+        // Chosen in the form above, so not a guess. This is the line that was
+        // missing: the dropdown has existed since the start and its value was
+        // dropped on the floor every time.
+        service_type: cleanType,
+        service_type_inferred: false,
         status,
         source: 'manual',
         frequency,

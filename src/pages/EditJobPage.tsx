@@ -22,6 +22,7 @@ import { findClashes, describeJob, DEFAULT_JOB_MINUTES, type CleanerJob } from '
 import { syncJobAssignment } from '@/lib/jobAssignment';
 import { useAuth } from '@/contexts/AuthContext';
 import { DURATIONS } from '@/lib/jobDurations';
+import { JOB_CLEAN_TYPES, defaultCleanType } from '@/lib/serviceTypes';
 
 
 export default function EditJobPage() {
@@ -37,6 +38,7 @@ export default function EditJobPage() {
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState('09:00');
   const [duration, setDuration] = useState('120');
+  const [cleanType, setCleanType] = useState<string>('House Clean');
   const [cleaner1, setCleaner1] = useState('');
   const [cleaner2, setCleaner2] = useState('');
   const [notes, setNotes] = useState('');
@@ -116,6 +118,10 @@ export default function EditJobPage() {
       setDate(parseISO(job.scheduled_date));
       setTime(job.scheduled_time?.slice(0, 5) || '09:00');
       setDuration(String(job.estimated_duration || 120));
+      // Pre-6-Nov jobs were given a type by the backfill rather than by a
+      // person. Showing that value lets it be corrected here, and saving marks
+      // it as chosen.
+      setCleanType((job as any).service_type || defaultCleanType((job as any).properties?.client_type));
       setCleaner1(job.cleaner_1_id || '');
       setCleaner2(job.cleaner_2_id || '');
       setNotes(job.notes || '');
@@ -157,6 +163,8 @@ export default function EditJobPage() {
       scheduled_date: format(date, 'yyyy-MM-dd'),
       scheduled_time: time,
       estimated_duration: parseInt(duration),
+      service_type: cleanType,
+      service_type_inferred: false,
       cleaner_1_id: cleaner1,
       cleaner_2_id: cleaner2 || null,
       notes: notes || null,
@@ -197,6 +205,8 @@ export default function EditJobPage() {
       const sharedPatch = {
         scheduled_time: time,
         estimated_duration: parseInt(duration),
+        service_type: cleanType,
+        service_type_inferred: false,
         cleaner_1_id: cleaner1,
         cleaner_2_id: cleaner2 || null,
         notes: notes || null,
@@ -411,6 +421,20 @@ export default function EditJobPage() {
               </Select>
             </FormField>
           </div>
+
+          <FormField label="Clean Type">
+            <Select value={cleanType} onValueChange={setCleanType}>
+              <SelectTrigger className="h-14 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {JOB_CLEAN_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(job as any)?.service_type_inferred && (
+              <p className="mt-1.5 text-xs text-amber-400">
+                Assumed from the property, not chosen. Saving confirms it.
+              </p>
+            )}
+          </FormField>
         </Section>
 
         <Section title="Assigned Cleaners">

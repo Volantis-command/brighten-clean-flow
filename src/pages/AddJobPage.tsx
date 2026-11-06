@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +24,7 @@ import { CleanerConflictWarning } from '@/components/schedule/CleanerConflictWar
 import { syncJobAssignment, initialJobStatusForAssignment } from '@/lib/jobAssignment';
 import { useAuth } from '@/contexts/AuthContext';
 import { DURATIONS } from '@/lib/jobDurations';
+import { JOB_CLEAN_TYPES, defaultCleanType } from '@/lib/serviceTypes';
 import { parseSlotDate, parseSlotTime } from '@/lib/scheduleSlot';
 import { findClashes, describeJob, DEFAULT_JOB_MINUTES } from '@/lib/cleanerClash';
 
@@ -60,6 +61,13 @@ export default function AddJobPage() {
   const [date, setDate] = useState<Date | undefined>(slotDate);
   const [time, setTime] = useState(slotTime);
   const [duration, setDuration] = useState('120');
+  // What kind of clean. Had no field here at all, so every job booked from this
+  // page recorded nothing, and the Financials breakdown had to guess.
+  const [cleanType, setCleanType] = useState<string>('House Clean');
+  // Once, when the property is first chosen: an Airbnb is a turnover, a house
+  // is a house clean. Reselecting the property re-suggests; typing over it
+  // afterwards is respected.
+  const [cleanTypeTouched, setCleanTypeTouched] = useState(false);
   const [cleaner1, setCleaner1] = useState('');
   const [cleaner2, setCleaner2] = useState('');
   const [notes, setNotes] = useState('');
@@ -78,7 +86,7 @@ export default function AddJobPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, property_name, address, suburb, price_turnover, client_name, default_price, price_includes_gst')
+        .select('id, property_name, address, suburb, price_turnover, client_name, default_price, price_includes_gst, client_type')
         .in('status', ['active', 'onboarding'])
         .order('client_name', { ascending: true, nullsFirst: false });
       if (error) throw error;
@@ -93,6 +101,14 @@ export default function AddJobPage() {
   );
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
+
+  // Suggest the clean type from the property once it is picked. An Airbnb is a
+  // turnover, everything else is a house clean. Only until somebody chooses for
+  // themselves, after which their choice stands.
+  useEffect(() => {
+    if (!selectedProperty || cleanTypeTouched) return;
+    setCleanType(defaultCleanType((selectedProperty as any).client_type));
+  }, [selectedProperty, cleanTypeTouched]);
 
   const handlePropertySelect = (p: any) => {
     setPropertyId(p.id);
@@ -230,6 +246,8 @@ export default function AddJobPage() {
       scheduled_date: format(date, 'yyyy-MM-dd'),
       scheduled_time: time,
       estimated_duration: parseInt(duration),
+      service_type: cleanType,
+      service_type_inferred: false,
       cleaner_1_id: cleaner1,
       cleaner_2_id: cleaner2 || null,
       notes: combinedNotes || null,
@@ -434,6 +452,21 @@ export default function AddJobPage() {
               </Select>
             </FormField>
           </div>
+
+          <FormField label="Clean Type">
+            <Select
+              value={cleanType}
+              onValueChange={(v) => { setCleanType(v); setCleanTypeTouched(true); }}
+            >
+              <SelectTrigger className="h-14 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {JOB_CLEAN_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Drives the revenue breakdown on Financials. Suggested from the property, change it if this one is different.
+            </p>
+          </FormField>
         </Section>
 
         {/* Cleaners */}
