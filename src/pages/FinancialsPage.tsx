@@ -607,12 +607,15 @@ function InsightBlocks({ ins }: { ins: Insights }) {
       <section className="mt-10">
         <h2 className="text-lg font-extrabold text-primary">What we actually charge an hour</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Last 120 days, {ins.priced} priced cleans. The spread matters more than the average:
-          an average on its own hides the cheap jobs.
+          Last 120 days, {ins.priced} priced cleans, ex GST unless it says otherwise. Divided by
+          clocked time where a cleaner clocked on, and by the booked duration everywhere else, which
+          is the same rule as the hours cards above. A property booked for longer than it really takes
+          will read lower here than it does in real life, so a surprising number is usually the booking,
+          not the price.
         </p>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <Card label="Charged per cleaner hour" value={fmt(ins.avgPerHour)}
-                sub={`Median ${fmt(ins.medianPerHour)}. Range ${fmt(ins.loPerHour)} to ${fmt(ins.hiPerHour)}.`} />
+          <Card label="Charged per cleaner hour, ex GST" value={fmt(ins.avgPerHour)}
+                sub={`${fmt(round2(ins.avgPerHour * 1.1))} inc GST. Median ${fmt(ins.medianPerHour)} ex, range ${fmt(ins.loPerHour)} to ${fmt(ins.hiPerHour)} ex.`} />
           <Card label="Average clean" value={fmt(ins.avgJob)}
                 sub={`Across ${ins.priced} priced cleans`} />
           <Card label="Recurring share of revenue"
@@ -630,7 +633,7 @@ function InsightBlocks({ ins }: { ins: Insights }) {
                 <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="py-2 text-left font-bold">Work for</th>
                   <th className="py-2 text-right font-bold">Cleans</th>
-                  <th className="py-2 text-right font-bold">Per cleaner hour</th>
+                  <th className="py-2 text-right font-bold">Per cleaner hour, ex GST</th>
                   <th className="py-2 text-right font-bold">Median</th>
                   <th className="py-2 text-right font-bold">Avg clean</th>
                   <th className="py-2 text-right font-bold">Revenue</th>
@@ -646,7 +649,12 @@ function InsightBlocks({ ins }: { ins: Insights }) {
                     <tr key={r.key} className="border-b border-border/60 last:border-0">
                       <td className="py-2.5 font-semibold text-foreground">{r.key}</td>
                       <td className="py-2.5 text-right tabular-nums text-muted-foreground">{r.cleans}</td>
-                      <td className={`py-2.5 text-right font-extrabold tabular-nums ${tone}`}>{fmt(r.perHour)}</td>
+                      <td className={`py-2.5 text-right tabular-nums ${tone}`}>
+                        <span className="font-extrabold">{fmt(r.perHour)}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {fmt(round2(r.perHour * 1.1))} inc
+                        </span>
+                      </td>
                       <td className="py-2.5 text-right tabular-nums text-muted-foreground">{fmt(r.median)}</td>
                       <td className="py-2.5 text-right tabular-nums">{fmt(r.avgClean)}</td>
                       <td className="py-2.5 text-right tabular-nums">{fmt(r.revenue)}</td>
@@ -862,12 +870,32 @@ function useInsights() {
         !j.properties?.no_charge && j.properties?.status !== 'inactive');
       const priced = rows.filter((j: any) => Number(j.price_ex_gst) > 0);
 
-      // Per cleaner hour, which is the rate that decides whether a job is worth
-      // taking. A two cleaner job burns two hours for every hour on the clock.
-      const perHour = priced.map((j: any) => {
-        const hrs = (Number(j.estimated_duration) || 120) / 60;
+      // How many cleaner hours a job actually cost.
+      //
+      // BJ, 6 Nov 2026: "Lynn and Olivia are $70 an hour, they should be
+      // higher? why are they lower." He was right and this block was wrong. It
+      // divided by BOOKED hours while the cards at the top of the page use
+      // clocked time once a clean is done. Olivia's is booked for 165 minutes
+      // and takes 128, so dividing by the booking understated her by 29% and
+      // the two halves of the same page disagreed.
+      //
+      // Clocked time where there is any, the booking before that, which is the
+      // same rule the hours cards above use.
+      const cleanerHours = (j: any) => {
+        const off = j.clock_off || j.clock_off_at;
+        let mins = Number(j.estimated_duration) || 120;
+        if (j.clock_on && off) {
+          const worked = (new Date(off).getTime() - new Date(j.clock_on).getTime()) / 60000;
+          // A clock left running overnight is not a 14 hour clean.
+          if (Number.isFinite(worked) && worked > 0 && worked <= 12 * 60) mins = worked;
+        }
         const heads = Math.max(cleanerIds(j).filter((c) => c !== 'unassigned').length, 1);
-        return Number(j.price_ex_gst) / (hrs * heads);
+        return (mins / 60) * heads;
+      };
+
+      const perHour = priced.map((j: any) => {
+        const h = cleanerHours(j);
+        return h > 0 ? Number(j.price_ex_gst) / h : NaN;
       }).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
 
       const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
@@ -898,9 +926,8 @@ function useInsights() {
       // Per cleaner hour, split by the kind of client. client_type is set on
       // every property, so unlike service_type this split is fact, not a guess.
       const rate = (j: any) => {
-        const hrs = (Number(j.estimated_duration) || 120) / 60;
-        const heads = Math.max(cleanerIds(j).filter((c) => c !== 'unassigned').length, 1);
-        return Number(j.price_ex_gst) / (hrs * heads);
+        const h = cleanerHours(j);
+        return h > 0 ? Number(j.price_ex_gst) / h : NaN;
       };
       const segmentOf = (j: any) => {
         const t = j.properties?.client_type;

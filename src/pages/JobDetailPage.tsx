@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CheckCircle2, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Timer, Users, CalendarDays, ClipboardList, StickyNote, Trash2, Pencil, ExternalLink, Send, Loader2, RefreshCw, DollarSign, RotateCw, Repeat, Navigation, Key, AlertTriangle as AlertTriangleIcon, Info, Star, MessageSquare, Image as ImageIcon, CheckCircle2, Phone, Sparkles } from 'lucide-react';
 import { MapsActionSheet } from '@/components/MapsActionSheet';
 import { ClockInOut } from '@/components/timeclock/ClockInOut';
 import { useTimeEntry } from '@/hooks/useTimeEntry';
@@ -18,6 +18,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { JOB_CLEAN_TYPES } from '@/lib/serviceTypes';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { InvoiceBadge } from '@/components/InvoiceBadge';
 import { AcceptanceBadge } from '@/components/AcceptanceBadge';
@@ -55,6 +57,7 @@ export default function JobDetailPage() {
   // Editing is off until asked for. The price on a finished clean is what gets
   // invoiced, so it should take a deliberate click to change, not a stray one.
   const [editingPrice, setEditingPrice] = useState(false);
+  const [savingType, setSavingType] = useState(false);
   const [confirmTime, setConfirmTime] = useState('08:00');
   const [savingPrice, setSavingPrice] = useState(false);
 
@@ -228,6 +231,24 @@ export default function JobDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
     }
     setSavingPrice(false);
+  };
+
+  // Changing the clean type here is a human saying what it was, so the inferred
+  // flag comes off and the Financials breakdown stops counting it as a guess.
+  const handleSaveServiceType = async (value: string) => {
+    if (!jobId) return;
+    setSavingType(true);
+    const { error } = await supabase.from('jobs')
+      // `as any`: src/integrations/supabase/types.ts was generated before
+      // service_type existed. Regenerating it is a separate job.
+      .update({ service_type: value, service_type_inferred: false } as any)
+      .eq('id', jobId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Set to ${value}`);
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] });
+    }
+    setSavingType(false);
   };
 
   const handleResendSms = async () => {
@@ -1136,6 +1157,44 @@ export default function JobDetailPage() {
                   </Button>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Clean type — admin, any job.
+          BJ, 6 Nov 2026: "if you can add somewhere in each job where i can
+          select the tyoe of clean, i cn go back through and change the deep
+          cleans. casue thre are more." Sits next to the price because that is
+          where he already is when he is correcting a job. */}
+      {role === 'admin' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Clean Type
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Select
+              value={(job as any).service_type || 'House Clean'}
+              onValueChange={handleSaveServiceType}
+              disabled={savingType}
+            >
+              <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {JOB_CLEAN_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(job as any).service_type_inferred ? (
+              <p className="text-sm text-amber-500 dark:text-amber-400">
+                Assumed from the property, nobody chose it. Picking here saves straight away and the
+                Financials breakdown stops treating it as a guess.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Confirmed. Counted as fact on Financials.
+              </p>
             )}
           </CardContent>
         </Card>
