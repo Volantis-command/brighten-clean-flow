@@ -684,8 +684,15 @@ function InsightBlocks({ ins }: { ins: Insights }) {
                   Not a fourth row: a deep clean happens at a residential or an Airbnb property, so it is
                   already inside the rows above. {ins.deep.confirmed} of {ins.deep.cleans}{' '}
                   {ins.deep.confirmed === 1 ? 'was' : 'were'} actually marked as a deep clean rather than
-                  assumed, so treat this as a sample until the Clean Type field has been in use a while.
+                  assumed from the property.
                 </p>
+                {ins.deep.confirmed < 5 && (
+                  <p className="mt-2 text-xs text-amber-400">
+                    Too few confirmed to read anything into yet. Every clean booked from now carries its own
+                    Clean Type, so this fills in on its own. To speed it up, open an old deep clean and set
+                    its Clean Type, and it joins this straight away.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -838,12 +845,21 @@ function useInsights() {
     queryFn: async (): Promise<Insights> => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, scheduled_date, status, price_ex_gst, estimated_duration, frequency, service_type, service_type_inferred, cleaner_1_id, cleaner_2_id, clock_on, clock_off, clock_off_at, properties(property_name, client_type, no_charge)')
+        .select('id, scheduled_date, status, price_ex_gst, estimated_duration, frequency, service_type, service_type_inferred, cleaner_1_id, cleaner_2_id, clock_on, clock_off, clock_off_at, properties(property_name, client_type, no_charge, status)')
         .gte('scheduled_date', from)
         .not('status', 'in', `(${DEAD_JOB_STATUSES.join(',')})`);
       if (error) throw error;
 
-      const rows = (data || []).filter((j: any) => !j.properties?.no_charge);
+      // Archived clients are left out of everything below. This block exists to
+      // answer "what should we charge", and a client we have stopped doing
+      // cannot inform that. Their history is untouched in the database and
+      // still counts in the weekly and monthly cards above.
+      //
+      // Only an explicit 'inactive' is excluded, never "not active": 78 cleans
+      // and $12,177 sit on properties still marked 'onboarding', and dropping
+      // those would distort the rate far more than any one cheap client.
+      const rows = (data || []).filter((j: any) =>
+        !j.properties?.no_charge && j.properties?.status !== 'inactive');
       const priced = rows.filter((j: any) => Number(j.price_ex_gst) > 0);
 
       // Per cleaner hour, which is the rate that decides whether a job is worth
