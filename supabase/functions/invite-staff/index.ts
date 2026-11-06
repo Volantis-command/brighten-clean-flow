@@ -157,20 +157,42 @@ Deno.serve(async (req) => {
 
       if (createError) {
         if (createError.message.includes("already been registered")) {
-          const { data: existingUsers, error: listErr } =
-            await adminClient.auth.admin.listUsers();
-          if (listErr) {
-            return new Response(JSON.stringify({ error: listErr.message }), {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+          // listUsers() returns ONE PAGE, 50 users, newest first. It is not the
+          // whole table, and this code treated it as though it were.
+          //
+          // BJ, 6 Nov 2026: adding a client with his own address showed
+          // "User not found". His admin account is the 95th newest of 96, so it
+          // was never on page one, and an account that plainly exists looked
+          // missing. The real answer, which he should have seen, is two checks
+          // further down: an admin account cannot be reassigned.
+          //
+          // The comparison was also case sensitive against an address the
+          // database stores lowercased, so a capital letter missed too.
+          const target = (email || "").trim().toLowerCase();
+          let existing: { id: string } | undefined;
+          for (let page = 1; page <= 50; page++) {
+            const { data: pageData, error: listErr } =
+              await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+            if (listErr) {
+              return new Response(JSON.stringify({ error: listErr.message }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+            existing = pageData.users.find(
+              (u) => (u.email || "").toLowerCase() === target
+            );
+            if (existing) break;
+            if (pageData.users.length < 200) break; // last page
           }
-          const existing = existingUsers.users.find((u) => u.email === email);
           if (!existing) {
-            return new Response(JSON.stringify({ error: "User not found" }), {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+            // Supabase refused the address as taken and then we could not find
+            // it. Say that, rather than "User not found", which reads as though
+            // the admin were searching for somebody.
+            return new Response(
+              JSON.stringify({ error: `${email} is already registered but the existing account could not be opened. Try a different email address.` }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
           }
           newUserId = existing.id;
           existingUser = true;
