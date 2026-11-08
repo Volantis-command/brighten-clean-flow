@@ -1,22 +1,24 @@
--- Link the 8 Kingscliff Holiday Homes properties Brightly actually cleans to
+-- Link the 7 Kingscliff Holiday Homes properties Brightly actually cleans to
 -- their Guesty listing ids.
 --
--- Eight, not seven. The multi-calendar screenshot this list was first built
--- from was filtered and showed only 7. "CASA De Salt" is the eighth: it is
--- active in Guesty as "Casa Del Salt" at the same street address, it has been
--- cleaned before (4 jobs, 1-25 Oct), and it has 6 checkouts in the next 60
--- days. Left unlinked it would have been the one property silently missing
--- from the sync forever, which is the hardest kind of gap to notice.
+-- DELIBERATELY SEVEN, NOT EIGHT. There is an eighth Kingscliff property in
+-- this database, "CASA De Salt" (11 Edgewater Lane), and it is still active
+-- in Guesty as "Casa Del Salt" with checkouts on the books. Brightly no
+-- longer cleans it — BJ confirmed 9 Nov 2026. Its absence here is the whole
+-- mechanism that keeps it out of the schedule, so do not "fix" it by adding
+-- the id back after seeing live checkouts in Guesty. If Brightly ever wins
+-- that property again, add it then.
+--
+-- Its 4 historic jobs (1-25 Oct) and the property row itself are untouched:
+-- the work was done and the invoices are real.
 --
 -- This column IS the allowlist for guesty-sync-reservations. The Guesty
 -- account holds 46 listings; only a listing named here can ever produce a job,
 -- so the other 39 are inert without any second list to maintain.
 --
--- Matched on street address against the Guesty record, which agreed for all 8.
--- Names agreed for 7; the names on either side of the eighth differ ("CASA De
--- Salt" here, "Casa Del Salt" in Guesty), so the name below is deliberately
--- this database's spelling, not Guesty's. Ids are pinned literally rather than
--- matched at runtime so this migration cannot drift if a property is renamed.
+-- Matched on property name AND street address against the Guesty record, both
+-- of which agreed for all 7. Ids are pinned literally rather than matched at
+-- runtime so this migration cannot drift if a property is later renamed.
 
 -- Snapshot first. Nothing here is destructive (every target is currently
 -- NULL), but the rule on this project is that a column is never overwritten
@@ -32,13 +34,12 @@ create table if not exists guesty_listing_link_backup_20261109 (
 insert into guesty_listing_link_backup_20261109 (property_id, property_name, address, guesty_listing_id_before)
 select id, property_name, address, guesty_listing_id
 from properties
-where property_name in ('CASA De Salt','Casa Luxe','Elliston','Elysian','Magnolia','Ohana','Salty','Sea Poppy')
+where property_name in ('Casa Luxe','Elliston','Elysian','Magnolia','Ohana','Salty','Sea Poppy')
   and client_name = 'Kingscliff Holiday Homes'
 on conflict (property_id) do nothing;
 
 update properties p set guesty_listing_id = v.listing_id
 from (values
-  ('CASA De Salt', '69e093b58fa1f20016b81565'),
   ('Casa Luxe', '69e093d427051200143c9f43'),
   ('Elliston',  '69e093cb7658a5001344e64c'),
   ('Elysian',   '69e093f2c352d4001436fce8'),
