@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { findProfilesByPhone, normalizePhone } from "../_shared/phone-lookup.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,18 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Strip everything but digits and a leading +. Tolerates "+61 420 219 101",
-// "(02) 420 219 101", "0420219101" — but the database lookup needs the
-// canonical form, so we also produce a "digits only" suffix variant.
-function normalizePhone(raw: string): string {
-  if (!raw) return "";
-  const cleaned = raw.replace(/[^\d+]/g, "");
-  // If user typed a local AU number starting with 0, convert to +61.
-  if (/^0\d{9,10}$/.test(cleaned)) return "+61" + cleaned.slice(1);
-  if (cleaned.startsWith("+")) return cleaned;
-  if (cleaned.length >= 10) return "+" + cleaned;
-  return cleaned;
-}
 
 async function sha256Hex(s: string): Promise<string> {
   const data = new TextEncoder().encode(s);
@@ -85,16 +74,17 @@ Deno.serve(async (req: Request) => {
     // Verify SOMEONE has this phone. We don't tell the caller whether
     // the phone is registered (don't leak account existence) but we
     // also don't bother sending an SMS to a phone with no account.
-    const phoneDigits = phone.replace(/\D/g, "");
-    const last9 = phoneDigits.slice(-9);
-    const { data: profileMatches } = await supabase
-      .from("profiles")
-      .select("id, phone")
-      .or(`phone.eq.${phone},phone.ilike.%${last9}`);
+    //
+    // This comparison has to be formatting-insensitive. A number stored
+    // as "+61 499 432 309" matched neither of the old filters, so the
+    // lookup missed, no SMS was sent, and the response below still said
+    // {ok:true} — a cleaner asking for a code and never getting one,
+    // with nothing logged anywhere.
+    const profileMatches = await findProfilesByPhone(supabase, phone);
 
     // Always wait a similar amount of time and return success either
     // way, so an attacker can't enumerate phone numbers via timing.
-    const found = (profileMatches || []).length > 0;
+    const found = profileMatches.length > 0;
 
     if (found) {
       const code = generateCode();

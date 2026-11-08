@@ -75,9 +75,28 @@ Deno.serve(async (req) => {
     // that auto-signs the user in when clicked. No password needed.
     const appUrl = Deno.env.get("APP_URL") || "https://app.brightly.cleaning";
 
+    // The link MUST be minted against the email on the auth account, not
+    // the one on the profile row. The two drift: a staff member can be
+    // created with a placeholder login email and have their real address
+    // typed into the profile later. generateLink("magiclink") creates the
+    // user when the email is unknown, so passing profile.email in that
+    // situation silently mints a BRAND NEW account — the staff member
+    // signs in successfully, lands in an empty profile with no role, and
+    // sees none of their jobs. That is indistinguishable from "the login
+    // link doesn't work".
+    const { data: authUser, error: authErr } = await adminClient.auth.admin.getUserById(staff_id);
+    const loginEmail = authUser?.user?.email;
+    if (authErr || !loginEmail) {
+      console.error("getUserById failed for staff", staff_id, authErr);
+      return new Response(
+        JSON.stringify({ error: "This staff member has no login account yet — invite them first" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
       type: "magiclink",
-      email: profile.email,
+      email: loginEmail,
       options: { redirectTo: `${appUrl}/dashboard` },
     });
 

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { findProfilesByPhone, normalizePhone } from "../_shared/phone-lookup.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,15 +8,6 @@ const corsHeaders = {
 };
 
 const MAX_ATTEMPTS = 5;
-
-function normalizePhone(raw: string): string {
-  if (!raw) return "";
-  const cleaned = raw.replace(/[^\d+]/g, "");
-  if (/^0\d{9,10}$/.test(cleaned)) return "+61" + cleaned.slice(1);
-  if (cleaned.startsWith("+")) return cleaned;
-  if (cleaned.length >= 10) return "+" + cleaned;
-  return cleaned;
-}
 
 async function sha256Hex(s: string): Promise<string> {
   const data = new TextEncoder().encode(s);
@@ -86,22 +78,21 @@ Deno.serve(async (req: Request) => {
     // session step fails, the code is single-use.
     await supabase.from("auth_otp_codes").update({ consumed_at: new Date().toISOString() }).eq("id", otp.id);
 
-    // Find the auth user. Profile.phone may have spaces or other
-    // formatting; auth.users.phone was backfilled to the digits-only
-    // form by the migration, but old records and edge cases mean we
-    // fall back to a profile lookup too.
-    const phoneDigits = phone.replace(/\D/g, "");
-    const last9 = phoneDigits.slice(-9);
-
+    // Find the auth user. profiles.phone is stored however it was
+    // typed, so this match must ignore formatting — and it must use the
+    // SAME rule as request-login-otp. If the two ever disagree, the
+    // caller is sent a code and then told no account exists for it.
+    //
     // Look up ALL profiles matching the phone (a user may have a test
     // cleaner account + an admin account with the same phone — pick the
     // highest-privilege one so people don't get logged in as a side
     // account).
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, phone")
-      .or(`phone.eq.${phone},phone.ilike.%${last9}`);
-    if (!profiles || profiles.length === 0) {
+    const profiles = await findProfilesByPhone<{ id: string; full_name: string | null; phone: string | null }>(
+      supabase,
+      phone,
+      "id, full_name, phone",
+    );
+    if (profiles.length === 0) {
       return new Response(JSON.stringify({ error: "no account found for this phone — contact admin" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -112,7 +103,7 @@ Deno.serve(async (req: Request) => {
     const ROLE_RANK: Record<string, number> = {
       admin: 4, head_cleaner: 3, cleaner: 2, client: 1,
     };
-    const ids = profiles.map((p: any) => p.id);
+    const ids = profiles.map((p) => p.id);
     const { data: roles } = await supabase
       .from("user_roles")
       .select("user_id, role")
@@ -124,7 +115,7 @@ Deno.serve(async (req: Request) => {
         roleByUser[r.user_id] = r.role;
       }
     });
-    const sorted = [...profiles].sort((a: any, b: any) => {
+    const sorted = [...profiles].sort((a, b) => {
       const ra = ROLE_RANK[roleByUser[a.id]] || 0;
       const rb = ROLE_RANK[roleByUser[b.id]] || 0;
       return rb - ra;
