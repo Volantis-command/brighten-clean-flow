@@ -40,3 +40,25 @@ export function mergeExternalRefs(existing: unknown, incoming: string): string[]
   const refs = Array.isArray(existing) ? existing.filter((value): value is string => typeof value === 'string' && value.length > 0) : [];
   return [...new Set([...refs, incoming])];
 }
+
+// --- Guesty ---------------------------------------------------------------
+// Guesty is a separate PMS to Hostaway with its own status vocabulary, so it
+// gets its own helpers rather than widening the sets above. Widening them
+// would silently change what Hostaway and the iCal sync treat as a live stay,
+// and those two are already in production.
+//
+// Guesty's live statuses are 'confirmed', 'checkedIn' and 'checkedOut'. A
+// checked-out stay still needs its clean, so it counts as confirmed here —
+// under the Hostaway set it would have been skipped as unconfirmed and the
+// turnover simply would not have appeared.
+export const GUESTY_CONFIRMED_STATUSES = new Set([
+  'confirmed', 'checkedin', 'checkedout',
+]);
+
+export function isConfirmedGuestyStay(status: string | null | undefined): boolean {
+  return GUESTY_CONFIRMED_STATUSES.has(normaliseReservationStatus(status));
+}
+
+export function guestyTurnoverKey(propertyId: string, checkoutDate: string): string {
+  return `guesty:${propertyId}:${checkoutDate}`;
+}
