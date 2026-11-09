@@ -117,12 +117,48 @@ function localParts(iso: string | undefined | null): { date: string; time: strin
 // is nothing worth caching for that long in a function that runs on a
 // schedule, so this mints a fresh one per run and never stores the secret
 // anywhere but the environment.
-async function getAccessToken(): Promise<string> {
+/**
+ * A Guesty bearer token, reusing the cached one wherever possible.
+ *
+ * GUESTY ALLOWS ONLY FIVE TOKEN MINTS PER DAY. The limit is not documented
+ * anywhere obvious; it comes back on the 429 as `x-ratelimit-limit-day: 5`
+ * with a reset roughly 16 hours out. Each token is then valid for 24 hours.
+ *
+ * So minting one per invocation, as the first version did, means the whole
+ * integration is five calls away from being dead until tomorrow, and a dry
+ * run plus a real run spends two of them. Debugging spent all five and locked
+ * this out for a day.
+ *
+ * The cache is therefore not a performance nicety, it is what keeps the
+ * integration alive. A token is reused until ten minutes before it expires,
+ * and if minting is refused we fall back to a cached token that is merely
+ * near expiry rather than failing, because a token good for one more minute
+ * still completes a sync.
+ */
+async function getAccessToken(
+  // deno-lint-ignore no-explicit-any
+  sb: any,
+): Promise<string> {
+  const now = Date.now();
+  const SKEW_MS = 10 * 60 * 1000;
+
+  const { data: cached } = await sb
+    .from('guesty_tokens')
+    .select('access_token, expires_at')
+    .eq('id', 'default')
+    .maybeSingle();
+
+  const cachedExpiry = cached?.expires_at ? new Date(cached.expires_at).getTime() : 0;
+  if (cached?.access_token && cachedExpiry > now + SKEW_MS) {
+    return cached.access_token as string;
+  }
+
   const clientId = Deno.env.get('GUESTY_CLIENT_ID');
   const clientSecret = Deno.env.get('GUESTY_CLIENT_SECRET');
   if (!clientId || !clientSecret) {
     throw new Error('Server missing GUESTY_CLIENT_ID or GUESTY_CLIENT_SECRET');
   }
+
   const resp = await fetch('https://open-api.guesty.com/oauth2/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -133,13 +169,42 @@ async function getAccessToken(): Promise<string> {
       client_secret: clientSecret,
     }),
   });
+
   if (!resp.ok) {
+    // A token still in date beats failing the sync, even if it is inside the
+    // ten-minute skew window we would normally refresh within.
+    if (cached?.access_token && cachedExpiry > now) {
+      console.warn(`Guesty token mint refused (${resp.status}); using cached token near expiry`);
+      return cached.access_token as string;
+    }
+    if (resp.status === 429) {
+      const resetSeconds = Number(resp.headers.get('retry-after') ?? 0);
+      const hours = resetSeconds ? (resetSeconds / 3600).toFixed(1) : 'unknown';
+      throw new Error(
+        `Guesty token limit reached: 5 mints per day, none left, resets in ${hours}h. No usable cached token.`,
+      );
+    }
     // Deliberately does not echo the body: a failed token response can quote
     // the credentials back, and this lands in function logs.
     throw new Error(`Guesty rejected the credentials (${resp.status})`);
   }
-  const data = await resp.json() as { access_token?: string };
+
+  const data = await resp.json() as { access_token?: string; expires_in?: number };
   if (!data.access_token) throw new Error('Guesty returned no access_token');
+
+  // Guesty reports expires_in in seconds; fall back to 24h, which is what it
+  // has always returned, but trust the response when it says otherwise.
+  const lifetimeMs = (data.expires_in && data.expires_in > 0 ? data.expires_in : 86400) * 1000;
+  const { error: cacheErr } = await sb.from('guesty_tokens').upsert({
+    id: 'default',
+    access_token: data.access_token,
+    expires_at: new Date(now + lifetimeMs).toISOString(),
+    updated_at: new Date(now).toISOString(),
+  });
+  // A cache write failure must not fail the sync, but it does mean the next
+  // run spends another of the five, so it is worth shouting about.
+  if (cacheErr) console.error('Could not cache Guesty token:', cacheErr.message);
+
   return data.access_token;
 }
 
@@ -267,7 +332,7 @@ Deno.serve(async (req) => {
 
   let reservations: GuestyReservation[];
   try {
-    const token = await getAccessToken();
+    const token = await getAccessToken(sb);
     reservations = await fetchAllReservations(token, fromDate, toDate);
   } catch (error) {
     return json({ error: 'Guesty sync failed', detail: (error as Error).message }, 502);
