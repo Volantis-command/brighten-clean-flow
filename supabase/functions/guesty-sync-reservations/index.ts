@@ -143,13 +143,52 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-async function fetchAllReservations(token: string): Promise<GuestyReservation[]> {
+function shiftDays(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Every reservation checking out inside the window.
+ *
+ * Two things here are load-bearing and were both wrong in the first version.
+ *
+ * 1. ASK GUESTY FOR THE WINDOW. The original fetched the entire account
+ *    unfiltered and sifted in memory. That is tens of thousands of rows for a
+ *    busy account, and the only reason it appeared to work is that it quit
+ *    early (see 2). The window is padded a day on each side because checkOut
+ *    is a UTC instant and we care about the local date: a 10:00 Sydney
+ *    checkout on the first day of the window is 23:00 UTC the day before.
+ *    The exact local-date test downstream still does the real trimming.
+ *
+ * 2. A SHORT PAGE DOES NOT MEAN THE END. Guesty will hand back fewer than
+ *    `limit` rows and still have more behind them, so `rows.length < limit`
+ *    as a stop condition silently truncates the sync. It stopped at 348 of
+ *    649 against this account and dropped a confirmed booking that already
+ *    had a cleaner assigned. Page until the reported `count` is reached, and
+ *    only treat an empty page as the end.
+ */
+async function fetchAllReservations(
+  token: string,
+  fromDate: string,
+  toDate: string,
+): Promise<GuestyReservation[]> {
   const out: GuestyReservation[] = [];
+  const seen = new Set<string>();
   const limit = 100;
-  for (let page = 0; page < 100; page += 1) {
+  const filters = JSON.stringify([
+    { field: 'checkOut', operator: '$gte', value: shiftDays(fromDate, -1) },
+    { field: 'checkOut', operator: '$lte', value: `${shiftDays(toDate, 1)}T23:59:59.999Z` },
+  ]);
+  let total = Number.POSITIVE_INFINITY;
+
+  for (let page = 0; page < 200; page += 1) {
     const url = new URL('https://open-api.guesty.com/v1/reservations');
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('skip', String(page * limit));
+    url.searchParams.set('sort', 'checkOut');
+    url.searchParams.set('filters', filters);
     url.searchParams.set('fields', 'checkIn checkOut status listingId guest confirmationCode source integration');
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!resp.ok) {
@@ -157,9 +196,25 @@ async function fetchAllReservations(token: string): Promise<GuestyReservation[]>
     }
     const body = await resp.json() as { results?: GuestyReservation[]; count?: number };
     const rows = Array.isArray(body.results) ? body.results : [];
-    out.push(...rows);
-    if (rows.length < limit) break;
-    if (typeof body.count === 'number' && out.length >= body.count) break;
+    if (typeof body.count === 'number') total = body.count;
+
+    // Paging an unstable sort can repeat a row; the turnover key would catch
+    // it later, but de-duplicating here keeps the reported counts honest.
+    for (const r of rows) {
+      const id = String((r as { _id?: string })._id ?? '');
+      if (id && seen.has(id)) continue;
+      if (id) seen.add(id);
+      out.push(r);
+    }
+
+    if (rows.length === 0) break;
+    if (out.length >= total) break;
+  }
+
+  if (Number.isFinite(total) && out.length < total) {
+    throw new Error(
+      `Guesty returned ${out.length} of ${total} reservations; refusing to sync a partial set`,
+    );
   }
   return out;
 }
@@ -213,7 +268,7 @@ Deno.serve(async (req) => {
   let reservations: GuestyReservation[];
   try {
     const token = await getAccessToken();
-    reservations = await fetchAllReservations(token);
+    reservations = await fetchAllReservations(token, fromDate, toDate);
   } catch (error) {
     return json({ error: 'Guesty sync failed', detail: (error as Error).message }, 502);
   }
