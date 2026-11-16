@@ -746,7 +746,53 @@ export default function JobDetailPage() {
                   size="sm"
                   className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
                   onClick={async () => {
-                    if (!confirm('Cancel all future cleans in this series? They will be marked cancelled (not deleted) and can be restored.')) return;
+                    // DAY-SCOPED BY DEFAULT.
+                    //
+                    // One series_id can end up holding more than one weekday:
+                    // a standing Monday clean that was moved to Tuesday leaves
+                    // Monday jobs behind, and the nightly top-up can generate
+                    // on the old day. Cancelling "the series" then takes out
+                    // cleans the client never asked to lose. That happened to
+                    // Joshua's Property on 17 Nov 2026: one click cancelled 97
+                    // jobs across both weekdays when only the Mondays were
+                    // meant to go.
+                    //
+                    // So this cancels only the cleans on the SAME weekday as
+                    // the job you are looking at, which is what "cancel the
+                    // Monday clean" means to the person clicking it. Other
+                    // weekdays in the series are listed, never touched.
+                    const jobDate = new Date((job as any).scheduled_date + 'T00:00:00');
+                    const jobDow = jobDate.getDay();
+                    const dowName = jobDate.toLocaleDateString('en-AU', { weekday: 'long' });
+                    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+                    const { data: futureRows, error: readErr } = await supabase.from('jobs')
+                      .select('id, scheduled_date')
+                      .eq('series_id', (job as any).series_id)
+                      .gte('scheduled_date', todayStr)
+                      .in('status', ['scheduled', 'confirmed', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'in_progress'])
+                      .neq('id', jobId!);
+                    if (readErr) { toast.error(readErr.message); return; }
+
+                    const sameDay = (futureRows || []).filter(
+                      (r: any) => new Date(r.scheduled_date + 'T00:00:00').getDay() === jobDow,
+                    );
+                    const otherDays = (futureRows || []).filter(
+                      (r: any) => new Date(r.scheduled_date + 'T00:00:00').getDay() !== jobDow,
+                    );
+
+                    if (sameDay.length === 0) {
+                      toast.info(`No future ${dowName} cleans left to cancel in this series`);
+                      return;
+                    }
+
+                    const otherDayWarning = otherDays.length
+                      ? `\n\nThis series also has ${otherDays.length} future clean(s) on other days. Those will NOT be touched.`
+                      : '';
+                    if (!confirm(
+                      `Cancel ${sameDay.length} future ${dowName} clean(s) in this series?` +
+                      `${otherDayWarning}\n\nThey are marked cancelled, not deleted, and can be restored.`
+                    )) return;
                     // Soft-cancel (never hard-delete — data safety). Broadened
                     // from status='scheduled' to all live future statuses so it
                     // actually catches pending_cleaner/awaiting_cleaner/confirmed.
@@ -756,26 +802,32 @@ export default function JobDetailPage() {
                     // the series live while saying it had cancelled it.
                     const { data: killed, error } = await supabase.from('jobs')
                       .update({ status: 'cancelled' } as any)
-                      .eq('series_id', (job as any).series_id)
-                      .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'))
-                      .in('status', ['scheduled', 'confirmed', 'pending_cleaner', 'awaiting_cleaner_acceptance', 'in_progress'])
-                      .neq('id', jobId!)
+                      .in('id', sameDay.map((r: any) => r.id))
                       .select('id');
                     if (error) { toast.error(error.message); return; }
-                    // Close the series too. Without this, completing any earlier
-                    // clean (or tonight's top up) rebuilds the whole thing.
-                    const { error: seriesErr } = await supabase.from('job_series')
-                      .update({ end_date: format(new Date(), 'yyyy-MM-dd') } as any)
-                      .eq('id', (job as any).series_id);
-                    if (seriesErr) {
-                      toast.warning(`${killed?.length ?? 0} cleans cancelled, but the series stayed open: ${seriesErr.message}`);
-                      return;
+                    // Only close the series when nothing live is left on any
+                    // day. Closing it while another weekday is still running
+                    // would stop the top-up generating those cleans, and they
+                    // would quietly stop appearing weeks later.
+                    if (otherDays.length === 0) {
+                      const { error: seriesErr } = await supabase.from('job_series')
+                        .update({ end_date: format(new Date(), 'yyyy-MM-dd') } as any)
+                        .eq('id', (job as any).series_id);
+                      if (seriesErr) {
+                        toast.warning(`${killed?.length ?? 0} cleans cancelled, but the series stayed open: ${seriesErr.message}`);
+                        return;
+                      }
+                      toast.success(`${killed?.length ?? 0} future ${dowName} cleans cancelled and the series closed`);
+                    } else {
+                      toast.success(
+                        `${killed?.length ?? 0} future ${dowName} cleans cancelled. ` +
+                        `${otherDays.length} clean(s) on other days left running.`,
+                      );
                     }
-                    toast.success(`${killed?.length ?? 0} future cleans cancelled and the series closed`);
                     queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
                   }}
                 >
-                  Cancel all future jobs
+                  Cancel future cleans on this day
                 </Button>
               )}
             </div>
