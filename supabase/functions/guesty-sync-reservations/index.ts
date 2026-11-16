@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
   // is one place to read when asking what this sync is allowed to touch.
   const { data: mapped, error: mapErr } = await sb
     .from('properties')
-    .select('id, property_name, client_name, checkout_time, default_price, price_includes_gst, guesty_listing_id')
+    .select('id, property_name, client_name, checkout_time, default_price, price_includes_gst, estimated_hours, guesty_listing_id')
     .not('guesty_listing_id', 'is', null);
   if (mapErr) return json({ error: 'Failed to load mapped properties', detail: mapErr.message }, 500);
 
@@ -517,6 +517,18 @@ Deno.serve(async (req) => {
         source_turnover_key: turnoverKey,
         source_external_refs: refs,
         source_synced_at: new Date().toISOString(),
+        // How long the clean is booked for. properties.estimated_hours is the
+        // agreed figure per property (Ohana 4h, Elysian 7.5h, ...). Leaving it
+        // off does NOT leave the job blank: the app falls back to a generic
+        // 1.5 hours, so every synced clean showed as 1.5h regardless of the
+        // real booking. Cleaners plan their day off this number and payroll
+        // reads it, so a wrong default is worse than an empty field.
+        ...(property.estimated_hours
+          ? {
+              estimated_duration: Math.round(Number(property.estimated_hours) * 60),
+              duration_minutes: Math.round(Number(property.estimated_hours) * 60),
+            }
+          : {}),
         guesty_reservation_id: reservationId,
       };
       if (!adoptedManual) {
