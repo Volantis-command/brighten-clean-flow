@@ -265,12 +265,32 @@ Deno.serve(async (req) => {
         // 6. Create the consolidated invoice
         let invoiceNumber = await nextInvoiceNumber(supabase);
         const dueDays = Number.isInteger(client.invoice_due_days) && client.invoice_due_days >= 0 ? client.invoice_due_days : 7;
+        // The reference has to describe what is ON the invoice, not the
+        // nominal week.
+        //
+        // dateFrom is a 7-day window, but the job query deliberately runs from
+        // the client's weekly_invoice_from so a clean completed late still
+        // gets billed. That sweep is right and stays. The reference printing
+        // the nominal week was not: 4 of the last 7 Kingscliff invoices stated
+        // a week that did not contain all their own line items. One said week
+        // ending 3 Nov and carried a clean from 25 Oct. The client reads the
+        // reference, then reads a line item nine days outside it, and queries
+        // the bill.
+        //
+        // jobs is ordered by scheduled_date ascending, so first and last are
+        // the real span.
+        const firstClean = jobs[0].scheduled_date;
+        const lastClean = jobs[jobs.length - 1].scheduled_date;
+        const invoiceReference = firstClean === lastClean
+          ? `Clean ${fmtDate(firstClean)}`
+          : `Cleans ${fmtDate(firstClean)} to ${fmtDate(lastClean)}`;
+
         const dueDate = addDays(today, dueDays);
 
         const invoiceBody: any = {
           Type: 'ACCREC',
           InvoiceNumber: invoiceNumber,
-          Reference: `Week ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`,
+          Reference: invoiceReference,
           Date: ymd(today),
           DueDate: ymd(dueDate),
           Status: 'DRAFT',
