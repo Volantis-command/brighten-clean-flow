@@ -208,6 +208,27 @@ async function getAccessToken(
   return data.access_token;
 }
 
+/**
+ * How long the clean is booked for, in minutes.
+ *
+ * properties.estimated_hours is the agreed figure per property (Ohana 4h,
+ * Elysian 7.5h, Magnolia 3.5h). It has to be stamped onto the job by BOTH the
+ * create and the update path. Leaving it off does not leave the job blank —
+ * serviceTypes.ts falls back to a base of 1.5 hours, so the job shows a
+ * confident wrong number, and cleaners plan their day off it while payroll
+ * reads it. A wrong default is worse than an empty field.
+ *
+ * This exists as one function precisely because the first fix only patched
+ * the update path and shipped, leaving every newly created clean at 1.5h.
+ */
+// deno-lint-ignore no-explicit-any
+function durationFields(property: any): Record<string, number> {
+  const hours = Number(property?.estimated_hours);
+  if (!Number.isFinite(hours) || hours <= 0) return {};
+  const minutes = Math.round(hours * 60);
+  return { estimated_duration: minutes, duration_minutes: minutes };
+}
+
 function shiftDays(ymd: string, days: number): string {
   const d = new Date(`${ymd}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -517,18 +538,7 @@ Deno.serve(async (req) => {
         source_turnover_key: turnoverKey,
         source_external_refs: refs,
         source_synced_at: new Date().toISOString(),
-        // How long the clean is booked for. properties.estimated_hours is the
-        // agreed figure per property (Ohana 4h, Elysian 7.5h, ...). Leaving it
-        // off does NOT leave the job blank: the app falls back to a generic
-        // 1.5 hours, so every synced clean showed as 1.5h regardless of the
-        // real booking. Cleaners plan their day off this number and payroll
-        // reads it, so a wrong default is worse than an empty field.
-        ...(property.estimated_hours
-          ? {
-              estimated_duration: Math.round(Number(property.estimated_hours) * 60),
-              duration_minutes: Math.round(Number(property.estimated_hours) * 60),
-            }
-          : {}),
+        ...durationFields(property),
         guesty_reservation_id: reservationId,
       };
       if (!adoptedManual) {
@@ -585,6 +595,11 @@ Deno.serve(async (req) => {
         notes,
         price_ex_gst: priceExGst,
         price_inc_gst: priceIncGst,
+        // Must be set on CREATE as well as update. A null duration does not
+        // render as blank: the app falls back to a generic 1.5 hours, so a
+        // 4 hour Ohana turnover showed as 1.5 and a cleaner planned their day
+        // around it.
+        ...durationFields(property),
       })
       .select('id')
       .single();
