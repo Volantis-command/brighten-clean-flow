@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import { CalendarViewToggle, type CalendarView } from '@/components/schedule/CalendarViewToggle';
 import { CalendarDayView } from '@/components/schedule/CalendarDayView';
 import { useTimeOffByDate } from '@/hooks/useTimeOff';
@@ -22,6 +22,7 @@ import { sendJobSms } from '@/lib/sendJobSms';
 import { useXeroInvoiceSync } from '@/hooks/useXeroInvoiceSync';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export default function SchedulePage() {
   const { role, user } = useAuth();
@@ -31,6 +32,20 @@ export default function SchedulePage() {
   useXeroInvoiceSync();
 
   const { jobs, isLoading, nameMap, acceptancesByJob, acceptancesFailed, invalidate } = useScheduleJobs();
+
+  // BJ, 18 Nov 2026: "i want a refresh button as well".
+  // The calendar does not poll, so after someone accepts on their phone the
+  // only way to see it was a full page reload. This refetches every query the
+  // calendar draws from, and stays spinning until they are all back.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await invalidate();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const [view, setView] = useState<CalendarView>(() => {
     const wantedView = searchParams.get('view');
@@ -296,6 +311,16 @@ export default function SchedulePage() {
               Today
             </button>
           )}
+
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
+            aria-label="Refresh the calendar"
+            title="Refresh"
+          >
+            <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+          </button>
 
           <CalendarViewToggle view={view} onChange={setView} />
           <StatusFilter value={statusFilter} onChange={handleStatusChange} />

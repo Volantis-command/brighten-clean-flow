@@ -201,10 +201,20 @@ export function useScheduleJobs() {
     });
   });
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
-    queryClient.invalidateQueries({ queryKey: ['pending-booking-suggestions'] });
-  };
+  // Everything the calendar draws, not just the jobs. A refresh that left the
+  // acceptances behind would repeat the exact failure of 18 Nov: the blocks
+  // redraw, look current, and still say nobody has answered.
+  //
+  // Returns a promise so a Refresh button can honestly stay spinning until the
+  // data is actually back, rather than flashing and telling you nothing.
+  const invalidate = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['schedule-acceptances'] }),
+      queryClient.invalidateQueries({ queryKey: ['schedule-profiles'] }),
+      queryClient.invalidateQueries({ queryKey: ['pending-booking-suggestions'] }),
+      queryClient.invalidateQueries({ queryKey: ['time-off-by-date'] }),
+    ]);
 
   // Surfaced, never swallowed. A failure here does not look like a failure:
   // the calendar still draws, it just stops telling you who has answered.
