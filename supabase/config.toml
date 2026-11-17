@@ -125,3 +125,13 @@ verify_jwt = false
 
 [functions.sync-twilio-messages]
 verify_jwt = false
+
+# Roster links are opened from a text on a phone, so there is no Supabase
+# session to verify. The 64-hex token in the request IS the credential, and
+# both functions check it against cleaner_roster_tokens (and revoked_at)
+# before doing anything.
+[functions.roster-data]
+verify_jwt = false
+
+[functions.roster-respond]
+verify_jwt = false
