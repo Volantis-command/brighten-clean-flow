@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { ScheduleJob } from '@/hooks/useScheduleJobs';
 import { jobLabel } from '@/lib/jobLabel';
 import { jobCleaners, teamLabel } from '@/lib/jobCleaners';
-import { TeamSplit } from './TeamSplit';
+import { TeamSplit, teamSplitSummary, type BandStatus } from './TeamSplit';
 import { jobClosure } from '@/lib/jobClosure';
 import { ClosedTick, ActionChip, CLOSED_BG, CLOSED_BORDER, CLOSED_TEXT } from './ClosedTick';
 import type { DayOff } from '@/hooks/useTimeOff';
@@ -266,6 +266,21 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const leftPct = col * colWidthPct;
                   const team = jobCleaners(job, nameMap);
                   const isTeamJob = team.length > 1;
+                  // Each cleaner's own answer, so the block can be part green
+                  // and part amber rather than one colour for the whole job.
+                  // acceptancesByJob is already loaded for this view; it just
+                  // was not reaching the bands.
+                  const statusByCleaner: Record<string, BandStatus> = {};
+                  for (const a of acceptancesByJob[job.id] ?? []) {
+                    const raw = String(a?.acceptance_status ?? '').toLowerCase();
+                    const mapped: BandStatus | null =
+                      raw === 'accepted' ? 'accepted'
+                      : raw === 'declined' ? 'declined'
+                      : raw === 'pending' || raw === 'sent' ? 'pending'
+                      : null;
+                    if (mapped && a?.cleaner_id) statusByCleaner[String(a.cleaner_id)] = mapped;
+                  }
+                  const splitSummary = isTeamJob ? teamSplitSummary(team, statusByCleaner) : '';
                   const clientName = jobLabel(job);
                   const address = job.properties?.address || '';
                   const isAirbnb = job.properties?.client_type === 'airbnb';
@@ -312,6 +327,10 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                       draggable
                       onDragStart={(e) => handleDragStart(e, job)}
                       onClick={() => onJobClick(job)}
+                      // The colours are the glance; this is the answer in words,
+                      // and the only version a screen reader or a colour-blind
+                      // user gets.
+                      title={splitSummary || undefined}
                       className="absolute z-10 cursor-pointer rounded-lg overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group/event"
                       style={{
                         top: Math.max(top, 0),
@@ -339,7 +358,10 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                           }}
                         />
                       )}
-                      {isTeamJob && <TeamSplit team={team} height={height} textColor={statusText} />}
+                      {isTeamJob && !settled && !isCancelled && (
+                        <TeamSplit team={team} height={height} textColor={statusText} statusByCleaner={statusByCleaner} />
+                      )}
+                      {isTeamJob && (settled || isCancelled) && <TeamSplit team={team} height={height} textColor={statusText} />}
                       {settled && <ClosedTick reason={closure.reason} size={height >= 56 ? 'md' : 'sm'} />}
                       {closure.chip && <ActionChip label={closure.chip} tone={closure.tone} compact />}
                       <div className="relative px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
