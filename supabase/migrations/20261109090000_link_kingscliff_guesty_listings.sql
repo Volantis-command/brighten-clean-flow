@@ -4,7 +4,7 @@
 -- DELIBERATELY SEVEN, NOT EIGHT. There is an eighth Kingscliff property in
 -- this database, "CASA De Salt" (11 Edgewater Lane), and it is still active
 -- in Guesty as "Casa Del Salt" with checkouts on the books. Brightly no
--- longer cleans it — BJ confirmed 9 Nov 2026. Its absence here is the whole
+-- longer cleans it, BJ confirmed 9 Nov 2026. Its absence here is the whole
 -- mechanism that keeps it out of the schedule, so do not "fix" it by adding
 -- the id back after seeing live checkouts in Guesty. If Brightly ever wins
 -- that property again, add it then.
