@@ -158,7 +158,11 @@ export default function GuidedCompletionPage() {
      while anything is pending. Safe to call at any time — it self-guards. */
   const flushing = useRef(false);
   const flush = useCallback(async () => {
-    if (!jobId || flushing.current || !navigator.onLine) return;
+    if (!jobId) return;
+    // Bailing out without refreshing the count leaves the UI, and anything
+    // that reads it, believing the queue is emptier than it is.
+    if (flushing.current) return;
+    if (!navigator.onLine) { setPendingCount(await countPending(jobId)); return; }
     flushing.current = true;
     try {
       const queue = await pendingPhotos(jobId);
@@ -331,9 +335,22 @@ export default function GuidedCompletionPage() {
     if (!jobId) return;
     setSubmitting(true);
     try {
-      // Never complete a clean while photos are still queued — the report would
-      // be missing shots. Try once more, then tell them plainly what's needed.
-      if (pendingCount > 0) {
+      // Never complete a clean while photos are still queued — the report
+      // would be missing shots.
+      //
+      // READ THE QUEUE, DO NOT TRUST THE RENDER VALUE. This used to gate on
+      // `pendingCount > 0`, which is React state seeded at 0. Take a phone
+      // call mid-clean and iOS evicts the page; coming back remounts the
+      // component, so pendingCount is 0 again while the real count is still
+      // being read out of IndexedDB. Tap Submit inside that window and the
+      // whole guard was skipped: the job was marked completed, and then
+      // clearJob() below wiped the queue on the assumption it had drained.
+      // The photos were not just un-uploaded, they were destroyed.
+      //
+      // countPending() is the only thing that actually knows, so ask it.
+      let queued = await countPending(jobId);
+      setPendingCount(queued);
+      if (queued > 0) {
         await flush();
         const still = await countPending(jobId);
         setPendingCount(still);
@@ -397,7 +414,16 @@ export default function GuidedCompletionPage() {
       } catch { /* non-blocking */ }
 
       localStorage.removeItem(draftKey(jobId));
-      await clearJob(jobId); // queue is drained; nothing left to keep
+      // Only ever clear a queue we have just confirmed is empty. Clearing on
+      // the assumption it drained is what turned a failed upload into lost
+      // photos. If something did slip in, leave it: the background flush will
+      // send it and the clean is already recorded.
+      const leftover = await countPending(jobId);
+      if (leftover === 0) {
+        await clearJob(jobId);
+      } else {
+        console.warn(`[completion] ${leftover} photo(s) still queued after submit — keeping them to upload`);
+      }
       setPhase('done');
     } catch (e: any) {
       toast.error(e.message || 'Could not submit — your work is saved, try again');
