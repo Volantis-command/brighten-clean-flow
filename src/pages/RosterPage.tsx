@@ -104,6 +104,21 @@ function rangeLabel(from: string, to: string): string {
     : `${a.getUTCDate()} ${am} to ${b.getUTCDate()} ${bm}`;
 }
 
+/**
+ * "09:00 – 10:30". BJ, 17 Nov: "put the start time and end time on each one" —
+ * a cleaner planning a day needs to know when they get their car back, which a
+ * duration alone makes them work out in their head for every job.
+ */
+function timeRange(start: string, mins: number | null): string {
+  if (!/^\d{1,2}:\d{2}$/.test(start)) return start;
+  if (!mins || mins <= 0) return start;
+  const [h, m] = start.split(':').map(Number);
+  const end = h * 60 + m + mins;
+  const eh = Math.floor(end / 60) % 24;
+  const em = end % 60;
+  return `${start} – ${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
 function durationLabel(mins: number | null): string {
   if (!mins || mins <= 0) return '';
   const h = Math.floor(mins / 60);
@@ -393,9 +408,17 @@ export default function RosterPage() {
         {mineNeedingAnswer.length > 0 && view === 'week' && (
           <>
             <SectionLabel colour={AMBER}>Needs your answer</SectionLabel>
-            {mineNeedingAnswer.map((j) => (
-              <JobCard key={`todo-${j.id}`} job={j} meId={data.viewer.id} today={data.today} showDate busy={busyJob === j.id} onAnswer={answer} />
-            ))}
+            {Array.from(new Set(mineNeedingAnswer.map((j) => j.date))).sort().map((d) => {
+              const forDay = mineNeedingAnswer.filter((j) => j.date === d);
+              return (
+                <div key={`todo-${d}`}>
+                  <DayHeading date={d} jobs={forDay} isToday={d === data.today} tone={AMBER} />
+                  {forDay.map((j) => (
+                    <JobCard key={`todo-${j.id}`} job={j} meId={data.viewer.id} today={data.today} busy={busyJob === j.id} onAnswer={answer} />
+                  ))}
+                </div>
+              );
+            })}
           </>
         )}
 
@@ -464,6 +487,44 @@ function SectionLabel({ children, colour }: { children: React.ReactNode; colour?
   );
 }
 
+// BJ, 17 Nov: "its all togther ... make a break for each day ... visually
+// seperate so it is crystal clear." A label alone was not reading as a break,
+// so each day gets a rule across the page and its own total — which also
+// answers the question a cleaner actually has when they look at a day, which
+// is "how long am I out for".
+function DayHeading({
+  date, jobs, isToday, tone,
+}: {
+  date: string;
+  jobs: RosterJob[];
+  isToday: boolean;
+  tone?: string;
+}) {
+  const live = jobs.filter((j) => j.status !== 'cancelled');
+  const mins = live.reduce((sum, j) => sum + (j.minutes ?? 0), 0);
+  const summary = [
+    live.length ? `${live.length} clean${live.length > 1 ? 's' : ''}` : '',
+    mins ? durationLabel(mins) : '',
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '26px 0 10px' }}>
+      <span style={{
+        fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase',
+        color: tone ?? (isToday ? GREEN : '#F0FDF4'), whiteSpace: 'nowrap',
+      }}>
+        {dayLabel(date)}{isToday ? ' · today' : ''}
+      </span>
+      <span style={{ flex: 1, height: 1, background: 'rgba(240,253,244,.16)' }} />
+      {summary && (
+        <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(240,253,244,.45)', whiteSpace: 'nowrap' }}>
+          {summary}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function Empty({ children }: { children: React.ReactNode }) {
   return (
     <p style={{ margin: '0 0 10px', fontSize: 13, color: 'rgba(240,253,244,.45)', fontWeight: 600 }}>
@@ -506,9 +567,7 @@ function WeekList({
         if (list.length === 0) return null;
         return (
           <div key={d}>
-            <SectionLabel colour={d === today ? GREEN : undefined}>
-              {dayLabel(d)}{d === today ? ' · today' : ''}
-            </SectionLabel>
+            <DayHeading date={d} jobs={list} isToday={d === today} />
             {list.map((j) => (
               <JobCard
                 key={j.id}
@@ -530,12 +589,11 @@ function WeekList({
 // -------------------------------------------------------------------- one job
 
 function JobCard({
-  job, meId, today, showDate = false, dimmed = false, busy, onAnswer,
+  job, meId, today, dimmed = false, busy, onAnswer,
 }: {
   job: RosterJob;
   meId: string;
   today: string;
-  showDate?: boolean;
   dimmed?: boolean;
   busy: boolean;
   onAnswer: (id: string, a: 'accept' | 'decline' | 'withdraw') => void;
@@ -573,13 +631,14 @@ function JobCard({
       <div style={{ paddingRight: stripe ? 12 : 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 900, minWidth: 0 }}>{job.property}</p>
-          {showDate
-            ? <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: GREEN, whiteSpace: 'nowrap' }}>{dayLabel(job.date)}</p>
-            : <StatusPill job={job} />}
+          <StatusPill job={job} />
         </div>
 
-        <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 600, color: 'rgba(240,253,244,.72)' }}>
-          {[job.time, durationLabel(job.minutes), job.suburb].filter(Boolean).join(' · ')}
+        <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 800, color: '#F0FDF4', letterSpacing: '-0.01em' }}>
+          {timeRange(job.time, job.minutes)}
+        </p>
+        <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 600, color: 'rgba(240,253,244,.6)' }}>
+          {[durationLabel(job.minutes), job.suburb].filter(Boolean).join(' · ')}
         </p>
 
         {job.back_to_back && (
