@@ -270,6 +270,13 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                   const address = job.properties?.address || '';
                   const isAirbnb = job.properties?.client_type === 'airbnb';
                   const isFirstClean = job.properties?.first_clean === true;
+                  // A same-day check-in turns "finish today" into a hard
+                  // deadline, and an owner arriving means this clean gets
+                  // inspected. Both have to read at a glance from across the
+                  // week view, so they get a stripe rather than another small
+                  // emoji competing with the three already on the card.
+                  const isBackToBack = job.is_back_to_back === true;
+                  const isOwnerStay = job.is_owner_stay === true;
                   const isRecurring = !!job.series_id || !!job.recurring_parent_id || (job.frequency && job.frequency !== 'one-off');
                   // One clean, however many cleaners. The block splits into a band
                   // each (TeamSplit); this line is the fallback for short blocks.
@@ -317,6 +324,21 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                         outlineOffset: awaitingApproval ? '-3px' : undefined,
                       }}
                     >
+                      {/* Hazard stripe down the right edge. Right, because the
+                          left edge is already the status border and the team
+                          split sits on the left too. Owner wins when a clean is
+                          both, since it is the higher standard. */}
+                      {(isBackToBack || isOwnerStay) && !isCancelled && (
+                        <div
+                          className="absolute inset-y-0 right-0 w-[7px] z-20 pointer-events-none"
+                          title={isOwnerStay ? 'Owner arriving - extra quality clean' : 'Back to back - guest checks in the same day'}
+                          style={{
+                            background: isOwnerStay
+                              ? 'repeating-linear-gradient(135deg, #A855F7 0 6px, #6B21A8 6px 12px)'
+                              : 'repeating-linear-gradient(135deg, #FF2D55 0 6px, #B3001F 6px 12px)',
+                          }}
+                        />
+                      )}
                       {isTeamJob && <TeamSplit team={team} height={height} textColor={statusText} />}
                       {settled && <ClosedTick reason={closure.reason} size={height >= 56 ? 'md' : 'sm'} />}
                       {closure.chip && <ActionChip label={closure.chip} tone={closure.tone} compact />}
@@ -334,6 +356,8 @@ export function CalendarWeekView({ date, jobs, nameMap, acceptancesByJob, onJobC
                             {isRecurring && <span className="text-[9px]" title="Recurring">🔁</span>}
                             {isAirbnb && <span className="text-[9px]" title="Airbnb / short-stay">🏠</span>}
                             {isFirstClean && <span className="text-[9px]" title="First clean">⭐</span>}
+                            {isOwnerStay && <span className="text-[9px]" title="Owner arriving - extra quality clean">👑</span>}
+                            {isBackToBack && !isOwnerStay && <span className="text-[9px]" title="Back to back - guest checks in the same day">⚡</span>}
                           </span>
                         </div>
                         {/* Line 2: time always shown if there's room */}

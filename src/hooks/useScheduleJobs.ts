@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface ScheduleJob {
+  /** Same-day check-in: the clean has a hard deadline, not "sometime today". */
+  is_back_to_back?: boolean | null;
+  /** The owner is the next arrival, so this one has to be the best one. */
+  is_owner_stay?: boolean | null;
   id: string;
   property_id: string | null;
   scheduled_date: string;
