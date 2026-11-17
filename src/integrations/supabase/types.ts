@@ -940,6 +940,9 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          overridden_at: string | null
+          overridden_by: string | null
+          reminder_sent_at: string | null
           responded_at: string | null
           sms_sent_at: string | null
         }
@@ -949,6 +952,9 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          overridden_at?: string | null
+          overridden_by?: string | null
+          reminder_sent_at?: string | null
           responded_at?: string | null
           sms_sent_at?: string | null
         }
@@ -958,6 +964,9 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          overridden_at?: string | null
+          overridden_by?: string | null
+          reminder_sent_at?: string | null
           responded_at?: string | null
           sms_sent_at?: string | null
         }

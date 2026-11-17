@@ -57,6 +57,8 @@ export interface JobAcceptance {
   job_id: string;
   cleaner_id: string;
   acceptance_status: string;
+  /** Set when an admin answered on the cleaner's behalf. */
+  overridden_by: string | null;
 }
 
 export function useScheduleJobs() {
@@ -174,7 +176,7 @@ export function useScheduleJobs() {
         batches.map(async (batch) => {
           const { data, error } = await supabase
             .from('job_acceptances')
-            .select('job_id, cleaner_id, acceptance_status')
+            .select('job_id, cleaner_id, acceptance_status, overridden_by')
             .in('job_id', batch);
           if (error) throw error;
           return (data || []) as JobAcceptance[];
@@ -188,13 +190,14 @@ export function useScheduleJobs() {
   const nameMap: Record<string, string> = {};
   profiles.forEach(p => { nameMap[p.id] = p.full_name || 'Unknown'; });
 
-  const acceptancesByJob: Record<string, { cleaner_id: string; cleaner_name: string; acceptance_status: string }[]> = {};
+  const acceptancesByJob: Record<string, { cleaner_id: string; cleaner_name: string; acceptance_status: string; overridden_by: string | null }[]> = {};
   allAcceptances.forEach(a => {
     if (!acceptancesByJob[a.job_id]) acceptancesByJob[a.job_id] = [];
     acceptancesByJob[a.job_id].push({
       cleaner_id: a.cleaner_id,
       cleaner_name: nameMap[a.cleaner_id] || 'Unknown',
       acceptance_status: a.acceptance_status,
+      overridden_by: a.overridden_by ?? null,
     });
   });
 

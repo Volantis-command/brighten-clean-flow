@@ -14,6 +14,7 @@ import { jobLabel } from '@/lib/jobLabel';
 import { useCleanersList } from '@/hooks/useCleanersList';
 import { jobClosure, closeOffJob, reopenJob } from '@/lib/jobClosure';
 import { syncJobAssignment } from '@/lib/jobAssignment';
+import { markAcceptedByAdmin } from '@/lib/acceptanceOverride';
 import { sendJobSms } from '@/lib/sendJobSms';
 import { createRecurringJobSeries, type RecurringFrequency } from '@/lib/recurringJobHelper';
 import JobShadowSection from '@/components/schedule/JobShadowSection';
@@ -21,7 +22,7 @@ import JobShadowSection from '@/components/schedule/JobShadowSection';
 interface JobDetailSlideOverProps {
   job: ScheduleJob | null;
   nameMap: Record<string, string>;
-  acceptances?: { cleaner_id: string; cleaner_name: string; acceptance_status: string }[];
+  acceptances?: { cleaner_id: string; cleaner_name: string; acceptance_status: string; overridden_by?: string | null }[];
   onClose: () => void;
 }
 
@@ -283,6 +284,30 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
     }
   };
 
+  // Saying yes on a cleaner's behalf. The offer is not the work: somebody who
+  // turned up and cleaned but never tapped the SMS would otherwise leave this
+  // job amber forever, with nothing downstream able to move.
+  const [overriding, setOverriding] = useState<string | null>(null);
+  const handleMarkAccepted = async (cleanerId: string, cleanerName: string) => {
+    setOverriding(cleanerId);
+    try {
+      await markAcceptedByAdmin(job.id, cleanerId);
+      toast.success(`Marked ${cleanerName.split(' ')[0]} as accepted`);
+      queryClient.invalidateQueries({ queryKey: ['schedule-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-acceptances'] });
+    } catch (e: any) {
+      toast.error(e.message || 'Could not mark it accepted');
+    } finally {
+      setOverriding(null);
+    }
+  };
+
+  // A clean that has been and gone but was never marked done. Close off only
+  // opens on a completed job, so without this the only way through is the
+  // status dropdown, which is not where anyone looks.
+  const isPastJob = !!job.scheduled_date && job.scheduled_date < format(new Date(), 'yyyy-MM-dd');
+  const notFinished = job.status !== 'completed' && job.status !== 'complete' && job.status !== 'cancelled';
+
   const handleStatusChange = async (newStatus: string) => {
     setUpdatingStatus(true);
     const { error } = await supabase.from('jobs').update({ status: newStatus }).eq('id', job.id);
@@ -504,6 +529,22 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
             )}
           </div>
 
+          {/* A past clean nobody marked done. One tap gets it to the close-off
+              block below instead of hunting through the status dropdown. */}
+          {isPastJob && notFinished && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase">This one has been and gone</label>
+              <button
+                onClick={() => handleStatusChange('completed')}
+                disabled={updatingStatus}
+                className="flex w-full items-center gap-3 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-sm font-extrabold text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
+              >
+                {updatingStatus ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <CheckSquare className="h-5 w-5 shrink-0" />}
+                Mark done, then close it off
+              </button>
+            </div>
+          )}
+
           {/* Close off — one tick that means nothing else is owed on this clean */}
           {(job.status === 'completed' || job.status === 'complete') && (
             <div className="space-y-2">
@@ -604,11 +645,28 @@ export function JobDetailSlideOver({ job, nameMap, acceptances, onClose }: JobDe
                         </span>
                         <span className="text-sm font-bold text-foreground">{c.name}</span>
                       </div>
-                      {acc ? (
-                        <span className="text-sm">{getAcceptanceIcon(acc.acceptance_status)} {acc.acceptance_status}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">📵 Not Sent</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {acc ? (
+                          <span className="text-sm">
+                            {getAcceptanceIcon(acc.acceptance_status)} {acc.acceptance_status}
+                            {acc.overridden_by && (
+                              <span className="ml-1 text-[10px] font-bold text-muted-foreground">(marked by admin)</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">📵 Not Sent</span>
+                        )}
+                        {acc?.acceptance_status !== 'accepted' && (
+                          <button
+                            onClick={() => handleMarkAccepted(c.id, c.name)}
+                            disabled={overriding === c.id}
+                            className="rounded-lg border border-primary/50 px-2 py-1 text-[11px] font-extrabold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                            title={`Record that ${c.name.split(' ')[0]} did this clean, even though they never answered`}
+                          >
+                            {overriding === c.id ? 'Saving…' : 'Mark accepted'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
