@@ -18,6 +18,7 @@
 // anyone else's jobs. A link forwarded to the wrong person should leak as
 // little as possible.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { localityFrom } from '../_shared/locality.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -179,7 +180,7 @@ Deno.serve(async (req) => {
       property: prop.property_name ?? 'Property',
       // Suburb only. The full address is on the job screen once they are on it;
       // a roster does not need to put every client's street on a public page.
-      suburb: prop.suburb ?? null,
+      suburb: (prop.suburb ?? '').trim() || localityFrom(prop.address),
       back_to_back: job.is_back_to_back === true,
       owner_stay: job.is_owner_stay === true,
       team,
@@ -197,7 +198,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    viewer: { name: (me?.full_name ?? '').trim() || 'You', sees_everyone: seesEveryone },
+    viewer: { id: cleanerId, name: (me?.full_name ?? '').trim() || 'You', sees_everyone: seesEveryone },
     from,
     to,
     today: localDate(0),

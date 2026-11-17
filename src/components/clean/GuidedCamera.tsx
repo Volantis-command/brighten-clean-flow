@@ -109,7 +109,9 @@ export default function GuidedCamera({
     if (!hardwareZoom) return;
     const track = streamRef.current?.getVideoTracks()[0];
     try {
-      await track?.applyConstraints({ advanced: [{ zoom: next }] } as MediaTrackConstraints);
+      // `zoom` is real on Android Chrome but is not in the TS DOM lib yet, so
+      // the double cast is the only way to pass it without widening the type.
+      await track?.applyConstraints({ advanced: [{ zoom: next }] } as unknown as MediaTrackConstraints);
     } catch {
       // Device advertised zoom and then refused it. Fall back to cropping so
       // the button still does something rather than silently failing.

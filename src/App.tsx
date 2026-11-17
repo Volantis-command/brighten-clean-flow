@@ -55,6 +55,7 @@ const ClientSchedulePage = lazy(() => import('./pages/ClientSchedulePage'));
 const ClientRebookPage = lazy(() => import('./pages/ClientRebookPage'));
 const CleanerPortalPage = lazy(() => import('./pages/CleanerPortalPage'));
 const CleanReportPage = lazy(() => import('./pages/CleanReportPage'));
+const RosterPage = lazy(() => import('./pages/RosterPage'));
 const BookingPage = lazy(() => import('./pages/BookingPage'));
 const QuoteIntakePage = lazy(() => import('./pages/QuoteIntakePage'));
 const MyJobsPage = lazy(() => import('./pages/MyJobsPage'));
@@ -202,6 +203,7 @@ function AppRoutes() {
       <Route path="/client/:token/property/:id/rebook" element={<ClientRebookPage />} />
       <Route path="/cleaner/:token" element={<CleanerPortalPage />} />
       <Route path="/report/:token" element={<CleanReportPage />} />
+      <Route path="/roster/:token" element={<RosterPage />} />
       <Route path="/book" element={<BookingPage />} />
       <Route path="/quote" element={<QuoteIntakePage />} />
       {/* Public instant-quote calculator — the marketing site's "Get Instant Quote" CTA. */}
