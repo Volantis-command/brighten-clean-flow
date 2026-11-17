@@ -30,7 +30,7 @@ export default function SchedulePage() {
   const isAdmin = role === 'admin' || role === 'head_cleaner';
   useXeroInvoiceSync();
 
-  const { jobs, isLoading, nameMap, acceptancesByJob, invalidate } = useScheduleJobs();
+  const { jobs, isLoading, nameMap, acceptancesByJob, acceptancesFailed, invalidate } = useScheduleJobs();
 
   const [view, setView] = useState<CalendarView>(() => {
     const wantedView = searchParams.get('view');
@@ -309,6 +309,15 @@ export default function SchedulePage() {
             <span className="hidden sm:inline">Schedule Job</span>
           </button>
         </div>
+
+        {/* If we could not read the acceptances, say so. Without this the
+            calendar looks fine and simply stops colouring who has answered,
+            which reads as "nobody has replied" rather than "we do not know". */}
+        {acceptancesFailed && (
+          <div className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700">
+            Could not load who has accepted. The colours on each block may be out of date.
+          </div>
+        )}
 
         {/* The numbers, one quiet line. Scrolls sideways rather than wrapping
             and stealing a second row from the calendar. */}

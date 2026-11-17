@@ -151,16 +151,36 @@ export function useScheduleJobs() {
 
   const jobIds = jobs.map(j => j.id);
 
-  const { data: allAcceptances = [] } = useQuery({
+  // Who has said yes, for every job on the calendar.
+  //
+  // THIS MUST BE CHUNKED. `.in('job_id', ids)` goes into the GET query string,
+  // ~43 characters per id. At 632 jobs that is a 28KB URL and Supabase answers
+  // 400 — so the whole query failed, `data` fell back to `[]`, and the
+  // calendar quietly drew every two-cleaner block in one flat colour even
+  // though Jess had accepted hours earlier. Measured against prod: 400 ids
+  // (18KB) still answers 200, 632 does not. 150 keeps it nowhere near the edge
+  // and costs a handful of parallel requests.
+  const ACCEPTANCE_BATCH = 150;
+
+  const { data: allAcceptances = [], isError: acceptancesFailed } = useQuery({
     queryKey: ['schedule-acceptances', jobIds],
     queryFn: async () => {
       if (jobIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('job_acceptances')
-        .select('job_id, cleaner_id, acceptance_status')
-        .in('job_id', jobIds);
-      if (error) throw error;
-      return (data || []) as JobAcceptance[];
+      const batches: string[][] = [];
+      for (let i = 0; i < jobIds.length; i += ACCEPTANCE_BATCH) {
+        batches.push(jobIds.slice(i, i + ACCEPTANCE_BATCH));
+      }
+      const results = await Promise.all(
+        batches.map(async (batch) => {
+          const { data, error } = await supabase
+            .from('job_acceptances')
+            .select('job_id, cleaner_id, acceptance_status')
+            .in('job_id', batch);
+          if (error) throw error;
+          return (data || []) as JobAcceptance[];
+        }),
+      );
+      return results.flat();
     },
     enabled: jobIds.length > 0,
   });
@@ -183,5 +203,7 @@ export function useScheduleJobs() {
     queryClient.invalidateQueries({ queryKey: ['pending-booking-suggestions'] });
   };
 
-  return { jobs: allJobs, isLoading, nameMap, acceptancesByJob, isAdmin, invalidate, pendingSuggestionCount: suggestions.length };
+  // Surfaced, never swallowed. A failure here does not look like a failure:
+  // the calendar still draws, it just stops telling you who has answered.
+  return { jobs: allJobs, isLoading, nameMap, acceptancesByJob, acceptancesFailed, isAdmin, invalidate, pendingSuggestionCount: suggestions.length };
 }
