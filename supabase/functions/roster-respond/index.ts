@@ -129,17 +129,62 @@ Deno.serve(async (req) => {
     const { data: admins } = await sb.from('user_roles').select('user_id').eq('role', 'admin');
     const when = `${job.scheduled_date} ${String(job.scheduled_time ?? '').slice(0, 5)}`;
     const verb = answer === 'withdraw' ? 'handed back' : 'declined';
+    // Say what is actually left on the job. "Nobody on it now" was being sent
+    // on a two-cleaner job where the other person was still on it, which makes
+    // every alert less believable and sends BJ chasing cover he already has.
+    const { data: after } = await sb.from('jobs')
+      .select('cleaner_1_id, cleaner_2_id').eq('id', jobId).maybeSingle();
+    const leftIds = [after?.cleaner_1_id, after?.cleaner_2_id].filter(Boolean).map(String);
+    let coverage = 'Nobody on it now.';
+    if (leftIds.length) {
+      const { data: stillOn } = await sb.from('profiles').select('full_name').in('id', leftIds);
+      const names = (stillOn ?? [])
+        .map((p: { full_name: string | null }) => (p.full_name ?? '').trim().split(' ')[0])
+        .filter(Boolean);
+      coverage = names.length
+        ? `${names.join(' and ')} still on it, needs one more.`
+        : 'Still short a cleaner.';
+    }
+    const headline = `${name} ${verb} ${propName} on ${when}. ${coverage}`;
+
     const rows = (admins ?? []).map((a: { user_id: string }) => ({
       user_id: a.user_id,
       title: answer === 'withdraw' ? 'Clean handed back' : 'Clean declined',
-      message: `${name} ${verb} ${propName} on ${when}. Nobody on it now.`,
+      message: headline,
       type: 'roster_response',
       event_type: 'roster_response',
-      // A withdraw is the expensive one: it was covered, and now it is not.
-      tier: answer === 'withdraw' ? 'urgent' : 'warning',
+      // `notifications_tier_check` allows critical/important/info ONLY. The
+      // first cut used urgent/warning, every row was rejected, and because the
+      // error was not checked the alerts vanished in silence — the exact
+      // failure this block exists to prevent.
+      //
+      // A hand-back is critical: it was covered, and now it is not.
+      tier: answer === 'withdraw' ? 'critical' : 'important',
       read: false,
     }));
-    if (rows.length) await sb.from('notifications').insert(rows);
+
+    if (rows.length) {
+      const { error: notifyErr } = await sb.from('notifications').insert(rows);
+      // Never swallow this. A silent failure here is invisible by design.
+      if (notifyErr) console.error('[roster-respond] admin notify failed:', notifyErr.message, notifyErr.details);
+    }
+
+    // A hand-back also goes out by text. A decline weeks ahead can wait for
+    // the next time someone opens the app; a clean dropped the night before
+    // cannot, and nobody is sitting in the dashboard at 9pm.
+    if (answer === 'withdraw') {
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/send-admin-sms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
+          body: JSON.stringify({ message: `Brightly: ${headline}` }),
+        });
+        if (!res.ok) console.error('[roster-respond] admin SMS failed:', res.status, await res.text());
+      } catch (e) {
+        // The answer itself is already saved. A failed text must not undo it.
+        console.error('[roster-respond] admin SMS threw:', e);
+      }
+    }
   }
 
   return json({ ok: true, answer: newStatus });
