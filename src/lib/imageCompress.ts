@@ -25,16 +25,37 @@ function fitted(w: number, h: number, maxEdge = MAX_EDGE) {
 }
 
 /** Grab the current video frame, downscaled and compressed. */
-export async function captureFromVideo(video: HTMLVideoElement): Promise<Blob> {
+/**
+ * A still from the live camera preview, optionally zoomed.
+ *
+ * `zoom` is a digital crop: 2 takes the middle quarter of the frame and
+ * scales it back up. The preview is CSS-scaled by the same factor, so what
+ * the cleaner frames is what they get.
+ *
+ * Digital rather than hardware because the MediaStreamTrack `zoom`
+ * constraint does not exist on iOS Safari, which is what the cleaners are
+ * holding. GuidedCamera applies hardware zoom first where the device offers
+ * it and only passes a zoom factor here when it does not, so Android gets
+ * real lens zoom and iPhone still gets something usable.
+ */
+export async function captureFromVideo(video: HTMLVideoElement, zoom = 1): Promise<Blob> {
   const vw = video.videoWidth || 1280;
   const vh = video.videoHeight || 720;
-  const { width, height } = fitted(vw, vh);
+
+  // Never crop beyond the frame, and never divide by zero on a bad value.
+  const z = Number.isFinite(zoom) && zoom > 1 ? Math.min(zoom, 5) : 1;
+  const srcW = vw / z;
+  const srcH = vh / z;
+  const srcX = (vw - srcW) / 2;
+  const srcY = (vh - srcH) / 2;
+
+  const { width, height } = fitted(srcW, srcH);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Camera not available on this device');
-  ctx.drawImage(video, 0, 0, width, height);
+  ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, width, height);
   return canvasToBlob(canvas);
 }
 

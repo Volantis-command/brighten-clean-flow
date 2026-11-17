@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMinutes } from "date-fns";
-import { CheckCircle2, Minus, X, Printer, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Minus, X, Printer, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Logo } from '@/components/Logo';
 import { buildChecklist } from '@/lib/cleanChecklist';
 
@@ -40,6 +40,7 @@ interface ReportData {
 
 export default function CleanReportPage() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -278,7 +279,7 @@ export default function CleanReportPage() {
         .report-print-footer { display: none; }
       `}</style>
       {/* Header */}
-      <div className="clean-report-header bg-[#1B4332] text-white px-5 pt-8 pb-6 relative">
+      <div className="clean-report-header bg-[#1B4332] text-white px-5 pt-16 print:pt-8 pb-6 relative">
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Nunito, sans-serif" }}>
           {/* Print forces a white header, so the cream wordmark would be
               invisible in the PDF — swap to the ink one for print. */}
@@ -292,6 +293,21 @@ export default function CleanReportPage() {
         <p className="text-white/70 text-sm">{[property?.address, property?.suburb].filter(Boolean).join(", ")}</p>
         <p className="text-white/80 text-sm mt-2">{finishedTime}</p>
         <p className="text-white/70 text-sm">Cleaned by {cleanerNames}</p>
+        {/* This report is reached two ways: from inside the client portal,
+            and straight from an SMS link. Going "back" has to mean the right
+            thing in both cases, so use real history when there is any to go
+            back to and fall through to the portal when there is not. Without
+            this a client who tapped a link had no way out of the page at all. */}
+        <button
+          onClick={() => {
+            if (window.history.length > 1) navigate(-1);
+            else navigate('/client-portal/dashboard');
+          }}
+          className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold print:hidden"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back
+        </button>
         <button
           onClick={() => window.print()}
           className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold print:hidden"

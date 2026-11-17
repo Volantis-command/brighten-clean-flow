@@ -48,12 +48,25 @@ export default function GuidedCamera({
   const [pending, setPending] = useState<{ blob: Blob; url: string } | null>(null);
   const [working, setWorking] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
+  // Zoom. Cleaners asked for this: a wide shot of a benchtop is useless when
+  // the thing worth proving is a mark the size of a coin.
+  //
+  // hardwareZoom is the MediaStreamTrack `zoom` constraint, which is real
+  // lens/sensor zoom and keeps full quality. Android Chrome has it. iOS
+  // Safari does NOT, and that is what most of the cleaners carry, so when the
+  // track cannot do it we crop the frame on capture instead and scale the
+  // preview to match, which is lossier but at least gets them close.
+  const [zoom, setZoom] = useState(1);
+  const [hardwareZoom, setHardwareZoom] = useState<{ max: number; step: number } | null>(null);
 
   const start = useCallback(async () => {
     setDenied(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } },
+        // Ask for more pixels than we display. Digital zoom spends them: a
+        // 2.5x crop of a 1920 frame is only 768px wide, which is thin for a
+        // report photo. `ideal` degrades on its own when a device cannot.
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -61,6 +74,15 @@ export default function GuidedCamera({
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
       }
+      // Does this device do real zoom? Capabilities are not in the DOM types.
+      const track = stream.getVideoTracks()[0];
+      const caps = (track?.getCapabilities?.() ?? {}) as { zoom?: { max?: number; min?: number; step?: number } };
+      if (caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > 1) {
+        setHardwareZoom({ max: Math.min(caps.zoom.max, 5), step: caps.zoom.step || 0.1 });
+      } else {
+        setHardwareZoom(null);
+      }
+      setZoom(1);
       setReady(true);
     } catch {
       setDenied(true);
@@ -81,11 +103,26 @@ export default function GuidedCamera({
   // Release the frozen preview's object URL when it changes/unmounts.
   useEffect(() => () => { if (pending) URL.revokeObjectURL(pending.url); }, [pending]);
 
+  // Push the zoom to the sensor where we can; otherwise leave it for capture.
+  const applyZoom = useCallback(async (next: number) => {
+    setZoom(next);
+    if (!hardwareZoom) return;
+    const track = streamRef.current?.getVideoTracks()[0];
+    try {
+      await track?.applyConstraints({ advanced: [{ zoom: next }] } as MediaTrackConstraints);
+    } catch {
+      // Device advertised zoom and then refused it. Fall back to cropping so
+      // the button still does something rather than silently failing.
+      setHardwareZoom(null);
+    }
+  }, [hardwareZoom]);
+
   const shoot = async () => {
     if (!videoRef.current || working) return;
     setWorking(true);
     try {
-      const blob = await captureFromVideo(videoRef.current);
+      // Hardware zoom is already in the frame, so only crop when it is not.
+      const blob = await captureFromVideo(videoRef.current, hardwareZoom ? 1 : zoom);
       setPending({ blob, url: URL.createObjectURL(blob) });
     } catch {
       /* ignore — let them try again */
@@ -147,10 +184,39 @@ export default function GuidedCamera({
           muted
           autoPlay
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ display: pending || denied ? 'none' : 'block' }}
+          style={{
+            display: pending || denied ? 'none' : 'block',
+            // Only scale the preview when we are cropping on capture. With
+            // hardware zoom the frame is already zoomed, and scaling again
+            // would show more than the photo will contain.
+            transform: hardwareZoom ? undefined : `scale(${zoom})`,
+            transformOrigin: 'center',
+          }}
         />
         {pending && (
           <img src={pending.url} alt="Photo just taken" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+
+        {/* Zoom. Fixed stops rather than a pinch gesture: this is used in
+            gloves, one-handed, often against a wall, and a stop you can hit
+            without looking beats a gesture you have to aim. 2.5x is there
+            because BJ asked for it by name. */}
+        {!pending && !denied && ready && (
+          <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/60 p-1 backdrop-blur">
+            {[1, 1.5, 2, 2.5].filter(z => z === 1 || !hardwareZoom || z <= hardwareZoom.max).map((z) => (
+              <button
+                key={z}
+                onClick={() => void applyZoom(z)}
+                className={`min-w-[44px] rounded-full px-3 py-1.5 text-xs font-extrabold transition ${
+                  zoom === z ? 'bg-white text-black' : 'text-white/80'
+                }`}
+                aria-label={`Zoom ${z} times`}
+                aria-pressed={zoom === z}
+              >
+                {z}x
+              </button>
+            ))}
+          </div>
         )}
 
         {reference && reference.photos.length > 0 && !pending && (
