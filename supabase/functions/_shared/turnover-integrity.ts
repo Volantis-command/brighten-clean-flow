@@ -62,3 +62,26 @@ export function isConfirmedGuestyStay(status: string | null | undefined): boolea
 export function guestyTurnoverKey(propertyId: string, checkoutDate: string): string {
   return `guesty:${propertyId}:${checkoutDate}`;
 }
+
+// --- Resly -----------------------------------------------------------------
+// Resly is Coastal Holiday Homes' PMS. Its own vocabulary again, so its own
+// helpers rather than widening the Hostaway sets.
+//
+// Resly only ever returns 'confirmed' or 'cancelled' on this account, but
+// treat the set as open: a status nobody has seen before must not silently
+// become a clean.
+export const RESLY_CONFIRMED_STATUSES = new Set(['confirmed', 'checkedin', 'checkedout', 'new']);
+
+export function isConfirmedReslyStay(status: string | null | undefined): boolean {
+  return RESLY_CONFIRMED_STATUSES.has(normaliseReservationStatus(status));
+}
+
+export function reslyTurnoverKey(propertyId: string, checkoutDate: string): string {
+  return `resly:${propertyId}:${checkoutDate}`;
+}
+
+// The agent a reservation came through. 'OWNER' means the owner themselves is
+// staying, which is the signal that the clean before it gets inspected.
+export function isOwnerBooking(agentId: string | null | undefined): boolean {
+  return (agentId ?? '').trim().toUpperCase() === 'OWNER';
+}
