@@ -259,13 +259,14 @@ async function fetchAllReservations(
   token: string,
   fromDate: string,
   toDate: string,
+  dateField: 'checkOut' | 'checkIn' = 'checkOut',
 ): Promise<GuestyReservation[]> {
   const out: GuestyReservation[] = [];
   const seen = new Set<string>();
   const limit = 100;
   const filters = JSON.stringify([
-    { field: 'checkOut', operator: '$gte', value: shiftDays(fromDate, -1) },
-    { field: 'checkOut', operator: '$lte', value: `${shiftDays(toDate, 1)}T23:59:59.999Z` },
+    { field: dateField, operator: '$gte', value: shiftDays(fromDate, -1) },
+    { field: dateField, operator: '$lte', value: `${shiftDays(toDate, 1)}T23:59:59.999Z` },
   ]);
   let total = Number.POSITIVE_INFINITY;
 
@@ -273,7 +274,7 @@ async function fetchAllReservations(
     const url = new URL('https://open-api.guesty.com/v1/reservations');
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('skip', String(page * limit));
-    url.searchParams.set('sort', 'checkOut');
+    url.searchParams.set('sort', dateField);
     url.searchParams.set('filters', filters);
     url.searchParams.set('fields', 'checkIn checkOut status listingId guest confirmationCode source integration');
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -299,7 +300,7 @@ async function fetchAllReservations(
 
   if (Number.isFinite(total) && out.length < total) {
     throw new Error(
-      `Guesty returned ${out.length} of ${total} reservations; refusing to sync a partial set`,
+      `Guesty returned ${out.length} of ${total} ${dateField} reservations; refusing to sync a partial set`,
     );
   }
   return out;
@@ -352,14 +353,41 @@ Deno.serve(async (req) => {
   }
 
   let reservations: GuestyReservation[];
+  let arrivalRes: GuestyReservation[];
   try {
     const token = await getAccessToken(sb);
-    reservations = await fetchAllReservations(token, fromDate, toDate);
+    // Departures are what create the clean. Arrivals are what make that clean
+    // a BACK TO BACK, and Guesty will not tell you about one while you are
+    // asking about the other: the checkOut filter returns the departing stay
+    // only, whose own `checkIn` is when THAT guest arrived, days earlier. So
+    // the next guest has to be fetched separately, over the same window.
+    //
+    // Both calls share the one token, so this does not cost a second mint
+    // against Guesty's limit of 5 a day.
+    [reservations, arrivalRes] = await Promise.all([
+      fetchAllReservations(token, fromDate, toDate, 'checkOut'),
+      fetchAllReservations(token, fromDate, toDate, 'checkIn'),
+    ]);
   } catch (error) {
     return json({ error: 'Guesty sync failed', detail: (error as Error).message }, 502);
   }
 
+  // listing + local arrival date -> a guest walks in that day.
+  //
+  // The date MUST come from localParts, not from slicing the ISO string.
+  // Guesty hands back a UTC instant, and a 14:00 Sydney check-in is 03:00 UTC
+  // the same day while a 10:00 Sydney checkout is 23:00 UTC the day before —
+  // slice either one and the two sides of this comparison stop lining up.
+  const arrivalDays = new Set<string>();
+  for (const a of arrivalRes) {
+    if (!isConfirmedGuestyStay(a.status ?? '')) continue;
+    const lid = a.listingId ? String(a.listingId) : (a.listing?._id ? String(a.listing._id) : null);
+    const day = localParts(a.checkIn)?.date;
+    if (lid && day) arrivalDays.add(`${lid}|${day}`);
+  }
+
   const results: Result[] = [];
+  const backToBacks: string[] = [];
 
   for (const r of reservations) {
     const reservationId = r._id ? String(r._id) : '';
@@ -392,7 +420,7 @@ Deno.serve(async (req) => {
     // external refs array. limit(1) over an ordered select rather than
     // maybeSingle(), because maybeSingle() throws on pre-existing duplicates
     // and the old Hostaway code swallowed that and made another one.
-    const JOB_COLS = 'id, status, scheduled_date, scheduled_time, property_id, source, source_external_refs, source_turnover_key';
+    const JOB_COLS = 'id, status, scheduled_date, scheduled_time, property_id, source, source_external_refs, source_turnover_key, flags_source, is_back_to_back';
     const { data: byId, error: byIdErr } = await sb
       .from('jobs').select(JOB_COLS)
       .eq('guesty_reservation_id', reservationId)
@@ -464,8 +492,19 @@ Deno.serve(async (req) => {
       ? rawTime
       : (checkoutLocal?.time ?? '10:00');
     const channel = r.integration?.platform || r.source || 'Guesty';
-    const arrival = localParts(r.checkIn)?.date;
-    const notes = `Guesty turnover — ${guestName}\n${channel}${arrival ? ` · stay started ${arrival}` : ''}`;
+    // The DEPARTING guest's arrival, for the note only. Not to be confused
+    // with the next guest's, which is what decides a back-to-back below.
+    const stayStarted = localParts(r.checkIn)?.date;
+    // Someone else walks in the day this clean happens. The cleaner has a
+    // hard finish time rather than a whole day, which changes how the job is
+    // staffed and how late it can start.
+    const backToBack = !!listingId && arrivalDays.has(`${listingId}|${scheduledDate}`);
+    if (backToBack) backToBacks.push(`${property.property_name} ${scheduledDate}`);
+    const notes = [
+      backToBack ? 'BACK TO BACK - guest checking in the same day. Must be finished and guest-ready on time.' : '',
+      `Guesty turnover — ${guestName}`,
+      `${channel}${stayStarted ? ` · stay started ${stayStarted}` : ''}`,
+    ].filter(Boolean).join('\n');
     const turnoverKey = guestyTurnoverKey(property.id, scheduledDate);
 
     let adoptedManual = false;
@@ -523,13 +562,37 @@ Deno.serve(async (req) => {
       }
 
       const refs = mergeExternalRefs(existingJob.source_external_refs, reservationId);
-      // An adopted job keeps the date and time a human chose for it.
+
+      // A job a human booked, whether adopted on this run or on an earlier
+      // one. `adoptedManual` alone is not enough: it is true only on the run
+      // that first adopts the job, so from the next run on the sync treated
+      // these as its own and rewrote them.
+      //
+      // That is not theoretical. These 7 properties were booked by hand on
+      // 23 Oct, and on 18 Nov a run reset five of them to the property
+      // defaults — Elysian moved from the 12:30 start BJ had chosen to 10:00,
+      // and from 4 hours to 7.5 — on jobs whose cleaners had already accepted
+      // the original time. The offer said one thing and the app said another.
+      //
+      // The date still follows the booking, because a clean on the day after
+      // the guest leaves is no clean at all. The time, the duration and the
+      // notes are a human's call and stay put.
+      const humanBooked = adoptedManual || String(existingJob.source ?? '') === 'manual';
+
       const dateChanged = !adoptedManual && existingJob.scheduled_date !== scheduledDate;
-      const timeChanged = !adoptedManual && existingJob.scheduled_time !== scheduledTime;
+      const timeChanged = !humanBooked && existingJob.scheduled_time !== scheduledTime;
       const shouldRevive = existingJob.status === 'cancelled';
       const refsChanged = refs.length !== (existingJob.source_external_refs || []).length;
+      // A human flag beats a computed one, so a nightly run never undoes what
+      // an admin ticked by hand.
+      const flagsAreOurs = String(existingJob.flags_source ?? 'auto') !== 'manual';
+      const b2bChanged = flagsAreOurs && !!existingJob.is_back_to_back !== backToBack;
 
-      if (!dateChanged && !timeChanged && !shouldRevive && !refsChanged && !adoptedManual) {
+      // b2bChanged belongs in this guard. Without it the flag is only ever
+      // written on a run where the date, time or refs also moved — which for
+      // a booking that was already synced is never, so the first guest to
+      // book the turnaround day would silently stay unflagged.
+      if (!dateChanged && !timeChanged && !shouldRevive && !refsChanged && !adoptedManual && !b2bChanged) {
         results.push({ reservation_id: reservationId, listing_id: listingId, checkout_date: scheduledDate, property_name: property.property_name, guest_name: guestName, status: 'no_op_unchanged', job_id: existingJob.id });
         continue;
       }
@@ -538,14 +601,23 @@ Deno.serve(async (req) => {
         source_turnover_key: turnoverKey,
         source_external_refs: refs,
         source_synced_at: new Date().toISOString(),
-        ...durationFields(property),
         guesty_reservation_id: reservationId,
       };
-      if (!adoptedManual) {
-        update.scheduled_date = scheduledDate;
+      if (!humanBooked) {
+        // The sync created this job, so the sync owns its shape.
+        Object.assign(update, durationFields(property));
         update.scheduled_time = scheduledTime;
         update.notes = notes;
+      }
+      if (!adoptedManual) {
+        update.scheduled_date = scheduledDate;
         update.status = shouldRevive ? 'pending_cleaner' : existingJob.status;
+      }
+      // Set on adopted jobs too. The date and time were a human's call; who
+      // is checking in that day is not, it is a fact from the source.
+      if (flagsAreOurs) {
+        update.is_back_to_back = backToBack;
+        update.flags_source = 'auto';
       }
 
       if (!dryRun) {
@@ -593,6 +665,8 @@ Deno.serve(async (req) => {
         source_synced_at: new Date().toISOString(),
         client_name: property.client_name,
         notes,
+        is_back_to_back: backToBack,
+        flags_source: 'auto',
         price_ex_gst: priceExGst,
         price_inc_gst: priceIncGst,
         // Must be set on CREATE as well as update. A null duration does not
@@ -622,6 +696,8 @@ Deno.serve(async (req) => {
     to_date: toDate,
     mapped_properties: byListing.size,
     reservations_seen: reservations.length,
+    arrivals_seen: arrivalRes.length,
+    back_to_back: backToBacks.sort(),
     summary,
     results,
   });
