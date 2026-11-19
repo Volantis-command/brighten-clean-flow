@@ -176,7 +176,8 @@ export default function PhoneLoginPage() {
           )}
 
           <p className="text-[11px] text-muted-foreground text-center mt-6">
-            Codes expire after 10 min. Sign-in lasts 7 days on this device.
+            Your code lasts 1 hour. Once you're in, you stay signed in on this
+            device. You won't be asked again.
           </p>
         </div>
       </div>
