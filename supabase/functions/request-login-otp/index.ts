@@ -71,9 +71,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify SOMEONE has this phone. We don't tell the caller whether
-    // the phone is registered (don't leak account existence) but we
-    // also don't bother sending an SMS to a phone with no account.
+    // Verify SOMEONE has this phone.
     //
     // This comparison has to be formatting-insensitive. A number stored
     // as "+61 499 432 309" matched neither of the old filters, so the
@@ -82,11 +80,33 @@ Deno.serve(async (req: Request) => {
     // with nothing logged anywhere.
     const profileMatches = await findProfilesByPhone(supabase, phone);
 
-    // Always wait a similar amount of time and return success either
-    // way, so an attacker can't enumerate phone numbers via timing.
     const found = profileMatches.length > 0;
 
-    if (found) {
+    // A number we do not hold gets told so, plainly.
+    //
+    // This used to answer {ok:true} either way, to stop an attacker
+    // learning which numbers have accounts. The cost of that was paid by
+    // real people: the screen said "Code sent, check your phone", no SMS
+    // ever came, and there was nothing to tell them why. It happened to
+    // Lucy in September and to a client on 18 Nov, who reported it as the
+    // app "not letting her put her number in" — because from her side,
+    // typing the number and tapping the button simply did nothing.
+    //
+    // Enumeration is a poor trade here. Someone who guesses a mobile
+    // learns only that it belongs to a Brightly client or cleaner, which
+    // gets them nothing: the code still goes to the real handset. Against
+    // that, every mistyped or out-of-date number used to become a support
+    // call. Say the useful thing.
+    if (!found) {
+      return new Response(
+        JSON.stringify({
+          error: "We don't have that number on file. Check it's the mobile Brightly texts you on, or call 0418 878 707.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    {
       const code = generateCode();
       const codeHash = await sha256Hex(code);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
@@ -116,9 +136,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Generic success regardless of whether we actually sent — UI says
-    // "if your phone is registered, a code is on its way". Prevents
-    // account enumeration.
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
