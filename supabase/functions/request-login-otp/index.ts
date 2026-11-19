@@ -109,7 +109,17 @@ Deno.serve(async (req: Request) => {
     {
       const code = generateCode();
       const codeHash = await sha256Hex(code);
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      // An hour, not ten minutes.
+      //
+      // The window length is not what protects this code. MAX_ATTEMPTS in
+      // verify-login-otp caps it at 5 guesses at a 6-digit number, the code
+      // is single-use, and asking for a new one invalidates the old one. A
+      // longer window costs nothing against that.
+      //
+      // What ten minutes did cost was real logins: a client reads the text,
+      // puts the phone down, comes back to the app and the code is dead,
+      // with no clue why. That reads as "the app logged me out again".
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
       // Invalidate any prior unused code for this phone — last code wins.
       await supabase
@@ -124,7 +134,7 @@ Deno.serve(async (req: Request) => {
       if (insErr) throw insErr;
 
       try {
-        await sendSms(phone, `Your Brightly login code: ${code}\n\nExpires in 10 min. Don't share with anyone.`);
+        await sendSms(phone, `Your Brightly login code: ${code}\n\nExpires in 1 hour. Don't share with anyone.`);
       } catch (smsErr) {
         // SMS send failed — surface this so the user knows. We've
         // already invalidated their previous code, so they can try
