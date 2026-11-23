@@ -43,9 +43,13 @@ type View =
   | 'photo_wizard'   // Sequential room-by-room photo reporting + signatures
   | 'done';          // Job completed — read-only
 
-function resolveView(job: any): View {
+export function resolveView(job: any, iHaveClockedOn: boolean): View {
   if (job.status === 'completed') return 'done';
-  if (!job.clock_on) return 'pre_clock_on';
+  // Per cleaner, NOT per job. job.clock_on belongs to whoever arrived first, so
+  // keying off it dropped the second cleaner straight into the active clean
+  // with no way to start their own timer. Their own time entry is the only
+  // honest answer to "have I clocked on?".
+  if (!iHaveClockedOn) return 'pre_clock_on';
   // Hard gate: the assessment modal sets pre_clean_assessment_completed_at
   // only after BOTH damage + extra-time questions are answered. Using a
   // dedicated timestamp (vs. checking null on pre_clean_notes /
@@ -113,6 +117,23 @@ export default function CleanWorkflowPage() {
     },
   });
 
+  // Has THIS cleaner already clocked on to THIS job? Counts closed entries too,
+  // so clocking off cannot bounce them back to a second Clock On button. That
+  // double-tap is what produced the 0-minute entries sitting in payroll.
+  const { data: myEntryCount = 0 } = useQuery({
+    queryKey: ['clean-workflow-my-entry', jobId, user?.id],
+    enabled: !!jobId && !!user?.id,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('time_entries')
+        .select('id', { count: 'exact', head: true })
+        .eq('job_id', jobId!)
+        .eq('user_id', user!.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   // Current cleaner's profile for the ActiveJobView
   const currentProfile = profiles.find(p => p.id === user?.id) || { id: user?.id || '', full_name: 'Cleaner' };
 
@@ -132,6 +153,7 @@ export default function CleanWorkflowPage() {
 
   const refreshJob = useCallback(async () => {
     await refetch();
+    queryClient.invalidateQueries({ queryKey: ['clean-workflow-my-entry'] });
     queryClient.invalidateQueries({ queryKey: ['my-cleans'] });
     queryClient.invalidateQueries({ queryKey: ['my-jobs-today'] });
     queryClient.invalidateQueries({ queryKey: ['today-jobs-widget'] });
@@ -143,14 +165,22 @@ export default function CleanWorkflowPage() {
     setClockingOn(true);
     const now = new Date().toISOString();
 
+    // job.clock_on records when the FIRST cleaner arrived. A second cleaner
+    // clocking on an hour later must not rewrite it, or the job looks like it
+    // started an hour late on every report.
+    const firstOnSite = !job!.clock_on;
     const { error } = await supabase.from('jobs').update({
-      clock_on: now,
       status: 'in_progress',
-      clock_on_lat: lat,
-      clock_on_lng: lng,
-      arrived_at: now,
-      arrived_lat: lat,
-      arrived_lng: lng,
+      ...(firstOnSite
+        ? {
+            clock_on: now,
+            clock_on_lat: lat,
+            clock_on_lng: lng,
+            arrived_at: now,
+            arrived_lat: lat,
+            arrived_lng: lng,
+          }
+        : {}),
     }).eq('id', job!.id);
 
     if (error) {
@@ -228,7 +258,7 @@ export default function CleanWorkflowPage() {
   }
 
   const property = job.properties as any;
-  const view = resolveView(job);
+  const view = resolveView(job, myEntryCount > 0);
 
   // Residential and deep cleans finish here, not in the photo report. Checked
   // BEFORE the done state: the job is already marked complete by this point,

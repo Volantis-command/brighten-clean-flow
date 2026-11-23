@@ -10,24 +10,7 @@ import { useProcessScheduledSms } from '@/hooks/useProcessScheduledSms';
 import { TodayJobsWidget } from '@/components/dashboard/TodayJobsWidget';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { JobCard } from '@/components/dashboard/JobCard';
-import { CleanerClockCard } from '@/components/cleaner-portal/CleanerClockCard';
 import { FounderCommandCentre } from '@/components/dashboard/FounderCommandCentre';
-
-function CleanerClockCardForToday({ jobIds }: { jobIds: string[] }) {
-  const { data: jobs = [] } = useQuery({
-    queryKey: ['cleaner-clock-card-jobs', jobIds.join(',')],
-    enabled: jobIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('id,status,scheduled_time,property_id,properties(property_name,address,lat,lng)')
-        .in('id', jobIds);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-  return jobIds.length ? <CleanerClockCard todayJobs={jobs as any} /> : null;
-}
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
@@ -90,7 +73,6 @@ export default function DashboardPage() {
       <div className="mx-auto w-full min-w-0 max-w-lg space-y-6">
         <TodayJobsWidget />
         <DashboardGreeting />
-        <CleanerClockCardForToday jobIds={jobCards.map((job) => job.id)} />
         <section>
           <h2 className="mb-4 text-xl font-bold text-primary">Today's jobs</h2>
           {jobCards.length === 0 ? (

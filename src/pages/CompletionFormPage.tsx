@@ -367,13 +367,13 @@ export default function CompletionFormPage() {
       }).eq('id', existingEntry.id);
     }
 
-    // Also close entries for second cleaner if present
-    if (job.cleaner_2_id && job.cleaner_2_id !== user.id) {
-      await supabase.from('time_entries').update({
-        clock_out_time: clockOff,
-        total_minutes: netMinutes,
-      }).eq('job_id', job.id).eq('user_id', job.cleaner_2_id).is('clock_out_time', null);
-    }
+    // Close any other cleaner still on the clock for this job. This used to
+    // name cleaner_2 only, so when the second cleaner submitted the form the
+    // first cleaner's entry stayed open all night.
+    await supabase.from('time_entries').update({
+      clock_out_time: clockOff,
+      total_minutes: netMinutes,
+    }).eq('job_id', job.id).neq('user_id', user.id).is('clock_out_time', null);
 
     // 2b. Record clock_out event
     await supabase.from('clock_events').insert({

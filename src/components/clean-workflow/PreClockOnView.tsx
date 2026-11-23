@@ -66,7 +66,18 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
   const headerLabel = jobLabel(job);
 
   // 'confirmed' is the new "ready to clock on" state. Keep 'scheduled' for legacy jobs.
-  const canClockOn = job.status === 'confirmed' || job.status === 'scheduled' || job.status === 'awaiting_cleaner_acceptance';
+  //
+  // 'in_progress' is here on purpose. On a two-cleaner job the first person to
+  // clock on flips the job to in_progress, and leaving that out of this list
+  // meant the second cleaner was shown this screen with no button at all. Jess
+  // lost her hours on Reflections 1501 (22 Nov) and Magnolia (21 Nov) that way.
+  // Whether THIS cleaner has already clocked on is decided by resolveView in
+  // CleanWorkflowPage, which checks their own time entry, not the job status.
+  const canClockOn =
+    job.status === 'confirmed' ||
+    job.status === 'scheduled' ||
+    job.status === 'awaiting_cleaner_acceptance' ||
+    job.status === 'in_progress';
   const isCompleted = job.status === 'completed';
 
   return (
