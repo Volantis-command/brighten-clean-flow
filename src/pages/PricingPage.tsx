@@ -165,7 +165,7 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] items-start">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
         {/* Inputs */}
         <div className="space-y-4">
           <Section title="The property">
@@ -187,7 +187,7 @@ export default function PricingPage() {
               <Stepper label="Levels" value={input.levels} onChange={(v) => set('levels', v)} min={1} />
               <Stepper label="Kitchens" value={input.kitchens} onChange={(v) => set('kitchens', v)} />
             </div>
-            <div className="grid sm:grid-cols-3 gap-2">
+            <div className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-2">
               <Toggle label="Balcony, terrace or yard" checked={input.outdoor} onChange={(v) => set('outdoor', v)} />
               <Toggle label="Pool or spa" checked={input.pool} onChange={(v) => set('pool', v)} />
               <Toggle label="Granny flat or studio" checked={input.grannyFlat} onChange={(v) => set('grannyFlat', v)} />
@@ -195,7 +195,7 @@ export default function PricingPage() {
           </Section>
 
           <Section title={`Beds (${r.bedCount} to make)`}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-3">
               {BED_LABELS.map((b) => (
                 <Stepper key={b.field} label={b.label} value={input.beds[b.field]} onChange={(v) => setBed(b.field, v)} />
               ))}
@@ -228,7 +228,7 @@ export default function PricingPage() {
         </div>
 
         {/* Result */}
-        <div className="lg:sticky lg:top-4 space-y-4">
+        <div className="xl:sticky xl:top-4 space-y-4">
           <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
             <div className="p-5 border-b border-border">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price per turnover</p>
@@ -423,7 +423,7 @@ function Section({ title, action, children }: { title: string; action?: React.Re
 function Stepper({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (v: number) => void; min?: number }) {
   return (
     <div className="space-y-1">
-      <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+      <span className="block text-xs font-semibold text-muted-foreground truncate">{label}</span>
       <div className="flex items-center rounded-xl border border-input bg-background">
         <button type="button" aria-label={`Fewer ${label}`} onClick={() => onChange(Math.max(min, value - 1))}
           className="h-9 w-9 grid place-items-center text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /></button>
@@ -441,8 +441,8 @@ function Toggle({ label, checked, onChange, strong }: { label: string; checked: 
   return (
     <label className={cn('flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer',
       checked ? 'border-primary/50 bg-primary/5' : 'border-border bg-background')}>
-      <span className={cn('text-sm', strong ? 'font-bold' : 'font-medium')}>{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <span className={cn('text-sm leading-snug min-w-0', strong ? 'font-bold' : 'font-medium')}>{label}</span>
+      <Switch className="shrink-0" checked={checked} onCheckedChange={onChange} />
     </label>
   );
 }
