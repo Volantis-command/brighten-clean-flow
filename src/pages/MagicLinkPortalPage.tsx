@@ -438,8 +438,36 @@ function Card({ children, className = '', accent }: { children: React.ReactNode;
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value?: string | null }) {
+// A detail row must only ever print text.
+//
+// Several property columns are jsonb: access_details defaults to {} and
+// bed_types is {"0":"King","1":"Queen"}. Handing an object to React as a child
+// does not render nothing, it throws (error #31) and takes the whole portal
+// down. That is what crashed BnB Booking's portal on 24 Nov 2026, and 27 other
+// clients' property pages were one click from the same thing. So everything
+// shown here goes through asText first: objects become "key: value" text,
+// numbered keys just list their values, and anything empty shows no row.
+export function asText(value: unknown): string | null {
+  if (value == null || value === false) return null;
+  if (typeof value === 'string') return value.trim() || null;
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(asText).filter(Boolean).join(', ') || null;
+  if (typeof value === 'object') {
+    const parts = Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => {
+        const t = asText(v);
+        if (!t) return null;
+        return /^\d+$/.test(k) ? t : `${k.replace(/_/g, ' ')}: ${t}`;
+      })
+      .filter(Boolean);
+    return parts.length ? parts.join(' · ') : null;
+  }
+  return null;
+}
+
+function InfoRow({ icon: Icon, label, value: raw }: { icon: any; label: string; value?: unknown }) {
   const { GREEN, WHITE, MUTED } = usePalette();
+  const value = asText(raw);
   if (!value) return null;
   return (
     <div className="flex items-start gap-3 px-4 py-3">
@@ -485,7 +513,7 @@ function HomeTab({
     <div className="space-y-6">
       {/* Hero */}
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] font-extrabold tracking-[0.16em] uppercase" style={{ color: GREEN }}>Welcome back</p>
           <h1 className="text-[26px] font-extrabold leading-tight mt-1 tracking-tight" style={{ color: WHITE }}>
             {greeting}, {clientName}.
@@ -494,7 +522,16 @@ function HomeTab({
             {properties.length === 1 ? '1 property' : `${properties.length} properties`} managed by Brightly.
           </p>
         </div>
-        {logoUrl && <img src={logoUrl} alt="" className="h-14 w-auto object-contain shrink-0 opacity-90" />}
+        {/* Wide logos (BnB Booking's is about 5:1) used to sit at a fixed 56px
+            height with no width limit, which on a phone took ~300px and crushed
+            the greeting into a one-word column. Cap the width, keep the ratio. */}
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt=""
+            className="w-auto h-auto max-w-[40%] max-h-10 sm:max-h-14 object-contain object-right shrink-0 opacity-90 mt-1"
+          />
+        )}
       </div>
 
       {/* Today */}
@@ -635,7 +672,7 @@ function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack
     .sort((a: any, b: any) => b.scheduled_date.localeCompare(a.scheduled_date));
 
   const fullAddress = [prop.address, prop.suburb, prop.state, prop.postcode].filter(Boolean).join(', ');
-  const beds = prop.bed_config || prop.bed_types || null;
+  const beds = asText(prop.bed_config) || asText(prop.bed_types);
   const accessBits = [
     prop.access_method && `Method: ${prop.access_method}`,
     prop.access_code && `Code: ${prop.access_code}`,
@@ -677,7 +714,7 @@ function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack
           <InfoRow icon={MapPin} label="Address" value={fullAddress} />
           <InfoRow icon={Bed} label="Bed configuration" value={beds} />
           <InfoRow icon={Bath} label="Bathrooms" value={prop.bathrooms != null ? String(prop.bathrooms) : null} />
-          <InfoRow icon={KeyRound} label="Entry & access" value={accessBits || prop.access_details || prop.access_notes} />
+          <InfoRow icon={KeyRound} label="Entry & access" value={accessBits || asText(prop.access_details) || prop.access_notes} />
           <InfoRow icon={Car} label="Parking" value={prop.parking_instructions} />
           <InfoRow icon={Wifi} label="WiFi" value={prop.guest_wifi || prop.wifi_password} />
           <InfoRow icon={Clock} label="Check-in / out" value={

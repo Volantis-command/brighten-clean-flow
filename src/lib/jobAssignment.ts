@@ -180,10 +180,26 @@ export async function syncJobAssignment(
 }
 
 /**
- * Cleaner accepts a job. If every assigned cleaner has now accepted,
- * the job transitions to 'confirmed' (green).
+ * Cleaner accepts a job.
+ *
+ * Whether the job is now fully booked is decided by the database, not here.
+ * This used to work it out on the cleaner's phone by reading every
+ * acceptance on the job, but RLS only lets a cleaner read their OWN row. On a
+ * two-cleaner job whoever accepted second could never see the first yes, so
+ * the job stayed amber forever (Salty and Elliston, 24 Nov 2026). The trigger
+ * trg_confirm_job_when_all_accepted now moves the job to 'confirmed' the
+ * moment the last cleaner accepts, however they accepted.
+ *
+ * So: note the status before, accept, read it after. If this acceptance is the
+ * one that moved it, say so and tell the admins.
  */
 export async function acceptJob(jobId: string, cleanerId: string): Promise<{ confirmed: boolean }> {
+  const { data: before } = await supabase
+    .from('jobs')
+    .select('status')
+    .eq('id', jobId)
+    .maybeSingle();
+
   const { error: accErr } = await supabase
     .from('job_acceptances')
     .update({
@@ -198,50 +214,31 @@ export async function acceptJob(jobId: string, cleanerId: string): Promise<{ con
     throw accErr;
   }
 
-  // Check if all assigned cleaners have now accepted
-  const { data: job } = await supabase
+  const { data: after } = await supabase
     .from('jobs')
-    .select('cleaner_1_id, cleaner_2_id, status, properties(property_name)')
+    .select('status, properties(property_name)')
     .eq('id', jobId)
-    .single();
+    .maybeSingle();
 
-  if (!job) return { confirmed: false };
+  const confirmedNow =
+    before?.status === 'awaiting_cleaner_acceptance' && after?.status === 'confirmed';
+  if (!confirmedNow) return { confirmed: false };
 
-  const assignedIds = [job.cleaner_1_id, job.cleaner_2_id].filter(Boolean) as string[];
-  const { data: acceptances } = await supabase
-    .from('job_acceptances')
-    .select('cleaner_id, acceptance_status')
-    .eq('job_id', jobId)
-    .in('cleaner_id', assignedIds);
-
-  const allAccepted =
-    assignedIds.length > 0 &&
-    assignedIds.every(
-      (cid) =>
-        (acceptances || []).find((a) => a.cleaner_id === cid)?.acceptance_status === 'accepted'
-    );
-
-  if (allAccepted && job.status === 'awaiting_cleaner_acceptance') {
-    await supabase.from('jobs').update({ status: 'confirmed' } as any).eq('id', jobId);
-
-    const propName = (job as any).properties?.property_name || 'a property';
-    try {
-      await createAlert({
-        event_type: 'job_confirmed',
-        title: 'Job Confirmed',
-        body: `All cleaners have accepted the job at ${propName}.`,
-        metadata: { job_id: jobId },
-        target_role: 'admin',
-        link: `/jobs/${jobId}`,
-      });
-    } catch (err) {
-      console.error('[jobAssignment] createAlert (confirmed) failed', err);
-    }
-
-    return { confirmed: true };
+  const propName = (after as any)?.properties?.property_name || 'a property';
+  try {
+    await createAlert({
+      event_type: 'job_confirmed',
+      title: 'Job Confirmed',
+      body: `All cleaners have accepted the job at ${propName}.`,
+      metadata: { job_id: jobId },
+      target_role: 'admin',
+      link: `/jobs/${jobId}`,
+    });
+  } catch (err) {
+    console.error('[jobAssignment] createAlert (confirmed) failed', err);
   }
 
-  return { confirmed: false };
+  return { confirmed: true };
 }
 
 /**
