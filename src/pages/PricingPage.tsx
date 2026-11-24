@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import {
-  BED_LABELS, BLANK_INPUT, SETTING_DEFS, currentPriceInc, inputFromProperty, quote, settingsFrom,
-  type Beds, type ModelSettings, type PropertyRow, type QuoteInput,
+  BED_LABELS, BLANK_INPUT, SETTING_DEFS, applyListing, currentPriceInc, inputFromProperty, quote, settingsFrom,
+  type Beds, type ListingFields, type ModelSettings, type PropertyRow, type QuoteInput,
 } from '@/lib/turnoverPricing';
+import ListingImport from '@/components/pricing/ListingImport';
 
 const money = (v: number) =>
   v.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -169,6 +170,12 @@ export default function PricingPage() {
         {/* Inputs */}
         <div className="space-y-4">
           <Section title="The property">
+            <ListingImport onFilled={(l: ListingFields) => {
+              setInput((p) => applyListing(p, l));
+              setHoursOverride(''); setPriceOverride('');
+              const label = [l.property_name, l.address].filter(Boolean).join(', ');
+              if (label) setName(label);
+            }} />
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Palm Beach Japonica (BnB Booking)" className="rounded-xl" />
             <div className="flex gap-1.5 bg-muted rounded-xl p-1 w-fit">
               {(['apartment', 'house'] as const).map((t) => (

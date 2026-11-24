@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  quote, settingsFrom, parseBeds, inputFromProperty, BLANK_INPUT, NO_BEDS, roundHours,
+  quote, settingsFrom, parseBeds, inputFromProperty, applyListing, BLANK_INPUT, NO_BEDS, roundHours,
   type QuoteInput, type PropertyRow,
 } from '@/lib/turnoverPricing';
 
@@ -97,4 +97,31 @@ it('roundHours goes to the nearest step', () => {
   expect(roundHours(4.1, 0.25)).toBe(4);
   expect(roundHours(4.125, 0.25)).toBe(4.25);
   expect(roundHours(3.3, 0)).toBe(3.3);
+});
+
+describe('applyListing', () => {
+  const listing = {
+    property_name: 'Palm Beach Poolside Haven', address: '52 Japonica Drive, Palm Beach', property_type: 'house' as const,
+    bedrooms: 4, bathrooms: 3, separate_toilets: 1, living_areas: 2, levels: 2, kitchens: 2,
+    beds: { king: 1, queen: 3, double: 0, king_single: 0, single: 2, bunk: 1, sofa: 0 },
+    outdoor: true, pool: true, granny_flat: true, sleeps: 12, notes: 'Office pod', unsure: ['beds'],
+  };
+
+  it('fills every property fact and keeps the commercial settings', () => {
+    const prev = { ...BLANK_INPUT, weSupplyLinen: false, travelFee: 20, amenitiesKit: true, hoursOverride: 9 };
+    const next = applyListing(prev, listing);
+    expect(next).toMatchObject({
+      propertyType: 'house', bedrooms: 4, bathrooms: 3, separateToilets: 1, livingAreas: 2, levels: 2, kitchens: 2,
+      outdoor: true, pool: true, grannyFlat: true,
+      beds: { king: 1, queen: 3, double: 0, kingSingle: 0, single: 2, bunk: 1, sofa: 0 },
+      weSupplyLinen: false, travelFee: 20, amenitiesKit: true, hoursOverride: null,
+    });
+  });
+
+  it('never lets bad numbers through', () => {
+    const next = applyListing(BLANK_INPUT, { ...listing, bedrooms: -2, living_areas: 0, levels: NaN as unknown as number });
+    expect(next.bedrooms).toBe(0);
+    expect(next.livingAreas).toBe(1);
+    expect(next.levels).toBe(1);
+  });
 });

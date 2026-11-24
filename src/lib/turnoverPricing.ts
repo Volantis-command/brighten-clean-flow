@@ -369,3 +369,52 @@ export function inputFromProperty(p: PropertyRow, weSupplyLinen: boolean): Quote
     washKit: !!p.wash_kit,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Filling the form from a listing (extract-listing edge function)
+// ---------------------------------------------------------------------------
+
+export interface ListingFields {
+  property_name: string | null;
+  address: string | null;
+  property_type: 'apartment' | 'house';
+  bedrooms: number;
+  bathrooms: number;
+  separate_toilets: number;
+  living_areas: number;
+  levels: number;
+  kitchens: number;
+  beds: { king: number; queen: number; double: number; king_single: number; single: number; bunk: number; sofa: number };
+  outdoor: boolean;
+  pool: boolean;
+  granny_flat: boolean;
+  sleeps: number | null;
+  notes: string;
+  unsure: string[];
+}
+
+const nn = (v: unknown, min = 0) => Math.max(min, Math.round(Number.isFinite(Number(v)) ? Number(v) : 0));
+
+/** Overwrite the property facts; keep linen, kits, travel and overrides as they were. */
+export function applyListing(prev: QuoteInput, l: ListingFields): QuoteInput {
+  const b = l.beds ?? ({} as ListingFields['beds']);
+  return {
+    ...prev,
+    propertyType: l.property_type === 'apartment' ? 'apartment' : 'house',
+    bedrooms: nn(l.bedrooms),
+    bathrooms: nn(l.bathrooms),
+    separateToilets: nn(l.separate_toilets),
+    livingAreas: nn(l.living_areas, 1),
+    levels: nn(l.levels, 1),
+    kitchens: nn(l.kitchens, 1),
+    beds: {
+      king: nn(b.king), queen: nn(b.queen), double: nn(b.double), kingSingle: nn(b.king_single),
+      single: nn(b.single), bunk: nn(b.bunk), sofa: nn(b.sofa),
+    },
+    outdoor: !!l.outdoor,
+    pool: !!l.pool,
+    grannyFlat: !!l.granny_flat,
+    hoursOverride: null,
+    priceOverride: null,
+  };
+}
