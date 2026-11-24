@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { jobLabel } from '@/lib/jobLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import ClientNotesPanel from '@/components/clean-workflow/ClientNotesPanel';
 
 interface Props {
   job: any;
@@ -92,6 +93,9 @@ export default function PreClockOnView({ job, property, profiles, onClockOn, clo
       </div>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-8">
+        {/* What the client asked for after earlier cleans. Read before starting. */}
+        {job?.id && <ClientNotesPanel jobId={job.id} interactive={false} />}
+
         {/* Notes for This Clean — top priority yellow card */}
         {(property as any)?.property_notes && (
           <Card className="border-amber-300 bg-amber-50 dark:bg-amber-500/10">

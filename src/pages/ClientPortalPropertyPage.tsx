@@ -13,6 +13,7 @@ import CleanerProfileChip from '@/components/client-portal/CleanerProfileChip';
 import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import PendingBookingsCard from '@/components/client-portal/PendingBookingsCard';
 import PropertyInvoicesTab from '@/components/property/PropertyInvoicesTab';
+import ClientFeedbackDialog from '@/components/client-feedback/ClientFeedbackDialog';
 
 export default function ClientPortalPropertyPage() {
   const { id: propertyId } = useParams<{ id: string }>();
@@ -265,7 +266,15 @@ export default function ClientPortalPropertyPage() {
                     <p className="font-semibold">{format(new Date(job.scheduled_date + 'T00:00:00'), 'EEEE, dd MMM yyyy')}</p>
                     {job.scheduled_time && <p className="text-xs text-muted-foreground">{job.scheduled_time.slice(0, 5)}</p>}
                   </div>
-                  <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">Scheduled</span>
+                  <div className="flex items-center gap-2">
+                    {job.report_token && (
+                      <ClientFeedbackDialog reportToken={job.report_token} jobDone={false}
+                        cleanLabel={format(new Date(job.scheduled_date + 'T00:00:00'), 'EEE d MMM')}>
+                        <button className="text-xs font-bold text-primary px-2 py-0.5 rounded-full border border-primary/40">Add request</button>
+                      </ClientFeedbackDialog>
+                    )}
+                    <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">Scheduled</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -275,6 +284,15 @@ export default function ClientPortalPropertyPage() {
         {/* View Clean Report — opens the in-app /report/:token page
             which includes photos, checklist, completion form, signatures,
             and a print-to-PDF option. */}
+        {lastCompleteJob && (() => {
+          const fbJob = jobs.find((j: any) => j.id === activeJobId) || lastCompleteJob;
+          return fbJob?.report_token ? (
+            <ClientFeedbackDialog reportToken={fbJob.report_token} jobDone
+              cleanLabel={format(new Date(fbJob.scheduled_date + 'T00:00:00'), 'EEE d MMM')}>
+              <Button className="w-full gap-2 font-bold">Feedback or a request for next time</Button>
+            </ClientFeedbackDialog>
+          ) : null;
+        })()}
         {lastCompleteJob && (
           <Button
             variant="outline"

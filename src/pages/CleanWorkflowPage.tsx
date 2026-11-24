@@ -31,6 +31,8 @@ import CleanerActiveView from '@/components/cleaner-portal/ActiveJobView';
 import GuidedCompletionPage from '@/pages/GuidedCompletionPage';
 import RoomReferenceSheet from '@/components/clean/RoomReferenceSheet';
 import ResidentialFinish from '@/components/clean-workflow/ResidentialFinish';
+import ClientNotesPanel, { CLIENT_NOTES_PANEL_ID, useJobClientFeedback } from '@/components/clean-workflow/ClientNotesPanel';
+import { outstandingItems } from '@/lib/clientFeedback';
 import { needsPhotoReport } from '@/lib/cleanType';
 import { isAirbnbProperty } from '@/lib/propertyRooms';
 import { sendJobSms } from '@/lib/sendJobSms';
@@ -150,6 +152,11 @@ export default function CleanWorkflowPage() {
       return (data as any) ?? null;
     },
   });
+
+  // Client notes for this clean. Read here (above every early return, see the
+  // React #310 incident) so the Complete button can refuse to finish while any
+  // note is still unanswered.
+  const { data: clientNotes, isSuccess: clientNotesLoaded } = useJobClientFeedback(jobId);
 
   const refreshJob = useCallback(async () => {
     await refetch();
@@ -483,12 +490,25 @@ export default function CleanWorkflowPage() {
         );
       })()}
 
+      {/* Client notes: must each be answered before the job can finish */}
+      <div className="px-4 pt-3">
+        <ClientNotesPanel jobId={job.id} interactive />
+      </div>
+
       {/* The full SOP-driven active clean view */}
       <div className="px-4 py-4">
         <CleanerActiveView
           job={job}
           staff={currentProfile}
           property={property}
+          blockComplete={() => {
+            // Offline, a tick cannot be saved, so never trap a cleaner there.
+            const left = clientNotesLoaded && navigator.onLine ? outstandingItems(clientNotes).length : 0;
+            if (left === 0) return false;
+            toast.error(`Answer the client's ${left === 1 ? 'note' : `${left} notes`} first: Done or Couldn't do.`);
+            document.getElementById(CLIENT_NOTES_PANEL_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return true;
+          }}
           onComplete={() => {
             // Airbnb turnovers finish with the guided photo report. Residential
             // and deep cleans take no photos: one question, then clock off.

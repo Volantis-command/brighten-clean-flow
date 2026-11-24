@@ -24,6 +24,10 @@ interface ActiveJobViewProps {
   staff: any;
   property: any;
   onComplete: (updatedJob: any) => void;
+  /** Return true to stop the Complete button (e.g. client notes unanswered).
+   *  Runs BEFORE anything is written: once confirmComplete starts, the job is
+   *  marked completed and invoiced. */
+  blockComplete?: () => boolean;
 }
 
 // Default house-clean checklist
@@ -60,7 +64,7 @@ interface UploadedPhoto {
   public_url: string;
 }
 
-export default function ActiveJobView({ job, staff, property, onComplete }: ActiveJobViewProps) {
+export default function ActiveJobView({ job, staff, property, onComplete, blockComplete }: ActiveJobViewProps) {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [restockItems, setRestockItems] = useState<RestockItem[]>([]);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
@@ -292,6 +296,7 @@ export default function ActiveJobView({ job, staff, property, onComplete }: Acti
   }
 
   function handleCompleteClick() {
+    if (blockComplete?.()) return;
     const incompleteChecklist = checklist.filter((c) => !c.completed).length;
     const incompleteRestock = restockItems.filter((r) => !r.completed).length;
     const totalIncomplete = incompleteChecklist + incompleteRestock;

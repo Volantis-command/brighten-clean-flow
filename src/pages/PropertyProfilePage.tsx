@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,7 @@ import PropertyPassportSection from '@/components/property/PropertyPassportSecti
 import PendingChangesPanel from '@/components/property/PendingChangesPanel';
 import PropertyHeroPhotoUploader from '@/components/property/PropertyHeroPhotoUploader';
 import RoomLibrarySection from '@/components/property/RoomLibrarySection';
+import ClientFeedbackAdminPanel from '@/components/property/ClientFeedbackAdminPanel';
 import PropertyProfileForm from '@/components/properties/PropertyProfileForm';
 import ScheduleCleanModal from '@/components/client-detail/ScheduleCleanModal';
 import { toast } from 'sonner';
@@ -44,6 +45,9 @@ export default function PropertyProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [profileMode, setProfileMode] = useState<'view' | 'edit'>('view');
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  // Alerts link straight to a tab, e.g. /properties/:id?tab=feedback
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'profile';
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -122,7 +126,7 @@ export default function PropertyProfilePage() {
         />
       )}
 
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="w-full">
           <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
           <TabsTrigger value="passport" className="flex-1">Passport</TabsTrigger>
@@ -130,6 +134,7 @@ export default function PropertyProfilePage() {
           <TabsTrigger value="history" className="flex-1">History</TabsTrigger>
           <TabsTrigger value="forms" className="flex-1">Forms</TabsTrigger>
           <TabsTrigger value="invoices" className="flex-1">Invoices</TabsTrigger>
+          <TabsTrigger value="feedback" className="flex-1">Feedback</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <div className="mt-4 space-y-4">
@@ -169,6 +174,9 @@ export default function PropertyProfilePage() {
         </TabsContent>
         <TabsContent value="invoices">
           <PropertyInvoicesTab propertyId={property.id} showAdminTools={isAdmin} />
+        </TabsContent>
+        <TabsContent value="feedback">
+          <ClientFeedbackAdminPanel propertyId={property.id} />
         </TabsContent>
       </Tabs>
 

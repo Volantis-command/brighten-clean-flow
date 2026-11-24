@@ -5,6 +5,7 @@ import { format, differenceInMinutes } from "date-fns";
 import { CheckCircle2, Minus, X, Printer, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Logo } from '@/components/Logo';
 import { buildChecklist } from '@/lib/cleanChecklist';
+import ClientFeedbackForm from '@/components/client-feedback/ClientFeedbackForm';
 
 // The guided flow stores each answer's wording alongside it, but cleans done
 // before that change only have the item key. Harvest the real question text
@@ -45,6 +46,19 @@ export default function CleanReportPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  // Cleaners open reports too. The feedback box is the client's voice, so
+  // hide it from them (the database refuses a cleaner's note regardless).
+  // Not useAuth(): this public page sits outside AuthProvider and would crash.
+  const [viewerIsCleaner, setViewerIsCleaner] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+      const r = (roles || []).map((x: any) => x.role);
+      setViewerIsCleaner(r.includes('cleaner') && !r.includes('admin') && !r.includes('head_cleaner'));
+    })().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!token) { setNotFound(true); setLoading(false); return; }
@@ -350,6 +364,20 @@ export default function CleanReportPage() {
       </div>
 
       <div className="px-4 py-5 space-y-6 max-w-lg mx-auto">
+        {/* Client feedback: lands on the cleaner's screen for the next clean */}
+        {!viewerIsCleaner && token && (
+          <section id="feedback" className="print:hidden scroll-mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <h3 className="text-base font-bold text-foreground">Anything for next time?</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+              Tell us what was missed or what you want done. Your cleaner sees it before the next clean and ticks it off.
+            </p>
+            <ClientFeedbackForm
+              reportToken={token}
+              jobDone={['completed', 'complete'].includes(data.job.status)}
+            />
+          </section>
+        )}
+
         {/* Checklist */}
         {totalItems > 0 && (
           <section>

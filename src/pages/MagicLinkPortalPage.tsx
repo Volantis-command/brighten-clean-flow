@@ -14,6 +14,7 @@ import {
   startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth,
   parseISO,
 } from 'date-fns';
+import ClientFeedbackDialog from '@/components/client-feedback/ClientFeedbackDialog';
 
 /* ── Theme — Brightly, light (Sea Glass) or dark. Client's choice. ──
    Both palettes use the SAME keys so every component just destructures
@@ -631,9 +632,16 @@ function HomeTab({
               </p>
             </div>
             {lastDone.report_token && (
-              <a href={`/report/${lastDone.report_token}`} target="_blank" rel="noreferrer"
-                className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg shrink-0"
-                style={{ background: `${GREEN}14`, color: GREEN }}>Report</a>
+              <div className="flex items-center gap-2 shrink-0">
+                <ClientFeedbackDialog reportToken={lastDone.report_token} jobDone
+                  cleanLabel={format(parseISO(lastDone.scheduled_date), 'EEE d MMM')}>
+                  <button className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+                    style={{ background: CARD2, color: WHITE }}>Feedback</button>
+                </ClientFeedbackDialog>
+                <a href={`/report/${lastDone.report_token}`} target="_blank" rel="noreferrer"
+                  className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+                  style={{ background: `${GREEN}14`, color: GREEN }}>Report</a>
+              </div>
             )}
           </Card>
         </div>
@@ -745,8 +753,17 @@ function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack
                     {j.scheduled_time ? j.scheduled_time.slice(0, 5) : 'Time TBC'}
                   </p>
                 </div>
-                <span className="text-[10.5px] font-bold px-2 py-1 rounded-full"
-                  style={{ background: `${si.color}18`, color: si.color }}>{si.label}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {j.report_token && (
+                    <ClientFeedbackDialog reportToken={j.report_token} jobDone={false}
+                      cleanLabel={format(parseISO(j.scheduled_date), 'EEE d MMM')}>
+                      <button className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+                        style={{ background: CARD2, color: WHITE }}>Add request</button>
+                    </ClientFeedbackDialog>
+                  )}
+                  <span className="text-[10.5px] font-bold px-2 py-1 rounded-full"
+                    style={{ background: `${si.color}18`, color: si.color }}>{si.label}</span>
+                </div>
               </div>
             );
           })}
@@ -779,9 +796,16 @@ function PropertyDetail({ prop, jobs, onBack }: { prop: any; jobs: any[]; onBack
                 </div>
               </div>
               {j.report_token && (
-                <a href={`/report/${j.report_token}`} target="_blank" rel="noreferrer"
-                  className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg shrink-0"
-                  style={{ background: `${GREEN}14`, color: GREEN }}>View report</a>
+                <div className="flex items-center gap-2 shrink-0">
+                  <ClientFeedbackDialog reportToken={j.report_token} jobDone
+                    cleanLabel={format(parseISO(j.scheduled_date), 'EEE d MMM')}>
+                    <button className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+                      style={{ background: CARD2, color: WHITE }}>Feedback</button>
+                  </ClientFeedbackDialog>
+                  <a href={`/report/${j.report_token}`} target="_blank" rel="noreferrer"
+                    className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+                    style={{ background: `${GREEN}14`, color: GREEN }}>View report</a>
+                </div>
               )}
             </div>
           ))}

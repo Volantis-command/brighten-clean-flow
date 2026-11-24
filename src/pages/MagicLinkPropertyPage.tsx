@@ -22,6 +22,7 @@ import LiveCleanStatus from '@/components/client-portal/LiveCleanStatus';
 import CleanFormsArchive from '@/components/client-portal/CleanFormsArchive';
 import ReportIssueDialog from '@/components/client-portal/ReportIssueDialog';
 import PendingBookingsCard from '@/components/client-portal/PendingBookingsCard';
+import ClientFeedbackDialog from '@/components/client-feedback/ClientFeedbackDialog';
 
 export default function MagicLinkPropertyPage() {
   const { token, id: propertyId } = useParams<{ token: string; id: string }>();
@@ -422,6 +423,13 @@ export default function MagicLinkPropertyPage() {
                   </button>
                 )}
               </div>
+            )}
+            {lastCompleteJob.report_token && (
+              <ClientFeedbackDialog reportToken={lastCompleteJob.report_token} jobDone>
+                <Button variant="outline" size="sm" className="w-full mt-3 font-bold">
+                  Feedback or a request for next time
+                </Button>
+              </ClientFeedbackDialog>
             )}
           </Section>
         )}
