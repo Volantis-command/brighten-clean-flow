@@ -13,6 +13,32 @@ function starsToScore(stars: number): number {
   return Math.max(1, Math.min(5, Math.round(stars))) * 2;
 }
 
+// Texts ADMIN_PHONE (the same number check-job-alerts uses for no-shows).
+// The in-app notification is only seen when someone opens the dashboard.
+async function smsAdmin(body: string): Promise<void> {
+  const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const auth = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const from = Deno.env.get("TWILIO_PHONE_NUMBER");
+  let to = (Deno.env.get("ADMIN_PHONE") || "").replace(/[\s\-()]/g, "");
+  if (!sid || !auth || !from || !to) {
+    console.error("[submit-portal-rating] admin SMS skipped: Twilio or ADMIN_PHONE not set");
+    return;
+  }
+  if (to.startsWith("0")) to = "+61" + to.slice(1);
+  else if (!to.startsWith("+")) to = "+61" + to;
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: "POST",
+    headers: {
+      Authorization: "Basic " + btoa(`${sid}:${auth}`),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ To: to, From: from, Body: body }),
+  });
+  if (!res.ok) {
+    console.error("[submit-portal-rating] admin SMS failed:", res.status, await res.text());
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -100,22 +126,51 @@ Deno.serve(async (req: Request) => {
     // Mirror onto jobs.feedback_score for dashboards.
     await supabase.from("jobs").update({ feedback_score: score }).eq("id", job.id);
 
-    // Notify admin — same alert shape as the SMS / wizard paths.
+    // Notify admins. notify_admins writes one notifications row per admin and
+    // honours alert_tiers.enabled. It takes the tier from alert_tiers when a
+    // row exists (review_received = 'info' in prod), so p_default_tier alone
+    // can't raise a low rating; those rows are bumped to 'important' after.
+    // Non-fatal: the rating is already saved. Low ratings also text
+    // ADMIN_PHONE, independently of the in-app alert.
+    const low = stars <= 3;
+    const { data: prop } = await supabase
+      .from("properties")
+      .select("property_name")
+      .eq("id", job.property_id)
+      .maybeSingle();
+    const note = comment ? `: "${String(comment).slice(0, 140)}"` : "";
     try {
-      const { data: prop } = await supabase
-        .from("properties")
-        .select("property_name")
-        .eq("id", job.property_id)
-        .maybeSingle();
-      await supabase.from("alerts").insert({
-        event_type: "review_received",
-        title: "Portal Rating",
-        body: `${stars}-star rating from portal for ${prop?.property_name || "property"}${stars <= 3 ? " ⚠ Review needed" : ""}`,
-        link: `/clients/${tokenRow.client_id}`,
-        severity: stars <= 3 ? "warning" : "info",
+      const { error: notifyErr } = await supabase.rpc("notify_admins", {
+        p_event_type: "review_received",
+        p_title: low ? "Low portal rating" : "Portal rating",
+        p_message: `${stars}-star rating from the client portal for ${prop?.property_name || "property"}${note}${low ? ". Review needed." : ""}`,
+        p_link: `/properties/${job.property_id}?tab=feedback`,
+        p_metadata: { job_id: job.id, client_id: tokenRow.client_id, stars, source: "portal" },
+        p_default_tier: low ? "important" : "info",
       });
-    } catch (_) {
-      // Non-fatal — rating still saved.
+      if (notifyErr) throw notifyErr;
+      if (low) {
+        const { error: tierErr } = await supabase
+          .from("notifications")
+          .update({ tier: "important" })
+          .eq("event_type", "review_received")
+          .eq("metadata->>job_id", job.id)
+          .eq("tier", "info")
+          .eq("read", false);
+        if (tierErr) throw tierErr;
+      }
+    } catch (err) {
+      console.error("[submit-portal-rating] admin alert failed:", (err as Error)?.message ?? err);
+    }
+    if (low) {
+      try {
+        await smsAdmin(
+          `Brightly: ${stars}-star portal rating for ${prop?.property_name || "a property"}${note}. ` +
+            `https://app.brightly.cleaning/properties/${job.property_id}?tab=feedback`,
+        );
+      } catch (err) {
+        console.error("[submit-portal-rating] admin SMS failed:", (err as Error)?.message ?? err);
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, score }), {
