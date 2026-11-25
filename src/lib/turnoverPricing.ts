@@ -64,7 +64,7 @@ export const SETTING_DEFS: {
   { field: 'perBunk', key: 'qb_hours_per_bunk', label: 'Per bunk bed', unit: 'h', fromData: true, fallback: 0.5 },
   { field: 'perSofa', key: 'qb_hours_per_sofa', label: 'Per sofa bed made up', unit: 'h', fromData: false, fallback: 0.25 },
   { field: 'extraToilet', key: 'qb_hours_extra_toilet', label: 'Each separate toilet', unit: 'h', fromData: false, fallback: 0.1 },
-  { field: 'grannyFlat', key: 'qb_hours_granny_flat', label: 'Granny flat or studio', unit: 'h', fromData: false, fallback: 1 },
+  { field: 'grannyFlat', key: 'qb_hours_granny_flat', label: 'Granny flat (its lounge + kitchenette)', unit: 'h', fromData: false, fallback: 0.5 },
   { field: 'hoursRounding', key: 'qb_hours_rounding', label: 'Round hours to nearest', unit: 'h', fromData: false, fallback: 0.25 },
   { field: 'cleanerPayRate', key: 'qb_cleaner_pay_rate', label: 'Cleaner pay', unit: '$/h', fromData: false, fallback: 37 },
 ];
