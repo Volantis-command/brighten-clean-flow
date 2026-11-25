@@ -7,7 +7,18 @@ const corsHeaders = {
 
 const APP_URL = 'https://app.brightly.cleaning';
 
+// BJ, 25 Nov 2026: "no messages to be sent ever by the bot". Every automatic
+// reply to an incoming text is OFF: Jess, the canned confirmations, the STOP
+// confirmation and the fallback line. Incoming texts are still logged, the
+// YES/NO/STOP/rating actions still happen, and the office is alerted in the
+// app to reply by hand. Only flip this with BJ's say-so.
+const AUTO_REPLIES_ENABLED = false;
+
 async function sendTwilioSms(to: string, body: string) {
+  if (!AUTO_REPLIES_ENABLED) {
+    console.log(`[twilio-inbound-sms] auto-reply OFF, not sent to ${to}: ${body.slice(0, 80)}`);
+    return;
+  }
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
   const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER')!;
@@ -551,6 +562,34 @@ Deno.serve(async (req) => {
     // reply YES or NO", which is what anyone got for writing a normal sentence.
     // Jess works out who they are, loads their quote/jobs, and answers properly.
     // She sends the SMS herself, so we return empty TwiML (no second message).
+    if (!AUTO_REPLIES_ENABLED) {
+      // No bot. jess-reply still marks a lead as needing a reply (it no longer
+      // sends anything), then the office is told a text is waiting for a human.
+      try {
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/jess-reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` },
+          body: JSON.stringify({ phone: from, body: rawBody ?? body }),
+        });
+      } catch (e) {
+        console.error('[twilio-inbound-sms] lead bookkeeping failed:', e);
+      }
+      const who = (matchingProfiles[0] as any)?.full_name || from;
+      const preview = String(rawBody ?? body).slice(0, 160);
+      const { data: admins } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
+      for (const adm of admins || []) {
+        const { error: nErr } = await supabase.from('notifications').insert({
+          user_id: (adm as any).user_id,
+          type: 'sms',
+          title: `💬 Text from ${who} needs a reply`,
+          message: `${who} (${from}) wrote: "${preview}". No automatic reply was sent.`,
+          link: matchingProfileIds.length ? `/clients/${matchingProfileIds[0]}` : '/clients',
+        } as any);
+        if (nErr) console.error('[twilio-inbound-sms] could not alert admin:', nErr);
+      }
+      return twimlResponse('');
+    }
+
     try {
       const jessRes = await fetch(
         `${Deno.env.get('SUPABASE_URL')}/functions/v1/jess-reply`,
@@ -578,6 +617,7 @@ Deno.serve(async (req) => {
 });
 
 function twimlResponse(message: string): Response {
+  if (!AUTO_REPLIES_ENABLED) message = '';
   const xml = message
     ? `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`
     : `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;

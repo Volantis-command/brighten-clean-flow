@@ -196,6 +196,13 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // BJ, 25 Nov 2026: "no messages to be sent ever by the bot". Jess still
+    // records who wrote in (the lead stage and needs-reply marker above), but
+    // she never composes or sends anything: no reply to the customer and no
+    // alert texts. twilio-inbound-sms raises the in-app alert instead.
+    // Remove only with BJ's say-so.
+    return json({ sent: false, disabled: true, who: who.type });
+
     // ── 2. THEIR ACTUAL CONTEXT ──────────────────────────────────────────────
     let context = "";
     if (who.type === "lead" && who.lead) {
