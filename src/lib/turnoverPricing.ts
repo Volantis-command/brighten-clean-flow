@@ -12,11 +12,16 @@ import { SERVICE_TYPES } from './serviceTypes';
  *   hours = 0.5 base + 0.5 per bedroom + 0.25 per bathroom
  *         + 0.75 balcony/terrace/yard + 0.25 if it is a house + extras
  *
- * The hourly rate, base, bedroom, bathroom, outdoor, house and linen markup
- * come straight out of the data: they reproduce all 7 Coastal prices within $2
- * and Magnolia and Ohana exactly. The other extras (living areas, levels,
- * bunks, sofa beds, toilets, granny flat, pool) never varied in the data, so
- * their defaults are judgement calls. Every number is editable on the page.
+ * Apartments (Coastal, we supply linen): all 7 within $2 of the agreed price.
+ * Houses (Kingscliff, their linen), refit 25 Nov 2026 against the room counts
+ * in each property's public listing: extra storeys add nothing (Ohana has
+ * three and is the cheapest 4-bed), each extra living area adds 0.25h, each
+ * bunk bed 0.5h, a pool nothing. That lands Ohana and Salty exactly, Casa Del
+ * Salt, Casa Luxe and North Point within $15, Magnolia and Sea Poppy +$21,
+ * Elliston -$49. Elysian ($605, an acre, two kitchens, rumpus) is priced as a
+ * one-off and no formula fits it. Sofa beds, toilets and granny flats never
+ * varied in the data, so those defaults are judgement calls. Every number is
+ * editable on the page.
  */
 
 export interface ModelSettings {
@@ -53,10 +58,10 @@ export const SETTING_DEFS: {
   { field: 'outdoor', key: 'qb_hours_outdoor', label: 'Balcony, terrace or yard', unit: 'h', fromData: true, fallback: 0.75 },
   { field: 'house', key: 'qb_hours_house', label: 'House (not an apartment)', unit: 'h', fromData: true, fallback: 0.25 },
   { field: 'linenMarkupPct', key: 'qb_linen_markup_pct', label: 'Linen markup on item cost', unit: '%', fromData: true, fallback: 5 },
-  { field: 'pool', key: 'qb_hours_pool', label: 'Pool or spa', unit: 'h', fromData: false, fallback: 0 },
-  { field: 'extraLiving', key: 'qb_hours_extra_living', label: 'Each living area after the first', unit: 'h', fromData: false, fallback: 0.25 },
-  { field: 'extraLevel', key: 'qb_hours_extra_level', label: 'Each level after the first', unit: 'h', fromData: false, fallback: 0.25 },
-  { field: 'perBunk', key: 'qb_hours_per_bunk', label: 'Per bunk bed', unit: 'h', fromData: false, fallback: 0.25 },
+  { field: 'pool', key: 'qb_hours_pool', label: 'Pool or spa', unit: 'h', fromData: true, fallback: 0 },
+  { field: 'extraLiving', key: 'qb_hours_extra_living', label: 'Each living area after the first', unit: 'h', fromData: true, fallback: 0.25 },
+  { field: 'extraLevel', key: 'qb_hours_extra_level', label: 'Each level after the first', unit: 'h', fromData: true, fallback: 0 },
+  { field: 'perBunk', key: 'qb_hours_per_bunk', label: 'Per bunk bed', unit: 'h', fromData: true, fallback: 0.5 },
   { field: 'perSofa', key: 'qb_hours_per_sofa', label: 'Per sofa bed made up', unit: 'h', fromData: false, fallback: 0.25 },
   { field: 'extraToilet', key: 'qb_hours_extra_toilet', label: 'Each separate toilet', unit: 'h', fromData: false, fallback: 0.1 },
   { field: 'grannyFlat', key: 'qb_hours_granny_flat', label: 'Granny flat or studio', unit: 'h', fromData: false, fallback: 1 },

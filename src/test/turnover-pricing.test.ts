@@ -125,3 +125,23 @@ describe('applyListing', () => {
     expect(next.levels).toBe(1);
   });
 });
+
+describe('Kingscliff houses, from their public listings (their linen)', () => {
+  // bd, ba, separate toilets, living areas, levels, pool, beds -> agreed price
+  const house = (bd: number, ba: number, wc: number, living: number, levels: number, pool: boolean, beds: Partial<typeof NO_BEDS>): QuoteInput => ({
+    ...BLANK_INPUT, propertyType: 'house', bedrooms: bd, bathrooms: ba, separateToilets: wc, livingAreas: living,
+    levels, pool, outdoor: true, weSupplyLinen: false, beds: { ...NO_BEDS, ...beds },
+  });
+  const price = (i: QuoteInput) => quote(i, S, RATES).totalInc;
+
+  it('Ohana and Salty to the cent', () => {
+    expect(price(house(4, 2, 0, 1, 3, false, { king: 1, queen: 2, kingSingle: 2 }))).toBe(330);
+    expect(price(house(4, 2, 0, 1, 1, true, { king: 1, queen: 2, bunk: 2 }))).toBe(412.5);
+  });
+
+  it('Casa Del Salt, Casa Luxe and North Point within $15', () => {
+    expect(Math.abs(price(house(4, 3, 0, 2, 2, true, { king: 1, double: 1, single: 2, queen: 1 })) - 375)).toBeLessThanOrEqual(15);
+    expect(Math.abs(price(house(4, 2, 0, 3, 1, true, { king: 1, single: 2, queen: 2 })) - 385)).toBeLessThanOrEqual(15);
+    expect(Math.abs(price(house(4, 3, 1, 2, 2, true, { king: 1, queen: 2, kingSingle: 2 })) - 385)).toBeLessThanOrEqual(15);
+  });
+});
